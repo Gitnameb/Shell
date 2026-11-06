@@ -1,0 +1,18 @@
+# Binarios locales de wl-clipboard. No se publican: se instala el paquete
+# `wl-clipboard` y los scripts usan wl-copy/wl-paste del sistema.
+scripts/bin/wl-copy
+scripts/bin/wl-paste
+
+# Copias de configuración y artefactos
+umbriel-config-backup.toml
+build/
+__pycache__/
+*.pyc
+*.bak
+*.old
+*~
+.DS_Store
+
+# Secretos y datos locales
+credenciales
+*.secret

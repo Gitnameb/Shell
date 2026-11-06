@@ -1,0 +1,19 @@
+#!/bin/sh
+# Abre un selector de archivos para importar un perfil de OpenVPN y escribe la
+# ruta elegida en la salida estándar. Sale con 1 si se cancela y con 127 si no
+# hay ningún selector instalado.
+set -u
+
+filters="OpenVPN (*.ovpn)"
+
+if command -v kdialog >/dev/null 2>&1; then
+    exec kdialog --title "Importar perfil de OpenVPN" \
+        --getopenfilename "$HOME" "$filters"
+fi
+
+if command -v zenity >/dev/null 2>&1; then
+    exec zenity --file-selection --title="Importar perfil de OpenVPN" \
+        --file-filter="$filters"
+fi
+
+exit 127

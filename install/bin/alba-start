@@ -1,0 +1,7 @@
+#!/bin/sh
+# Arranca ALBA dentro de una sesión de Umbriel.
+# Umbriel ya publica WAYLAND_DISPLAY y UMBRIEL_SOCKET para sus hijos, así que
+# CompositorState detecta el backend correcto sin variables extra.
+export QT_QPA_PLATFORMTHEME=kde
+export QS_ICON_THEME=breeze-dark
+exec qs -c alba -d

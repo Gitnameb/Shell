@@ -1,0 +1,18 @@
+#!/bin/sh
+# Abre un selector de imagen para el fondo de pantalla y escribe la ruta
+# elegida en la salida estándar. Sale con 1 si se cancela.
+set -u
+
+filters="Imágenes (*.png *.jpg *.jpeg *.webp *.avif *.bmp *.svg)"
+
+if command -v kdialog >/dev/null 2>&1; then
+    exec kdialog --title "Elegir fondo de pantalla" \
+        --getopenfilename "$HOME" "$filters"
+fi
+
+if command -v zenity >/dev/null 2>&1; then
+    exec zenity --file-selection --title="Elegir fondo de pantalla" \
+        --file-filter="$filters"
+fi
+
+exit 127

@@ -1,0 +1,141 @@
+#!/bin/sh
+# Sincroniza los colores de la barra nativa de Umbriel con el tema de ALBA.
+#
+# Uso: alba-umbriel-theme dark|light [#rrggbb]
+#
+# Umbriel no lee la configuración de Quickshell, así que ALBA reescribe las
+# tablas [colors], [colors.border] y [colors.title_bar] y recarga Umbriel en
+# caliente. El resto del archivo queda intacto.
+
+set -eu
+
+mode="$1"
+accent="${2:-#b8bec7}"
+
+case "$mode" in
+dark | light) ;;
+*)
+  echo "modo inválido: $mode (usa dark o light)" >&2
+  exit 1
+  ;;
+esac
+
+cfg="${UMBRIEL_CONFIG:-$HOME/.config/umbriel/config.toml}"
+[ -f "$cfg" ] || { echo "no existe $cfg" >&2; exit 1; }
+
+python3 - "$cfg" "$mode" "$accent" <<'PY'
+import re
+import sys
+
+path, mode, accent = sys.argv[1], sys.argv[2], sys.argv[3]
+light = mode == "light"
+
+
+def rgb(value):
+    value = value.lstrip("#")[:6]
+    return tuple(int(value[i:i + 2], 16) / 255 for i in (0, 2, 4))
+
+
+def adjust(value):
+    r, g, b = rgb(value)
+    lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    if light and lum > 0.38:
+        amount = min(0.85, (lum - 0.38) / max(0.01, lum))
+        r, g, b = (c + (0 - c) * amount for c in (r, g, b))
+    elif not light and lum < 0.55:
+        amount = min(0.85, (0.55 - lum) / max(0.01, 1 - lum))
+        r, g, b = (c + (1 - c) * amount for c in (r, g, b))
+    return "#%02x%02x%02x" % (round(r * 255), round(g * 255), round(b * 255))
+
+
+acc = adjust(accent)
+
+if light:
+    colors = {
+        "background": "#f4f3f0",
+        "text_primary": "#1b1d21",
+        "text_muted": "#565d67",
+        "accent_primary": acc,
+        "accent_secondary": acc,
+    }
+    border = {
+        "focused": acc,
+        "unfocused": "#d0d2d6",
+        "outer": "#e4e5e8",
+    }
+    title = {
+        "background": "#ecedee",
+        "background_unfocused": "#f4f3f0",
+        "text": "#1b1d21",
+        "text_unfocused": "#565d67",
+        "close": "#d9565e",
+        "close_glyph": "#ffffff",
+        "close_glyph_hover": "#ffffff",
+        "maximize": "#8a9099",
+        "maximize_glyph": "#ffffff",
+        "maximize_glyph_hover": "#ffffff",
+        "minimize": "#d9a93c",
+        "minimize_glyph": "#ffffff",
+        "minimize_glyph_hover": "#ffffff",
+    }
+else:
+    colors = {
+        "background": "#141519",
+        "text_primary": "#e8eaed",
+        "text_muted": "#8a8f98",
+        "accent_primary": acc,
+        "accent_secondary": acc,
+    }
+    border = {
+        "focused": acc,
+        "unfocused": "#2a2d33",
+        "outer": "#1a1c20",
+    }
+    title = {
+        "background": "#1a1c20",
+        "background_unfocused": "#141519",
+        "text": "#e8eaed",
+        "text_unfocused": "#8a8f98",
+        "close": "#e06c75",
+        "close_glyph": "#141519",
+        "close_glyph_hover": "#141519",
+        "maximize": "#b8bec7",
+        "maximize_glyph": "#141519",
+        "maximize_glyph_hover": "#141519",
+        "minimize": "#f5c96b",
+        "minimize_glyph": "#141519",
+        "minimize_glyph_hover": "#141519",
+    }
+
+with open(path, encoding="utf-8") as handle:
+    text = handle.read()
+
+
+def update(section, values):
+    global text
+    pattern = re.compile(r"^\[%s\][^\[]*" % re.escape(section), re.M | re.S)
+
+    def repl(match):
+        block = match.group(0)
+        for key, value in values.items():
+            block = re.sub(
+                r"^%s\s*=.*$" % re.escape(key),
+                '%s = "%sFF"' % (key, value),
+                block,
+                count=1,
+                flags=re.M,
+            )
+        return block
+
+    text = pattern.sub(repl, text, count=1)
+
+
+update("colors", colors)
+update("colors.border", border)
+update("colors.title_bar", title)
+
+with open(path, "w", encoding="utf-8") as handle:
+    handle.write(text)
+PY
+
+umbriel msg config-reload

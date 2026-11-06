@@ -1,0 +1,95 @@
+# ALBA / Umbriel · paquetes para Debian 13 (trixie), mismo hardware
+#
+# Punto de partida recomendado: instalar Debian 13 con el entorno KDE Plasma
+# (task-kde-desktop). Eso aporta SDDM, Qt 6, KDE, Breeze, PipeWire,
+# NetworkManager, BlueZ, UPower, Polkit, kdialog y el portal de KDE.
+# Si se parte de una instalación mínima, instalar también los paquetes
+# marcados como «base KDE» en la sección 3.
+
+# ---------------------------------------------------------------------------
+# 1. Repositorios
+# ---------------------------------------------------------------------------
+# Debian 13 + trixie-backports:
+#   deb http://deb.debian.org/debian trixie-backports main
+#
+# Noctalia (Umbriel y su portal): seguir las instrucciones oficiales:
+#   wget https://pkg.noctalia.dev/deb/nickh-archive-keyring.deb
+#   sudo dpkg -i nickh-archive-keyring.deb
+#   sudo wget -O /etc/apt/sources.list.d/noctalia-trixie.sources \
+#     https://pkg.noctalia.dev/deb/noctalia-trixie.sources
+#   sudo apt update
+#
+# Los archivos de ejemplo de este repositorio están en install/apt/.
+
+# ---------------------------------------------------------------------------
+# 2. Shell, compositor y portal
+# ---------------------------------------------------------------------------
+sudo apt install -t trixie-backports quickshell hyprlock
+sudo apt install -t trixie-backports umbriel xdg-desktop-portal-umbriel
+
+# ---------------------------------------------------------------------------
+# 3. Dependencias de ALBA que no siempre trae el entorno KDE
+#    (la mayoría ya vienen con task-kde-desktop)
+# ---------------------------------------------------------------------------
+sudo apt install \
+  ddcutil qrencode libnotify-bin fonts-inter wvkbd swayidle kitty \
+  network-manager-openvpn power-profiles-daemon \
+  pulseaudio-utils iputils-ping wl-clipboard \
+  qml6-module-qtquick-effects \
+  qml6-module-qt5compat-graphicaleffects \
+  qml6-module-qt-labs-folderlistmodel \
+  xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-kde \
+  xwayland
+
+# Base KDE que usa ALBA/Umbriel si no se instaló task-kde-desktop:
+#   sudo apt install \
+#     sddm plasma-desktop plasma-workspace plasma-integration \
+#     kde-cli-tools libkf6config-bin kdialog \
+#     breeze breeze-icon-theme breeze-gtk-theme breeze-cursor-theme \
+#     qt6-wayland qt6-qpa-plugins qt6-svg-plugins \
+#     pipewire pipewire-pulse wireplumber \
+#     network-manager upower polkitd bluez bluez-obexd \
+#     libglib2.0-bin librsvg2-common
+
+# ---------------------------------------------------------------------------
+# 4. Dependencias para compilar el fork de Umbriel
+# ---------------------------------------------------------------------------
+sudo apt install -t trixie-backports \
+  build-essential git meson ninja-build pkg-config \
+  libwlroots-0.20-dev libwayland-dev wayland-protocols \
+  libdrm-dev libinput-dev libxkbcommon-dev libpixman-1-dev \
+  libcairo2-dev libpango1.0-dev libgdk-pixbuf-2.0-dev \
+  libtomlplusplus-dev libjemalloc-dev libliftoff-dev \
+  libdisplay-info-dev liblcms2-dev libsystemd-dev libudev-dev \
+  libxcb1-dev libxcb-icccm4-dev libxcb-ewmh-dev \
+  libxcb-randr0-dev libxcb-shape0-dev \
+  libeis-dev libseat-dev nlohmann-json3-dev
+
+# ---------------------------------------------------------------------------
+# 5. Firmware y gráficos de este equipo
+# ---------------------------------------------------------------------------
+# CPU Intel i3-10105F, GPU AMD RX 570 (amdgpu), Wi-Fi Intel AX210,
+# Ethernet Realtek RTL8111, audio Intel Comet Lake.
+sudo apt install \
+  intel-microcode \
+  firmware-amd-graphics firmware-iwlwifi firmware-realtek \
+  firmware-sof-signed \
+  mesa-utils mesa-vulkan-drivers mesa-va-drivers intel-media-va-driver
+
+# ---------------------------------------------------------------------------
+# 6. Solo para pruebas y diagnóstico (no hacen falta para usar ALBA)
+# ---------------------------------------------------------------------------
+# grim slurp          capturas en pruebas
+# btop                monitor de recursos
+# obs-studio          pruebas de captura/streaming
+# wlrctl wtype ydotool wev weston   pruebas de entrada y compositor anidado
+#
+# No instalar en la instalación limpia:
+#   hyprland hypridle hyprland-guiutils xdg-desktop-portal-hyprland
+#   (restos de la etapa Hyprland; ALBA ya no los usa)
+#
+# wl-clipboard aporta wl-copy y wl-paste. Los scripts de ALBA usan los del
+# sistema; los binarios de scripts/bin/ solo quedan como respaldo local y no
+# se publican en el repositorio.
+#
+# zenity y canberra-gtk-play no están instalados; ALBA usa kdialog y paplay.

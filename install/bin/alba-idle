@@ -1,0 +1,29 @@
+#!/bin/sh
+# Bloqueo automático de ALBA.
+#
+# Uso: alba-idle MINUTOS
+#
+# MINUTOS = 0 desactiva el bloqueo. Cualquier otro valor arranca `swayidle`
+# contra el protocolo de inactividad del compositor y ejecuta `hyprlock` al
+# cumplirse el tiempo. Se puede cambiar desde Ajustes y se vuelve a lanzar al
+# iniciar el shell.
+
+set -eu
+
+minutes="${1:-5}"
+
+case "$minutes" in
+  '' | *[!0-9]*) minutes=5 ;;
+esac
+[ "$minutes" -gt 120 ] && minutes=120
+
+# Solo hay un temporizador de ALBA. Si se cambia el ajuste, se reemplaza.
+pkill -x swayidle 2>/dev/null || true
+
+[ "$minutes" -eq 0 ] && exit 0
+
+seconds=$((minutes * 60))
+
+exec swayidle -w \
+  timeout "$seconds" 'hyprlock' \
+  before-sleep 'hyprlock'

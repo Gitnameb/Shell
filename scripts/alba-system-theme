@@ -1,0 +1,254 @@
+#!/usr/bin/env python3
+"""Aplica el modo y el acento de ALBA a GTK y a las apps de KDE.
+
+Uso: alba-system-theme dark|light '#RRGGBB'
+Se ejecuta al arrancar el shell y cada vez que cambia el tema. No es
+obligatorio: si está desactivado en Ajustes, no se llama.
+"""
+
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+HOME = Path.home()
+CONFIG = HOME / ".config"
+BACKUP = CONFIG / "alba" / "backups"
+DEVNULL = subprocess.DEVNULL
+
+START = "/* ALBA-THEME-START */"
+END = "/* ALBA-THEME-END */"
+
+# Acentos predefinidos de GNOME, para que libadwaita tenga una aproximación
+# válida aunque el color exacto se escriba después en el CSS de GTK.
+GNOME_ACCENTS = {
+    "blue": "#3584e4",
+    "teal": "#2190a4",
+    "green": "#3a944a",
+    "yellow": "#c8a30b",
+    "orange": "#ed5b00",
+    "red": "#e01b24",
+    "pink": "#d56199",
+    "purple": "#9141ac",
+    "slate": "#6f8396",
+}
+
+
+def hex_to_rgb(value):
+    value = str(value).strip().lstrip("#")
+    if not re.fullmatch(r"[0-9a-fA-F]{6}", value):
+        return None
+    return tuple(int(value[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+
+
+def rgb_to_hex(rgb):
+    return "#" + "".join(f"{max(0, min(255, round(c * 255))):02x}" for c in rgb)
+
+
+def luminance(rgb):
+    return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]
+
+
+def mix(a, b, amount):
+    return tuple(a[i] + (b[i] - a[i]) * amount for i in range(3))
+
+
+def adjusted_accent(raw, light):
+    """Misma corrección de contraste que hace Theme.qml."""
+    rgb = hex_to_rgb(raw) or (184 / 255, 190 / 255, 199 / 255)
+    lum = luminance(rgb)
+    if light and lum > 0.38:
+        amount = min(0.85, (lum - 0.38) / max(0.01, lum))
+        return mix(rgb, (0, 0, 0), amount)
+    if not light and lum < 0.55:
+        amount = min(0.85, (0.55 - lum) / max(0.01, 1 - lum))
+        return mix(rgb, (1, 1, 1), amount)
+    return rgb
+
+
+def nearest_gnome_accent(accent):
+    best = "slate"
+    best_distance = None
+    for name, value in GNOME_ACCENTS.items():
+        candidate = hex_to_rgb(value)
+        distance = sum((accent[i] - candidate[i]) ** 2 for i in range(3))
+        if best_distance is None or distance < best_distance:
+            best = name
+            best_distance = distance
+    return best
+
+
+def run(command):
+    try:
+        subprocess.run(command, stdout=DEVNULL, stderr=DEVNULL, check=False)
+    except OSError:
+        pass
+
+
+def set_gsetting(schema, key, value):
+    run(["gsettings", "set", schema, key, str(value)])
+
+
+def backup_once(path, name):
+    if not path.exists():
+        return
+    try:
+        BACKUP.mkdir(parents=True, exist_ok=True)
+        target = BACKUP / name
+        if not target.exists():
+            shutil.copy2(path, target)
+    except OSError:
+        pass
+
+
+def set_ini_values(path, values):
+    """Cambia solo las claves indicadas y conserva el resto del archivo."""
+    try:
+        text = path.read_text()
+    except OSError:
+        text = "[Settings]\n"
+    lines = text.splitlines()
+
+    if not any(line.strip() == "[Settings]" for line in lines):
+        lines.insert(0, "[Settings]")
+
+    start = None
+    end = len(lines)
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped == "[Settings]":
+            start = i
+            continue
+        if start is not None and stripped.startswith("[") and stripped.endswith("]"):
+            end = i
+            break
+
+    out = []
+    seen = set()
+    for i, line in enumerate(lines):
+        if start is not None and start < i < end:
+            match = re.match(r"^([A-Za-z0-9_-]+)\s*=", line)
+            if match and match.group(1) in values:
+                key = match.group(1)
+                out.append(f"{key}={values[key]}")
+                seen.add(key)
+                continue
+        out.append(line)
+
+    missing = [f"{key}={value}" for key, value in values.items() if key not in seen]
+    if missing:
+        # Se insertan al final de la sección [Settings], antes de la siguiente.
+        insert_at = end
+        out[insert_at:insert_at] = missing
+
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("\n".join(out) + "\n")
+    except OSError:
+        pass
+
+
+def write_gtk_css(path, accent, ink, unfocused):
+    block = "\n".join([
+        f"@define-color theme_selected_bg_color_breeze {accent};",
+        f"@define-color theme_selected_fg_color_breeze {ink};",
+        f"@define-color theme_hovering_selected_bg_color_breeze {accent};",
+        f"@define-color theme_view_hover_decoration_color_breeze {accent};",
+        f"@define-color theme_view_active_decoration_color_breeze {accent};",
+        f"@define-color theme_unfocused_selected_bg_color_breeze {unfocused};",
+        f"@define-color theme_unfocused_selected_bg_color_alt_breeze {unfocused};",
+        f"@define-color theme_unfocused_selected_fg_color_breeze {ink};",
+        f"@define-color accent_color {accent};",
+        f"@define-color accent_bg_color {accent};",
+        f"@define-color accent_fg_color {ink};",
+    ])
+
+    try:
+        text = path.read_text()
+    except OSError:
+        text = ""
+
+    # colors.css lo genera KDE con la paleta del esquema, que puede no coincidir
+    # con el modo elegido. El tema Breeze ya trae sus propios colores base.
+    text = re.sub(r"@import\s+(['\"])colors\.css\1\s*;?\s*\n?", "", text)
+
+    if START in text and END in text:
+        text = re.sub(
+            re.escape(START) + r".*?" + re.escape(END),
+            START + "\n" + block + "\n" + END,
+            text,
+            flags=re.S,
+        )
+    else:
+        text = text.rstrip() + "\n\n" + START + "\n" + block + "\n" + END + "\n"
+
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+    except OSError:
+        pass
+
+
+def apply_kde(accent, light):
+    scheme = "BreezeLight" if light else "BreezeDark"
+    if not shutil.which("plasma-apply-colorscheme"):
+        return
+    if not Path(f"/usr/share/color-schemes/{scheme}.colors").exists():
+        return
+    # Sin una sesión Plasma completa, plasma-apply-colorscheme solo cambia el
+    # acento si kdeglobals no declara el esquema actual. Se escribe primero.
+    if shutil.which("kwriteconfig6"):
+        run(["kwriteconfig6", "--file", "kdeglobals", "--group", "General",
+             "--key", "ColorScheme", scheme])
+        run(["kwriteconfig6", "--file", "kdeglobals", "--group", "Icons",
+             "--key", "Theme", "breeze" if light else "breeze-dark"])
+    elif shutil.which("kwriteconfig5"):
+        run(["kwriteconfig5", "--file", "kdeglobals", "--group", "General",
+             "--key", "ColorScheme", scheme])
+        run(["kwriteconfig5", "--file", "kdeglobals", "--group", "Icons",
+             "--key", "Theme", "breeze" if light else "breeze-dark"])
+    run(["plasma-apply-colorscheme", "--accent-color", accent, scheme])
+
+
+def main():
+    mode = sys.argv[1] if len(sys.argv) > 1 else "dark"
+    raw_accent = sys.argv[2] if len(sys.argv) > 2 else "#b8bec7"
+    light = mode == "light"
+
+    accent_rgb = adjusted_accent(raw_accent, light)
+    accent = rgb_to_hex(accent_rgb)
+    ink = "#15171a" if luminance(accent_rgb) > 0.5 else "#f7f8fa"
+    base = (1.0, 1.0, 1.0) if light else (0.071, 0.078, 0.094)
+    unfocused = rgb_to_hex(mix(accent_rgb, base, 0.58))
+
+    # Copia de seguridad única de lo que se modifica.
+    backup_once(CONFIG / "kdeglobals", "kdeglobals.pre-alba")
+    for version in ("gtk-3.0", "gtk-4.0"):
+        backup_once(CONFIG / version / "settings.ini", f"{version}-settings.ini.pre-alba")
+        backup_once(CONFIG / version / "gtk.css", f"{version}-gtk.css.pre-alba")
+
+    # GTK: tema, iconos y esquema de color.
+    theme = "Breeze" if light else "Breeze-Dark"
+    icons = "breeze" if light else "breeze-dark"
+    set_gsetting("org.gnome.desktop.interface", "color-scheme",
+                 "prefer-light" if light else "prefer-dark")
+    set_gsetting("org.gnome.desktop.interface", "gtk-theme", theme)
+    set_gsetting("org.gnome.desktop.interface", "icon-theme", icons)
+    set_gsetting("org.gnome.desktop.interface", "accent-color",
+                 nearest_gnome_accent(accent_rgb))
+
+    for version in ("gtk-3.0", "gtk-4.0"):
+        set_ini_values(CONFIG / version / "settings.ini", {
+            "gtk-theme-name": theme,
+            "gtk-icon-theme-name": icons,
+            "gtk-application-prefer-dark-theme": "true" if not light else "false",
+        })
+        write_gtk_css(CONFIG / version / "gtk.css", accent, ink, unfocused)
+
+    # KDE: esquema claro/oscuro y el mismo acento.
+    apply_kde(accent, light)
+
+
+if __name__ == "__main__":
+    main()

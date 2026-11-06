@@ -1,0 +1,69 @@
+#!/bin/sh
+# Aplica el estilo de barra de ventanas de ALBA al compositor Umbriel.
+#
+# Uso: alba-window-chrome floating|integrated
+#
+# «floating» dibuja la barra dentro del contenido y solo la muestra mientras se
+# mantiene Mod. «integrated» la deja encima, siempre visible. En ambos casos la
+# barra es nativa: la pinta Umbriel, no ALBA. El ajuste se guarda en la
+# configuración del compositor para que sobreviva al reinicio de la sesión.
+set -eu
+
+style="${1:-floating}"
+case "$style" in
+    integrated) want=false ;;
+    floating|*) want=true ;;
+esac
+
+cfg="${UMBRIEL_CONFIG:-$HOME/.config/umbriel/config.toml}"
+[ -f "$cfg" ] || exit 0
+
+current=$(awk '
+    /^\[/ { t = ($0 ~ /^\[appearance\.title_bar\]/); next }
+    t && /^overlay[ \t]*=/ {
+        sub(/^overlay[ \t]*=[ \t]*/, "")
+        sub(/[ \t\r]+$/, "")
+        print
+        exit
+    }
+' "$cfg")
+
+# Ya está en el estilo pedido: no se toca el archivo ni se recarga nada.
+[ "$current" = "$want" ] && exit 0
+
+tmp="$cfg.alba-tmp"
+awk -v v="$want" '
+    BEGIN { t = 0; found = 0; section = 0 }
+    /^\[/ {
+        if (t && !found) {
+            print "overlay = " v
+            found = 1
+        }
+        t = ($0 ~ /^\[appearance\.title_bar\]/)
+        if (t)
+            section = 1
+        print
+        next
+    }
+    t && /^overlay[ \t]*=/ && !found {
+        print "overlay = " v
+        found = 1
+        next
+    }
+    { print }
+    END {
+        if (!found) {
+            if (!section) {
+                print ""
+                print "[appearance.title_bar]"
+            }
+            print "overlay = " v
+        }
+    }
+' "$cfg" > "$tmp"
+
+mv "$tmp" "$cfg"
+
+# El compositor vigila el archivo, pero el aviso explícito hace el cambio
+# inmediato también cuando el vigilante no está disponible.
+umbriel msg config-reload >/dev/null 2>&1 || true

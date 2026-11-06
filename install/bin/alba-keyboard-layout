@@ -1,0 +1,45 @@
+#!/bin/sh
+# Cambia el layout del teclado físico en la configuración de Umbriel.
+#
+# Umbriel no expone una acción para fijar un layout concreto (solo «siguiente
+# layout»), así que se edita [input.keyboard] y se recarga la configuración en
+# caliente. El resto del archivo queda intacto.
+#
+# Uso: alba-keyboard-layout es
+
+set -eu
+
+layout="$1"
+[ -n "$layout" ] || { echo "falta el layout" >&2; exit 1; }
+
+cfg="${UMBRIEL_CONFIG:-$HOME/.config/umbriel/config.toml}"
+[ -f "$cfg" ] || { echo "no existe $cfg" >&2; exit 1; }
+
+python3 - "$cfg" "$layout" <<'PY'
+import re
+import sys
+
+path, layout = sys.argv[1], sys.argv[2]
+with open(path, encoding="utf-8") as handle:
+    text = handle.read()
+
+section = re.compile(r"^\[input\.keyboard\][^\[]*", re.M | re.S)
+
+
+def update(block):
+    line = 'layout = "%s"' % layout
+    if re.search(r"^layout\s*=", block, re.M):
+        return re.sub(r"^layout\s*=.*$", line, block, count=1, flags=re.M)
+    return block.rstrip() + "\n" + line + "\n"
+
+
+if section.search(text):
+    text = section.sub(lambda match: update(match.group(0)), text, count=1)
+else:
+    text = text.rstrip() + "\n\n[input.keyboard]\n" + 'layout = "%s"\n' % layout
+
+with open(path, "w", encoding="utf-8") as handle:
+    handle.write(text)
+PY
+
+umbriel msg config-reload

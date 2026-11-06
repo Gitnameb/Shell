@@ -1,0 +1,12 @@
+[Unit]
+Description=Alarmas de ALBA
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/Documents/Alba/scripts/alba-alarms
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

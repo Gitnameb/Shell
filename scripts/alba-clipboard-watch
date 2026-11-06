@@ -1,0 +1,28 @@
+#!/bin/sh
+# Vigilante único del portapapeles. Si ya hay otro proceso escuchando, sale
+# sin error para que Quickshell no acumule instancias al recargar.
+set -u
+
+dir="${XDG_STATE_HOME:-$HOME/.local/state}/alba"
+mkdir -p "$dir"
+
+if command -v flock >/dev/null 2>&1; then
+    exec 9>"$dir/clipboard-watch.lock"
+    flock -n 9 || exit 0
+fi
+
+# El primer aviso de wl-paste trae lo que ya estuviera copiado. Se marca para
+# que alba-clipboard-add lo ignore y el historial empiece con copias nuevas.
+: > "$dir/clipboard-first"
+
+base=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+# Preferir el wl-paste del sistema; si no está, usar el binario incluido.
+if command -v wl-paste >/dev/null 2>&1; then
+    wl_paste=wl-paste
+else
+    wl_paste="$base/bin/wl-paste"
+fi
+
+exec "$wl_paste" --no-newline --watch \
+    python3 "$base/alba-clipboard-add"

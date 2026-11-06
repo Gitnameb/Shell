@@ -1,0 +1,81 @@
+#!/bin/sh
+# Aplica el retardo del gesto de mantener Super al compositor Umbriel.
+#
+# Uso: alba-mod-hold <milisegundos>
+#
+# Umbriel espera ese tiempo antes de entrar en el modo ventanas. Un toque más
+# corto abre el lanzador sin atenuar el contenido. El valor se guarda en
+# [input] mod_hold_delay_ms y el compositor recarga la configuración.
+set -eu
+
+ms="${1:-320}"
+case "$ms" in
+    ''|*[!0-9]*) exit 2 ;;
+esac
+[ "$ms" -ge 50 ] && [ "$ms" -le 2000 ] || exit 2
+
+cfg="${UMBRIEL_CONFIG:-$HOME/.config/umbriel/config.toml}"
+[ -f "$cfg" ] || exit 0
+
+# La recarga de ALBA puede lanzar este script y el del tamaño flotante a la
+# vez. Un cerrojo por archivo y un temporal único evitan que uno mueva el
+# archivo mientras el otro lo está escribiendo.
+if command -v flock >/dev/null 2>&1 && command -v mktemp >/dev/null 2>&1; then
+    exec 9>"$cfg.alba-lock"
+    flock 9
+    tmp=$(mktemp "$cfg.alba-XXXXXX")
+    trap 'rm -f "$tmp"' EXIT
+else
+    tmp="$cfg.alba-tmp-$$"
+    trap 'rm -f "$tmp"' EXIT
+fi
+
+current=$(awk '
+    /^\[/ { in_input = ($0 ~ /^\[input\]/); next }
+    in_input && /^mod_hold_delay_ms[ \t]*=/ {
+        sub(/^mod_hold_delay_ms[ \t]*=[ \t]*/, "")
+        sub(/[ \t\r]+$/, "")
+        print
+        exit
+    }
+' "$cfg")
+
+# Ya está en el valor pedido: no se toca el archivo ni se recarga nada.
+[ "$current" = "$ms" ] && exit 0
+
+awk -v v="$ms" '
+    BEGIN { in_input = 0; found = 0; has_input = 0 }
+    /^\[/ {
+        if (in_input && !found) {
+            print "mod_hold_delay_ms = " v
+            found = 1
+        }
+        in_input = ($0 ~ /^\[input\]/)
+        if (in_input)
+            has_input = 1
+        print
+        next
+    }
+    in_input && /^mod_hold_delay_ms[ \t]*=/ && !found {
+        print "mod_hold_delay_ms = " v
+        found = 1
+        next
+    }
+    { print }
+    END {
+        if (!found) {
+            if (!has_input) {
+                print ""
+                print "[input]"
+            }
+            print "mod_hold_delay_ms = " v
+        }
+    }
+' "$cfg" > "$tmp"
+
+mv "$tmp" "$cfg"
+trap - EXIT
+
+# El compositor vigila el archivo, pero el aviso explícito hace el cambio
+# inmediato también cuando el vigilante no está disponible.
+umbriel msg config-reload >/dev/null 2>&1 || true

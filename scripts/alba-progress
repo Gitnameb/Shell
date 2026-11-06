@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+"""Actualiza el progreso que ALBA dibuja alrededor de apps y escritorios.
+
+El shell lee ~/.local/state/alba/progress. Cada línea tiene la forma
+`clave=porcentaje`, donde la clave es la clase de la app (`firefox`, `kitty`,
+`dolphin`...) o `ws:N` para un escritorio concreto.
+
+Ejemplos:
+    alba-progress set firefox 34      # anillo de Firefox al 34 %
+    alba-progress set ws:2 60         # anillo del escritorio 2 al 60 %
+    alba-progress clear firefox       # termina la tarea de Firefox
+    alba-progress clear-all
+    alba-progress list
+"""
+
+from __future__ import annotations
+
+import argparse
+import fcntl
+import os
+import sys
+import tempfile
+from pathlib import Path
+
+STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) \
+    / "alba" / "progress"
+LOCK = STATE.with_name("progress.lock")
+
+
+def clean_key(key: str) -> str:
+    value = key.strip().lower()
+    if value.startswith("app:"):
+        value = value[4:]
+    if value.startswith("ws:"):
+        number = value[3:].strip()
+        if not number.isdigit():
+            raise ValueError("el escritorio debe ser un número: ws:N")
+        return f"ws:{int(number)}"
+    value = value.strip()
+    if not value:
+        raise ValueError("la clave no puede estar vacía")
+    return value
+
+
+def read_entries() -> dict[str, float]:
+    entries: dict[str, float] = {}
+    try:
+        lines = STATE.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        return entries
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, raw = line.split("=", 1)
+        try:
+            entries[clean_key(key)] = parse_percent(raw)
+        except ValueError:
+            continue
+    return entries
+
+
+def write_entries(entries: dict[str, float]) -> None:
+    STATE.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(
+        dir=STATE.parent, prefix=".progress-", text=True)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            for key in sorted(entries):
+                handle.write(f"{key}={entries[key]:g}\n")
+        os.replace(temporary, STATE)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def with_lock(callback):
+    STATE.parent.mkdir(parents=True, exist_ok=True)
+    with open(LOCK, "w", encoding="utf-8") as lock_file:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        return callback()
+
+
+def parse_percent(value: str) -> float:
+    """Devuelve una fracción 0..1. Acepta 34, 34% y 0.34 como 34 %."""
+    raw = value.strip().replace(",", ".")
+    percent = raw.endswith("%")
+    number = float(raw[:-1] if percent else raw)
+    if percent or number > 1:
+        number /= 100
+    return max(0.0, min(1.0, number))
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Progreso de tareas para los anillos de ALBA")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    setter = subparsers.add_parser("set", help="fija el progreso de una clave")
+    setter.add_argument("key", help="clase de app o ws:N")
+    setter.add_argument("percent", help="0-100 (también admite 34%%)")
+
+    clearer = subparsers.add_parser("clear", help="elimina una clave")
+    clearer.add_argument("key", help="clase de app o ws:N")
+
+    subparsers.add_parser("clear-all", help="elimina todas las tareas")
+    subparsers.add_parser("list", help="muestra las tareas activas")
+
+    args = parser.parse_args()
+
+    try:
+        if args.command == "set":
+            key = clean_key(args.key)
+            value = parse_percent(args.percent)
+
+            def update():
+                entries = read_entries()
+                entries[key] = value
+                write_entries(entries)
+
+            with_lock(update)
+            print(f"{key}={value * 100:g}%")
+        elif args.command == "clear":
+            key = clean_key(args.key)
+
+            def remove():
+                entries = read_entries()
+                entries.pop(key, None)
+                write_entries(entries)
+
+            with_lock(remove)
+        elif args.command == "clear-all":
+            with_lock(lambda: write_entries({}))
+        elif args.command == "list":
+            entries = read_entries()
+            for key in sorted(entries):
+                print(f"{key}={entries[key] * 100:g}%")
+    except ValueError as error:
+        print(f"alba-progress: {error}", file=sys.stderr)
+        return 2
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

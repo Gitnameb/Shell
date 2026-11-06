@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""Copia al portapapeles la entrada del historial indicada por índice."""
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+MAX_ENTRIES = 50
+
+path = Path.home() / ".local/state/alba/clipboard.json"
+wl_copy = shutil.which("wl-copy") or (
+    Path(__file__).resolve().parent / "bin" / "wl-copy"
+)
+
+
+def main():
+    try:
+        index = int(sys.argv[1])
+        entries = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(entries, list) or index < 0 or index >= len(entries):
+            return 1
+        text = entries[index]["text"]
+    except (IndexError, KeyError, OSError, ValueError):
+        return 1
+
+    try:
+        subprocess.run([str(wl_copy)], input=text.encode("utf-8"), check=False)
+    except OSError:
+        return 1
+
+    # El vigilante también lo moverá al principio, pero adelantarlo aquí evita
+    # un parpadeo en la lista.
+    entry = entries.pop(index)
+    entries.insert(0, entry)
+    entries = entries[:MAX_ENTRIES]
+
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        os.umask(0o077)
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(entries, handle, ensure_ascii=False)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
