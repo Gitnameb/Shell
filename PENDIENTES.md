@@ -35,11 +35,19 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   portales, sudoers, SDDM y copias de seguridad. Los archivos que vivían fuera
   del proyecto están guardados en `install/` (`bin/`, `config/`, `systemd/`,
   `sudoers/`, `apt/` y `packages.txt`).
-- **Instalador automático (E1).** `install.sh` instala repositorios, paquetes,
-  configuración de usuario, sudoers y alarmas; `scripts/install-umbriel-fork.sh`
-  clona el fork si hace falta, aplica el parche, compila e instala con `mv`
-  atómico. Probado con `--dry-run` y con una compilación completa desde un clon
-  limpio. Falta ejecutarlo de principio a fin en un Debian recién instalado.
+- **Instalador automático (E1).** `install.sh` es el punto de entrada y delega
+  en `scripts/install-packages.sh`, `scripts/network.sh` y
+  `scripts/install-user-config.sh`; `scripts/install-umbriel-fork.sh` clona el
+  fork si hace falta, aplica el parche, compila e instala con `mv` atómico.
+  Instala repositorios, paquetes, configuración de usuario, sudoers y alarmas.
+  Probado con `--dry-run` y con una compilación completa desde un clon limpio.
+  Falta ejecutarlo de principio a fin en un Debian recién instalado.
+- **Conflictos de backports corregidos (2026-11-06).** `install-packages.sh`
+  instala PipeWire y Mesa en bloque desde `trixie-backports`; añade
+  `libpixman-1-0` junto a `libpixman-1-dev`, mueve `wayland-protocols` al
+  grupo de backports y añade `cmake`. `network.sh` instala el plugin Bluetooth
+  con el stack completo de PipeWire si hace falta y reinicia PipeWire y
+  WirePlumber. Falta confirmarlo con otra instalación limpia.
 - **Veredicto para uso principal:** sí en este equipo, con dos reservas: B3
   sigue sin probar y el instalador aún no se ha probado en limpio. B5 sí es
   comprobable aquí porque el AX210 tiene Wi-Fi y Bluetooth. Lo pendiente de
@@ -486,6 +494,20 @@ Tras cerrar sesión y volver a entrar:
 - B4: hecho en anidado; falta probar con una app real (KeePassXC/Telegram).
 - B5: Wi-Fi (escanear solo con el panel abierto, reconectar, olvidar, QR,
   bandas) y Bluetooth (emparejar, batería); autoapagado a 15 min y hotspot.
+  DNS global implementado (ficha propia, automático/manual IPv4/IPv6) y proxy
+  por red (PAC generado + environment.d); falta probarlo con apps reales y
+  tras reiniciar sesión.
+- Aviso de dependencias bajo demanda en el panel de notificaciones (icono
+  junto a «No molestar»), con botón para copiar la solución; falta comprobarlo
+  visualmente.
+- Audio Bluetooth: `libspa-0.2-bluetooth` añadido a `network.sh` y al chequeo
+  de dependencias; falta ejecutar el script y probar los Galaxy Buds como
+  salida y micrófono.
+- Porcentajes por panel (volumen, brillo, atenuación, batería y Bluetooth):
+  el ajuste global de Ajustes se sustituyó por interruptores independientes,
+  todos desactivados por defecto y persistidos en `settings.conf`; falta
+  comprobar visualmente que ocultan y muestran el porcentaje en la barra y en
+  las fichas del centro de control.
 - Aceptación: cada flujo termina sin usar la terminal.
 
 ### 7. C2 y C5 (hecho)
@@ -495,9 +517,12 @@ Tras cerrar sesión y volver a entrar:
 - C5: ubicación manual del clima y demonio de alarmas con el shell cerrado,
   incluido el temporizador persistente. Verificado en real.
 - C3 y C4 están hechos; solo queda la prueba de la tecla física de brillo.
-- Si se reinstala el sistema, recordar `network-manager-openvpn`, copiar
-  `portals.conf` a `~/.config/xdg-desktop-portal/` y volver a enlazar
-  `~/.config/systemd/user/alba-alarms.service` (contenido abajo).
+- Si se reinstala el sistema, recordar `network-manager-openvpn`,
+  `wpasupplicant` y `rfkill`; ejecutar `sudo ./scripts/network.sh` si
+  NetworkManager deja la Ethernet como «unmanaged» o el Wi-Fi como
+  «unavailable»; copiar `portals.conf` a `~/.config/xdg-desktop-portal/` y
+  volver a enlazar `~/.config/systemd/user/alba-alarms.service` (contenido
+  abajo).
 
 ### 8. Opcionales (no empezar sin pedirlo)
 - D1 fase 2 (recolocar iconos y persistir posiciones), D2 apps web, E3 prueba

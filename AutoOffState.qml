@@ -20,13 +20,12 @@ Singleton {
     function wifiConnected(): bool {
         const devices = Networking.devices.values;
         for (let i = 0; i < devices.length; i++) {
-            if (devices[i].type !== DeviceType.Wifi)
-                continue;
-            const networks = devices[i].networks.values;
-            for (let j = 0; j < networks.length; j++) {
-                if (networks[j].connected)
-                    return true;
-            }
+            // `connected` no depende de que la lista de redes esté cargada.
+            // Con el escáner apagado, `networks` puede estar vacío aunque el
+            // equipo siga conectado, y el autoapagado lo interpretaría mal.
+            if (devices[i].type === DeviceType.Wifi
+                    && devices[i].connected)
+                return true;
         }
         return false;
     }
@@ -42,6 +41,10 @@ Singleton {
 
     function tick(): void {
         const now = Date.now();
+        // Mientras se está viendo la lista de redes, el apagado automático no
+        // debe empezar a contar: el usuario puede tardar en elegir una red.
+        const viewingWifi = NotificationState.panelOpen
+            && NotificationState.panelView === "wifi";
 
         // ------------------------------------------------ punto de acceso
         if (HotspotState.active) {
@@ -63,7 +66,8 @@ Singleton {
         // Con hotspot activo la radio está ocupada; no se apaga por "falta de
         // conexión" porque el punto de acceso no es una conexión de estación.
         if (!Networking.wifiEnabled || HotspotState.active || HotspotState.busy
-                || !SettingsState.wifiAutoOff || root.wifiConnected()) {
+                || !SettingsState.wifiAutoOff || root.wifiConnected()
+                || viewingWifi) {
             root.lastWifiActivity = now;
         } else if (root.lastWifiActivity <= 0) {
             root.lastWifiActivity = now;

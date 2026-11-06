@@ -32,13 +32,19 @@ El instalador:
    dependencias de compilación.
 3. Enlaza el shell en `~/.config/quickshell/alba` y copia los scripts a
    `~/.local/bin`.
-4. Copia la configuración de ALBA y Umbriel **sin sobrescribir** la que ya
+4. Configura NetworkManager para que gestione Ethernet y Wi-Fi (instala
+   `wpasupplicant` y `rfkill`, y retira las interfaces de ifupdown).
+5. Copia la configuración de ALBA y Umbriel **sin sobrescribir** la que ya
    exista. Con `--force-config` la reemplaza y guarda una copia `.bak`.
-5. Crea la regla de sudoers de `ddcutil` y activa la unidad de alarmas.
-6. Compila e instala el fork de Umbriel con `scripts/install-umbriel-fork.sh`.
+6. Crea la regla de sudoers de `ddcutil` y activa la unidad de alarmas.
+7. Compila e instala el fork de Umbriel con `scripts/install-umbriel-fork.sh`.
+
+`install.sh` solo orquesta; cada paso vive en su módulo y se puede revisar o
+ejecutar por separado: `scripts/install-packages.sh`, `scripts/network.sh` y
+`scripts/install-user-config.sh`.
 
 Opciones: `--dry-run`, `--skip-packages`, `--skip-fork`, `--skip-config`,
-`--force-config`, `--with-firmware` y `--help`.
+`--skip-network`, `--force-config`, `--with-firmware` y `--help`.
 
 > Probado con `--dry-run` y con una compilación completa desde un clon limpio
 > de Umbriel. **Falta la prueba definitiva en un Debian recién instalado.**
@@ -81,8 +87,9 @@ dar por hecho que los nombres serán los mismos tras una instalación limpia.
 | Quickshell | 0.3.0-1~bpo13+1 |
 | Umbriel (paquete) | 0.1.0~1505-g63327b58-1~bpo13+1 |
 | xdg-desktop-portal-umbriel | 0.1.0~64-ge69d6f72-1+deb13u1 |
-| PipeWire | 1.4.2 |
-| WirePlumber | 0.5.8 |
+| PipeWire | 1.6.9-2~bpo13+1 |
+| WirePlumber | 0.5.12-1~bpo13+1 |
+| Mesa | 26.1.6-1~bpo13+1 |
 | NetworkManager | 1.52.1 |
 | ddcutil | 2.2.0 |
 | power-profiles-daemon | 0.30 |
@@ -177,8 +184,19 @@ está en `install/packages.txt`.
   `qt6-wayland`, `qt6-qpa-plugins`, `qt6-svg-plugins`.
   `plasma-workspace` y `kde-cli-tools` **no** son necesarios; solo aportan
   `plasma-apply-colorscheme` (acento en apps KDE) y herramientas que ALBA no usa.
-- **Audio:** `pipewire`, `pipewire-pulse`, `wireplumber`; `wpctl` para los
-  atajos y `paplay` (`pulseaudio-utils`) para las alarmas.
+- **Audio:** `pipewire`, `pipewire-bin`, `pipewire-pulse`, `wireplumber`,
+  `libpipewire-0.3-0t64`, `libpipewire-0.3-modules` y `libspa-0.2-modules`,
+  **todos de `trixie-backports` y en el mismo bloque**; `wpctl` para los atajos
+  y `paplay` (`pulseaudio-utils`) para las alarmas. Para audio Bluetooth hace
+  falta `libspa-0.2-bluetooth`, también de backports; sin él los auriculares se
+  emparejan pero no aparecen como salida ni micrófono, y la conexión puede
+  fallar con `br-connection-profile-unavailable`.
+- **Gráficos:** `libgbm1`, `mesa-libgallium`, `libgl1-mesa-dri`,
+  `libglx-mesa0`, `libegl-mesa0`, `mesa-va-drivers` y `mesa-vulkan-drivers`,
+  todos de `trixie-backports` y en el mismo bloque. `libgbm-dev` (dependencia de
+  `libwlroots-0.20-dev`) arrastra `libgbm1` y `mesa-libgallium` de backports;
+  si los drivers VA/Vulkan se quedan en la versión de trixie, apt no puede
+  resolver la transacción.
 - **Red:** `network-manager`, `network-manager-openvpn`, `nmcli`, `qrencode`
   (QR del hotspot).
 - **Energía:** `upower`, `power-profiles-daemon`, `powerprofilesctl`.
@@ -191,6 +209,43 @@ está en `install/packages.txt`.
 - **Portales:** `xdg-desktop-portal`, `-gtk` y `-umbriel`; `-kde` está
   instalado por Plasma. **No instalar `-hyprland`** en la instalación limpia.
 - **X11:** `xwayland`.
+
+### Grupos que deben instalarse juntos
+
+Estos paquetes tienen dependencias de versión exacta entre sí. Instalar solo
+una parte desde `trixie-backports` deja el sistema en un estado que apt no
+puede resolver. El instalador los trata como bloques; si haces la instalación a
+mano, usa estos comandos:
+
+```sh
+sudo apt install -t trixie-backports \
+  pipewire pipewire-bin pipewire-pulse wireplumber \
+  libpipewire-0.3-0t64 libpipewire-0.3-modules libspa-0.2-modules
+
+sudo apt install -t trixie-backports \
+  libgbm1 mesa-libgallium libgl1-mesa-dri libglx-mesa0 libegl-mesa0 \
+  mesa-va-drivers mesa-vulkan-drivers
+
+sudo apt install -t trixie-backports \
+  libpixman-1-dev libpixman-1-0 \
+  libwayland-dev wayland-protocols
+
+sudo apt install -t trixie-backports libspa-0.2-bluetooth
+```
+
+Si una instalación anterior falló a mitad, estos son los comandos de rescate
+que dejan el sistema coherente:
+
+```sh
+sudo apt install -t trixie-backports \
+  pipewire pipewire-bin pipewire-pulse wireplumber \
+  libpipewire-0.3-modules libpipewire-0.3-0t64 libspa-0.2-modules
+sudo apt install -t trixie-backports libpixman-1-dev libpixman-1-0
+sudo apt install -t trixie-backports \
+  mesa-va-drivers mesa-libgallium mesa-vulkan-drivers
+sudo apt install cmake
+sudo apt install -t trixie-backports wayland-protocols libwayland-dev
+```
 
 ### Lo que no hace falta
 
@@ -215,9 +270,10 @@ icono, subtítulo y otras mejoras.
 
 ```sh
 sudo apt install -t trixie-backports \
-  build-essential git meson ninja-build pkg-config \
+  build-essential cmake git meson ninja-build pkg-config \
   libwlroots-0.20-dev libwayland-dev wayland-protocols \
-  libdrm-dev libinput-dev libxkbcommon-dev libpixman-1-dev \
+  libdrm-dev libinput-dev libxkbcommon-dev \
+  libpixman-1-dev libpixman-1-0 \
   libcairo2-dev libpango1.0-dev libgdk-pixbuf-2.0-dev \
   libtomlplusplus-dev libjemalloc-dev libliftoff-dev \
   libdisplay-info-dev liblcms2-dev libsystemd-dev libudev-dev \
@@ -228,6 +284,10 @@ sudo apt install -t trixie-backports \
 
 El fork está basado en Umbriel `b6c4b7d` y tiene 24 commits propios. El parche
 reproducible es `umbriel-fork.patch` (50 archivos).
+
+`libpixman-1-dev` y `libpixman-1-0` deben instalarse juntos, igual que
+`libwayland-dev` y `wayland-protocols`: las versiones de desarrollo exigen la
+versión exacta de la librería de runtime.
 
 ### 4.2 Obtener el código
 
@@ -469,10 +529,67 @@ No es necesario para el funcionamiento normal.
 ### 7.5 Red, VPN, Bluetooth y energía
 
 - `NetworkManager` gestiona Ethernet, Wi-Fi y VPN.
+- `wpasupplicant` es obligatorio para el Wi-Fi: `network-manager` solo lo
+  recomienda, y sin él el adaptador aparece como `unavailable` y el shell no
+  puede listar ni conectar redes. `rfkill` permite comprobar si la radio está
+  bloqueada.
+- `dnsmasq-base` es el servidor DHCP/DNS que NetworkManager usa para el punto
+  de acceso en modo compartido. Sin él, los clientes se conectan pero no
+  reciben dirección IP.
+- `bluez` y `bluez-obexd` aportan Bluetooth y la transferencia de archivos.
 - `network-manager-openvpn` es obligatorio para importar `.ovpn`.
-- `bluez` y `bluez-obexd` para Bluetooth.
+- `qrencode` genera el QR del punto de acceso.
+- **Todos los paquetes de red, punto de acceso, VPN y Bluetooth los instala
+  `scripts/network.sh`.** `install-packages.sh` ya no los duplica; la
+  instalación limpia los pide una sola vez desde el módulo de red.
+- Si Debian instaló la Ethernet con ifupdown (`/etc/network/interfaces`),
+  NetworkManager la marca como `unmanaged`. Ejecuta una vez:
+  `sudo ./scripts/network.sh`. El instalador ya lo hace salvo que uses
+  `--skip-network`.
+- El script también detiene los servicios `ifup@<interfaz>` y su `dhcpcd`
+  heredados de la instalación. Si no se detienen, siguen configurando la
+  interfaz y la Ethernet vuelve a activarse sola después de desconectarla
+  desde NetworkManager.
+- La vista Red solo muestra quién controla la Ethernet («NetworkManager»,
+  «ifupdown», etc.). Si aparece un control heredado, vuelve a ejecutar
+  `sudo ./scripts/network.sh`; no se instala ningún asistente con sudoers.
+- El script reinicia Quickshell al terminar si estaba abierto, porque al
+  reiniciar NetworkManager el shell puede quedarse sin ver las interfaces.
+  Usa `--no-restart-shell` para evitarlo y reinícialo tú después. `install.sh`
+  lo ejecuta con esa opción, ya que en una instalación limpia no hay shell
+  abierto y el instalador no depende de él.
+- `network-manager-openvpn` es obligatorio para importar `.ovpn`.
 - `upower` y `power-profiles-daemon` para batería y perfiles.
-- El hotspot usa `nmcli` y `qrencode`.
+- El hotspot usa `nmcli`, `dnsmasq-base` para el DHCP y `qrencode` para el QR.
+- **Conexión por USB del móvil:** al activar «Compartir conexión por USB» en
+  Android, el kernel expone una interfaz `usb0`/`enx…` que NetworkManager trata
+  como Ethernet y configura por DHCP. No hace falta instalar nada más; si
+  aparece como `unmanaged`, ejecuta `sudo ./scripts/network.sh`. La vista Red
+  muestra todas las interfaces cableadas, cada una con su estado y su botón.
+- **Redes Wi-Fi ocultas:** el engranaje general de la vista Red tiene el
+  interruptor «Mostrar redes ocultas». Al activarlo, las redes que no emiten su
+  SSID se mezclan con las visibles, ordenadas por conexión y señal, y se
+  identifican por su BSSID/MAC. Si ya están conectadas, se muestran con su SSID
+  real, que el perfil guardado ya conoce. Al pulsarlas, el formulario de SSID y
+  contraseña se abre dentro de la fila. El botón **+** de la cabecera se usa
+  solo para añadir una red oculta manualmente. El engranaje avanzado de cada
+  red solo se muestra en la red conectada.
+- **DNS global:** el centro de control tiene una ficha **DNS** propia. La vista
+  permite usar el DNS automático del router o servidores IPv4/IPv6 propios y lo
+  aplica a todas las conexiones Wi-Fi y Ethernet guardadas, porque
+  NetworkManager no tiene un DNS único para todo el sistema. Los cambios se
+  aplican con `nmcli device reapply` sin cortar la conexión.
+- **Proxy por red:** el engranaje general de la vista Red permite elegir por
+  conexión entre sin proxy, automático (PAC) o manual. NetworkManager solo
+  admite `none`/`auto`, así que el modo manual se guarda como un PAC generado.
+  Los datos editables viven en `~/.config/alba/proxy.json`. Si la red está
+  activa, el proxy manual también se escribe en
+  `~/.config/environment.d/90-alba-proxy.conf` para la próxima sesión.
+- **Aviso de dependencias:** el icono de comprobación situado junto a
+  «No molestar» ejecuta `scripts/check-deps.sh` solo al pulsarlo. Si falta algo,
+  muestra una tarjeta con los paquetes y el comando para instalarlos, con un
+  botón para copiar la solución. No se comprueba al arrancar ni al abrir los
+  paneles.
 
 Los perfiles de red y VPN viven en `/etc/NetworkManager/system-connections/`
 (contienen secretos; copiar con permisos restringidos o reimportar).
@@ -590,6 +707,9 @@ umbriel msg workspace-switch 9
 # Servicios
 systemctl --user status alba-alarms --no-pager
 systemctl status bluetooth NetworkManager power-profiles-daemon --no-pager
+
+# Red: la Ethernet debe estar «connected» y el Wi-Fi no «unmanaged»/«unavailable»
+nmcli -t -f DEVICE,TYPE,STATE device status
 
 # Brillo
 sudo -n ddcutil detect

@@ -2,6 +2,7 @@
 
 import Quickshell
 import Quickshell.Io
+import Quickshell.Networking
 import QtQml
 
 ShellRoot {
@@ -137,6 +138,66 @@ ShellRoot {
         //   qs ipc -c alba call appearance weatherPlace Madrid
         function weatherPlace(value: string): void {
             SettingsState.setWeatherPlace(value);
+        }
+    }
+
+    // Diagnóstico y control de red desde la terminal:
+    //   qs ipc -c alba call network status
+    //   qs ipc -c alba call network scan
+    IpcHandler {
+        target: "network"
+
+        function status(): string {
+            const devices = Networking.devices.values;
+            const list = [];
+            let wifiNetworks = 0;
+            let wifiScanner = 0;
+            for (let i = 0; i < devices.length; i++) {
+                const dev = devices[i];
+                if (dev.type === DeviceType.Wifi) {
+                    wifiNetworks = dev.networks.values.length;
+                    wifiScanner = dev.scannerEnabled ? 1 : 0;
+                }
+                list.push(dev.name + ":" + dev.type + ":"
+                    + (dev.connected ? "connected" : "disconnected")
+                    + ":managed=" + (dev.nmManaged ? "1" : "0"));
+            }
+            return "wifiEnabled=" + (Networking.wifiEnabled ? "1" : "0")
+                + " airplane=" + (AirplaneState.active ? "1" : "0")
+                + " wifiHardwareEnabled=" + (Networking.wifiHardwareEnabled ? "1" : "0")
+                + " backend=" + Networking.backend
+                + " connectivity=" + Networking.connectivity
+                + " nmWifiNetworks=" + wifiNetworks
+                + " scanner=" + wifiScanner
+                + " ethernet=" + EthernetState.controlLabel
+                + " panelOpen=" + (NotificationState.panelOpen ? "1" : "0")
+                + " watching=" + (WifiState.watching ? "1" : "0")
+                + " scanning=" + (WifiState.scanning ? "1" : "0")
+                + " hasScanned=" + (WifiState.hasScanned ? "1" : "0")
+                + " state=" + WifiState.deviceState
+                + " aps=" + WifiState.accessPoints.length
+                + " hidden=" + WifiState.hiddenAccessPoints.length
+                + " error=" + WifiState.lastError
+                + " devices=" + list.join(",");
+        }
+
+        function scan(): string {
+            WifiState.watching = true;
+            WifiState.hasScanned = false;
+            WifiState.requestScan();
+            return "scan";
+        }
+
+        function stop(): void {
+            WifiState.stop();
+        }
+
+        function open(): void {
+            NotificationState.openPanelView("wifi");
+        }
+
+        function close(): void {
+            NotificationState.hidePanel();
         }
     }
 

@@ -12,8 +12,8 @@ Shell de escritorio personal para [Umbriel](https://noctalia.dev/umbriel/)
 ## Qué incluye
 
 - Barra inferior con escritorios, lanzador, música, red, batería y bandeja.
-- Centro de control: Wi-Fi, Bluetooth, volumen, micrófono, VPN, hotspot,
-  brillo, atenuación, luz nocturna y perfiles de energía.
+- Centro de control: Wi-Fi, Bluetooth, volumen, micrófono, VPN, hotspot, modo
+  avión, brillo, atenuación, luz nocturna y perfiles de energía.
 - Notificaciones, historial del portapapeles, calendario, alarmas y temporizador.
 - Clima, estadísticas del sistema y menú de apagado.
 - Escritorios con modo por escritorio (flotante, mosaico, pila) y vista general.
@@ -41,8 +41,9 @@ falta o está en pruebas está en `PENDIENTES.md`. Lo más relevante:
 - Debian 13 «trixie» (probablemente funciona en otras distribuciones con
   Wayland, pero no está probado).
 - Umbriel y su portal, desde el repositorio de Noctalia.
-- Quickshell desde `trixie-backports`.
-- Qt 6, KDE/Breeze, PipeWire, NetworkManager, BlueZ, UPower y Polkit.
+- Quickshell, PipeWire y Mesa desde `trixie-backports`.
+- Qt 6, KDE/Breeze, NetworkManager (con `wpasupplicant`), BlueZ,
+  UPower y Polkit.
 - Para el brillo: `ddcutil` y una regla de sudoers.
 - Para el fork de Umbriel: las dependencias de compilación de `meson`.
 
@@ -72,11 +73,37 @@ configuración de usuario, crea la regla de sudoers, activa las alarmas y compil
 el fork de Umbriel. **No sobrescribe configuraciones existentes** salvo que se
 use `--force-config`; en ese caso guarda una copia `.bak`.
 
+`install.sh` es el punto de entrada y delega en módulos que también puedes
+ejecutar por separado:
+
+```sh
+./scripts/install-packages.sh --dry-run   # repositorios y paquetes
+./scripts/network.sh --dry-run            # red, Wi-Fi, hotspot, VPN y Bluetooth
+./scripts/install-user-config.sh --dry-run # enlaces y configuración del HOME
+./scripts/install-umbriel-fork.sh --dry-run # compositor parcheado
+```
+
+`scripts/network.sh` reinicia Quickshell al terminar si estaba abierto, para
+que vuelva a enumerar las interfaces después de reiniciar NetworkManager. Usa
+`--no-restart-shell` si prefieres reiniciarlo tú. El instalador `install.sh`
+lo ejecuta con esa opción: en una Debian limpia no hay shell abierto y la
+instalación no debe depender de que exista. El script instala también
+`dnsmasq-base` (DHCP del punto de acceso), `libspa-0.2-bluetooth` (audio
+Bluetooth), `qrencode` (QR del hotspot),
+`bluez`/`bluez-obexd` (Bluetooth) y `network-manager-openvpn` (VPN), además
+de `wpasupplicant` y `rfkill`. También detiene los servicios
+`ifup@<interfaz>` y `dhcpcd` heredados de Debian, que si no se
+detienen pueden volver a activar la Ethernet después de desconectarla. La
+vista Red solo muestra quién controla la Ethernet; si vuelve a activarse sola,
+se ejecuta otra vez `sudo ./scripts/network.sh`.
+
 Opciones útiles:
 
 - `--dry-run`: enseña los comandos sin ejecutarlos.
 - `--skip-packages`: solo configura y compila.
 - `--skip-fork`: no toca el compositor.
+- `--skip-network`: no configura la red ni instala NetworkManager, Wi-Fi,
+  hotspot, VPN ni Bluetooth.
 - `--with-firmware`: instala también firmware y drivers de este equipo.
 - `--help`: lista todas las opciones.
 
@@ -97,7 +124,10 @@ La guía manual, con el detalle de cada paso, sigue estando en
 | `scripts/` | Ayudantes de portapapeles, alarmas, tema, VPN, etc. |
 | `icons/` | Iconos SVG propios. |
 | `install/` | Plantillas para una instalación limpia. |
-| `install.sh` | Instalador para Debian 13 + Umbriel. |
+| `install.sh` | Instalador principal para Debian 13 + Umbriel. |
+| `scripts/install-packages.sh` | Módulo de repositorios, paquetes y servicios. |
+| `scripts/network.sh` | Módulo de NetworkManager, Ethernet y Wi-Fi. |
+| `scripts/install-user-config.sh` | Módulo de enlaces y configuración del HOME. |
 | `scripts/install-umbriel-fork.sh` | Compila e instala el fork de Umbriel. |
 | `umbriel-fork.patch` | Parche del fork de Umbriel sobre `b6c4b7d`. |
 | `INSTALACION.md` | Guía de instalación. |

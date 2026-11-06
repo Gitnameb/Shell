@@ -6,7 +6,8 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 // Panel lateral único, pegado a la barra: notificaciones arriba y centro de
-// control compacto abajo. Las opciones avanzadas se abren dentro del panel.
+// control compacto abajo. Las opciones avanzadas se abren dentro del panel y
+// comparten el mismo desplazamiento.
 PanelWindow {
     id: root
 
@@ -57,14 +58,23 @@ PanelWindow {
     onVisibleChanged: {
         updateDragBounds();
         if (visible) {
-            // Al abrir el panel, la cuadrícula vuelve arriba.
+            // Al abrir el panel, la cuadrícula vuelve arriba. Las
+            // dependencias solo se comprueban si se pulsa su icono.
             if (typeof ccFlick !== "undefined")
                 ccFlick.contentY = 0;
             return;
         }
+        DependencyState.revealed = false;
+        DependencyState.expanded = false;
         NotificationState.panelView = "";
-        if (typeof ccContent !== "undefined")
-            ccContent.pendingNetwork = null;
+        if (typeof ccContent !== "undefined") {
+            // Al cerrar el panel se corta también el escaneo de Wi-Fi, para
+            // que la radio no siga buscando redes en segundo plano.
+            ccContent.stopNetworkScan();
+            ccContent.pendingNetworkName = "";
+            ccContent.wifiListFrozen = false;
+            ccContent.syncWifiNetworks();
+        }
         if (typeof notifList !== "undefined") {
             notifList.openGroup = "";
             notifList.expandedChildId = -1;
@@ -184,8 +194,7 @@ PanelWindow {
         }
 
         function airplane(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("airplane");
+            AirplaneState.toggle();
         }
 
         function music(): void {
@@ -280,10 +289,6 @@ PanelWindow {
             CompositorState.runAction(action, target, value);
         }
 
-        function setPercentages(value: bool): void {
-            SettingsState.setShowPercentages(value);
-        }
-
         function setTemps(value: bool): void {
             SettingsState.setShowTemps(value);
         }
@@ -359,8 +364,12 @@ PanelWindow {
 
                     Text {
                         text: NotificationState.count === 0
-                            ? "Todo al día"
-                            : NotificationState.countLabel(NotificationState.count)
+                            ? (DependencyState.hasMissing
+                                || DependencyState.error.length > 0
+                                ? "Revisa las dependencias"
+                                : "Todo al día")
+                            : NotificationState.countLabel(
+                                NotificationState.count)
                         color: Theme.faint
                         font.family: Theme.fontFamily
                         font.pixelSize: 9
@@ -394,6 +403,59 @@ PanelWindow {
                     }
                 }
 
+                // Comprobar dependencias (solo al pulsar).
+                Rectangle {
+                    id: depButton
+
+                    readonly property bool problem: DependencyState.hasMissing
+                        || DependencyState.error.length > 0
+
+                    implicitWidth: 26
+                    implicitHeight: 26
+                    radius: 8
+                    color: depMouse.containsMouse
+                        ? Theme.hover
+                        : (depButton.problem ? Theme.warningSoft : "transparent")
+                    border.width: depButton.problem ? 1 : 0
+                    border.color: Theme.warningLine
+
+                    AlbaIcon {
+                        anchors.centerIn: parent
+                        name: DependencyState.checking
+                            ? "view-refresh"
+                            : (depButton.problem
+                                ? "dialog-warning"
+                                : (DependencyState.checked
+                                    ? "emblem-ok-symbolic" : "dialog-information"))
+                        fallback: DependencyState.checking
+                            ? "↻"
+                            : (depButton.problem
+                                ? "⚠"
+                                : (DependencyState.checked ? "✓" : "i"))
+                        color: DependencyState.checking
+                            ? Theme.accent
+                            : (depButton.problem
+                                ? Theme.warning
+                                : (DependencyState.checked
+                                    ? Theme.accent : Theme.muted))
+                        size: 15
+                    }
+
+                    MouseArea {
+                        id: depMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: DependencyState.checkNow()
+                    }
+
+                    ToolTip.visible: depMouse.containsMouse
+                    ToolTip.text: DependencyState.checking
+                        ? "Comprobando dependencias…"
+                        : "Comprobar dependencias"
+                    ToolTip.delay: 350
+                }
+
                 // Limpiar (solo icono).
                 Rectangle {
                     visible: NotificationState.count > 0
@@ -417,6 +479,244 @@ PanelWindow {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: NotificationState.clearAll()
+                    }
+                }
+            }
+
+            // ------------------------------------------ dependencias del sistema
+            Rectangle {
+                id: depWarning
+
+                readonly property bool problem: DependencyState.hasMissing
+                    || DependencyState.error.length > 0
+
+                Layout.fillWidth: true
+                visible: DependencyState.revealed
+                    && (DependencyState.checking || DependencyState.hasResult)
+                implicitHeight: depColumn.implicitHeight + 16
+                radius: 10
+                color: depWarning.problem
+                    ? Theme.warningSoft : Theme.accentSoft
+                border.width: 1
+                border.color: depWarning.problem
+                    ? Theme.warningLine : Theme.accentLine
+
+                ColumnLayout {
+                    id: depColumn
+
+                    anchors {
+                        fill: parent
+                        margins: 8
+                    }
+                    spacing: 5
+
+                    Item {
+                        Layout.fillWidth: true
+                        implicitHeight: depHead.implicitHeight
+
+                        RowLayout {
+                            id: depHead
+
+                            anchors.fill: parent
+                            spacing: 7
+
+                            AlbaIcon {
+                                name: DependencyState.checking
+                                    ? "view-refresh"
+                                    : (depWarning.problem
+                                        ? "dialog-warning" : "emblem-ok-symbolic")
+                                fallback: DependencyState.checking
+                                    ? "↻"
+                                    : (depWarning.problem ? "⚠" : "✓")
+                                color: depWarning.problem
+                                    ? Theme.warning : Theme.accent
+                                size: 17
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: DependencyState.checking
+                                        ? "Comprobando dependencias…"
+                                        : (DependencyState.error.length > 0
+                                            ? "No se pudo comprobar"
+                                            : (DependencyState.hasMissing
+                                                ? DependencyState.title
+                                                : "Todo en orden"))
+                                    color: depWarning.problem
+                                        ? Theme.warning : Theme.accent
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 9
+                                    font.weight: Font.DemiBold
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: DependencyState.checking
+                                        ? "Revisando los paquetes de red…"
+                                        : (DependencyState.error.length > 0
+                                            ? DependencyState.error
+                                            : (DependencyState.hasMissing
+                                                ? (DependencyState.expanded
+                                                    ? "Paquetes que faltan:"
+                                                    : "Toca para ver qué instalar")
+                                                : "No falta ningún paquete de red."))
+                                    color: Theme.muted
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 8
+                                    wrapMode: Text.Wrap
+                                }
+                            }
+
+                            Text {
+                                visible: DependencyState.hasMissing
+                                    && !DependencyState.checking
+                                text: DependencyState.expanded ? "⌃" : "⌄"
+                                color: Theme.warning
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            enabled: DependencyState.hasMissing
+                                && !DependencyState.checking
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: DependencyState.toggle()
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        visible: DependencyState.expanded
+                            && DependencyState.hasMissing
+                            && !DependencyState.checking
+                        spacing: 3
+
+                        Repeater {
+                            model: DependencyState.missing
+
+                            delegate: RowLayout {
+                                required property var modelData
+
+                                Layout.fillWidth: true
+                                spacing: 6
+
+                                Text {
+                                    text: "•"
+                                    color: Theme.warning
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 9
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: modelData.label
+                                    color: Theme.text
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 8
+                                    elide: Text.ElideRight
+                                }
+
+                                Text {
+                                    text: modelData.package
+                                    color: Theme.faint
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 8
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 1
+                            Layout.topMargin: 2
+                            color: Theme.warningLine
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: "SOLUCIÓN"
+                            color: Theme.faint
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 8
+                            font.weight: Font.DemiBold
+                            font.letterSpacing: 0.8
+                        }
+
+                        Repeater {
+                            model: DependencyState.fixes
+
+                            delegate: Rectangle {
+                                required property var modelData
+
+                                Layout.fillWidth: true
+                                implicitHeight: Math.max(26,
+                                    depFix.implicitHeight + 10)
+                                radius: 6
+                                color: Theme.surface
+
+                                RowLayout {
+                                    anchors {
+                                        fill: parent
+                                        leftMargin: 7
+                                        rightMargin: 4
+                                    }
+                                    spacing: 4
+
+                                    Text {
+                                        id: depFix
+
+                                        Layout.fillWidth: true
+                                        text: String(modelData)
+                                        color: Theme.text
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 8
+                                        wrapMode: Text.Wrap
+                                    }
+
+                                    Rectangle {
+                                        implicitWidth: 22
+                                        implicitHeight: 22
+                                        radius: 6
+                                        color: depCopyMouse.containsMouse
+                                            ? Theme.hover : "transparent"
+
+                                        AlbaIcon {
+                                            anchors.centerIn: parent
+                                            name: DependencyState.copiedText
+                                                === String(modelData)
+                                                ? "emblem-ok-symbolic" : "edit-copy"
+                                            fallback: DependencyState.copiedText
+                                                === String(modelData) ? "✓" : "⧉"
+                                            color: DependencyState.copiedText
+                                                === String(modelData)
+                                                ? Theme.accent : Theme.muted
+                                            size: 13
+                                        }
+
+                                        MouseArea {
+                                            id: depCopyMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: DependencyState.copy(
+                                                String(modelData))
+                                        }
+
+                                        ToolTip.visible: depCopyMouse.containsMouse
+                                        ToolTip.text: DependencyState.copiedText
+                                            === String(modelData)
+                                            ? "Copiado" : "Copiar solución"
+                                        ToolTip.delay: 300
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -518,6 +818,7 @@ PanelWindow {
                         ccViewport.scrollBy(delta);
                     }
                 }
+
 
                 MouseArea {
                     anchors.fill: parent

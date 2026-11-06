@@ -4,8 +4,8 @@ import Quickshell.Networking
 import QtQuick
 
 // Control fijo de la barra, movido arrastrándolo desde el centro de control.
-// El clic abre sus opciones avanzadas y arrastrarlo de vuelta al panel lo
-// devuelve al centro de control.
+// El clic abre sus opciones avanzadas, salvo en el modo avión, que solo
+// alterna; arrastrarlo de vuelta al panel lo devuelve al centro de control.
 Pill {
     id: root
 
@@ -41,11 +41,16 @@ Pill {
 
     readonly property var wiredDevice: {
         const devices = Networking.devices.values;
+        let fallback = null;
         for (let i = 0; i < devices.length; i++) {
-            if (devices[i].type === DeviceType.Wired)
+            if (devices[i].type !== DeviceType.Wired)
+                continue;
+            if (devices[i].connected)
                 return devices[i];
+            if (fallback === null)
+                fallback = devices[i];
         }
-        return null;
+        return fallback;
     }
 
     readonly property var activeWifi: {
@@ -61,8 +66,19 @@ Pill {
 
     readonly property bool wiredConnected: root.wiredDevice !== null
         && root.wiredDevice.connected
+    readonly property bool wiredUsb: {
+        if (!root.wiredDevice)
+            return false;
+        const name = String(root.wiredDevice.name || "").toLowerCase();
+        return name.indexOf("usb") === 0
+            || name.indexOf("enx") === 0
+            || name.indexOf("rndis") === 0;
+    }
     readonly property bool wifiConnected: root.wifiDevice !== null
         && root.wifiDevice.connected
+    // La ficha de la barra representa toda la red, no solo el Wi-Fi.
+    readonly property bool networkConnected: root.wiredConnected
+        || root.wifiConnected
     readonly property var btAdapter: Bluetooth.defaultAdapter
     readonly property bool btEnabled: root.btAdapter !== null
         && root.btAdapter.enabled
@@ -88,18 +104,13 @@ Pill {
             return Theme.warning;
         return Theme.accent;
     }
-    readonly property bool airplaneActive: !Networking.wifiEnabled
-        && !root.btEnabled
+    readonly property bool airplaneActive: AirplaneState.active
 
     readonly property string iconName: {
         if (root.key === "wifi") {
-            if (root.wiredConnected)
-                return "network-wired";
-            if (!Networking.wifiEnabled)
-                return "network-wireless-disconnected";
-            if (root.activeWifi)
-                return WifiState.signalIcon(root.activeWifi.signalStrength);
-            return "network-wireless-signal-none";
+            // La barra usa siempre iconSource (SVG propios); este nombre queda
+            // vacío para no depender del tema.
+            return "";
         }
         if (root.key === "bluetooth")
             return root.btEnabled
@@ -132,13 +143,8 @@ Pill {
         if (root.key === "gpu")
             return "video-card-inactive-symbolic";
         if (root.key === "net") {
-            if (root.wiredConnected)
-                return "network-wired";
-            if (!Networking.wifiEnabled)
-                return "network-wireless-disconnected";
-            if (root.activeWifi)
-                return WifiState.signalIcon(root.activeWifi.signalStrength);
-            return "network-wireless-signal-none";
+            // Igual que el Wi-Fi: iconSource aporta el SVG propio.
+            return "";
         }
         if (root.key === "vpn")
             return "network-vpn";
@@ -148,6 +154,8 @@ Pill {
             return "edit-paste";
         if (root.key === "settings")
             return "applications-system-symbolic";
+        if (root.key === "dns")
+            return "";
         return "";
     }
 
@@ -156,10 +164,10 @@ Pill {
         if (root.key === "wifi") {
             if (root.wiredConnected)
                 return Theme.accent;
-            if (!Networking.wifiEnabled)
-                return Theme.accentFaded;
+            if (!root.networkConnected)
+                return Theme.danger;
             if (!root.activeWifi)
-                return Theme.accentFaded;
+                return Theme.accent;
             return root.activeWifi.signalStrength >= 0.5
                 ? Theme.accent : Theme.warning;
         }
@@ -204,6 +212,8 @@ Pill {
             return NotificationState.panelOpen
                 && NotificationState.panelView === "settings"
                 ? Theme.accent : Theme.accentFaded;
+        if (root.key === "dns")
+            return DnsState.allAuto ? Theme.accentFaded : Theme.accent;
         return Theme.accentFaded;
     }
 
@@ -217,11 +227,11 @@ Pill {
     readonly property string iconSource: {
         if (root.key === "wifi") {
             if (root.wiredConnected)
-                return AlbaIcons.src("wired");
-            if (!Networking.wifiEnabled)
-                return AlbaIcons.src("wifi-off");
+                return AlbaIcons.src(root.wiredUsb ? "usb" : "wired");
+            if (!root.wifiConnected)
+                return AlbaIcons.src("globe-off");
             if (!root.activeWifi)
-                return AlbaIcons.src("wifi");
+                return AlbaIcons.src("wifi-3");
             return root.wifiSource(root.activeWifi.signalStrength);
         }
         if (root.key === "bluetooth")
@@ -248,6 +258,8 @@ Pill {
             return AlbaIcons.src("hotspot");
         if (root.key === "settings")
             return AlbaIcons.src("settings");
+        if (root.key === "dns")
+            return AlbaIcons.src("dns");
         if (root.key === "gpu")
             return AlbaIcons.src("gpu");
         return "";
@@ -286,6 +298,8 @@ Pill {
             return "▤";
         if (root.key === "settings")
             return "⚙";
+        if (root.key === "dns")
+            return "D";
         return "•";
     }
 
@@ -324,11 +338,18 @@ Pill {
         if (root.key === "clipboard")
             return NotificationState.panelOpen
                 && NotificationState.panelView === "clipboard";
+        if (root.key === "dns")
+            return !DnsState.allAuto;
         return false;
     }
 
     draggable: true
     onClicked: {
+        // El modo avión es solo un interruptor: no tiene vista propia.
+        if (root.key === "airplane") {
+            AirplaneState.toggle();
+            return;
+        }
         if (NotificationState.panelOpen
                 && NotificationState.panelView === root.key) {
             NotificationState.hidePanel();
@@ -384,8 +405,8 @@ Pill {
             }
         }
 
-        // Volumen y micrófono muestran tres arcos que se encienden según el
-        // nivel, en vez del icono fijo de dos arcos del tema.
+        // Volumen y micrófono comparten el icono de nivel. Ambos usan SVG
+        // propios (volume-*.svg y mic.svg) para no depender del tema.
         Item {
             id: levelSlot
 
@@ -424,7 +445,7 @@ Pill {
                 visible: wifiSlot.shown
                 source: root.activeWifi
                     ? root.wifiSource(root.activeWifi.signalStrength)
-                    : AlbaIcons.src("wifi")
+                    : AlbaIcons.src("wifi-3")
                 color: root.activeWifi
                     && root.activeWifi.signalStrength < 0.5
                     ? Theme.warning : Theme.accent
@@ -436,13 +457,16 @@ Pill {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             visible: (root.key === "volume" && Audio.available
-                    && (SettingsState.showPercentages || Audio.muted))
-                || (root.key === "brightness" && SettingsState.showPercentages)
-                || (root.key === "extraDim" && SettingsState.showPercentages
+                    && (SettingsState.showVolumePercent || Audio.muted))
+                || (root.key === "brightness"
+                    && SettingsState.showBrightnessPercent)
+                || (root.key === "extraDim"
+                    && SettingsState.showExtraDimPercent
                     && DisplayState.extraDim > 0.01)
                 || (root.key === "cpu" && SettingsState.showTemps)
                 || (root.key === "gpu" && SettingsState.showTemps)
                 || (root.key === "bluetooth"
+                    && SettingsState.showBluetoothPercent
                     && root.btBatteryLevel >= 0)
             text: {
                 if (root.key === "volume")

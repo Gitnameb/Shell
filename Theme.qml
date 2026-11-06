@@ -95,6 +95,10 @@ Singleton {
     readonly property color danger: root.light ? "#c4423e" : "#ff7a7a"
     readonly property color green: root.light ? "#2f8a56" : "#9ad9b0"
     readonly property color warning: root.light ? "#a97a12" : "#f2c96b"
+    readonly property color warningSoft: Qt.rgba(root.warning.r,
+        root.warning.g, root.warning.b, root.light ? 0.12 : 0.14)
+    readonly property color warningLine: Qt.rgba(root.warning.r,
+        root.warning.g, root.warning.b, root.light ? 0.40 : 0.32)
     readonly property color warm: root.light ? "#b5641b" : "#f6a04d"
     readonly property color info: root.light ? "#2b7f96" : "#8fd3e8"
 }

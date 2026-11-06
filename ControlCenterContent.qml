@@ -13,8 +13,22 @@ ColumnLayout {
 
     property bool active: false
     readonly property string view: NotificationState.panelView
-    property var pendingNetwork: null
+    // Nombre de la red cuya contraseña se está escribiendo. Se guarda el
+    // nombre, no el objeto de NetworkManager, porque los puntos de acceso se
+    // destruyen y recrean en cada búsqueda.
+    property string pendingNetworkName: ""
+    // Formulario para conectarse a una red oculta escribiendo su SSID.
+    property bool hiddenNetworkOpen: false
+    // Red oculta seleccionada en la lista; su formulario se abre en la fila.
+    property string hiddenInlineBssid: ""
+    readonly property string hiddenWifiPrefix: "__hidden__:"
+    // Red cuya conexión está en curso. Se conserva para poder mostrar el
+    // motivo si NetworkManager la rechaza.
+    property var connectingNetwork: null
     property string wifiNotice: ""
+    // Mientras se escribe una contraseña no se reconstruye la lista, para no
+    // borrar el texto de la fila.
+    property bool wifiListFrozen: false
     // Bluetooth: vista normal de dispositivos vinculados, modo de vinculación
     // y opciones avanzadas del adaptador detrás del engranaje.
     property bool btAdvanced: false
@@ -22,21 +36,40 @@ ColumnLayout {
     // Punto de acceso y Wi-Fi: opciones avanzadas detrás de sus engranajes.
     property bool hotspotAdvanced: false
     property bool wifiAdvanced: false
-    // Red Wi-Fi concreta cuyos ajustes se están editando.
-    property var wifiNetwork: null
+    // Seguridad de la red cuyos ajustes se están editando. Se guarda el valor
+    // y no el objeto AccessPoint, que puede desaparecer al escanear.
+    property int wifiNetworkSecurity: -1
     property bool wifiNetworkOptions: false
     property string wifiNetworkSsid: ""
     property bool wifiForgetArmed: false
-    // La búsqueda se hace en ráfagas cortas al abrir la vista o al pulsar
-    // recargar, para no dejar la radio escaneando siempre.
-    property bool wifiScanBurst: false
     // Vinculación Bluetooth en curso y error legible para la vista.
     property bool btBusy: false
     property string btBusyAddress: ""
     property string btError: ""
     // Captura de teclas para el atajo del micrófono.
     property bool micShortcutCapture: false
-    signal passwordRequested()
+
+    Component.onCompleted: {
+        root.syncWifiNetworks();
+        DnsState.refresh();
+        if (root.active && root.view === "wifi")
+            root.refreshWired();
+    }
+
+    Timer {
+        id: wifiNetworksTimer
+        interval: 400
+        repeat: false
+        onTriggered: root.syncWifiNetworks()
+    }
+
+    Connections {
+        target: root.wifiDevice ? root.wifiDevice.networks : null
+
+        function onValuesChanged(): void {
+            wifiNetworksTimer.restart();
+        }
+    }
 
     spacing: 8
 
@@ -80,36 +113,218 @@ ColumnLayout {
         return null;
     }
 
-    property var wifiNetworks: {
-        if (!wifiDevice || !Networking.wifiEnabled)
-            return [];
-        const list = wifiDevice.networks.values.filter((net) => net.name && net.name.length > 0);
-        list.sort((a, b) => (b.connected - a.connected) || (b.signalStrength - a.signalStrength));
-        return list;
-    }
+    // El modelo del Repeater guarda solo nombres SSID. Los objetos
+    // AccessPoint de NetworkManager se destruyen al desaparecer una red y un
+    // modelo con referencias viejas puede provocar un fallo de Qt al
+    // reconstruir las filas. Los objetos se buscan de nuevo por nombre.
+    property var wifiNetworks: []
 
-    property var activeWifi: {
-        const list = wifiNetworks;
+    function networkByName(name) {
+        if (!root.wifiDevice || !name)
+            return null;
+        const list = root.wifiDevice.networks.values;
         for (let i = 0; i < list.length; i++) {
-            if (list[i].connected)
+            if (list[i].name === name)
                 return list[i];
         }
         return null;
     }
 
-    // El equipo puede estar conectado por cable y por Wi-Fi al mismo tiempo.
-    property var wiredDevice: {
-        const devices = Networking.devices.values;
-        for (let i = 0; i < devices.length; i++) {
-            if (devices[i].type === DeviceType.Wired)
-                return devices[i];
+    function isHiddenWifiKey(key): bool {
+        return String(key || "").startsWith(root.hiddenWifiPrefix);
+    }
+
+    function hiddenBssidFor(key): string {
+        const value = String(key || "");
+        return root.isHiddenWifiKey(value)
+            ? value.slice(root.hiddenWifiPrefix.length) : "";
+    }
+
+    function hiddenInfoFor(bssid): var {
+        const wanted = String(bssid || "");
+        if (wanted.length === 0)
+            return null;
+        const list = WifiState.hiddenAccessPoints;
+        for (let i = 0; i < list.length; i++) {
+            if (String(list[i].bssid || "") === wanted)
+                return list[i];
         }
         return null;
     }
-    readonly property bool wiredConnected: root.wiredDevice !== null
-        && root.wiredDevice.connected
-    readonly property string wiredName: root.wiredDevice
-        ? root.wiredDevice.name : ""
+
+    // Se actualiza con retardo para agrupar las ráfagas de altas y bajas de
+    // puntos de acceso que NetworkManager envía al escanear. Las redes
+    // ocultas se mezclan con las visibles y se ordenan por conexión y señal.
+    function syncWifiNetworks(): void {
+        if (root.wifiListFrozen)
+            return;
+        const dev = root.wifiDevice;
+        if (!dev || !Networking.wifiEnabled) {
+            if (root.wifiNetworks.length > 0)
+                root.wifiNetworks = [];
+            return;
+        }
+        const entries = [];
+        const visible = {};
+        const values = dev.networks.values;
+        for (let i = 0; i < values.length; i++) {
+            if (!values[i].name || values[i].name.length === 0)
+                continue;
+            visible[values[i].name] = true;
+            entries.push({
+                key: values[i].name,
+                connected: values[i].connected,
+                signal: values[i].signalStrength
+            });
+        }
+        if (SettingsState.showHiddenWifi) {
+            const hidden = WifiState.hiddenAccessPoints;
+            for (let i = 0; i < hidden.length; i++) {
+                const point = hidden[i];
+                // Una red oculta conectada ya aparece en la lista normal con
+                // su SSID real. Se evita duplicarla como «BSSID + SSID».
+                const activeName = point.active === true
+                    ? String(point.ssid || WifiState.activeConnectionName || "")
+                    : "";
+                if (activeName.length > 0 && visible[activeName] === true)
+                    continue;
+                entries.push({
+                    key: root.hiddenWifiPrefix + String(point.bssid || ""),
+                    connected: point.active === true,
+                    signal: Number(point.strength || 0)
+                });
+            }
+        }
+        entries.sort((a, b) => (b.connected - a.connected)
+            || (b.signal - a.signal)
+            || a.key.localeCompare(b.key));
+        const names = [];
+        for (let i = 0; i < entries.length; i++)
+            names.push(entries[i].key);
+        if (names.length === root.wifiNetworks.length) {
+            let same = true;
+            for (let i = 0; i < names.length; i++) {
+                if (names[i] !== root.wifiNetworks[i]) {
+                    same = false;
+                    break;
+                }
+            }
+            if (same)
+                return;
+        }
+        root.wifiNetworks = names;
+    }
+
+    property var activeWifi: {
+        for (let i = 0; i < root.wifiNetworks.length; i++) {
+            const net = root.networkByName(root.wifiNetworks[i]);
+            if (net && net.connected)
+                return net;
+        }
+        return null;
+    }
+    // `wifiDevice.connected` no depende de que el escáner esté activo. Es la
+    // fuente fiable para saber si hay Wi-Fi conectada cuando la cuadrícula del
+    // centro de control está visible y la lista de redes aún no se ha cargado.
+    readonly property bool wifiConnected: root.wifiDevice !== null
+        && root.wifiDevice.connected
+
+    // El equipo puede tener varias interfaces cableadas a la vez: la Ethernet
+    // del equipo y, por ejemplo, un móvil compartiendo Internet por USB.
+    // Primero las conectadas y luego por nombre.
+    readonly property var wiredDevices: {
+        const list = [];
+        const devices = Networking.devices.values;
+        for (let i = 0; i < devices.length; i++) {
+            if (devices[i].type === DeviceType.Wired)
+                list.push(devices[i]);
+        }
+        list.sort((a, b) => (b.connected - a.connected)
+            || String(a.name).localeCompare(String(b.name)));
+        return list;
+    }
+    // Interfaz cableada principal para la barra y el resumen.
+    readonly property var wiredDevice: root.wiredDevices.length > 0
+        ? root.wiredDevices[0] : null
+    readonly property bool wiredConnected: {
+        for (let i = 0; i < root.wiredDevices.length; i++) {
+            if (root.wiredDevices[i].connected)
+                return true;
+        }
+        return false;
+    }
+    // Hay red cuando hay cable o una Wi-Fi conectada. Si no hay ninguna, la
+    // ficha de Red muestra el globo tachado en rojo.
+    readonly property bool networkConnected: root.wiredConnected
+        || root.wifiConnected
+    readonly property string networkIcon: root.networkConnected
+        ? AlbaIcons.src("globe") : AlbaIcons.src("globe-off")
+    // `nmManaged` permite distinguir una interfaz que NetworkManager no
+    // controla (por ejemplo, porque ifupdown la configuró al instalar Debian)
+    // de una que simplemente está desconectada.
+    readonly property bool wiredManaged: root.wiredDevice !== null
+        && root.wiredDevice.nmManaged
+
+    readonly property bool wifiUnavailable: root.wifiDevice !== null
+        && WifiState.deviceState === "unavailable"
+
+    function wiredStatusFor(dev): string {
+        if (!dev)
+            return "Sin adaptador Ethernet";
+        if (!dev.nmManaged)
+            return "Ethernet no gestionado";
+        return dev.connected
+            ? "Ethernet conectado" : "Ethernet desconectado";
+    }
+
+    function wiredActionLabelFor(dev): string {
+        if (!dev)
+            return "";
+        if (!dev.nmManaged)
+            return "Gestionar";
+        return dev.connected ? "Desconectar" : "Conectar";
+    }
+
+    function wiredControlFor(dev): string {
+        if (!dev)
+            return "";
+        const label = EthernetState.labelFor(dev.name);
+        if (label.length > 0)
+            return label;
+        return dev.nmManaged ? "NetworkManager" : "sin gestionar";
+    }
+
+    // Los nombres usb0/enx…/rndis… corresponden a un móvil compartiendo por
+    // USB. No es una identificación perfecta, pero cubre los casos habituales
+    // y, si no coincide, se sigue usando el icono de Ethernet.
+    function wiredIsUsb(dev): bool {
+        const name = String(dev && dev.name || "").toLowerCase();
+        return name.indexOf("usb") === 0
+            || name.indexOf("enx") === 0
+            || name.indexOf("rndis") === 0;
+    }
+
+    function wiredActionFor(dev): void {
+        if (!dev)
+            return;
+        root.wifiNotice = "";
+        if (!dev.nmManaged) {
+            // NetworkManager adopta la interfaz en caliente. El instalador
+            // deja el cambio persistente en /etc/network/interfaces.
+            dev.nmManaged = true;
+            root.refreshWired();
+            return;
+        }
+        if (dev.connected)
+            root.disconnectWiredDevice(dev);
+        else
+            root.connectWiredDevice(dev);
+    }
+
+    function refreshWired(): void {
+        for (let i = 0; i < root.wiredDevices.length; i++)
+            EthernetState.refresh(root.wiredDevices[i].name);
+    }
 
     // ------------------------------------------------------------ Bluetooth
     property var btAdapter: Bluetooth.defaultAdapter
@@ -164,12 +379,18 @@ ColumnLayout {
 
     // Colores de estado para los iconos del centro de control.
     function wifiStateColor(): color {
+        if (root.wiredDevice !== null && !root.wiredManaged)
+            return Theme.warning;
         if (root.wiredConnected)
             return Theme.accent;
+        if (!root.wifiDevice)
+            return Theme.faint;
         if (!Networking.wifiEnabled)
             return Theme.faint;
-        if (!root.activeWifi)
+        if (!root.wifiConnected)
             return Theme.muted;
+        if (!root.activeWifi)
+            return Theme.accent;
         return root.activeWifi.signalStrength >= 0.5
             ? Theme.accent : Theme.warning;
     }
@@ -237,19 +458,20 @@ ColumnLayout {
         }
     }
 
-    function disconnectWired(): void {
-        if (!root.wiredDevice)
+    function disconnectWiredDevice(dev): void {
+        if (!dev)
             return;
         root.wifiNotice = "";
-        root.wiredDevice.disconnect();
+        // `nmcli device disconnect` marca la desconexión como manual y evita
+        // que NetworkManager vuelva a activar el perfil automáticamente.
+        Quickshell.execDetached(["nmcli", "device", "disconnect", dev.name]);
     }
 
-    function connectWired(): void {
-        if (!root.wiredDevice)
+    function connectWiredDevice(dev): void {
+        if (!dev)
             return;
         root.wifiNotice = "";
-        Quickshell.execDetached(["nmcli", "device", "connect",
-            root.wiredDevice.name]);
+        Quickshell.execDetached(["nmcli", "device", "connect", dev.name]);
     }
 
     function btStopAdding(): void {
@@ -274,15 +496,21 @@ ColumnLayout {
             root.micShortcutCapture = false;
         if (root.view === "wifi" && root.active) {
             root.startWifiScan();
+            root.refreshWired();
         } else {
-            root.wifiScanBurst = false;
+            root.stopNetworkScan();
             root.refreshScan();
         }
         if (root.view !== "wifi") {
             root.wifiNotice = "";
             root.wifiAdvanced = false;
+            root.pendingNetworkName = "";
+            root.wifiListFrozen = false;
+            root.closeHiddenInline();
+            root.closeHiddenNetwork();
+            root.syncWifiNetworks();
             root.wifiNetworkOptions = false;
-            root.wifiNetwork = null;
+            root.wifiNetworkSecurity = -1;
             root.wifiNetworkSsid = "";
             root.wifiForgetArmed = false;
             WifiState.clearProfile();
@@ -301,8 +529,9 @@ ColumnLayout {
         CompositorState.watching = root.active && root.view === "compositor";
         if (root.active && root.view === "wifi") {
             root.startWifiScan();
+            root.refreshWired();
         } else {
-            root.wifiScanBurst = false;
+            root.stopNetworkScan();
             root.refreshScan();
         }
         if (!root.active && root.btAdapter) {
@@ -311,13 +540,10 @@ ColumnLayout {
         }
     }
 
-    property bool airplaneActive: !Networking.wifiEnabled
-        && (btAdapter === null || !btAdapter.enabled)
+    readonly property bool airplaneActive: AirplaneState.active
 
     function setAirplane(enabled): void {
-        Networking.wifiEnabled = !enabled;
-        if (btAdapter)
-            btAdapter.enabled = !enabled;
+        AirplaneState.setActive(enabled);
     }
 
     function hotspotClientLabel(state): string {
@@ -447,7 +673,7 @@ ColumnLayout {
     function viewTitle(): string {
         if (view === "wifi")
             return root.wifiNetworkOptions && root.wifiNetworkSsid.length > 0
-                ? root.wifiNetworkSsid : "Wi-Fi";
+                ? root.wifiNetworkSsid : "Red";
         if (view === "bluetooth")
             return "Bluetooth";
         if (view === "volume")
@@ -456,8 +682,6 @@ ColumnLayout {
             return "Micrófono";
         if (view === "night")
             return "Luz nocturna";
-        if (view === "airplane")
-            return "Modo avión";
         if (view === "brightness")
             return "Brillo";
         if (view === "extraDim")
@@ -472,6 +696,8 @@ ColumnLayout {
             return "Gráficos";
         if (view === "net")
             return "Red";
+        if (view === "dns")
+            return "DNS";
         if (view === "vpn")
             return "VPN";
         if (view === "keyboard")
@@ -503,11 +729,18 @@ ColumnLayout {
         return parts.join(" · ");
     }
 
+    // Detiene por completo el escaneo de Wi-Fi: el del backend de Quickshell
+    // y el de nmcli. Se llama al cerrar el panel o salir de la vista Red.
+    function stopNetworkScan(): void {
+        if (root.wifiDevice)
+            root.wifiDevice.scannerEnabled = false;
+        WifiState.stop();
+    }
+
     function refreshScan(): void {
         const should = root.active && root.view === "wifi"
             && Networking.wifiEnabled && !root.wifiAdvanced
             && !root.wifiNetworkOptions;
-        root.wifiScanBurst = should;
         if (wifiDevice)
             wifiDevice.scannerEnabled = should;
     }
@@ -518,27 +751,30 @@ ColumnLayout {
             root.refreshScan();
             return;
         }
-        root.wifiScanBurst = true;
         root.refreshScan();
+        WifiState.hasScanned = false;
         WifiState.requestScan();
     }
 
-    function openWifiNetwork(net): void {
-        if (!net)
+    function openWifiNetwork(name): void {
+        if (!name)
             return;
-        root.wifiNetwork = net;
-        root.wifiNetworkSsid = net.name;
+        root.pendingNetworkName = "";
+        root.wifiListFrozen = false;
+        root.syncWifiNetworks();
+        const net = root.networkByName(name);
+        root.wifiNetworkSecurity = net ? net.security : -1;
+        root.wifiNetworkSsid = name;
         root.wifiNetworkOptions = true;
         root.wifiAdvanced = false;
         root.wifiForgetArmed = false;
-        root.wifiScanBurst = false;
         root.refreshScan();
-        WifiState.loadProfile(net.name);
+        WifiState.loadProfile(name);
     }
 
     function closeWifiNetwork(): void {
         root.wifiNetworkOptions = false;
-        root.wifiNetwork = null;
+        root.wifiNetworkSecurity = -1;
         root.wifiNetworkSsid = "";
         root.wifiForgetArmed = false;
         WifiState.clearProfile();
@@ -546,7 +782,8 @@ ColumnLayout {
     }
 
     function forgetWifiNetwork(): void {
-        if (!root.wifiNetworkOptions || !root.wifiNetwork)
+        if (!root.wifiNetworkOptions
+                || root.wifiNetworkSsid.length === 0)
             return;
         if (!root.wifiForgetArmed) {
             root.wifiForgetArmed = true;
@@ -556,19 +793,58 @@ ColumnLayout {
         root.closeWifiNetwork();
     }
 
-    onWifiDeviceChanged: refreshScan()
+    onWifiDeviceChanged: {
+        wifiNetworksTimer.restart();
+        root.syncWifiNetworks();
+        refreshScan();
+    }
+
+    onWiredDevicesChanged: {
+        if (root.active && root.view === "wifi")
+            root.refreshWired();
+    }
 
     Connections {
         target: Networking
 
         function onWifiEnabledChanged(): void {
+            wifiNetworksTimer.restart();
+            if (!Networking.wifiEnabled) {
+                root.closeHiddenInline();
+                root.closeHiddenNetwork();
+            }
             if (Networking.wifiEnabled && root.active
                     && root.view === "wifi") {
                 root.startWifiScan();
             } else {
-                root.wifiScanBurst = false;
                 root.refreshScan();
             }
+        }
+    }
+
+    Connections {
+        target: WifiState
+
+        function onHiddenConnected(): void {
+            root.closeHiddenInline();
+            root.closeHiddenNetwork();
+            root.syncWifiNetworks();
+            root.startWifiScan();
+        }
+
+        function onHiddenAccessPointsChanged(): void {
+            if (!root.wifiListFrozen)
+                wifiNetworksTimer.restart();
+        }
+    }
+
+    Connections {
+        target: SettingsState
+
+        function onShowHiddenWifiChanged(): void {
+            if (!SettingsState.showHiddenWifi)
+                root.closeHiddenInline();
+            wifiNetworksTimer.restart();
         }
     }
 
@@ -584,16 +860,18 @@ ColumnLayout {
     }
 
     Timer {
-        id: focusTimer
-        interval: 100
-        onTriggered: passwordField.forceActiveFocus()
+        interval: 15000
+        repeat: true
+        running: root.active && root.view === "wifi"
+        onTriggered: root.refreshWired()
     }
 
     Process {
         id: aliasProc
     }
 
-    function selectNetwork(net): void {
+    function selectNetwork(name): void {
+        const net = root.networkByName(name);
         if (!net)
             return;
         root.wifiNotice = "";
@@ -602,24 +880,128 @@ ColumnLayout {
             return;
         }
         if (net.known || net.security === WifiSecurityType.Open) {
+            root.connectingNetwork = net;
             net.connect();
             return;
         }
-        pendingNetwork = net;
-        passwordField.text = "";
-        root.passwordRequested();
-        focusTimer.restart();
+        // La contraseña se escribe en la propia fila. Se congela la lista
+        // para que el escaneo no reconstruya la fila mientras se escribe.
+        root.pendingNetworkName = name;
+        root.wifiListFrozen = true;
     }
 
-    function connectPending(): void {
-        if (!pendingNetwork)
+    function connectionErrorText(reason): string {
+        if (reason === ConnectionFailReason.NoSecrets)
+            return "La red necesita una contraseña válida.";
+        if (reason === ConnectionFailReason.WifiAuthTimeout)
+            return "La autenticación tardó demasiado; revisa la contraseña.";
+        if (reason === ConnectionFailReason.WifiNetworkLost)
+            return "La red desapareció; acerca el equipo al router.";
+        if (reason === ConnectionFailReason.WifiClientDisconnected)
+            return "La conexión se cortó antes de completarse.";
+        if (reason === ConnectionFailReason.WifiClientFailed)
+            return "El adaptador rechazó la conexión.";
+        return "No se pudo conectar a la red.";
+    }
+
+    function connectWithPassword(name, psk): void {
+        const net = root.networkByName(name);
+        if (!net) {
+            root.wifiNotice = "La red ya no está disponible.";
+            root.cancelPassword();
             return;
-        if (pendingNetwork.security === WifiSecurityType.Open)
-            pendingNetwork.connect();
-        else if (passwordField.text.length > 0)
-            pendingNetwork.connectWithPsk(passwordField.text);
-        pendingNetwork = null;
-        passwordField.text = "";
+        }
+        if (net.security !== WifiSecurityType.Open
+                && psk.length === 0) {
+            root.wifiNotice = "Escribe la contraseña.";
+            return;
+        }
+        root.connectingNetwork = net;
+        if (net.security === WifiSecurityType.Open)
+            net.connect();
+        else
+            net.connectWithPsk(psk);
+        root.pendingNetworkName = "";
+        root.wifiListFrozen = false;
+        root.syncWifiNetworks();
+        root.startWifiScan();
+    }
+
+    function cancelPassword(): void {
+        root.pendingNetworkName = "";
+        root.wifiListFrozen = false;
+        root.syncWifiNetworks();
+        root.startWifiScan();
+    }
+
+    function openHiddenNetwork(): void {
+        root.closeHiddenInline();
+        root.hiddenNetworkOpen = true;
+        WifiState.hiddenError = "";
+        hiddenSsidField.text = "";
+        hiddenPasswordRow.reset();
+        Qt.callLater(function() {
+            hiddenSsidField.forceActiveFocus();
+        });
+    }
+
+    function connectHiddenNetwork(): void {
+        if (WifiState.hiddenBusy)
+            return;
+        root.wifiNotice = "";
+        WifiState.connectHidden(hiddenSsidField.text,
+            hiddenPasswordRow.text);
+    }
+
+    function closeHiddenNetwork(): void {
+        root.hiddenNetworkOpen = false;
+        hiddenSsidField.text = "";
+        hiddenPasswordRow.reset();
+        WifiState.hiddenError = "";
+    }
+
+    // Formulario de una red oculta concreta, dentro de su propia fila.
+    function openHiddenInline(bssid): void {
+        root.closeHiddenNetwork();
+        root.hiddenInlineBssid = String(bssid || "");
+        WifiState.hiddenError = "";
+        root.wifiListFrozen = true;
+    }
+
+    function closeHiddenInline(): void {
+        if (root.hiddenInlineBssid.length === 0)
+            return;
+        root.hiddenInlineBssid = "";
+        root.wifiListFrozen = false;
+        WifiState.hiddenError = "";
+        root.syncWifiNetworks();
+        root.startWifiScan();
+    }
+
+    function connectHiddenInline(ssid, psk): void {
+        if (WifiState.hiddenBusy)
+            return;
+        root.wifiNotice = "";
+        WifiState.connectHidden(ssid, psk);
+    }
+
+    // Si NetworkManager rechaza la conexión, se muestra el motivo en la vista
+    // Red en vez de dejar la red como si no hubiera pasado nada.
+    Connections {
+        target: root.connectingNetwork
+
+        function onConnectionFailed(reason): void {
+            if (root.connectingNetwork)
+                root.wifiNotice = root.connectionErrorText(reason);
+            root.connectingNetwork = null;
+        }
+
+        function onConnectedChanged(): void {
+            if (root.connectingNetwork && root.connectingNetwork.connected) {
+                root.wifiNotice = "";
+                root.connectingNetwork = null;
+            }
+        }
     }
 
     // Devuelve la ficha visible de un control del centro. Se usa para calcular
@@ -723,38 +1105,32 @@ ColumnLayout {
             Layout.fillWidth: true
             visible: !BarState.has("wifi") && centerIndex >= 0
             icon: "◌"
-            iconName: !Networking.wifiEnabled && root.wiredConnected
-                ? "network-wired"
-                : (!Networking.wifiEnabled
-                    ? "network-wireless-disconnected"
-                    : (root.activeWifi
-                        ? WifiState.signalIcon(root.activeWifi.signalStrength)
-                        : "network-wireless-signal-none"))
-            iconSource: !Networking.wifiEnabled && root.wiredConnected
-                ? AlbaIcons.src("wired")
-                : (!Networking.wifiEnabled
-                    ? AlbaIcons.src("wifi-off")
-                    : (root.activeWifi
-                        ? (root.activeWifi.signalStrength >= 0.75
-                            ? AlbaIcons.src("wifi-3")
-                            : (root.activeWifi.signalStrength >= 0.5
-                                ? AlbaIcons.src("wifi-2")
-                                : AlbaIcons.src("wifi-1")))
-                        : AlbaIcons.src("wifi")))
-            secondaryIconName: root.wiredConnected && root.activeWifi
-                ? "network-wired" : ""
-            secondaryIconSource: root.wiredConnected && root.activeWifi
-                ? AlbaIcons.src("wired") : ""
-            secondaryIconColor: Theme.accent
-            iconColor: root.wifiStateColor()
-            label: "Wi-Fi"
+            // La ficha representa toda la red (Ethernet y Wi-Fi), no solo una
+            // de las dos interfaces. Por eso usa un globo y no el icono de
+            // cable o de señal Wi-Fi.
+            iconName: "network-workgroup"
+            iconSource: root.networkIcon
+            iconColor: root.networkConnected
+                ? root.wifiStateColor() : Theme.danger
+            label: "Red"
             dragKey: "wifi"
             meta: root.wiredConnected
                 ? (root.activeWifi ? "Cable + " + root.activeWifi.name : "Cable")
-                : (Networking.wifiEnabled
-                    ? (root.activeWifi ? root.activeWifi.name : "Activada")
-                    : "Desactivada")
-            active: Networking.wifiEnabled || root.wiredConnected
+                : (!root.wifiDevice
+                    ? "No disponible"
+                    : (!Networking.wifiEnabled
+                        ? "Desactivada"
+                        : (root.activeWifi
+                            ? root.activeWifi.name
+                            : (root.wifiConnected
+                                ? "Wi-Fi conectada"
+                                : (root.wifiUnavailable
+                                    ? "No disponible" : "Sin conexión")))))
+            active: (root.wifiDevice !== null && Networking.wifiEnabled)
+                || root.wiredConnected
+            // El globo abre la vista de Red; el encendido de Wi-Fi se controla
+            // dentro, junto al estado de Ethernet.
+            toggleEnabled: false
             onToggled: Networking.wifiEnabled = !Networking.wifiEnabled
             onOpened: NotificationState.panelView = "wifi"
         }
@@ -777,6 +1153,7 @@ ColumnLayout {
                     : (root.btConnectedDevice
                         ? root.btVisibleName(root.btConnectedDevice)
                             + (root.btConnectedDevice.batteryAvailable
+                                && SettingsState.showBluetoothPercent
                                 ? " · " + Math.round(
                                     root.btConnectedDevice.battery * 100) + "%"
                                 : "")
@@ -809,7 +1186,7 @@ ColumnLayout {
             meta: Audio.available
                 ? (Audio.muted
                     ? "Mudo"
-                    : (SettingsState.showPercentages
+                    : (SettingsState.showVolumePercent
                         ? Math.round(Audio.volume * 100) + "%"
                         : "Activo"))
                 : "No disponible"
@@ -866,8 +1243,8 @@ ColumnLayout {
             dragKey: "airplane"
             meta: root.airplaneActive ? "Activado" : "Desactivado"
             active: root.airplaneActive
+            wholeToggle: true
             onToggled: root.setAirplane(!root.airplaneActive)
-            onOpened: NotificationState.panelView = "airplane"
         }
 
         CcItem {
@@ -881,7 +1258,7 @@ ColumnLayout {
             label: "Brillo"
             dragKey: "brightness"
             toggleEnabled: false
-            meta: SettingsState.showPercentages
+            meta: SettingsState.showBrightnessPercent
                 ? Math.round(DisplayState.brightness * 100) + "%"
                 : (DisplayState.brightness < 0.99 ? "Ajustado" : "Normal")
             active: DisplayState.brightness < 0.99
@@ -899,7 +1276,7 @@ ColumnLayout {
             label: "Atenuación extra"
             dragKey: "extraDim"
             meta: DisplayState.extraDim > 0.01
-                ? (SettingsState.showPercentages
+                ? (SettingsState.showExtraDimPercent
                     ? Math.round(DisplayState.extraDim * 100) + "%"
                     : "Activada")
                 : "Desactivada"
@@ -1055,6 +1432,20 @@ ColumnLayout {
 
         CcItem {
             Layout.fillWidth: true
+            visible: !BarState.has("dns") && centerIndex >= 0
+            icon: "D"
+            iconSource: AlbaIcons.src("dns")
+            iconColor: DnsState.allAuto ? Theme.muted : Theme.accent
+            label: "DNS"
+            dragKey: "dns"
+            toggleEnabled: false
+            active: !DnsState.allAuto
+            meta: DnsState.summary
+            onOpened: NotificationState.panelView = "dns"
+        }
+
+        CcItem {
+            Layout.fillWidth: true
             visible: !BarState.has("settings") && centerIndex >= 0
             icon: "⚙"
             iconName: "applications-system-symbolic"
@@ -1104,7 +1495,9 @@ ColumnLayout {
                             root.closeWifiNetwork();
                             return;
                         }
-                        root.pendingNetwork = null;
+                        root.pendingNetworkName = "";
+                        root.wifiListFrozen = false;
+                        root.syncWifiNetworks();
                         NotificationState.panelView = "";
                     }
                 }
@@ -1118,6 +1511,42 @@ ColumnLayout {
                 font.pixelSize: 12
                 font.weight: Font.DemiBold
                 elide: Text.ElideRight
+            }
+
+            // Añadir red oculta: abre el formulario manual con SSID y clave.
+            Rectangle {
+                visible: root.view === "wifi" && !root.wifiAdvanced
+                    && !root.wifiNetworkOptions && Networking.wifiEnabled
+                implicitWidth: 26
+                implicitHeight: 26
+                radius: 7
+                color: addWifiMouse.containsMouse ? Theme.hover : "transparent"
+
+                AlbaIcon {
+                    anchors.centerIn: parent
+                    source: AlbaIcons.src("plus")
+                    color: root.hiddenNetworkOpen
+                        ? Theme.accent : Theme.muted
+                    size: 14
+                    fallback: "+"
+                }
+
+                MouseArea {
+                    id: addWifiMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (root.hiddenNetworkOpen)
+                            root.closeHiddenNetwork();
+                        else
+                            root.openHiddenNetwork();
+                    }
+
+                    ToolTip.visible: addWifiMouse.containsMouse
+                    ToolTip.text: "Añadir red oculta"
+                    ToolTip.delay: 400
+                }
             }
 
             // Recargar: pide otra búsqueda de redes Wi-Fi.
@@ -1142,7 +1571,7 @@ ColumnLayout {
                         anchors.fill: parent
                         name: "view-refresh-symbolic"
                         fallbackName: "view-refresh"
-                        color: root.wifiScanBurst
+                        color: (WifiState.scanning || !WifiState.hasScanned)
                             ? Theme.accent : Theme.muted
                         size: 15
                         fallback: "⟳"
@@ -1154,7 +1583,7 @@ ColumnLayout {
                         to: 360
                         duration: 1100
                         loops: Animation.Infinite
-                        running: root.wifiScanBurst
+                        running: WifiState.scanning || !WifiState.hasScanned
                     }
                 }
 
@@ -1164,6 +1593,10 @@ ColumnLayout {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.startWifiScan()
+
+                    ToolTip.visible: refreshMouse.containsMouse
+                    ToolTip.text: "Buscar redes ahora"
+                    ToolTip.delay: 400
                 }
             }
 
@@ -1250,7 +1683,6 @@ ColumnLayout {
                 visible: (root.view === "wifi"
                     || root.view === "bluetooth"
                     || root.view === "night"
-                    || root.view === "airplane"
                     || root.view === "extraDim"
                     || root.view === "hotspot"
                     || root.view === "vpn")
@@ -1267,9 +1699,7 @@ ColumnLayout {
                                 ? DisplayState.extraDim > 0.01
                                 : (root.view === "hotspot"
                                     ? HotspotState.active
-                                    : (root.view === "vpn"
-                                        ? VpnState.active
-                                        : root.airplaneActive)))))
+                                    : VpnState.active))))
                 onToggled: {
                     if (root.view === "wifi")
                         Networking.wifiEnabled = !Networking.wifiEnabled;
@@ -1283,8 +1713,6 @@ ColumnLayout {
                         HotspotState.toggle();
                     else if (root.view === "vpn")
                         VpnState.toggleActive();
-                    else if (root.view === "airplane")
-                        root.setAirplane(!root.airplaneActive);
                 }
             }
         }
@@ -1295,91 +1723,118 @@ ColumnLayout {
             visible: root.view === "wifi"
             spacing: 5
 
-            // Cable: se muestra junto al Wi-Fi para poder desconectarlo sin
-            // tocar NetworkManager a mano cuando ambos están activos.
-            Rectangle {
+            // Cables: se muestran todas las interfaces cableadas, no solo una.
+            // Así también aparece el móvil compartiendo Internet por USB.
+            ListView {
+                id: wiredList
+
                 Layout.fillWidth: true
-                implicitHeight: 42
-                radius: 8
+                Layout.preferredHeight: Math.max(0,
+                    root.wiredDevices.length * 44 - 2)
                 visible: !root.wifiAdvanced && !root.wifiNetworkOptions
-                    && root.wiredDevice !== null
-                color: root.wiredConnected
-                    ? Theme.accentSoft : Theme.surfaceAlt
-                border.width: 1
-                border.color: root.wiredConnected
-                    ? Theme.accentLine
-                    : Theme.border
+                    && root.wiredDevices.length > 0
+                interactive: false
+                clip: true
+                spacing: 2
+                boundsBehavior: Flickable.StopAtBounds
+                model: root.wiredDevices
 
-                RowLayout {
-                    anchors {
-                        fill: parent
-                        leftMargin: 8
-                        rightMargin: 8
-                    }
-                    spacing: 7
+                delegate: Rectangle {
+                    id: wiredRow
 
-                    AlbaIcon {
-                        name: "network-wired"
-                        color: root.wiredConnected
-                            ? Theme.accent : Theme.muted
-                        size: 17
-                        fallback: "◌"
-                    }
+                    required property var modelData
+                    readonly property var dev: modelData
 
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 0
+                    width: wiredList.width
+                    height: 42
+                    radius: 8
+                    color: wiredRow.dev.connected
+                        ? Theme.accentSoft
+                        : (wiredRow.dev.nmManaged
+                            ? Theme.surfaceAlt : Theme.warningSoft)
+                    border.width: 1
+                    border.color: wiredRow.dev.connected
+                        ? Theme.accentLine
+                        : (wiredRow.dev.nmManaged
+                            ? Theme.border : Theme.warningLine)
 
-                        Text {
+                    RowLayout {
+                        anchors {
+                            fill: parent
+                            leftMargin: 8
+                            rightMargin: 8
+                        }
+                        spacing: 7
+
+                        AlbaIcon {
+                            // Icono propio de puerto Ethernet o USB según el
+                            // nombre de la interfaz.
+                            source: AlbaIcons.src(root.wiredIsUsb(wiredRow.dev)
+                                ? "usb" : "wired")
+                            color: wiredRow.dev.connected
+                                ? Theme.accent
+                                : (wiredRow.dev.nmManaged
+                                    ? Theme.muted : Theme.warning)
+                            size: 17
+                            fallback: "◌"
+                        }
+
+                        ColumnLayout {
                             Layout.fillWidth: true
-                            text: root.wiredConnected
-                                ? "Ethernet conectado" : "Ethernet desconectado"
-                            color: root.wiredConnected
-                                ? Theme.accent : Theme.text
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 10
-                            font.weight: Font.DemiBold
-                            elide: Text.ElideRight
+                            spacing: 0
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: root.wiredStatusFor(wiredRow.dev)
+                                color: wiredRow.dev.connected
+                                    ? Theme.accent
+                                    : (wiredRow.dev.nmManaged
+                                        ? Theme.text : Theme.warning)
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 10
+                                font.weight: Font.DemiBold
+                                elide: Text.ElideRight
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: wiredRow.dev.name + " · "
+                                    + root.wiredControlFor(wiredRow.dev)
+                                color: wiredRow.dev.nmManaged
+                                    ? Theme.faint : Theme.warning
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 8
+                                elide: Text.ElideRight
+                            }
                         }
 
-                        Text {
-                            Layout.fillWidth: true
-                            text: root.wiredName
-                            color: Theme.faint
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 8
-                            elide: Text.ElideRight
-                        }
-                    }
+                        Rectangle {
+                            implicitWidth: 78
+                            implicitHeight: 24
+                            radius: 7
+                            color: wiredRow.dev.connected
+                                && wiredRow.dev.nmManaged
+                                ? Theme.surface : Theme.accentSoft
+                            border.width: 1
+                            border.color: wiredRow.dev.connected
+                                && wiredRow.dev.nmManaged
+                                ? Theme.border : Theme.accentLine
 
-                    Rectangle {
-                        implicitWidth: 72
-                        implicitHeight: 24
-                        radius: 7
-                        color: root.wiredConnected
-                            ? Theme.surface : Theme.accentSoft
-                        border.width: 1
-                        border.color: root.wiredConnected
-                            ? Theme.border : Theme.accentLine
+                            Text {
+                                anchors.centerIn: parent
+                                text: root.wiredActionLabelFor(wiredRow.dev)
+                                color: wiredRow.dev.connected
+                                    && wiredRow.dev.nmManaged
+                                    ? Theme.muted : Theme.accent
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 8
+                                font.weight: Font.DemiBold
+                            }
 
-                        Text {
-                            anchors.centerIn: parent
-                            text: root.wiredConnected ? "Desconectar" : "Conectar"
-                            color: root.wiredConnected
-                                ? Theme.muted : Theme.accent
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 8
-                            font.weight: Font.DemiBold
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                if (root.wiredConnected)
-                                    root.disconnectWired();
-                                else
-                                    root.connectWired();
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.wiredActionFor(wiredRow.dev)
                             }
                         }
                     }
@@ -1406,11 +1861,16 @@ ColumnLayout {
                 Item {
                     id: wifiSpin
 
+                    readonly property bool busy: WifiState.scanning
+                        || !WifiState.hasScanned
+
+                    visible: busy
                     Layout.preferredWidth: 15
                     Layout.preferredHeight: 15
 
                     AlbaIcon {
                         anchors.fill: parent
+                        visible: wifiSpin.busy
                         name: "view-refresh-symbolic"
                         fallbackName: "view-refresh"
                         color: Theme.accent
@@ -1424,17 +1884,100 @@ ColumnLayout {
                         to: 360
                         duration: 1400
                         loops: Animation.Infinite
-                        running: wifiSpin.visible
+                        running: wifiSpin.busy
                     }
                 }
 
                 Text {
                     Layout.fillWidth: true
-                    text: root.wifiNetworks.length === 0
-                        ? "Buscando redes…" : "Buscando otras redes…"
+                    text: {
+                        if (root.wifiNetworks.length > 0)
+                            return "Buscando otras redes…";
+                        if (wifiSpin.busy)
+                            return "Buscando redes…";
+                        if (!root.wifiDevice)
+                            return "No hay adaptador Wi-Fi";
+                        if (root.wifiUnavailable)
+                            return "El adaptador Wi-Fi no está disponible";
+                        if (WifiState.lastError.length > 0)
+                            return WifiState.lastError;
+                        return "No se encontraron redes Wi-Fi";
+                    }
                     color: Theme.faint
                     font.family: Theme.fontFamily
                     font.pixelSize: 9
+                    wrapMode: Text.Wrap
+                }
+            }
+
+            Text {
+                Layout.fillWidth: true
+                visible: root.wifiNotice.length > 0
+                text: root.wifiNotice
+                color: Theme.danger
+                font.family: Theme.fontFamily
+                font.pixelSize: 8
+                wrapMode: Text.Wrap
+            }
+
+            // ------------------------------------ añadir red oculta
+            ColumnLayout {
+                Layout.fillWidth: true
+                visible: !root.wifiAdvanced && !root.wifiNetworkOptions
+                    && Networking.wifiEnabled && root.hiddenNetworkOpen
+                spacing: 4
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "AÑADIR RED OCULTA"
+                    color: Theme.faint
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+                    font.weight: Font.DemiBold
+                    font.letterSpacing: 0.8
+                }
+
+                TextField {
+                    id: hiddenSsidField
+
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                    placeholderText: "Nombre de la red"
+                    color: Theme.text
+                    placeholderTextColor: Theme.faint
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                    leftPadding: 8
+                    rightPadding: 8
+                    selectByMouse: true
+                    background: Rectangle {
+                        radius: 7
+                        color: Theme.surface
+                        border.width: 1
+                        border.color: Theme.border
+                    }
+                    onAccepted: hiddenPasswordRow.forcePasswordFocus()
+                    Keys.onEscapePressed: root.closeHiddenNetwork()
+                }
+
+                WifiPasswordRow {
+                    id: hiddenPasswordRow
+
+                    Layout.fillWidth: true
+                    busy: WifiState.hiddenBusy
+                    placeholderText: "Contraseña (vacía si es abierta)"
+                    onSubmitted: root.connectHiddenNetwork()
+                    onCancelled: root.closeHiddenNetwork()
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    visible: WifiState.hiddenError.length > 0
+                    text: WifiState.hiddenError
+                    color: Theme.danger
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+                    wrapMode: Text.Wrap
                 }
             }
 
@@ -1452,25 +1995,85 @@ ColumnLayout {
                     delegate: Rectangle {
                         id: wifiRow
 
-                        required property var modelData
+                        required property string modelData
 
-                        readonly property var point: WifiState.pointFor(wifiRow.modelData.name)
-                        readonly property var bands: wifiRow.point ? wifiRow.point.bands : []
-                        readonly property string securityText: {
-                            if (!wifiRow.point)
-                                return wifiRow.modelData.security === WifiSecurityType.Open
-                                    ? "abierta" : "protegida";
-                            if (wifiRow.point.security.length === 0)
-                                return "abierta";
-                            return wifiRow.point.security;
+                        readonly property bool hidden: root.isHiddenWifiKey(
+                            wifiRow.modelData)
+                        readonly property string hiddenBssid:
+                            root.hiddenBssidFor(wifiRow.modelData)
+                        readonly property var hiddenInfo:
+                            root.hiddenInfoFor(wifiRow.hiddenBssid)
+                        // Nombre visible: una red oculta sin conectar se
+                        // identifica por su MAC. Si ya está conectada, su
+                        // perfil tiene un nombre real (el SSID escrito).
+                        readonly property string hiddenTitle: {
+                            if (!wifiRow.hidden)
+                                return wifiRow.modelData;
+                            if (!wifiRow.connected)
+                                return wifiRow.hiddenBssid;
+                            return String(wifiRow.hiddenInfo
+                                    && wifiRow.hiddenInfo.ssid || "")
+                                || WifiState.activeConnectionName
+                                || wifiRow.hiddenBssid;
                         }
+                        readonly property bool hiddenFormOpen: wifiRow.hidden
+                            && root.hiddenInlineBssid.length > 0
+                            && root.hiddenInlineBssid === wifiRow.hiddenBssid
+                        readonly property var net: root.networkByName(wifiRow.modelData)
+                        readonly property var point: WifiState.pointFor(wifiRow.modelData)
+                        readonly property var bands: wifiRow.hidden
+                            ? [] : (wifiRow.point ? wifiRow.point.bands : [])
+                        readonly property string securityText: {
+                            if (wifiRow.hidden) {
+                                const sec = wifiRow.hiddenInfo
+                                    ? String(wifiRow.hiddenInfo.security || "")
+                                    : "";
+                                return sec.length > 0 ? sec : "abierta";
+                            }
+                            if (wifiRow.point
+                                    && wifiRow.point.security.length > 0)
+                                return wifiRow.point.security;
+                            if (wifiRow.net
+                                    && wifiRow.net.security === WifiSecurityType.Open)
+                                return "abierta";
+                            return wifiRow.net ? "protegida" : "no disponible";
+                        }
+                        readonly property bool connected: wifiRow.hidden
+                            ? (wifiRow.hiddenInfo
+                                && wifiRow.hiddenInfo.active === true)
+                            : (wifiRow.net !== null && wifiRow.net.connected)
+                        readonly property real signalStrength: wifiRow.hidden
+                            ? (wifiRow.hiddenInfo
+                                ? Number(wifiRow.hiddenInfo.strength || 0) : 0)
+                            : (wifiRow.net ? wifiRow.net.signalStrength : 0)
+                        // La contraseña se pide en la propia fila, como en
+                        // Windows, en vez de en un cuadro aparte al final.
+                        readonly property bool passwordOpen: !wifiRow.hidden
+                            && root.pendingNetworkName.length > 0
+                            && root.pendingNetworkName === wifiRow.modelData
 
                         width: wifiList.width
-                        height: 40
+                        height: wifiRow.passwordOpen
+                            ? 80
+                            : (wifiRow.hiddenFormOpen
+                                ? (WifiState.hiddenError.length > 0
+                                    ? 136 : 118)
+                                : 40)
                         radius: 8
-                        color: wifiRow.modelData.connected
-                            ? Theme.accentSoft
-                            : (wifiMouse.containsMouse ? Theme.hover : "transparent")
+                        color: (wifiRow.passwordOpen || wifiRow.hiddenFormOpen)
+                            ? Theme.surfaceAlt
+                            : (wifiRow.connected
+                                ? Theme.accentSoft
+                                : (wifiMouse.containsMouse
+                                    ? Theme.hover : "transparent"))
+
+                        onHiddenFormOpenChanged: {
+                            if (wifiRow.hiddenFormOpen) {
+                                inlineHiddenSsid.text = "";
+                                inlineHiddenPassword.reset();
+                                inlineHiddenSsid.forceActiveFocus();
+                            }
+                        }
 
                         MouseArea {
                             id: wifiMouse
@@ -1478,26 +2081,38 @@ ColumnLayout {
                             z: 0
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: root.selectNetwork(wifiRow.modelData)
+                            onClicked: {
+                                if (wifiRow.passwordOpen
+                                        || wifiRow.hiddenFormOpen)
+                                    return;
+                                if (wifiRow.hidden) {
+                                    root.openHiddenInline(wifiRow.hiddenBssid);
+                                    return;
+                                }
+                                root.selectNetwork(wifiRow.modelData);
+                            }
                             onWheel: (wheel) => wheel.accepted = false
                         }
 
                         RowLayout {
                             anchors {
-                                fill: parent
+                                left: parent.left
+                                right: parent.right
+                                top: parent.top
                                 leftMargin: 8
                                 rightMargin: 8
                             }
+                            height: 40
                             z: 1
                             spacing: 6
 
                             AlbaIcon {
                                 Layout.preferredWidth: 16
                                 Layout.preferredHeight: 16
-                                name: WifiState.signalIcon(
-                                    wifiRow.modelData.signalStrength)
-                                color: wifiRow.modelData.connected
-                                    ? (wifiRow.modelData.signalStrength >= 0.5
+                                source: WifiState.signalSource(
+                                    wifiRow.signalStrength)
+                                color: wifiRow.connected
+                                    ? (wifiRow.signalStrength >= 0.5
                                         ? Theme.accent : Theme.warning)
                                     : Theme.muted
                                 size: 16
@@ -1510,13 +2125,13 @@ ColumnLayout {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: wifiRow.modelData.name
-                                    color: wifiRow.modelData.connected
+                                    text: wifiRow.hiddenTitle
+                                    color: wifiRow.connected
                                         ? Theme.accent
                                         : Theme.text
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
-                                    font.weight: wifiRow.modelData.connected
+                                    font.weight: wifiRow.connected
                                         ? Font.DemiBold
                                         : Font.Normal
                                     elide: Text.ElideRight
@@ -1537,7 +2152,8 @@ ColumnLayout {
                             // preferencia queda editable en el engranaje.
                             Row {
                                 spacing: 3
-                                visible: wifiRow.bands.length > 0
+                                visible: !wifiRow.hidden
+                                    && wifiRow.bands.length > 0
 
                                 Repeater {
                                     model: wifiRow.bands
@@ -1546,7 +2162,7 @@ ColumnLayout {
                                         required property string modelData
 
                                         readonly property bool on: WifiState.bandOn(
-                                            wifiRow.modelData.name, modelData)
+                                            wifiRow.modelData, modelData)
 
                                         implicitWidth: 22
                                         implicitHeight: 17
@@ -1574,7 +2190,7 @@ ColumnLayout {
                                             cursorShape: Qt.PointingHandCursor
                                             onClicked: {
                                                 root.wifiNotice = WifiState.toggleBand(
-                                                    wifiRow.modelData.name,
+                                                    wifiRow.modelData,
                                                     modelData);
                                             }
                                         }
@@ -1585,6 +2201,9 @@ ColumnLayout {
                             Rectangle {
                                 id: netGear
 
+                                // Las opciones avanzadas solo tienen sentido
+                                // en la red a la que ya está conectado.
+                                visible: !wifiRow.hidden && wifiRow.connected
                                 implicitWidth: 22
                                 implicitHeight: 22
                                 radius: 6
@@ -1610,127 +2229,99 @@ ColumnLayout {
                                 }
                             }
                         }
-                    }
-                }
-            }
 
-            Text {
-                Layout.fillWidth: true
-                visible: root.wifiNotice.length > 0
-                text: root.wifiNotice
-                color: Theme.danger
-                font.family: Theme.fontFamily
-                font.pixelSize: 8
-                wrapMode: Text.Wrap
-            }
+                        // Contraseña dentro de la propia fila, con el mismo
+                        // aspecto que el formulario de red oculta.
+                        WifiPasswordRow {
+                            id: inlineAuth
 
-            Rectangle {
-                Layout.fillWidth: true
-                visible: !root.wifiAdvanced && !root.wifiNetworkOptions
-                    && root.pendingNetwork !== null
-                implicitHeight: passwordColumn.implicitHeight + 16
-                radius: 10
-                color: Theme.surfaceAlt
-                border.width: 1
-                border.color: Theme.accentLine
-
-                ColumnLayout {
-                    id: passwordColumn
-
-                    anchors {
-                        fill: parent
-                        margins: 9
-                    }
-                    spacing: 5
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Contraseña de "
-                            + (root.pendingNetwork ? root.pendingNetwork.name : "")
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 10
-                        font.weight: Font.DemiBold
-                        elide: Text.ElideRight
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-
-                        TextField {
-                            id: passwordField
-
-                            Layout.fillWidth: true
-                            placeholderText: "contraseña"
-                            echoMode: TextInput.Password
-                            color: Theme.text
-                            placeholderTextColor: Theme.faint
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
-                            selectByMouse: true
-                            background: Rectangle {
-                                radius: 7
-                                color: Theme.surface
-                                border.width: 1
-                                border.color: Theme.border
+                            visible: wifiRow.passwordOpen
+                            anchors {
+                                left: parent.left
+                                right: parent.right
+                                top: parent.top
+                                topMargin: 42
+                                leftMargin: 8
+                                rightMargin: 8
                             }
-                            onAccepted: root.connectPending()
-                            Keys.onEscapePressed: {
-                                root.pendingNetwork = null;
-                                passwordField.text = "";
-                            }
-                        }
+                            z: 2
 
-                        Rectangle {
-                            implicitWidth: connectLabel.implicitWidth + 16
-                            implicitHeight: 28
-                            radius: 7
-                            color: Theme.accent
+                            onSubmitted: root.connectWithPassword(
+                                wifiRow.modelData, inlineAuth.text)
+                            onCancelled: root.cancelPassword()
 
-                            Text {
-                                id: connectLabel
-                                anchors.centerIn: parent
-                                text: "Conectar"
-                                color: Theme.accentInk
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 9
-                                font.weight: Font.Bold
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.connectPending()
-                            }
-                        }
-
-                        Rectangle {
-                            implicitWidth: 28
-                            implicitHeight: 28
-                            radius: 7
-                            color: Theme.hover
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: "×"
-                                color: Theme.muted
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 13
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    root.pendingNetwork = null;
-                                    passwordField.text = "";
+                            onVisibleChanged: {
+                                if (visible) {
+                                    inlineAuth.reset();
+                                    inlineAuth.forcePasswordFocus();
                                 }
                             }
                         }
+
+                        // Formulario de una red oculta dentro de su propia
+                        // fila: SSID y contraseña, igual que una red normal.
+                        ColumnLayout {
+                            visible: wifiRow.hiddenFormOpen
+                            anchors {
+                                left: parent.left
+                                right: parent.right
+                                top: parent.top
+                                topMargin: 42
+                                leftMargin: 8
+                                rightMargin: 8
+                            }
+                            spacing: 4
+                            z: 2
+
+                            TextField {
+                                id: inlineHiddenSsid
+
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 30
+                                placeholderText: "Nombre de la red"
+                                color: Theme.text
+                                placeholderTextColor: Theme.faint
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 10
+                                leftPadding: 8
+                                rightPadding: 8
+                                selectByMouse: true
+                                background: Rectangle {
+                                    radius: 7
+                                    color: Theme.surface
+                                    border.width: 1
+                                    border.color: Theme.border
+                                }
+                                onAccepted: inlineHiddenPassword.forcePasswordFocus()
+                                Keys.onEscapePressed: root.closeHiddenInline()
+                            }
+
+                            WifiPasswordRow {
+                                id: inlineHiddenPassword
+
+                                Layout.fillWidth: true
+                                busy: WifiState.hiddenBusy
+                                placeholderText: "Contraseña (vacía si es abierta)"
+                                onSubmitted: root.connectHiddenInline(
+                                    inlineHiddenSsid.text,
+                                    inlineHiddenPassword.text)
+                                onCancelled: root.closeHiddenInline()
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                visible: WifiState.hiddenError.length > 0
+                                text: WifiState.hiddenError
+                                color: Theme.danger
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 8
+                                wrapMode: Text.Wrap
+                            }
+                        }
                     }
                 }
             }
+
             // ------------------------------------------ ajustes de una red
             ColumnLayout {
                 Layout.fillWidth: true
@@ -1791,8 +2382,8 @@ ColumnLayout {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: root.wifiNetwork
-                                    ? (root.wifiNetwork.security
+                                text: root.wifiNetworkSecurity >= 0
+                                    ? (root.wifiNetworkSecurity
                                         === WifiSecurityType.Open
                                         ? "Abierta" : "WPA2")
                                     : ""
@@ -1828,7 +2419,7 @@ ColumnLayout {
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
-                    visible: root.wifiNetwork !== null
+                    visible: root.wifiNetworkSecurity >= 0
                         && WifiState.availableBands(
                             root.wifiNetworkSsid).length > 0
 
@@ -2051,6 +2642,66 @@ ColumnLayout {
                     }
                 }
 
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                    Layout.topMargin: 2
+                    color: Theme.border
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Mostrar redes ocultas"
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                    }
+
+                    AlbaSwitch {
+                        checked: SettingsState.showHiddenWifi
+                        onToggled: SettingsState.showHiddenWifi
+                            = !SettingsState.showHiddenWifi
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    visible: SettingsState.showHiddenWifi
+                    text: "Añade una entrada para escribir el nombre y la "
+                        + "contraseña de una red que no emite su SSID."
+                    color: Theme.faint
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+                    wrapMode: Text.Wrap
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                    Layout.topMargin: 2
+                    color: Theme.border
+                }
+
+                ProxySettings {
+                    Layout.fillWidth: true
+                    active: root.wifiAdvanced
+                }
+            }
+        }
+
+        // ------------------------------------------------------------- DNS
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: root.view === "dns"
+            spacing: 6
+
+            DnsSettings {
+                Layout.fillWidth: true
+                active: root.view === "dns"
             }
         }
 
@@ -2261,6 +2912,32 @@ ColumnLayout {
                     }
                 }
 
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 2
+                    Layout.preferredHeight: 1
+                    color: Theme.border
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Mostrar porcentaje de batería"
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                    }
+
+                    AlbaSwitch {
+                        checked: SettingsState.showBluetoothPercent
+                        onToggled: SettingsState.showBluetoothPercent =
+                            !SettingsState.showBluetoothPercent
+                    }
+                }
+
             }
 
             // ---------------------------------------------- dispositivos vinculados
@@ -2401,7 +3078,7 @@ ColumnLayout {
                                     Layout.fillWidth: true
                                     text: root.btStatus(btRow.modelData)
                                         + (btRow.modelData.batteryAvailable
-                                            && SettingsState.showPercentages
+                                            && SettingsState.showBluetoothPercent
                                             ? " · " + Math.round(
                                                 btRow.modelData.battery * 100) + "%"
                                             : "")
@@ -2713,8 +3390,8 @@ ColumnLayout {
 
                             AlbaIcon {
                                 anchors.fill: parent
-                                name: streamRow.muted
-                                    ? "audio-volume-muted" : "audio-volume-high"
+                                source: AlbaIcons.src(streamRow.muted
+                                    ? "volume-off" : "volume-3")
                                 color: streamRow.muted ? Theme.danger : Theme.accent
                                 size: 15
                                 fallback: "◖"
@@ -2912,6 +3589,32 @@ ColumnLayout {
                 elide: Text.ElideRight
             }
 
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.topMargin: 2
+                Layout.preferredHeight: 1
+                color: Theme.border
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Mostrar porcentaje"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                AlbaSwitch {
+                    checked: SettingsState.showVolumePercent
+                    onToggled: SettingsState.showVolumePercent =
+                        !SettingsState.showVolumePercent
+                }
+            }
+
         }
 
         // ------------------------------------------------------ Micrófono
@@ -2996,7 +3699,7 @@ ColumnLayout {
                         AlbaIcon {
                             Layout.preferredWidth: 15
                             Layout.preferredHeight: 15
-                            name: "audio-input-microphone"
+                            source: AlbaIcons.src("mic")
                             color: sourceRow.selected
                                 ? Theme.accent : Theme.muted
                             size: 15
@@ -3279,6 +3982,32 @@ ColumnLayout {
                 value: DisplayState.brightness
                 onMoved: DisplayState.setBrightness(value)
             }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.topMargin: 2
+                Layout.preferredHeight: 1
+                color: Theme.border
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Mostrar porcentaje"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                AlbaSwitch {
+                    checked: SettingsState.showBrightnessPercent
+                    onToggled: SettingsState.showBrightnessPercent =
+                        !SettingsState.showBrightnessPercent
+                }
+            }
         }
 
         // ------------------------------------------------- Atenuación extra
@@ -3319,6 +4048,32 @@ ColumnLayout {
                 stepSize: 0.05
                 value: DisplayState.extraDim
                 onMoved: DisplayState.setExtraDim(value)
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.topMargin: 2
+                Layout.preferredHeight: 1
+                color: Theme.border
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Mostrar porcentaje"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                AlbaSwitch {
+                    checked: SettingsState.showExtraDimPercent
+                    onToggled: SettingsState.showExtraDimPercent =
+                        !SettingsState.showExtraDimPercent
+                }
             }
         }
 
@@ -3816,31 +4571,6 @@ ColumnLayout {
                 font.family: Theme.fontFamily
                 font.pixelSize: 9
                 wrapMode: Text.Wrap
-            }
-        }
-
-        // ---------------------------------------------------- Modo avión
-        ColumnLayout {
-            Layout.fillWidth: true
-            visible: root.view === "airplane"
-            spacing: 8
-
-
-            RowLayout {
-                Layout.fillWidth: true
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Modo avión"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                }
-
-                AlbaSwitch {
-                    checked: root.airplaneActive
-                    onToggled: root.setAirplane(!root.airplaneActive)
-                }
             }
         }
 
@@ -4589,25 +5319,6 @@ ColumnLayout {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: NotificationState.panelView = "keyboard"
                     }
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Mostrar porcentajes"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                }
-
-                AlbaSwitch {
-                    checked: SettingsState.showPercentages
-                    onToggled: SettingsState.setShowPercentages(
-                        !SettingsState.showPercentages)
                 }
             }
 

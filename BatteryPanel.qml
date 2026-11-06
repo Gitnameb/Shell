@@ -294,6 +294,34 @@ PanelWindow {
                 font.family: Theme.fontFamily
                 font.pixelSize: 9
             }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.topMargin: 2
+                Layout.preferredHeight: 1
+                visible: BatteryState.present
+                color: Theme.border
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                visible: BatteryState.present
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Mostrar porcentaje"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                AlbaSwitch {
+                    checked: SettingsState.showBatteryPercent
+                    onToggled: SettingsState.showBatteryPercent =
+                        !SettingsState.showBatteryPercent
+                }
+            }
         }
     }
 

@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
-# Instalador de ALBA sobre Debian 13 + Umbriel.
+# Instalador principal del shell sobre Debian 13 + Umbriel.
 #
 # Ejecuta este script como tu usuario normal (no con sudo). Él pedirá sudo
 # cuando necesite instalar paquetes o escribir en el sistema.
+#
+# El trabajo está dividido en módulos para poder revisarlos o ejecutarlos
+# por separado:
+#
+#   scripts/install-packages.sh     repositorios, paquetes y servicios
+#   scripts/network.sh              red, Wi-Fi, hotspot, VPN y Bluetooth
+#   scripts/install-user-config.sh  enlaces y configuración del HOME
+#   scripts/install-umbriel-fork.sh compilación e instalación del fork
 #
 # Uso:
 #   ./install.sh [opciones]
@@ -13,6 +21,7 @@
 #   --skip-packages   No instala paquetes (solo configura y compila)
 #   --skip-fork       No compila ni instala el fork de Umbriel
 #   --skip-config     No copia la configuración de usuario
+#   --skip-network    No configura ni instala la red, VPN ni Bluetooth
 #   --force-config    Reemplaza configuraciones existentes (hace copia .bak)
 #   --with-firmware   Instala firmware y drivers de este equipo
 #   -h, --help        Muestra esta ayuda
@@ -20,44 +29,21 @@
 set -Eeuo pipefail
 
 REPO_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=scripts/lib/common.sh
+source "$REPO_DIR/scripts/lib/common.sh"
 
 DRY_RUN=0
 ASSUME_YES=0
 SKIP_PACKAGES=0
 SKIP_FORK=0
 SKIP_CONFIG=0
+SKIP_NETWORK=0
 FORCE_CONFIG=0
 WITH_FIRMWARE=0
 
-log() {
-    printf '\n\033[1;34m==>\033[0m %s\n' "$*"
-}
-
-warn() {
-    printf '\033[1;33maviso:\033[0m %s\n' "$*" >&2
-}
-
-die() {
-    printf '\033[1;31merror:\033[0m %s\n' "$*" >&2
-    exit 1
-}
-
-run() {
-    printf '\033[2m$\033[0m'
-    printf ' %q' "$@"
-    printf '\n'
-    if (( ! DRY_RUN )); then
-        "$@"
-    fi
-}
-
-run_sudo() {
-    run sudo "$@"
-}
-
 usage() {
     cat <<'EOF'
-Instalador de ALBA sobre Debian 13 + Umbriel.
+Instalador del shell sobre Debian 13 + Umbriel.
 
 Uso:
   ./install.sh [opciones]
@@ -68,6 +54,7 @@ Opciones:
   --skip-packages   No instala paquetes (solo configura y compila)
   --skip-fork       No compila ni instala el fork de Umbriel
   --skip-config     No copia la configuración de usuario
+  --skip-network    No configura ni instala la red, VPN ni Bluetooth
   --force-config    Reemplaza configuraciones existentes (hace copia .bak)
   --with-firmware   Instala firmware y drivers de este equipo
   -h, --help        Muestra esta ayuda
@@ -81,6 +68,7 @@ while (( $# > 0 )); do
         --skip-packages) SKIP_PACKAGES=1; shift ;;
         --skip-fork) SKIP_FORK=1; shift ;;
         --skip-config) SKIP_CONFIG=1; shift ;;
+        --skip-network) SKIP_NETWORK=1; shift ;;
         --force-config) FORCE_CONFIG=1; shift ;;
         --with-firmware) WITH_FIRMWARE=1; shift ;;
         -h | --help) usage; exit 0 ;;
@@ -88,11 +76,7 @@ while (( $# > 0 )); do
     esac
 done
 
-if (( EUID == 0 )); then
-    die "Ejecuta ./install.sh como tu usuario normal, no con sudo."
-fi
-
-command -v sudo >/dev/null 2>&1 || die "Falta sudo."
+require_normal_user
 
 USER_NAME=$(id -un)
 TARGET_HOME=$(getent passwd "$USER_NAME" | cut -d: -f6)
@@ -102,14 +86,10 @@ if [[ ! -f /etc/debian_version ]] || ! grep -q '^ID=debian' /etc/os-release 2>/d
     die "Este instalador está pensado para Debian 13 (trixie)."
 fi
 
-if (( ! DRY_RUN )); then
-    sudo -v || die "No se pudo obtener permiso de sudo."
-fi
-
 if (( ! ASSUME_YES && ! DRY_RUN )); then
     cat <<EOF
 
-Se va a preparar ALBA en este equipo:
+Se va a preparar el shell en este equipo:
 
   Usuario:   $USER_NAME
   HOME:      $TARGET_HOME
@@ -124,273 +104,58 @@ EOF
     [[ "$answer" =~ ^[sS]$ ]] || die "Cancelado."
 fi
 
+if (( ! DRY_RUN )); then
+    sudo -v || die "No se pudo obtener permiso de sudo."
+fi
+
 # ---------------------------------------------------------------------------
 # Paquetes
 # ---------------------------------------------------------------------------
-ensure_repos() {
-    if grep -Rqs 'trixie-backports' /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null; then
-        log "trixie-backports ya está configurado."
-    else
-        log "Añadiendo trixie-backports."
-        printf 'deb http://deb.debian.org/debian trixie-backports main\n' \
-            | run_sudo tee /etc/apt/sources.list.d/trixie-backports.list >/dev/null
-    fi
-
-    local keyring=/usr/share/keyrings/nickh-archive-keyring.gpg
-    local sources=/etc/apt/sources.list.d/noctalia-trixie.sources
-
-    if [[ ! -f "$keyring" ]]; then
-        log "Instalando la clave del repositorio de Noctalia."
-        if [[ -f "$REPO_DIR/install/apt/nickh-archive-keyring.gpg" ]]; then
-            run_sudo install -m644 "$REPO_DIR/install/apt/nickh-archive-keyring.gpg" "$keyring"
-        else
-            local deb
-            deb=$(mktemp)
-            run curl -fsSL -o "$deb" https://pkg.noctalia.dev/deb/nickh-archive-keyring.deb
-            run_sudo dpkg -i "$deb"
-            rm -f "$deb"
-        fi
-    else
-        log "La clave de Noctalia ya está instalada."
-    fi
-
-    if [[ ! -f "$sources" ]]; then
-        log "Añadiendo el repositorio de Noctalia."
-        run_sudo install -m644 "$REPO_DIR/install/apt/noctalia-trixie.sources" "$sources"
-    else
-        log "El repositorio de Noctalia ya está configurado."
-    fi
-}
-
-KDE_PKGS=(
-    sddm libpam-systemd plasma-integration libkf6config-bin
-    kdialog breeze breeze-icon-theme breeze-gtk-theme breeze-cursor-theme
-    qt6-wayland qt6-qpa-plugins qt6-svg-plugins
-    pipewire pipewire-pulse wireplumber
-    network-manager upower polkitd bluez bluez-obexd
-    libglib2.0-bin librsvg2-common
-)
-
-RUNTIME_PKGS=(
-    ddcutil qrencode libnotify-bin fonts-inter wvkbd swayidle kitty
-    network-manager-openvpn power-profiles-daemon pulseaudio-utils
-    iputils-ping wl-clipboard python3 curl
-    qml6-module-qtquick-effects qml6-module-qt5compat-graphicaleffects
-    qml6-module-qt-labs-folderlistmodel
-    xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-kde
-    xwayland
-)
-
-BUILD_PKGS=(
-    build-essential git meson ninja-build pkg-config
-    wayland-protocols libcairo2-dev libpango1.0-dev libgdk-pixbuf-2.0-dev
-    libtomlplusplus-dev libjemalloc-dev libliftoff-dev liblcms2-dev
-    libsystemd-dev libudev-dev libxcb1-dev libxcb-icccm4-dev
-    libxcb-ewmh-dev libxcb-randr0-dev libxcb-shape0-dev libxcb-render0-dev
-    libeis-dev libseat-dev nlohmann-json3-dev
-)
-
-BUILD_BACKPORTS_PKGS=(
-    libwlroots-0.20-dev libdrm-dev libinput-dev libxkbcommon-dev
-    libpixman-1-dev libwayland-dev libdisplay-info-dev
-    libegl-dev libgles-dev libgbm-dev
-)
-
-FIRMWARE_PKGS=(
-    intel-microcode firmware-amd-graphics firmware-iwlwifi firmware-realtek
-    firmware-sof-signed mesa-utils mesa-vulkan-drivers mesa-va-drivers
-    intel-media-va-driver
-)
-
 if (( ! SKIP_PACKAGES )); then
-    ensure_repos
-
-    log "Actualizando los índices de apt."
-    run_sudo apt-get update
-
-    log "Instalando Quickshell, Umbriel y su portal (backports/Noctalia)."
-    run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        -t trixie-backports quickshell hyprlock umbriel xdg-desktop-portal-umbriel
-
-    log "Instalando la base de KDE, Qt, audio y servicios."
-    # Sin plasma-workspace: solo las librerías y herramientas que usa ALBA.
-    # --no-install-recommends evita que kio6 arrastre systemsettings/Plasma.
-    if [[ ! -e /usr/share/sddm/themes/breeze/Main.qml \
-        && ! -e /usr/share/sddm/themes/debian-breeze/Main.qml ]]; then
-        log "Instalando un tema ligero para SDDM (sin Plasma)."
-        run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            --no-install-recommends sddm-theme-maya
-    fi
-    run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        --no-install-recommends "${KDE_PKGS[@]}"
-
-    if [[ ! -e /usr/share/sddm/themes/breeze/Main.qml \
-        && ! -e /usr/share/sddm/themes/debian-breeze/Main.qml \
-        && ! -e /etc/sddm.conf.d/20-alba-theme.conf ]]; then
-        log "Configurando SDDM con el tema ligero maya."
-        run_sudo install -d /etc/sddm.conf.d
-        printf '[Theme]\nCurrent=maya\n' \
-            | run_sudo tee /etc/sddm.conf.d/20-alba-theme.conf >/dev/null
-    fi
-
-    log "Instalando las dependencias de ALBA."
-    run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "${RUNTIME_PKGS[@]}"
-
-    log "Instalando las dependencias de compilación."
-    run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "${BUILD_PKGS[@]}"
-    run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        -t trixie-backports "${BUILD_BACKPORTS_PKGS[@]}"
-
-    if (( WITH_FIRMWARE )); then
-        log "Instalando firmware y drivers de este equipo."
-        run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "${FIRMWARE_PKGS[@]}"
-    fi
-
-    log "Habilitando los servicios del sistema."
-    run_sudo systemctl enable sddm || warn "No se pudo habilitar SDDM."
-    run_sudo systemctl enable --now bluetooth NetworkManager power-profiles-daemon \
-        || warn "Algún servicio no se pudo iniciar; revisa systemctl status."
+    log "Instalando paquetes, repositorios y servicios."
+    PKG_ARGS=()
+    (( DRY_RUN )) && PKG_ARGS+=(--dry-run)
+    (( WITH_FIRMWARE )) && PKG_ARGS+=(--with-firmware)
+    "$REPO_DIR/scripts/install-packages.sh" "${PKG_ARGS[@]}"
 else
     log "Se omiten los paquetes (--skip-packages)."
 fi
 
 # ---------------------------------------------------------------------------
+# Red
+# ---------------------------------------------------------------------------
+# Debian puede dejar la Ethernet en /etc/network/interfaces y NetworkManager
+# la marca como «unmanaged». Además wpasupplicant solo es una recomendación
+# de network-manager; sin él el Wi-Fi aparece como «unavailable».
+if (( ! SKIP_NETWORK )); then
+    log "Preparando NetworkManager para Ethernet y Wi-Fi."
+    NET_ARGS=()
+    (( DRY_RUN )) && NET_ARGS+=(--dry-run)
+    (( SKIP_PACKAGES )) && NET_ARGS+=(--skip-packages)
+    # La instalación puede ejecutarse en una Debian limpia, sin shell abierto.
+    # No intentamos reiniciar Quickshell desde aquí; si ya lo tienes abierto y
+    # ejecutas network.sh a mano, el script sí lo reinicia.
+    NET_ARGS+=(--no-restart-shell)
+    if (( DRY_RUN )); then
+        # SUDO_USER simula lo que sudo define en la ejecución real; así el
+        # dry-run también enseña la instalación del asistente de Ethernet.
+        SUDO_USER="$USER_NAME" "$REPO_DIR/scripts/network.sh" "${NET_ARGS[@]}"
+    else
+        run_sudo "$REPO_DIR/scripts/network.sh" --yes "${NET_ARGS[@]}"
+    fi
+else
+    log "Se omite la configuración de red (--skip-network)."
+fi
+
+# ---------------------------------------------------------------------------
 # Configuración de usuario
 # ---------------------------------------------------------------------------
-HOME_SED=$(printf '%s' "$TARGET_HOME" | sed 's/[&|\\]/\\&/g')
-
-render_template() {
-    sed "s|/home/USUARIO|$HOME_SED|g" "$1"
-}
-
-backup_file() {
-    local file=$1
-    [[ -e "$file" ]] || return 0
-    run cp -a "$file" "$file.bak.$(date +%Y%m%d-%H%M%S)"
-}
-
-copy_template() {
-    local src=$1 dest=$2
-
-    if [[ -e "$dest" && $FORCE_CONFIG -eq 0 ]]; then
-        warn "$dest ya existe; se conserva. Usa --force-config para reemplazarlo."
-        return 0
-    fi
-
-    backup_file "$dest"
-    run mkdir -p "$(dirname "$dest")"
-
-    if (( DRY_RUN )); then
-        printf '\033[2m[dry-run]\033[0m render %s -> %s\n' "$src" "$dest"
-        return 0
-    fi
-
-    render_template "$src" >"$dest"
-    chmod 644 "$dest"
-}
-
-copy_static() {
-    local src=$1 dest=$2
-
-    if [[ -e "$dest" && $FORCE_CONFIG -eq 0 ]]; then
-        warn "$dest ya existe; se conserva. Usa --force-config para reemplazarlo."
-        return 0
-    fi
-
-    backup_file "$dest"
-    run mkdir -p "$(dirname "$dest")"
-    run install -m644 "$src" "$dest"
-}
-
-configure_user() {
-    log "Enlazando el shell en ~/.config/quickshell/alba."
-    local shell_link="$TARGET_HOME/.config/quickshell/alba"
-    run mkdir -p "$(dirname "$shell_link")"
-    if [[ -e "$shell_link" && ! -L "$shell_link" ]]; then
-        warn "$shell_link existe y no es un enlace; no se toca."
-    elif [[ -L "$shell_link" ]]; then
-        run ln -sfn "$REPO_DIR" "$shell_link"
-    else
-        run ln -s "$REPO_DIR" "$shell_link"
-    fi
-
-    log "Copiando los scripts auxiliares a ~/.local/bin."
-    run mkdir -p "$TARGET_HOME/.local/bin"
-    run install -m755 "$REPO_DIR"/install/bin/alba-* "$TARGET_HOME/.local/bin/"
-
-    log "Copiando la configuración de ALBA."
-    copy_template "$REPO_DIR/install/config/alba-settings.conf" \
-        "$TARGET_HOME/.config/alba/settings.conf"
-    copy_template "$REPO_DIR/install/config/alba-display.conf" \
-        "$TARGET_HOME/.config/alba/display.conf"
-
-    log "Copiando la configuración de Umbriel."
-    copy_template "$REPO_DIR/install/config/umbriel-config.toml" \
-        "$TARGET_HOME/.config/umbriel/config.toml"
-
-    log "Configurando los portales."
-    copy_static "$REPO_DIR/install/config/portals.conf" \
-        "$TARGET_HOME/.config/xdg-desktop-portal/portals.conf"
-
-    log "Copiando el autostart del puente X11."
-    copy_static "$REPO_DIR/install/config/xwaylandvideobridge.desktop" \
-        "$TARGET_HOME/.config/autostart/org.kde.xwaylandvideobridge.desktop"
-
-    log "Instalando la unidad de alarmas."
-    local unit="$TARGET_HOME/.config/systemd/user/alba-alarms.service"
-    if [[ -e "$unit" && $FORCE_CONFIG -eq 0 ]]; then
-        warn "$unit ya existe; se conserva. Usa --force-config para reemplazarlo."
-    else
-        backup_file "$unit"
-        run mkdir -p "$(dirname "$unit")"
-        if (( ! DRY_RUN )); then
-            cat >"$unit" <<EOF
-[Unit]
-Description=Alarmas de ALBA
-After=graphical-session.target
-
-[Service]
-Type=simple
-ExecStart="$REPO_DIR/scripts/alba-alarms"
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=default.target
-EOF
-            chmod 644 "$unit"
-        fi
-    fi
-
-    run mkdir -p "$TARGET_HOME/.config/systemd/user/default.target.wants"
-    run ln -sfn ../alba-alarms.service \
-        "$TARGET_HOME/.config/systemd/user/default.target.wants/alba-alarms.service"
-
-    if command -v systemctl >/dev/null 2>&1 \
-        && systemctl --user show-environment >/dev/null 2>&1; then
-        run systemctl --user daemon-reload \
-            || warn "No se pudo recargar systemd de usuario."
-        run systemctl --user enable --now alba-alarms.service \
-            || warn "No se pudo activar alba-alarms ahora; se activará al entrar."
-    else
-        warn "No hay una sesión systemd de usuario activa; las alarmas arrancarán al entrar."
-    fi
-
-    log "Autorizando ddcutil sin contraseña (solo ese comando)."
-    if (( DRY_RUN )); then
-        printf '\033[2m[dry-run]\033[0m instalar /etc/sudoers.d/alba-ddcutil para %s\n' "$USER_NAME"
-    else
-        local tmp
-        tmp=$(mktemp)
-        printf '%s ALL=(ALL) NOPASSWD: /usr/bin/ddcutil\n' "$USER_NAME" >"$tmp"
-        run_sudo visudo -cf "$tmp"
-        run_sudo install -m440 -o root -g root "$tmp" /etc/sudoers.d/alba-ddcutil
-        rm -f "$tmp"
-    fi
-}
-
 if (( ! SKIP_CONFIG )); then
-    configure_user
+    log "Copiando la configuración de usuario."
+    CFG_ARGS=()
+    (( DRY_RUN )) && CFG_ARGS+=(--dry-run)
+    (( FORCE_CONFIG )) && CFG_ARGS+=(--force-config)
+    "$REPO_DIR/scripts/install-user-config.sh" "${CFG_ARGS[@]}"
 else
     log "Se omite la configuración de usuario (--skip-config)."
 fi
@@ -427,6 +192,19 @@ for cmd in qs umbriel ddcutil nmcli; do
         printf '  ok  %s\n' "$cmd"
     else
         warn "No encuentro '$cmd' en PATH."
+    fi
+done
+
+# Los iconos de red, micrófono y volumen son SVG propios: si falta alguno, la
+# barra y las vistas caerían en iconos del tema y se verían distintos según la
+# instalación.
+for icon in globe globe-off wired wifi-1 wifi-2 wifi-3 wifi-none wifi-off \
+        mic mic-off volume-1 volume-2 volume-3 volume-off \
+        check eye eye-off plus usb dns; do
+    if [[ -f "$REPO_DIR/icons/$icon.svg" ]]; then
+        printf '  ok  icons/%s.svg\n' "$icon"
+    else
+        warn "Falta icons/$icon.svg; los iconos de red se verán distintos."
     fi
 done
 

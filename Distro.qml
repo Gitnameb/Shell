@@ -38,10 +38,18 @@ Singleton {
 
     readonly property string iconSource: {
         const id = root.distroId.toLowerCase();
-        // Debian y sus derivados usan el emblema de desktop-base, que no
-        // siempre está registrado en el tema activo.
-        if (id === "debian" || id === "devuan")
-            return "/usr/share/icons/desktop-base/scalable/emblems/emblem-debian-symbolic.svg";
+        // Debian no siempre trae el emblema en el tema activo. Probamos los
+        // nombres habituales y, si ninguno existe, usamos la cuadrícula.
+        // Nunca devolvemos una ruta fija que pueda no existir.
+        if (id === "debian" || id === "devuan") {
+            const candidates = ["emblem-debian-symbolic",
+                "distributor-logo-debian", "debian-logo"];
+            for (let i = 0; i < candidates.length; i++) {
+                if (Quickshell.hasThemeIcon(candidates[i]))
+                    return Quickshell.iconPath(candidates[i]);
+            }
+            return AlbaIcons.src("grid");
+        }
         const name = root.iconNames[id];
         if (name && Quickshell.hasThemeIcon(name))
             return Quickshell.iconPath(name);

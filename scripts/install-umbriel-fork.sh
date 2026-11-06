@@ -128,7 +128,7 @@ if (( EUID == 0 )); then
     die "Ejecuta este script como tu usuario normal, no con sudo."
 fi
 
-for cmd in git meson ninja sudo; do
+for cmd in git meson ninja cmake sudo; do
     command -v "$cmd" >/dev/null 2>&1 || die "Falta '$cmd'. Ejecuta primero ./install.sh."
 done
 

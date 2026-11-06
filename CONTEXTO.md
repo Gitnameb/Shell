@@ -78,8 +78,60 @@ Prioridad acordada:
   red (`2.4G`, `5G`, `6G`). Pulsar una banda limita el perfil de NetworkManager a
   esa banda; no se puede apagar la última. `WifiState.qml` obtiene frecuencia,
   seguridad y señal con `nmcli`.
+- El modelo de la lista guarda solo los nombres de las redes y se actualiza con
+  400 ms de retardo. Así las ráfagas de altas y bajas de puntos de acceso de
+  NetworkManager no reconstruyen las filas ni dejan referencias a objetos que
+  acaban de destruirse.
+- Al pulsar una red protegida, la propia fila se expande y muestra el campo de
+  contraseña, un ojo para mostrarla u ocultarla y un botón de check para conectar,
+  sin un cuadro aparte. Mientras se escribe, la lista se congela para que no se
+  borre el texto. Si NetworkManager rechaza la conexión (contraseña incorrecta,
+  tiempo de autenticación agotado o red perdida), la vista Red muestra el motivo
+  en lugar de no hacer nada. El campo de contraseña es el mismo componente
+  (`WifiPasswordRow.qml`) que usa el formulario de red oculta.
+- Solo la red Wi-Fi **conectada** muestra el engranaje de opciones avanzadas
+  (QR, reconexión automática, bandas y olvidar). El resto de redes no lo lleva.
+- El engranaje general de la vista Red reúne el apagado por inactividad y el
+  interruptor **Mostrar redes ocultas**. Al activarlo, las redes que no emiten
+  su SSID se mezclan con las visibles y se ordenan por conexión y señal; se
+  identifican por su BSSID/MAC. Si una de ellas ya está conectada, se muestra
+  con su SSID real, porque el perfil guardado ya lo conoce. Al pulsar una, su
+  formulario de SSID y contraseña se abre dentro de la propia fila, como una red
+  normal. El botón **+** de la cabecera queda solo para añadir una red oculta a
+  mano.
+- El centro de control tiene una ficha **DNS** propia. Abre una vista con un
+  ajuste **global**: automático o servidores IPv4/IPv6 propios, aplicado a todas
+  las conexiones Wi-Fi y Ethernet guardadas (NetworkManager no ofrece un DNS
+  único para todo el sistema). La vista muestra qué redes se verán afectadas y
+  los cambios se aplican con `nmcli device reapply`, sin cortar el enlace. Lo
+  implementan `DnsSettings.qml`, `DnsState.qml` y
+  `scripts/network-settings.py`.
+- El engranaje general de la vista Red incluye **Proxy por red**: cada conexión
+  guardada puede usar sin proxy, automático (PAC) o manual (HTTP, HTTPS, SOCKS y
+  excepciones). NetworkManager solo admite `none`/`auto`, así que el modo manual
+  se guarda como un PAC generado en el perfil. Si la red está activa, también se
+  escribe `~/.config/environment.d/90-alba-proxy.conf` para la próxima sesión.
+  Los datos editables se guardan en `~/.config/alba/proxy.json`. Lo implementan
+  `ProxySettings.qml`, `ProxyState.qml` y el mismo ayudante.
+- El panel de notificaciones tiene un icono de comprobación junto a
+  «No molestar». Al pulsarlo ejecuta `scripts/check-deps.sh` y muestra una
+  tarjeta con los paquetes que faltan y el comando para instalarlos; la
+  tarjeta incluye un botón para copiar la solución. No se comprueba al
+  arrancar ni cada vez que se abre un panel. Lo implementan
+  `DependencyState.qml`, `scripts/check-deps.sh` y `SidePanel.qml`.
+- El icono de recargar de la cabecera fuerza una búsqueda real de redes
+  (`nmcli device wifi rescan`); no es decorativo y muestra información al pasar
+  el puntero.
+- Si hay varias interfaces cableadas (Ethernet y un móvil compartiendo por USB),
+  la vista Red muestra una ficha por cada una, con su propio estado y botón de
+  conectar/desconectar. Las interfaces cuyo nombre empieza por `usb`, `enx` o
+  `rndis` usan el icono USB; el resto, el de Ethernet.
 - Volumen y micrófono listan todas las salidas y entradas de PipeWire, permiten
   elegir la predeterminada y ajustar el nivel del micrófono, no solo silenciarlo.
+- Los auriculares Bluetooth necesitan `libspa-0.2-bluetooth` para aparecer como
+  salida y micrófono; `scripts/network.sh` lo instala y reinicia WirePlumber
+  cuando termina. Sin él, BlueZ puede rechazar la conexión con
+  `br-connection-profile-unavailable`.
 - Los incrementos de volumen, brillo, atenuación y fuerza de luz nocturna son de
   **2%** (rueda de la barra, teclas multimedia y deslizadores); antes eran de 5%.
 - La **apariencia** se controla con dos preferencias compartidas: `themeMode`
@@ -99,15 +151,18 @@ Prioridad acordada:
   `volume`, `cpu`, `gpu` y `net`.
 - Los iconos de **Música, luz nocturna, VPN, modo avión, CPU, atenuación extra, brillo,
   tráfico de red, teclado, energía y las pestañas del reloj** son SVG propios copiados
-  del sprite del diseño (`AlbaIcons.qml` + `icons/`), con el mismo trazo de 1,8 px.
+  del sprite del diseño (`AlbaIcons.qml` + `icons/`), con el mismo trazo de 1,8 px;
+  los de Wi-Fi usan 2,2 px para que no se vean finos al tamaño de la barra.
   El resto de iconos sigue usando el tema Breeze. La hora de la barra es solo texto,
   como en el diseño; no lleva icono.
 - **Bluetooth**: la batería del dispositivo conectado se muestra como porcentaje junto
-  al icono (barra y ficha del centro de control) y en la lista de dispositivos. El icono
-  se pone **rojo con 10 % o menos**, **naranja con 20 % o menos** y **blanco** por
-  encima. La vinculación usa `bluetoothctl` porque Quickshell no registra un agente de
-  BlueZ propio; el panel activa `pairable`, escucha, vincula, marca el dispositivo como
-  de confianza y lo conecta. Si falla, muestra un aviso y deja reintentar.
+  al icono (barra y ficha del centro de control) y en la lista de dispositivos, solo
+  si se activa **Mostrar porcentaje de batería** en las opciones de Bluetooth. Por
+  defecto está desactivado. El icono se pone **rojo con 10 % o menos**, **naranja con
+  20 % o menos** y **blanco** por encima. La vinculación usa `bluetoothctl` porque
+  Quickshell no registra un agente de BlueZ propio; el panel activa `pairable`,
+  escucha, vincula, marca el dispositivo como de confianza y lo conecta. Si falla,
+  muestra un aviso y deja reintentar.
 - **Ethernet + Wi-Fi**: si hay cable y Wi-Fi conectados a la vez, la barra muestra los
   dos iconos juntos. La vista de Wi-Fi incluye una sección «Ethernet» con la interfaz y
   un botón para **desconectar** el cable (y volver a conectarlo).
@@ -118,11 +173,11 @@ Prioridad acordada:
 - Los **widgets de la barra** (Música, Wi-Fi, Bluetooth, Volumen, CPU, GPU, Red) se
   abren con un clic y se cierran con otro clic en el mismo icono. Ya no hay «×» en la
   cabecera del panel; se cierra con el mismo icono, con la campana o con Escape.
-- **Volumen y micrófono** usan los mismos iconos de Breeze que el aviso flotante
-  (OSD). El tema ya trae variantes para cada tramo (bajo, medio, alto y silenciado),
-  así que la barra, la ficha del centro de control y el OSD muestran el mismo dibujo
-  y el color sigue indicando el estado. Si el canal está silenciado se usa la
-  variante tachada y el texto «Mudo» en la barra.
+- **Volumen y micrófono** comparten el mismo dibujo en la barra, la ficha del centro
+  de control y el OSD, con SVG propios y el mismo trazo que el resto de iconos. El
+  volumen tiene variantes de uno, dos y tres arcos, y una tachada al silenciar; el
+  micrófono usa `icons/mic.svg` e `icons/mic-off.svg`. El color sigue indicando el
+  estado y el texto «Mudo» aparece en la barra al silenciar.
 - En **Bluetooth**, el modo «Vincular dispositivo» inicia la búsqueda automáticamente
   al entrar y la detiene al salir o al cancelar. Ya no hay un interruptor de búsqueda
   dentro de ese apartado.
@@ -154,7 +209,13 @@ Prioridad acordada:
 - `AutoOffState.qml` apaga el hotspot si nadie se conecta, el Wi-Fi si se queda sin
   conexión y el Bluetooth si no tiene ningún dispositivo conectado durante el tiempo
   configurado (5/10/15/30 min; 15 por defecto en los tres). Esos ajustes se guardan en
-  `settings.conf`; el Wi-Fi no se apaga mientras el hotspot está activo.
+  `settings.conf`; el Wi-Fi no se apaga mientras el hotspot está activo ni mientras
+  la vista Red está abierta.
+- El **modo avión** (`AirplaneState.qml`) apaga Wi-Fi, Bluetooth y el punto de
+  acceso, pero se puede volver a encender cualquiera de ellos a mano sin salir del
+  modo, como en Android. Al desactivarlo se restauran las radios que estaban
+  encendidas antes. Su ficha del centro y su icono de la barra son solo un
+  interruptor: no tienen vista de opciones.
 - La barra muestra **1..9 escritorios por defecto**. El máximo se cambia desde
   **Ajustes** (1–20) y se guarda en `~/.config/alba/settings.conf`. Cada escritorio
   enseña los iconos de sus apps abiertas; al pulsar un icono se enfoca esa ventana.
@@ -163,9 +224,9 @@ Prioridad acordada:
 - Ajustes es un control más del centro de control, no un bloque fijo: así no ocupa
   espacio cuando no se está usando. Se abre pulsando su nombre y también se puede
   arrastrar a la barra.
-- Mostrar los porcentajes de volumen, brillo y atenuación es opcional; también se
-  guarda en `settings.conf` y se controla desde **Ajustes**. Las vistas avanzadas
-  siempre muestran el valor porque el deslizador lo necesita.
+- Mostrar los porcentajes de volumen, brillo, atenuación, batería y batería Bluetooth
+  es opcional y se controla desde el panel de cada uno; por defecto está desactivado.
+  Las vistas avanzadas siempre muestran el valor porque el deslizador lo necesita.
 - El lanzador limpia `HL_INITIAL_WORKSPACE_TOKEN` al abrir una app. Quickshell lo
   hereda de Hyprland y podía hacer que las apps se abrieran en el escritorio inicial
   en vez de en el activo.
@@ -212,7 +273,8 @@ Prioridad acordada:
 - UPower solo expone `DisplayDevice` (este equipo no tiene batería). La barra debe
   ocultar el widget de batería si no hay batería de portátil.
 - Red: NetworkManager disponible (`nmcli`).
-- Audio: PipeWire + WirePlumber (`wpctl`).
+- Audio: PipeWire + WirePlumber (`wpctl`); para Bluetooth,
+  `libspa-0.2-bluetooth`.
 - Brillo: el monitor LG `HDMI-A-1` admite **DDC/CI**. Se instaló `ddcutil` y se
   creó `/etc/sudoers.d/alba-ddcutil` para que el usuario pueda leer y escribir el
   brillo sin contraseña (`sudo -n ddcutil ...`). Si el monitor no responde, el shell
@@ -311,7 +373,7 @@ compositor; si es el contenido de una app → la app.**
 - [ ] OSD de brillo: el panel y el widget ya cambian el brillo real, pero falta el aviso
       flotante al usar la rueda.
 - [x] Bloqueo de sesión con `hyprlock` y fecha en español.
-- [x] Ajustes funcionales del shell: máximo de escritorios y porcentajes.
+- [x] Ajustes funcionales del shell: máximo de escritorios y porcentajes por panel.
 - [ ] Tema del shell (claro/oscuro, acentos, opacidad, blur).
 
 ### M3 (escritorio y ventanas)
@@ -415,9 +477,9 @@ compositor; si es el contenido de una app → la app.**
     inicial, pero si una app ya está abierta en otro escritorio, su propia lógica puede
     enfocar esa ventana en vez de crear una nueva. Forzar una instancia por escritorio
     exigiría opciones específicas de cada app.
-21. **Porcentajes**: la preferencia afecta a la barra, la batería y la batería de los
-    dispositivos Bluetooth; el OSD siempre enseña el número y las vistas avanzadas
-    también, para poder ajustar el valor.
+21. **Porcentajes**: cada panel (volumen, brillo, atenuación, batería y Bluetooth)
+    tiene su propio interruptor y todos empiezan desactivados. El OSD siempre
+    enseña el número y las vistas avanzadas también, para poder ajustar el valor.
 22. **Clima**: se consulta a `wttr.in` y la ubicación se deduce por IP. Sin conexión
     el panel muestra un error y el botón «Actualizar»; no hay ubicación manual todavía.
 23. **Alarmas y temporizador**: las alarmas se guardan en
@@ -572,14 +634,14 @@ compositor; si es el contenido de una app → la app.**
 53. **Aviso de la campana**: cuando hay notificaciones se muestra un punto en la
     esquina del icono, no la cantidad, igual que en las fichas de app. Con «No
     molestar» el punto usa el color de peligro.
-54. **Trazo único de los iconos**: los widgets usan SVG propios con `stroke-width`
-    1.8, el mismo grosor del ejemplo web. Se añadieron Wi-Fi (tres niveles),
+54. **Trazo único de los iconos**: los widgets usan SVG propios con un `stroke-width`
+    de 1.5 a 1.8, el mismo estilo del ejemplo web. Se añadieron Wi-Fi (tres niveles),
     Wi-Fi apagado, cable, Bluetooth, campana, campana silenciada, punto de acceso,
     ajustes, batería (vacía, baja, media, buena y llena) y los controles de música
     (anterior, reproducir, pausa, siguiente). CPU, GPU, red, música, luna, sol, avión,
     atenuación, VPN, teclado y energía ya usaban ese trazo; GPU pasó de 1.5 a 1.8.
-    Volumen y micrófono son la excepción: usan los iconos rellenos de Breeze del OSD
-    porque el usuario prefirió ese dibujo; el tema ya trae las variantes de nivel.
+    El micrófono (`mic.svg` y `mic-off.svg`) y el volumen (`volume-1/2/3.svg` y
+    `volume-off.svg`) usan SVG propios con el mismo trazo.
 55. **Modo claro y acento**: `Theme.qml` recalcula toda la paleta cuando cambian
     `themeMode` o `accentColor`. El acento elegido se comparte entre modos, pero en
     claro se oscurece si su luminancia supera 0.38 para que los textos e iconos se
@@ -830,9 +892,9 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   con `pactl`.
 - Deslizador de volumen: **verificado arrastrando con clics inyectados** (de 56% a 8%)
   y la rueda/teclas multimedia usan pasos del 2%.
-- Ajustes es un control más de la cuadrícula; al abrirlo muestra porcentajes y
-  número de escritorios. Ya no hay bloque de preferencias ni barra de volumen fija
-  debajo del centro de control.
+- Ajustes es un control más de la cuadrícula; al abrirlo muestra el número de
+  escritorios y otras preferencias. Ya no hay bloque de preferencias ni barra de
+  volumen fija debajo del centro de control.
 - Pulsar Super está registrado con `bindr`; la configuración valida `config ok` y el
   atajo aparece en `hyprctl binds`. Falta la prueba con teclado físico.
 - Notificaciones agrupadas con icono real, contador con chevron y texto completo al
@@ -891,8 +953,9 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   cuando Firefox expone dos reproductores (se prefiere `plasma-browser-integration`,
   que trae carátula) y se centró verticalmente la portada de 22 px.
 - **Volumen y micrófono**: la barra, la ficha del centro de control y el OSD usan el
-  mismo icono de Breeze. Se comprobó con 20 %, 62 %, 95 % y silenciado: cambia entre
-  las variantes baja, media, alta y tachada, y el micrófono usa su propia familia.
+  mismo dibujo. El volumen cambia entre uno, dos y tres arcos y la variante tachada;
+  el micrófono usa `mic.svg` y `mic-off.svg`. Todos son SVG propios y se ven igual
+  en cualquier tema.
 - **Tráfico de red**: la píldora de la barra se ajusta al contenido (sin ancho fijo) y
   usa menos relleno; ya no queda más ancha que el número, la unidad y las flechas.
 - **Bluetooth (búsqueda)**: se eliminó el interruptor de búsqueda del apartado
@@ -943,7 +1006,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 | `AppContextMenu.qml` | Menú contextual de una ventana: enfocar, maximizar/restaurar, minimizar/restaurar, flotante/mosaico, mover al escritorio y cerrar esa ventana. Las acciones pasan por `CompositorState`. |
 | `AppMenuItem.qml` | Fila reutilizable del menú contextual, con icono del tema o glifo de respaldo. |
 | `AlbaIcon.qml` | Icono de widget del tema Breeze con color de estado mediante `ColorOverlay`; sustituye a los emojis. |
-| `SettingsState.qml` | Preferencias persistentes: modo claro/oscuro, color de acento, tema en las apps, distribución del teclado, máximo de escritorios, filas visibles y tamaños de iconos del centro y de la barra, porcentajes, temperatura en la barra, atajo del micrófono, ocultación automática de la barra, apagados automáticos, modo por defecto y por escritorio, y barra de título (`auto`/`always`/`never`). |
+| `SettingsState.qml` | Preferencias persistentes: modo claro/oscuro, color de acento, tema en las apps, distribución del teclado, máximo de escritorios, filas visibles y tamaños de iconos del centro y de la barra, porcentajes por panel (volumen, brillo, atenuación, batería y Bluetooth), temperatura en la barra, atajo del micrófono, ocultación automática de la barra, apagados automáticos, modo avión, redes ocultas, modo por defecto y por escritorio, y barra de título (`auto`/`always`/`never`). |
 | `HostInfo.qml` | Nombre de la máquina, usado por el hotspot y el Bluetooth. |
 | `WeatherState.qml` | Clima actual y previsión desde `wttr.in`, sin clave de API. |
 | `ClockTab.qml` | Pestaña reutilizable del panel del reloj. |
@@ -951,7 +1014,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 | `SidePanel.qml` | Panel único pegado a la barra: notificaciones arriba y centro de control de alto fijo abajo, con desplazamiento para filas y vistas que no caben. |
 | `PanelFocusGate.qml` | Retrasa 150 ms el foco de teclado de los paneles para que el clic de cierre llegue a la barra sin mover el ratón. |
 | `NotificationList.qml` | Avisos agrupados por app, icono real, contador y chevron a la derecha, y texto completo al pulsar. El borrado individual está oculto por ahora; queda «Limpiar todo». |
-| `ControlCenterContent.qml` | Cuadrícula fija de dos columnas, ajustes por red Wi-Fi (QR, reconexión, olvidar) y vistas avanzadas de Wi-Fi, Bluetooth, volumen, micrófono, luz nocturna, modo avión, brillo, atenuación extra, punto de acceso, música, rendimiento, red, VPN, teclado, portapapeles, ajustes, modo de ventanas y diagnóstico del compositor. Ajustes incluye tema, acento, tema en las apps, distribución del teclado, tamaños, modo por defecto, barra de título y acceso al compositor. |
+| `ControlCenterContent.qml` | Cuadrícula fija de dos columnas, ajustes por red Wi-Fi (QR, reconexión, olvidar) y vistas avanzadas de Wi-Fi, Bluetooth, volumen, micrófono, luz nocturna, brillo, atenuación extra, punto de acceso, música, rendimiento, red, VPN, teclado, portapapeles, ajustes, modo de ventanas y diagnóstico del compositor. Ajustes incluye tema, acento, tema en las apps, distribución del teclado, tamaños, modo por defecto, barra de título y acceso al compositor. |
 | `MusicState.qml` | Reproductor MPRIS activo, selección de reproductor y controles (play/pausa, pista, posición, volumen). |
 | `MusicView.qml` | Vista de Música: portada, progreso, controles y selector de reproductores. |
 | `BarMusic.qml` | Reproductor compacto de la barra; muestra título/artista y cambia a controles al pasar el ratón. |
@@ -965,9 +1028,13 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 | `KeyboardState.qml` | Teclado en pantalla con `wvkbd`; estado, disponibilidad y proceso. |
 | `icons/cpu.svg`, `icons/gpu.svg` | Iconos propios de chip y tarjeta gráfica para teñir por estado. |
 | `AlbaIcons.qml` | Rutas de los iconos SVG copiados del diseño (`music`, `moon`, `shield`, `plane`, `sun`, `dim`, `net`, `keyboard`, `clipboard`, `power`, `calendar`, `cloud`, `alarm`, `timer`, `lock`, `restart`, `logout`). |
-| `LevelIcon.qml` | Icono de volumen/micrófono con las variantes de nivel de Breeze (bajo, medio, alto y silenciado), idénticas a las del OSD. |
+| `LevelIcon.qml` | Icono de nivel para volumen y micrófono. El volumen usa `icons/volume-1/2/3.svg` y `volume-off.svg`; el micrófono, `icons/mic.svg` e `icons/mic-off.svg`. |
 | `icons/music.svg`, `icons/moon.svg`, `icons/shield.svg`, `icons/plane.svg`, `icons/sun.svg`, `icons/dim.svg`, `icons/net.svg`, `icons/keyboard.svg`, `icons/clipboard.svg`, `icons/power.svg`, `icons/calendar.svg`, `icons/cloud.svg`, `icons/alarm.svg`, `icons/timer.svg`, `icons/lock.svg`, `icons/restart.svg`, `icons/logout.svg` | Iconos exactos del sprite del diseño (o del mismo trazo), teñidos con `AlbaIcon`. |
-| `icons/volume*.svg`, `icons/mic*.svg` | Ya no se usan: el nivel de volumen y micrófono usa los iconos de Breeze del tema. |
+| `icons/mic.svg`, `icons/mic-off.svg` | Micrófono normal y silenciado con trazo propio, para que la barra, el centro de control y el OSD no dependan del tema. |
+| `icons/volume-1.svg`, `icons/volume-2.svg`, `icons/volume-3.svg`, `icons/volume-off.svg` | Volumen con uno, dos o tres arcos y variante tachada, con el mismo trazo que los demás iconos. |
+| `icons/wifi-1.svg`, `icons/wifi-2.svg`, `icons/wifi-3.svg`, `icons/wifi-none.svg`, `icons/wifi-off.svg` | Señal Wi-Fi por niveles y variantes sin señal o apagada, con trazo de 2,2 px; se usan en la barra y en la lista de redes. |
+| `icons/check.svg`, `icons/eye.svg`, `icons/eye-off.svg`, `icons/plus.svg`, `icons/usb.svg` | Confirmar la contraseña de una red, mostrarla u ocultarla dentro de la propia fila, abrir el formulario de red oculta y reconocer una interfaz USB. |
+| `WifiPasswordRow.qml` | Campo de contraseña compartido por las redes normales y el formulario de red oculta: campo redondeado, ojo, check y cancelar. |
 | `icons/grid.svg` | Cuadrícula de cuatro cuadros usada como logotipo de respaldo del lanzador. |
 | `BarControl.qml` | Icono de un control del centro de control colocado en la barra; alterna su vista al pulsarlo, incluye batería Bluetooth, los dos iconos de cable + Wi-Fi, el tráfico de red numérico y los iconos de nivel. El botón mide el icono más 6 px de relleno, así que `barIconSize` cambia también su ancho. |
 | `ProgressRing.qml` | Anillo de progreso de 2 px sobre un rectángulo redondeado; se dibuja con Canvas desde el borde superior en sentido horario. |
@@ -984,7 +1051,9 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 | `DisplayState.qml` | Brillo real por DDC/CI (`ddcutil`) con respaldo al shader; atenuación extra y luz nocturna por shader de Hyprland, con sus niveles guardados en `display.conf`. |
 | `HotspotState.qml` | Punto de acceso Wi-Fi con NetworkManager (`nmcli`), perfil manual con banda, red oculta y QR WPA; clientes vía `ip neigh`. |
 | `AutoOffState.qml` | Apagado por inactividad del hotspot, del Wi-Fi y del Bluetooth según los minutos configurados. |
-| `WifiState.qml` | Bandas, seguridad y señal de las redes vía `nmcli`; perfil, QR compartible y reconexión automática de cada red; preferencias de banda por SSID y aplicación al perfil. |
+| `AirplaneState.qml` | Modo avión explícito: apaga Wi-Fi, Bluetooth y hotspot, permite reactivar radios a mano y restaura las que estaban encendidas al salir. |
+| `WifiState.qml` | Bandas, seguridad y señal de las redes vía `nmcli`; perfil, QR compartible y reconexión automática de cada red; preferencias de banda por SSID y conexión manual a redes ocultas (`hidden yes`). |
+| `EthernetState.qml` | Diagnóstico por interfaz cableada: muestra si la controla NetworkManager, ifupdown o dhcpcd. Mantiene una etiqueta por nombre para las listas con varias Ethernet. |
 | `scripts/wifi-profile.py` | Lee el perfil de una red, genera el QR WPA, cambia `connection.autoconnect` y olvida la red desde NetworkManager. |
 | `AlbaSlider.qml` | Deslizador compacto de las vistas avanzadas, con pasos del 2%. |
 | `CalendarPanel.qml` | Panel del reloj pegado a la barra: calendario, clima, alarmas y temporizador. |
@@ -1061,7 +1130,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 - Panel pegado a la barra (abajo a la derecha) y centro de control compacto en
   cuadrícula 2×3: Wi-Fi, Bluetooth, Volumen, Micrófono, No molestar y Modo avión,
   más slider de volumen. Las opciones avanzadas se abren al pulsar el nombre del
-  control y se vuelven con `‹`.
+  control y se vuelven con `‹`; el modo avión es la excepción y solo alterna.
 - Teclado de Hyprland cambiado a español (`kb_layout = es`).
 - Notificaciones con el icono real de la app y agrupadas por aplicación: el grupo
   muestra el aviso más reciente y su contador; al pulsarlo se despliegan los demás.
@@ -1102,7 +1171,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   permite enfocar una ventana pulsando su icono.
 - `SettingsState.qml` guarda el modo claro/oscuro, el color de acento, el máximo de
   escritorios, los tamaños de iconos del centro y de la barra, la ocultación
-  automática de la barra y la preferencia de mostrar porcentajes en
+  automática de la barra y los porcentajes de cada panel en
   `~/.config/alba/settings.conf`.
 - El lanzador limpia `HL_INITIAL_WORKSPACE_TOKEN` al abrir apps; se probó abriendo Ark
   desde el escritorio 2 y la ventana apareció en el 2.
@@ -1140,7 +1209,8 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   conectados. El engranaje reúne red, clave, banda, «Ocultar red» y el apagado
   automático. La lista de clientes se lee de `ip neigh` y se refresca cada 4 s.
 - **Wi-Fi**: engranaje con apagado automático si el equipo se queda sin conexión;
-  la espera se elige entre 5, 10, 15 y 30 minutos.
+  la espera se elige entre 5, 10, 15 y 30 minutos. La cuenta no corre mientras la
+  vista Red está abierta.
 - **Apagado automático**: nuevo `AutoOffState.qml`, creado desde `SidePanel.qml`.
   Apaga el hotspot sin clientes y el Wi-Fi sin conexión; no toca el Wi-Fi mientras el
   hotspot está activo. Los valores se guardan en `settings.conf`.
@@ -1204,8 +1274,9 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   energía usan la forma exacta del diseño. Las pestañas del reloj también. La hora de
   la barra sigue siendo solo texto, como en el diseño.
 - **Batería Bluetooth**: el control de la barra y la ficha del centro de control
-  muestran el porcentaje del dispositivo conectado. El icono se tiñe de rojo con
-  ≤10 %, naranja con ≤20 % y blanco por encima. La barra incluye Bluetooth por defecto.
+  muestran el porcentaje del dispositivo conectado si se activa la opción en el panel
+  de Bluetooth; por defecto está desactivada. El icono se tiñe de rojo con ≤10 %,
+  naranja con ≤20 % y blanco por encima. La barra incluye Bluetooth por defecto.
 - **Vinculación Bluetooth**: el panel dejó de usar `BluetoothDevice.pair()` y ahora
   ejecuta `bluetoothctl` (que registra un agente de BlueZ), activa `pairable`, marca el
   dispositivo como de confianza y lo conecta. Se añadió un mensaje de error y un estado
@@ -1280,7 +1351,8 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 - **OSD de brillo, atenuación y luz nocturna**: `OsdState` y `Osd.qml` ahora muestran
   el icono, la barra y el porcentaje de los cinco controles. Se dispara desde los
   setters de `DisplayState`, así funciona con la rueda, el deslizador y los atajos.
-  El porcentaje se muestra siempre en el OSD, aunque `showPercentages` esté apagado.
+  El porcentaje se muestra siempre en el OSD, aunque ese panel tenga el porcentaje
+  desactivado en la barra.
 - **Atajos de brillo**: `SUPER` no cambia; se añadieron las teclas
   `XF86MonBrightnessUp/Down` y los métodos IPC `brightnessUp`, `brightnessDown`,
   `nightToggle` y `extraDimToggle`. No abren el panel, solo muestran el OSD.
@@ -1675,10 +1747,10 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
     (`<tema>/48x48/apps` y `<tema>/apps/48`).
   - Altura de barra subida a 36 px (el mockup usa 36 px en la cabecera
     integrada) y glifos siempre visibles.
-- **Dependencias de compilación** instaladas con `apt`: `meson`,
+- **Dependencias de compilación** instaladas con `apt`: `cmake`, `meson`,
   `ninja-build`, `libwlroots-0.20-dev`, `libwayland-dev`, `libdrm-dev`,
-  `libinput-dev`, `libxkbcommon-dev`, `libpixman-1-dev`, `libcairo2-dev`,
-  `libpango1.0-dev`, `libtomlplusplus-dev`, `libjemalloc-dev`,
+  `libinput-dev`, `libxkbcommon-dev`, `libpixman-1-dev`, `libpixman-1-0`,
+  `libcairo2-dev`, `libpango1.0-dev`, `libtomlplusplus-dev`, `libjemalloc-dev`,
   `libliftoff-dev`, `libdisplay-info-dev`, `liblcms2-dev`, `libsystemd-dev`,
   `libxcb*`, `libeis-dev`, `wayland-protocols`, `libseat-dev`, `libudev-dev`,
   `nlohmann-json3-dev`, `libgdk-pixbuf-2.0-dev`.
@@ -2491,6 +2563,21 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   copia configuración sin sobrescribir, crea la regla de sudoers, activa las
   alarmas y llama al script del fork. Tiene `--dry-run`, `--skip-packages`,
   `--skip-fork`, `--skip-config`, `--force-config` y `--with-firmware`.
+- **Módulos sin duplicar paquetes.** `install-packages.sh` instala la base del
+  shell, KDE/Qt, audio, portales, compilación y firmware. `network.sh` es el
+  único que instala y configura NetworkManager, Wi-Fi, punto de acceso,
+  Bluetooth y VPN (`network-manager-openvpn`), además de `dnsmasq-base`,
+  `libspa-0.2-bluetooth` (audio Bluetooth) y `qrencode`. `--skip-network`
+  omite también esos paquetes.
+- **Versiones alineadas de backports.** `install-packages.sh` instala PipeWire
+  y Mesa en bloque desde `trixie-backports`: `pipewire`, `pipewire-bin`,
+  `pipewire-pulse`, `wireplumber`, `libpipewire-0.3-*`, `libspa-0.2-modules`,
+  `libgbm1`, `mesa-libgallium`, `libgl1-mesa-dri`, `libglx-mesa0`,
+  `libegl-mesa0`, `mesa-va-drivers` y `mesa-vulkan-drivers`. Mezclar versiones
+  de trixie y backports rompía las dependencias exactas de `libspa`, pixman,
+  Mesa y Wayland. `network.sh` instala el plugin Bluetooth junto con el stack
+  completo si necesita actualizar PipeWire, y reinicia `pipewire` y
+  `wireplumber` al terminar.
 - **Fork automatizado.** `scripts/install-umbriel-fork.sh` reutiliza
   `~/umbriel-fork` o clona upstream, hace checkout de `b6c4b7d`, aplica
   `umbriel-fork.patch`, compila con meson/ninja, guarda el binario original e

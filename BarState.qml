@@ -13,7 +13,7 @@ Singleton {
     readonly property var defaultCenterOrder: [
         "wifi", "bluetooth", "volume", "mic", "night",
         "airplane", "brightness", "extraDim", "clipboard", "music",
-        "keyboard", "hotspot", "vpn", "cpu", "gpu", "net", "settings"
+        "keyboard", "hotspot", "vpn", "cpu", "gpu", "net", "dns", "settings"
     ]
 
     property var controls: root.defaultControls.slice()
@@ -26,7 +26,7 @@ Singleton {
     readonly property var allKeys: [
         "music", "wifi", "bluetooth", "volume", "mic", "night",
         "airplane", "brightness", "extraDim", "hotspot", "vpn",
-        "keyboard", "clipboard", "cpu", "gpu", "net", "settings"
+        "keyboard", "clipboard", "cpu", "gpu", "net", "dns", "settings"
     ]
 
     // Valida una lista separada por comas leída de settings.conf. Ignora
@@ -152,7 +152,7 @@ Singleton {
         if (key === "music")
             return "Música";
         if (key === "wifi")
-            return "Wi-Fi";
+            return "Red";
         if (key === "bluetooth")
             return "Bluetooth";
         if (key === "volume")
@@ -181,6 +181,8 @@ Singleton {
             return "Gráficos";
         if (key === "net")
             return "Red";
+        if (key === "dns")
+            return "DNS";
         if (key === "settings")
             return "Ajustes del shell";
         return key;

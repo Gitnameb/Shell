@@ -38,7 +38,13 @@ Singleton {
     // Separación diagonal entre ventanas flotantes en cascada. 0 la calcula
     // a partir de la barra de título.
     property int floatingCascade: 0
-    property bool showPercentages: true
+    // Cada vista decide si su valor se muestra como porcentaje en la barra y
+    // en las fichas del centro de control. Por defecto, todos desactivados.
+    property bool showVolumePercent: false
+    property bool showBrightnessPercent: false
+    property bool showExtraDimPercent: false
+    property bool showBluetoothPercent: false
+    property bool showBatteryPercent: false
     // Muestra la temperatura junto a los iconos de CPU y GPU en la barra.
     property bool showTemps: false
 
@@ -112,8 +118,16 @@ Singleton {
     property int hotspotMinutes: 15
     property bool wifiAutoOff: true
     property int wifiMinutes: 15
+    // Mostrar la entrada para conectarse a una red Wi-Fi oculta.
+    property bool showHiddenWifi: false
     property bool btAutoOff: true
     property int btMinutes: 15
+
+    // Modo avión: se guarda para sobrevivir a una recarga del shell. También
+    // se recuerdan las radios que estaban encendidas al activarlo.
+    property bool airplaneMode: false
+    property bool airplaneRestoreWifi: true
+    property bool airplaneRestoreBt: true
 
     // Bloqueo automático de la sesión con hyprlock. 0 = nunca.
     property int lockMinutes: 5
@@ -257,10 +271,6 @@ Singleton {
             shortcutProc.command = ["sh", "-c", script];
             shortcutProc.running = true;
         }
-    }
-
-    function setShowPercentages(value: bool): void {
-        root.showPercentages = value;
     }
 
     function setShowTemps(value: bool): void {
@@ -511,13 +521,58 @@ Singleton {
     function write(): void {
         if (!root.ready)
             return;
-        saveProc.command = [
-            "sh", "-c",
-            "mkdir -p \"$(dirname \"$1\")\" && printf 'maxWorkspaces=%s\\nshowPercentages=%s\\nshowTemps=%s\\nhotspotAutoOff=%s\\nhotspotMinutes=%s\\nwifiAutoOff=%s\\nwifiMinutes=%s\\nbtAutoOff=%s\\nbtMinutes=%s\\ncenterRows=%s\\ncenterIconSize=%s\\nmicShortcut=%s\\nbarIconSize=%s\\nautoHideBar=%s\\nthemeMode=%s\\naccentColor=%s\\nsystemTheme=%s\\nkeyboardLayout=%s\\nworkspaceModeDefault=%s\\nworkspaceModes=%s\\nworkspaceModeChosen=%s\\nnativeTitlebar=%s\\nlockMinutes=%s\\nwindowChrome=%s\\nwallpaperPath=%s\\nbarPosition=%s\\nmusicWidth=%s\\nsuperHoldMs=%s\\nfloatingSizePercent=%s\\nfloatingCascade=%s\\nbarControls=%s\\ncenterOrder=%s\\nwallpaperColor=%s\\nweatherPlace=%s\\n' "
-                + "\"$2\" \"$3\" \"$4\" \"$5\" \"$6\" \"$7\" \"$8\" \"$9\" \"${10}\" \"${11}\" \"${12}\" \"${13}\" \"${14}\" \"${15}\" \"${16}\" \"${17}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\" \"${27}\" \"${28}\" \"${29}\" \"${30}\" \"${31}\" \"${32}\" \"${33}\" \"${34}\" \"${35}\" > \"$1\"",
-            "alba", root.path,
+        // El script recibe la ruta en $1 y los valores en $2..$N. Se guarda la
+        // ruta, se hace shift y printf escribe las claves con los valores.
+        const format = "out=\"$1\" && shift && mkdir -p \"$(dirname \"$out\")\""
+            + " && printf 'maxWorkspaces=%s\\n"
+            + "showVolumePercent=%s\\n"
+            + "showBrightnessPercent=%s\\n"
+            + "showExtraDimPercent=%s\\n"
+            + "showBluetoothPercent=%s\\n"
+            + "showBatteryPercent=%s\\n"
+            + "showTemps=%s\\n"
+            + "hotspotAutoOff=%s\\n"
+            + "hotspotMinutes=%s\\n"
+            + "wifiAutoOff=%s\\n"
+            + "wifiMinutes=%s\\n"
+            + "btAutoOff=%s\\n"
+            + "btMinutes=%s\\n"
+            + "centerRows=%s\\n"
+            + "centerIconSize=%s\\n"
+            + "micShortcut=%s\\n"
+            + "barIconSize=%s\\n"
+            + "autoHideBar=%s\\n"
+            + "themeMode=%s\\n"
+            + "accentColor=%s\\n"
+            + "systemTheme=%s\\n"
+            + "keyboardLayout=%s\\n"
+            + "workspaceModeDefault=%s\\n"
+            + "workspaceModes=%s\\n"
+            + "workspaceModeChosen=%s\\n"
+            + "nativeTitlebar=%s\\n"
+            + "lockMinutes=%s\\n"
+            + "windowChrome=%s\\n"
+            + "wallpaperPath=%s\\n"
+            + "barPosition=%s\\n"
+            + "musicWidth=%s\\n"
+            + "superHoldMs=%s\\n"
+            + "floatingSizePercent=%s\\n"
+            + "floatingCascade=%s\\n"
+            + "barControls=%s\\n"
+            + "centerOrder=%s\\n"
+            + "wallpaperColor=%s\\n"
+            + "weatherPlace=%s\\n"
+            + "airplaneMode=%s\\n"
+            + "airplaneRestoreWifi=%s\\n"
+            + "airplaneRestoreBt=%s\\n"
+            + "showHiddenWifi=%s\\n' \"$@\" > \"$out\"";
+        const values = [
             root.maxWorkspaces,
-            root.showPercentages ? "1" : "0",
+            root.showVolumePercent ? "1" : "0",
+            root.showBrightnessPercent ? "1" : "0",
+            root.showExtraDimPercent ? "1" : "0",
+            root.showBluetoothPercent ? "1" : "0",
+            root.showBatteryPercent ? "1" : "0",
             root.showTemps ? "1" : "0",
             root.hotspotAutoOff ? "1" : "0",
             root.hotspotMinutes,
@@ -549,8 +604,13 @@ Singleton {
             BarState.controls.join(","),
             BarState.centerOrder.join(","),
             root.wallpaperColor,
-            root.weatherPlace
+            root.weatherPlace,
+            root.airplaneMode ? "1" : "0",
+            root.airplaneRestoreWifi ? "1" : "0",
+            root.airplaneRestoreBt ? "1" : "0",
+            root.showHiddenWifi ? "1" : "0"
         ];
+        saveProc.command = ["sh", "-c", format, "alba", root.path].concat(values);
         saveProc.running = true;
     }
 
@@ -580,7 +640,11 @@ Singleton {
     onSuperHoldMsChanged: saveTimer.restart()
     onFloatingSizePercentChanged: saveTimer.restart()
     onFloatingCascadeChanged: saveTimer.restart()
-    onShowPercentagesChanged: saveTimer.restart()
+    onShowVolumePercentChanged: saveTimer.restart()
+    onShowBrightnessPercentChanged: saveTimer.restart()
+    onShowExtraDimPercentChanged: saveTimer.restart()
+    onShowBluetoothPercentChanged: saveTimer.restart()
+    onShowBatteryPercentChanged: saveTimer.restart()
     onShowTempsChanged: saveTimer.restart()
     onWorkspaceModeDefaultChanged: saveTimer.restart()
     onWorkspaceModesChanged: saveTimer.restart()
@@ -616,6 +680,10 @@ Singleton {
     onWifiMinutesChanged: saveTimer.restart()
     onBtAutoOffChanged: saveTimer.restart()
     onBtMinutesChanged: saveTimer.restart()
+    onAirplaneModeChanged: saveTimer.restart()
+    onAirplaneRestoreWifiChanged: saveTimer.restart()
+    onAirplaneRestoreBtChanged: saveTimer.restart()
+    onShowHiddenWifiChanged: saveTimer.restart()
     onLockMinutesChanged: {
         saveTimer.restart();
         root.applyIdle();
@@ -675,7 +743,11 @@ Singleton {
             let superHold = root.superHoldMs;
             let floatingSize = root.floatingSizePercent;
             let floatingStep = root.floatingCascade;
-            let pct = root.showPercentages;
+            let pctVolume = root.showVolumePercent;
+            let pctBrightness = root.showBrightnessPercent;
+            let pctExtraDim = root.showExtraDimPercent;
+            let pctBluetooth = root.showBluetoothPercent;
+            let pctBattery = root.showBatteryPercent;
             let temps = root.showTemps;
             let mode = root.themeMode;
             let accent = root.accentColor;
@@ -697,6 +769,10 @@ Singleton {
             let wallpaper = root.wallpaperPath;
             let wallpaperColor = root.wallpaperColor;
             let weatherPlace = root.weatherPlace;
+            let airplane = root.airplaneMode;
+            let airplaneWifi = root.airplaneRestoreWifi;
+            let airplaneBt = root.airplaneRestoreBt;
+            let hiddenWifi = root.showHiddenWifi;
             let controlsOrder = "";
             let centerOrderText = "";
             for (let i = 0; i < lines.length; i++) {
@@ -710,8 +786,16 @@ Singleton {
                     const parsed = parseInt(value, 10);
                     if (!isNaN(parsed))
                         max = Math.max(1, Math.min(20, parsed));
-                } else if (key === "showPercentages") {
-                    pct = value === "1" || value === "true";
+                } else if (key === "showVolumePercent") {
+                    pctVolume = value === "1" || value === "true";
+                } else if (key === "showBrightnessPercent") {
+                    pctBrightness = value === "1" || value === "true";
+                } else if (key === "showExtraDimPercent") {
+                    pctExtraDim = value === "1" || value === "true";
+                } else if (key === "showBluetoothPercent") {
+                    pctBluetooth = value === "1" || value === "true";
+                } else if (key === "showBatteryPercent") {
+                    pctBattery = value === "1" || value === "true";
                 } else if (key === "centerRows") {
                     const parsed = parseInt(value, 10);
                     if (!isNaN(parsed))
@@ -801,6 +885,14 @@ Singleton {
                         wallpaperColor = value.toLowerCase();
                 } else if (key === "weatherPlace") {
                     weatherPlace = value.slice(0, 80);
+                } else if (key === "airplaneMode") {
+                    airplane = value === "1" || value === "true";
+                } else if (key === "airplaneRestoreWifi") {
+                    airplaneWifi = value === "1" || value === "true";
+                } else if (key === "airplaneRestoreBt") {
+                    airplaneBt = value === "1" || value === "true";
+                } else if (key === "showHiddenWifi") {
+                    hiddenWifi = value === "1" || value === "true";
                 } else if (key === "barControls") {
                     controlsOrder = value;
                 } else if (key === "centerOrder") {
@@ -817,7 +909,11 @@ Singleton {
             root.superHoldMs = superHold;
             root.floatingSizePercent = floatingSize;
             root.floatingCascade = floatingStep;
-            root.showPercentages = pct;
+            root.showVolumePercent = pctVolume;
+            root.showBrightnessPercent = pctBrightness;
+            root.showExtraDimPercent = pctExtraDim;
+            root.showBluetoothPercent = pctBluetooth;
+            root.showBatteryPercent = pctBattery;
             root.showTemps = temps;
             root.themeMode = mode;
             root.accentColor = accent;
@@ -839,6 +935,10 @@ Singleton {
             root.wallpaperPath = wallpaper;
             root.wallpaperColor = wallpaperColor;
             root.weatherPlace = weatherPlace;
+            root.airplaneMode = airplane;
+            root.airplaneRestoreWifi = airplaneWifi;
+            root.airplaneRestoreBt = airplaneBt;
+            root.showHiddenWifi = hiddenWifi;
             BarState.restore(controlsOrder, centerOrderText);
             root.ready = true;
             root.applyWindowChrome();

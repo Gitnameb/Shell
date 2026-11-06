@@ -106,7 +106,7 @@ PanelWindow {
                 width: 30
                 height: parent.height
 
-                // Mismo icono de tres arcos que la barra y el centro.
+                // Mismo icono de nivel que la barra y el centro.
                 LevelIcon {
                     anchors.centerIn: parent
                     visible: OsdState.kind === "volume" || OsdState.kind === "mic"

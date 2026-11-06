@@ -13,8 +13,17 @@ Singleton {
 
     property bool watching: false
     property bool scanning: false
+    property bool hasScanned: false
     property string lastError: ""
+    property string deviceState: ""
     property var accessPoints: []
+    // Puntos de acceso que no anuncian su SSID. Se muestran con su BSSID como
+    // nombre cuando el usuario activa el interruptor correspondiente.
+    property var hiddenAccessPoints: []
+    // Nombre del perfil Wi-Fi activo. Una red oculta conectada ya tiene un
+    // nombre real (el SSID que se escribió al crearla), así que se usa para
+    // mostrarlo en lugar de su BSSID.
+    property string activeConnectionName: ""
     // Preferencias de banda por SSID. Se aplican al perfil guardado de
     // NetworkManager para que la conexión no vuelva a la banda apagada.
     property var bandPrefs: ({})
@@ -27,6 +36,11 @@ Singleton {
     property bool profileQrReady: false
     property string profileQrVersion: ""
     property string profileError: ""
+    // Conexión manual a una red oculta. NetworkManager no puede revelar el
+    // SSID de una red oculta, así que se escribe a mano.
+    property bool hiddenBusy: false
+    property string hiddenError: ""
+    signal hiddenConnected()
     readonly property string profileQrPath: Quickshell.cacheDir
         + "/alba-wifi-qr.png"
     readonly property string helperPath: (Quickshell.shellDir || "")
@@ -41,16 +55,31 @@ Singleton {
     }
 
     function refresh(): void {
-        if (scanProc.running)
+        if (!root.watching || scanProc.running)
             return;
         scanProc.running = true;
     }
 
     // Pide a NetworkManager una pasada de búsqueda nueva. Se usa al abrir el
-    // panel y al pulsar el icono de recargar.
+    // panel y al pulsar el icono de recargar. Solo se permite mientras la
+    // vista de Red está visible: al cerrar el panel no debe quedar la radio
+    // escaneando en segundo plano.
     function requestScan(): void {
+        if (!root.watching)
+            return;
         if (!rescanProc.running)
             rescanProc.running = true;
+    }
+
+    // Corta la consulta periódica y cualquier búsqueda en curso. Lo llama la
+    // vista de Red al cerrarse o al cambiar de sección.
+    function stop(): void {
+        root.watching = false;
+        root.scanning = false;
+        if (scanProc.running)
+            scanProc.running = false;
+        if (rescanProc.running)
+            rescanProc.running = false;
     }
 
     // Carga los datos del perfil guardado de una red y genera su QR.
@@ -89,6 +118,25 @@ Singleton {
         forgetProc.running = true;
     }
 
+    function connectHidden(ssid, psk): void {
+        const name = String(ssid || "").trim();
+        if (name.length === 0) {
+            root.hiddenError = "Escribe el nombre de la red.";
+            return;
+        }
+        if (root.hiddenBusy)
+            return;
+        root.hiddenBusy = true;
+        root.hiddenError = "";
+        const args = ["nmcli", "--wait", "30", "device", "wifi", "connect",
+            name];
+        if (String(psk || "").length > 0)
+            args.push("password", String(psk));
+        args.push("hidden", "yes");
+        hiddenProc.command = args;
+        hiddenProc.running = true;
+    }
+
     function pointFor(ssid): var {
         for (let i = 0; i < accessPoints.length; i++) {
             if (accessPoints[i].ssid === ssid)
@@ -115,28 +163,16 @@ Singleton {
         return bandsFor(ssid).indexOf(band) !== -1;
     }
 
-    function signalIcon(strength): string {
+    // Devuelve el SVG propio de señal Wi-Fi. Así la lista de redes usa el
+    // mismo dibujo que la barra y no cambia según el tema de iconos.
+    function signalSource(strength): string {
         if (strength >= 0.75)
-            return "network-wireless-signal-excellent";
+            return AlbaIcons.src("wifi-3");
         if (strength >= 0.5)
-            return "network-wireless-signal-good";
-        if (strength >= 0.25)
-            return "network-wireless-signal-ok";
+            return AlbaIcons.src("wifi-2");
         if (strength > 0)
-            return "network-wireless-signal-weak";
-        return "network-wireless-signal-none";
-    }
-
-    function signalLabel(strength): string {
-        if (strength >= 0.75)
-            return "Excelente";
-        if (strength >= 0.5)
-            return "Buena";
-        if (strength >= 0.25)
-            return "Media";
-        if (strength > 0)
-            return "Débil";
-        return "Sin señal";
+            return AlbaIcons.src("wifi-1");
+        return AlbaIcons.src("wifi-none");
     }
 
     // Devuelve "" si se aplicó o un mensaje si no se puede apagar la última
@@ -214,6 +250,23 @@ Singleton {
         "    'IN-USE,SSID,BSSID,CHAN,FREQ,SIGNAL,SECURITY',\n" +
         "    'device','wifi','list','--rescan','no'],\n" +
         "    capture_output=True, text=True).stdout\n" +
+        "status = subprocess.run(['nmcli','-t','-f','DEVICE,TYPE,STATE',\n" +
+        "    'device','status'], capture_output=True, text=True).stdout\n" +
+        "wifi_state = ''\n" +
+        "wifi_dev = ''\n" +
+        "for line in status.splitlines():\n" +
+        "    parts = line.split(':', 2)\n" +
+        "    if len(parts) == 3 and parts[1] == 'wifi':\n" +
+        "        wifi_dev = parts[0]\n" +
+        "        wifi_state = parts[2]\n" +
+        "        break\n" +
+        "active_connection = ''\n" +
+        "if wifi_dev:\n" +
+        "    active_connection = subprocess.run(['nmcli','-g',\n" +
+        "        'GENERAL.CONNECTION','device','show', wifi_dev],\n" +
+        "        capture_output=True, text=True).stdout.strip()\n" +
+        "    if active_connection == '--':\n" +
+        "        active_connection = ''\n" +
         "def fields(line):\n" +
         "    out = []\n" +
         "    cur = ''\n" +
@@ -232,6 +285,7 @@ Singleton {
         "    out.append(cur)\n" +
         "    return out\n" +
         "aps = {}\n" +
+        "hidden = {}\n" +
         "for line in raw.splitlines():\n" +
         "    if not line.strip():\n" +
         "        continue\n" +
@@ -239,8 +293,6 @@ Singleton {
         "    if len(f) < 7:\n" +
         "        continue\n" +
         "    inuse, ssid, bssid, chan, freq, signal, security = f[:7]\n" +
-        "    if not ssid.strip():\n" +
-        "        continue\n" +
         "    try:\n" +
         "        freq = float(freq.replace(' MHz', '').strip())\n" +
         "    except Exception:\n" +
@@ -250,6 +302,19 @@ Singleton {
         "        level = int(signal)\n" +
         "    except Exception:\n" +
         "        level = 0\n" +
+        "    if not ssid.strip() or ssid.strip() == '--':\n" +
+        "        item = hidden.setdefault(bssid, {'ssid': '', 'bssid': bssid,\n" +
+        "                                    'bands': [], 'signal': 0,\n" +
+        "                                    'security': security, 'active': False})\n" +
+        "        if band and band not in item['bands']:\n" +
+        "            item['bands'].append(band)\n" +
+        "        if level > item['signal']:\n" +
+        "            item['signal'] = level\n" +
+        "        if inuse.strip() == '*':\n" +
+        "            item['active'] = True\n" +
+        "        if security:\n" +
+        "            item['security'] = security\n" +
+        "        continue\n" +
         "    item = aps.setdefault(ssid, {'ssid': ssid, 'bands': [], 'signal': 0,\n" +
         "                                'security': security, 'active': False})\n" +
         "    if band and band not in item['bands']:\n" +
@@ -262,8 +327,16 @@ Singleton {
         "        item['security'] = security\n" +
         "for item in aps.values():\n" +
         "    item['bands'].sort(key=float)\n" +
-        "print(json.dumps(sorted(aps.values(),\n" +
-        "    key=lambda x: (not x['active'], -x['signal'], x['ssid'].lower()))))\n"
+        "for item in hidden.values():\n" +
+        "    item['bands'].sort(key=float)\n" +
+        "    item['strength'] = max(0.0, min(1.0, (item['signal'] + 100) / 70.0))\n" +
+        "print(json.dumps({\n" +
+        "    'aps': sorted(aps.values(),\n" +
+        "        key=lambda x: (not x['active'], -x['signal'], x['ssid'].lower())),\n" +
+        "    'hidden': sorted(hidden.values(),\n" +
+        "        key=lambda x: (not x['active'], -x['signal'], x['bssid'])),\n" +
+        "    'state': wifi_state,\n" +
+        "    'activeConnection': active_connection}))\n"
 
     Timer {
         interval: 5000
@@ -295,6 +368,9 @@ Singleton {
 
         onExited: (code) => {
             root.scanning = false;
+            if (!root.watching)
+                return;
+            root.hasScanned = true;
             if (code !== 0) {
                 root.lastError = scanErr.text.trim() || "No se pudo consultar las redes.";
                 return;
@@ -302,10 +378,26 @@ Singleton {
             const raw = scanOut.text.trim();
             if (raw.length === 0) {
                 root.accessPoints = [];
+                root.hiddenAccessPoints = [];
+                root.deviceState = "";
+                root.activeConnectionName = "";
+                root.lastError = "";
                 return;
             }
             try {
-                root.accessPoints = JSON.parse(raw);
+                const data = JSON.parse(raw);
+                if (Array.isArray(data)) {
+                    root.accessPoints = data;
+                    root.hiddenAccessPoints = [];
+                    root.deviceState = "";
+                    root.activeConnectionName = "";
+                } else {
+                    root.accessPoints = data.aps || [];
+                    root.hiddenAccessPoints = data.hidden || [];
+                    root.deviceState = data.state || "";
+                    root.activeConnectionName =
+                        String(data.activeConnection || "");
+                }
                 root.lastError = "";
             } catch (e) {
                 root.lastError = "No se pudo leer la lista de redes.";
@@ -394,6 +486,28 @@ Singleton {
         command: ["nmcli", "device", "wifi", "rescan"]
 
         onExited: root.refresh()
+    }
+
+    Process {
+        id: hiddenProc
+
+        stderr: StdioCollector {
+            id: hiddenErr
+        }
+
+        onExited: (code) => {
+            root.hiddenBusy = false;
+            if (code !== 0) {
+                const text = String(hiddenErr.text || "").trim();
+                root.hiddenError = text.length > 0
+                    ? text : "No se pudo conectar a la red oculta.";
+                return;
+            }
+            root.hiddenError = "";
+            root.hiddenConnected();
+            root.refresh();
+            root.requestScan();
+        }
     }
 
     Process {

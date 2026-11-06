@@ -616,7 +616,7 @@ Variants {
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
                                     visible: BatteryState.present
-                                        && SettingsState.showPercentages
+                                        && SettingsState.showBatteryPercent
                                     text: BatteryState.level + "%"
                                     color: BatteryState.tone
                                     font.family: Theme.fontFamily
@@ -709,10 +709,13 @@ Variants {
                                         anchors.top: parent.top
                                         anchors.right: parent.right
                                         color: NotificationState.dnd
-                                            ? Theme.danger : Theme.accent
+                                            ? Theme.danger
+                                            : (DependencyState.hasMissing
+                                                ? Theme.warning : Theme.accent)
                                         border.width: 2
                                         border.color: Theme.glass
                                         visible: NotificationState.count > 0
+                                            || DependencyState.hasMissing
                                     }
                                 }
                             }

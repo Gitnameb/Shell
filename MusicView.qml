@@ -313,7 +313,7 @@ ColumnLayout {
         visible: MusicState.canSetVolume
 
         AlbaIcon {
-            name: "audio-volume-medium"
+            source: AlbaIcons.src("volume-2")
             color: Theme.muted
             size: 14
             fallback: "◖"

@@ -1,7 +1,10 @@
-# ALBA / Umbriel · paquetes para Debian 13 (trixie), mismo hardware
+# Shell / Umbriel · paquetes para Debian 13 (trixie), mismo hardware
 #
 # La vía recomendada es ./install.sh, que aplica esta lista automáticamente.
 # Este archivo queda como referencia manual y para revisar qué instala.
+#
+# Los paquetes de red, punto de acceso, VPN y Bluetooth los instala
+# scripts/network.sh (no install-packages.sh) para no duplicarlos.
 #
 # Punto de partida recomendado: instalar Debian 13 con el entorno KDE Plasma
 # (task-kde-desktop). Eso aporta SDDM, Qt 6, KDE, Breeze, PipeWire,
@@ -31,20 +34,43 @@ sudo apt install -t trixie-backports quickshell hyprlock
 sudo apt install -t trixie-backports umbriel xdg-desktop-portal-umbriel
 
 # ---------------------------------------------------------------------------
-# 3. Dependencias de ALBA que no siempre trae el entorno KDE
+# 3. Dependencias del shell que no siempre trae el entorno KDE
 #    (la mayoría ya vienen con task-kde-desktop)
 # ---------------------------------------------------------------------------
 sudo apt install \
   ddcutil qrencode libnotify-bin fonts-inter wvkbd swayidle kitty \
-  network-manager-openvpn power-profiles-daemon \
-  pulseaudio-utils iputils-ping wl-clipboard \
+  network-manager-openvpn wpasupplicant rfkill dnsmasq-base \
+  power-profiles-daemon pulseaudio-utils iputils-ping wl-clipboard \
   qml6-module-qtquick-effects \
   qml6-module-qt5compat-graphicaleffects \
   qml6-module-qt-labs-folderlistmodel \
   xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-kde \
   xwayland
 
-# Base KDE ligera que usa ALBA/Umbriel si no se instaló task-kde-desktop.
+# wpasupplicant es imprescindible para que NetworkManager pueda escanear y
+# conectar Wi-Fi; network-manager solo lo recomienda. rfkill permite comprobar
+# si la radio está bloqueada. dnsmasq-base es el DHCP/DNS que NetworkManager
+# usa para el punto de acceso compartido. Si Debian dejó la Ethernet en
+# /etc/network/interfaces, NetworkManager la verá «unmanaged»:
+#   sudo ./scripts/network.sh
+#
+# Audio Bluetooth de PipeWire: sin libspa-0.2-bluetooth los auriculares se
+# emparejan pero no aparecen como salida ni micrófono, y la conexión puede
+# fallar con br-connection-profile-unavailable. El plugin debe coincidir con
+# la versión instalada de libspa-0.2-modules:
+#   sudo apt install -t trixie-backports libspa-0.2-bluetooth
+
+# PipeWire y Mesa deben venir de backports y en bloque. Mezclar versiones de
+# trixie y backports rompe las dependencias exactas de libspa, pixman, Mesa y
+# Wayland. El instalador ya lo hace así; esta es la versión manual:
+#   sudo apt install -t trixie-backports \
+#     pipewire pipewire-bin pipewire-pulse wireplumber \
+#     libpipewire-0.3-0t64 libpipewire-0.3-modules libspa-0.2-modules
+#   sudo apt install -t trixie-backports \
+#     libgbm1 mesa-libgallium libgl1-mesa-dri libglx-mesa0 libegl-mesa0 \
+#     mesa-va-drivers mesa-vulkan-drivers
+
+# Base KDE ligera que usa el shell/Umbriel si no se instaló task-kde-desktop.
 # Sin plasma-workspace: no hace falta KWin ni el escritorio Plasma.
 # sddm-theme-maya solo si no hay ya un tema Breeze de SDDM.
 #   sudo apt install --no-install-recommends \
@@ -52,8 +78,7 @@ sudo apt install \
 #     libkf6config-bin kdialog \
 #     breeze breeze-icon-theme breeze-gtk-theme breeze-cursor-theme \
 #     qt6-wayland qt6-qpa-plugins qt6-svg-plugins \
-#     pipewire pipewire-pulse wireplumber \
-#     network-manager upower polkitd bluez bluez-obexd \
+#     network-manager wpasupplicant upower polkitd bluez bluez-obexd \
 #     libglib2.0-bin librsvg2-common
 #
 # El acento personalizado en apps KDE requiere plasma-apply-colorscheme
@@ -63,9 +88,10 @@ sudo apt install \
 # 4. Dependencias para compilar el fork de Umbriel
 # ---------------------------------------------------------------------------
 sudo apt install -t trixie-backports \
-  build-essential git meson ninja-build pkg-config \
+  build-essential cmake git meson ninja-build pkg-config \
   libwlroots-0.20-dev libwayland-dev wayland-protocols \
-  libdrm-dev libinput-dev libxkbcommon-dev libpixman-1-dev \
+  libdrm-dev libinput-dev libxkbcommon-dev \
+  libpixman-1-dev libpixman-1-0 \
   libcairo2-dev libpango1.0-dev libgdk-pixbuf-2.0-dev \
   libtomlplusplus-dev libjemalloc-dev libliftoff-dev \
   libdisplay-info-dev liblcms2-dev libsystemd-dev libudev-dev \
@@ -82,10 +108,10 @@ sudo apt install \
   intel-microcode \
   firmware-amd-graphics firmware-iwlwifi firmware-realtek \
   firmware-sof-signed \
-  mesa-utils mesa-vulkan-drivers mesa-va-drivers intel-media-va-driver
+  mesa-utils intel-media-va-driver
 
 # ---------------------------------------------------------------------------
-# 6. Solo para pruebas y diagnóstico (no hacen falta para usar ALBA)
+# 6. Solo para pruebas y diagnóstico (no hacen falta para usar el shell)
 # ---------------------------------------------------------------------------
 # grim slurp          capturas en pruebas
 # btop                monitor de recursos
@@ -94,10 +120,10 @@ sudo apt install \
 #
 # No instalar en la instalación limpia:
 #   hyprland hypridle hyprland-guiutils xdg-desktop-portal-hyprland
-#   (restos de la etapa Hyprland; ALBA ya no los usa)
+#   (restos de la etapa Hyprland; el shell ya no los usa)
 #
-# wl-clipboard aporta wl-copy y wl-paste. Los scripts de ALBA usan los del
+# wl-clipboard aporta wl-copy y wl-paste. Los scripts del shell usan los del
 # sistema; los binarios de scripts/bin/ solo quedan como respaldo local y no
 # se publican en el repositorio.
 #
-# zenity y canberra-gtk-play no están instalados; ALBA usa kdialog y paplay.
+# zenity y canberra-gtk-play no están instalados; el shell usa kdialog y paplay.

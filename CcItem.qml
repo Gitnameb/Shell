@@ -12,7 +12,7 @@ Rectangle {
     property string iconName: ""
     property string iconSource: ""
     property color iconColor: Theme.muted
-    // Icono de nivel (volumen/micrófono) con tres arcos dinámicos.
+    // Icono de nivel para volumen y micrófono.
     property bool levelIcon: false
     property string levelKind: "volume"
     property real level: 0
@@ -29,6 +29,9 @@ Rectangle {
     property bool active: false
     // Brillo y otros controles sin encendido/apagado abren su vista al pulsar.
     property bool toggleEnabled: true
+    // Controles que solo son un interruptor: toda la ficha alterna el estado
+    // y no abre ninguna vista (por ejemplo, el modo avión).
+    property bool wholeToggle: false
     // Celda resaltada como destino al reordenar dentro de la cuadrícula.
     property bool dropTarget: false
     signal toggled()
@@ -185,6 +188,7 @@ Rectangle {
 
         Text {
             text: "›"
+            visible: !root.wholeToggle
             color: Theme.faint
             font.family: Theme.fontFamily
             font.pixelSize: 14
@@ -240,7 +244,7 @@ Rectangle {
                 dragging = false;
                 return;
             }
-            if (event.x < 36 && root.toggleEnabled)
+            if ((event.x < 36 || root.wholeToggle) && root.toggleEnabled)
                 root.toggled();
             else
                 root.opened();
