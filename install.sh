@@ -350,8 +350,10 @@ EOF
 
     if command -v systemctl >/dev/null 2>&1 \
         && systemctl --user show-environment >/dev/null 2>&1; then
-        run systemctl --user daemon-reload
-        run systemctl --user enable --now alba-alarms.service
+        run systemctl --user daemon-reload \
+            || warn "No se pudo recargar systemd de usuario."
+        run systemctl --user enable --now alba-alarms.service \
+            || warn "No se pudo activar alba-alarms ahora; se activará al entrar."
     else
         warn "No hay una sesión systemd de usuario activa; las alarmas arrancarán al entrar."
     fi
