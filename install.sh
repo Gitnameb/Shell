@@ -333,7 +333,7 @@ After=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=$REPO_DIR/scripts/alba-alarms
+ExecStart="$REPO_DIR/scripts/alba-alarms"
 Restart=on-failure
 RestartSec=5
 

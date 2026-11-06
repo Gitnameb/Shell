@@ -272,6 +272,11 @@ el binario nuevo. `umbriel --version` puede seguir mostrando una cadena de
 versión antigua por cómo se compila; lo importante es que el proceso haya
 arrancado después de instalar el binario.
 
+> Es normal ver un aviso del enlazador sobre `libdisplay-info.so.2` y
+> `libdisplay-info.so.3` si conviven ambas versiones. Comprueba con
+> `ldd build/umbriel | grep display-info` que no falta ninguna; si Umbriel
+> arranca, el aviso es benigno.
+
 > Si un `apt upgrade` reemplaza `/usr/bin/umbriel`, hay que recompilar el fork o
 > restaurar la copia. El parche habrá que rebasarlo si upstream cambia.
 
