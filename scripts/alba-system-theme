@@ -192,12 +192,9 @@ def write_gtk_css(path, accent, ink, unfocused):
 
 def apply_kde(accent, light):
     scheme = "BreezeLight" if light else "BreezeDark"
-    if not shutil.which("plasma-apply-colorscheme"):
-        return
-    if not Path(f"/usr/share/color-schemes/{scheme}.colors").exists():
-        return
-    # Sin una sesión Plasma completa, plasma-apply-colorscheme solo cambia el
-    # acento si kdeglobals no declara el esquema actual. Se escribe primero.
+    # Escribir el esquema y los iconos no necesita Plasma: basta con
+    # kwriteconfig6. Así las apps KDE siguen usando Breeze claro/oscuro aunque
+    # no esté instalado plasma-workspace.
     if shutil.which("kwriteconfig6"):
         run(["kwriteconfig6", "--file", "kdeglobals", "--group", "General",
              "--key", "ColorScheme", scheme])
@@ -208,6 +205,14 @@ def apply_kde(accent, light):
              "--key", "ColorScheme", scheme])
         run(["kwriteconfig5", "--file", "kdeglobals", "--group", "Icons",
              "--key", "Theme", "breeze" if light else "breeze-dark"])
+
+    # El acento personalizado sí necesita plasma-apply-colorscheme (paquete
+    # plasma-workspace). Si no está, se conserva el acento por defecto de
+    # Breeze; el resto de ALBA y GTK no se ve afectado.
+    if not shutil.which("plasma-apply-colorscheme"):
+        return
+    if not Path(f"/usr/share/color-schemes/{scheme}.colors").exists():
+        return
     run(["plasma-apply-colorscheme", "--accent-color", accent, scheme])
 
 

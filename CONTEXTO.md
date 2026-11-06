@@ -993,7 +993,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 | `Audio.qml` | Estado compartido de PipeWire: salidas, entradas, predeterminadas, volumen y micrófono. |
 | `Osd.qml` | OSD sobre la barra para volumen, micrófono, brillo, atenuación extra y luz nocturna. |
 | `Theme.qml` | Colores, medidas y colores de estado. Deriva toda la paleta de `themeMode` y `accentColor`: superficies y textos cambian entre oscuro y claro, y el acento se aclara u oscurece según el fondo. |
-| `scripts/alba-system-theme` | Propaga modo y acento a GTK y KDE: `gsettings`, `settings.ini` y `gtk.css` de GTK 3/4, `kdeglobals` y `plasma-apply-colorscheme`. Guarda copias de seguridad la primera vez. |
+| `scripts/alba-system-theme` | Propaga modo y acento a GTK y KDE: `gsettings`, `settings.ini` y `gtk.css` de GTK 3/4, `kdeglobals` con `kwriteconfig6` y, si existe, `plasma-apply-colorscheme`. Guarda copias de seguridad la primera vez. |
 | `Fechas.qml` | Nombres de meses/días en español. |
 | `LauncherState.qml`, `CalendarState.qml`, `PowerState.qml`, `OsdState.qml` | Estado de los paneles. |
 | `NotificationState.qml` | Estado del panel y de su vista (`panelView`), `NotificationServer` de D-Bus, hora de llegada y agrupación por app. |
@@ -2499,6 +2499,14 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 - **Rutas de usuario.** Se quitaron las rutas `/home/username` de los comandos
   de `alba-idle`, `alba-keyboard-layout` y `alba-umbriel-theme`; ahora usan
   `Quickshell.env("HOME")`, así que el shell funciona con cualquier usuario.
+- **Modo ligero.** Se quitó `plasma-workspace` y `kde-cli-tools` de la lista de
+  paquetes. `alba-system-theme` ahora escribe `ColorScheme` e `Icons` con
+  `kwriteconfig6` y solo usa `plasma-apply-colorscheme` si existe. Probado con
+  un HOME temporal y sin `plasma-apply-colorscheme`: las apps KDE quedan en
+  BreezeDark/Breeze y GTK sigue recibiendo el acento. Queda pendiente una
+  alternativa ligera para el acento en apps KDE (generar un `.colors` propio,
+  matugen, wallust, etc.). Para SDDM se usa `sddm-theme-maya` cuando no hay
+  tema Breeze.
 - **Pruebas.** Se verificó que el parche reproduce exactamente el árbol del fork
   y que una compilación desde un clon limpio termina correctamente
   (`umbriel 0.1.0 (b6c4b7ddfb03-dirty)`). También se probó `install.sh

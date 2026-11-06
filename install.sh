@@ -163,7 +163,7 @@ ensure_repos() {
 }
 
 KDE_PKGS=(
-    sddm plasma-workspace plasma-integration kde-cli-tools libkf6config-bin
+    sddm libpam-systemd plasma-integration libkf6config-bin
     kdialog breeze breeze-icon-theme breeze-gtk-theme breeze-cursor-theme
     qt6-wayland qt6-qpa-plugins qt6-svg-plugins
     pipewire pipewire-pulse wireplumber
@@ -213,7 +213,25 @@ if (( ! SKIP_PACKAGES )); then
         -t trixie-backports quickshell hyprlock umbriel xdg-desktop-portal-umbriel
 
     log "Instalando la base de KDE, Qt, audio y servicios."
-    run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "${KDE_PKGS[@]}"
+    # Sin plasma-workspace: solo las librerías y herramientas que usa ALBA.
+    # --no-install-recommends evita que kio6 arrastre systemsettings/Plasma.
+    if [[ ! -e /usr/share/sddm/themes/breeze/Main.qml \
+        && ! -e /usr/share/sddm/themes/debian-breeze/Main.qml ]]; then
+        log "Instalando un tema ligero para SDDM (sin Plasma)."
+        run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            --no-install-recommends sddm-theme-maya
+    fi
+    run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        --no-install-recommends "${KDE_PKGS[@]}"
+
+    if [[ ! -e /usr/share/sddm/themes/breeze/Main.qml \
+        && ! -e /usr/share/sddm/themes/debian-breeze/Main.qml \
+        && ! -e /etc/sddm.conf.d/20-alba-theme.conf ]]; then
+        log "Configurando SDDM con el tema ligero maya."
+        run_sudo install -d /etc/sddm.conf.d
+        printf '[Theme]\nCurrent=maya\n' \
+            | run_sudo tee /etc/sddm.conf.d/20-alba-theme.conf >/dev/null
+    fi
 
     log "Instalando las dependencias de ALBA."
     run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "${RUNTIME_PKGS[@]}"

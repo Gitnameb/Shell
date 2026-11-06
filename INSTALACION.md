@@ -135,6 +135,18 @@ La vía más fiel a esta instalación es instalar Debian 13 con el entorno
 KDE aporta SDDM, Qt 6, Breeze, `kdialog`, `plasma-integration`, PipeWire,
 NetworkManager, BlueZ, UPower, Polkit y el portal de KDE.
 
+El instalador también funciona sobre un Debian mínimo: instala solo las
+librerías y herramientas de KDE que necesita ALBA, **sin `plasma-workspace` ni
+`kde-cli-tools`**. Eso evita arrastrar KWin y el escritorio Plasma completo.
+La contrapartida es que las apps KDE usarán Breeze claro/oscuro, pero no
+heredarán el acento personalizado de ALBA; eso queda pendiente de una
+alternativa ligera.
+
+> **Si quieres el modo ligero de verdad**, instala Debian **sin** el task de KDE
+> (sistema estándar, sin escritorio) y deja que `install.sh` ponga SDDM, Breeze
+> y las librerías. Si ya instalaste KDE, el script no añadirá
+> `plasma-workspace`, pero tampoco lo quitará: vendrá con el escritorio.
+
 Después, instalar lo específico:
 
 ```sh
@@ -160,10 +172,11 @@ está en `install/packages.txt`.
 - **Qt/Quickshell:** `quickshell`, `qml6-module-qtquick-effects`,
   `qml6-module-qt5compat-graphicaleffects` (portada redondeada y tintado de
   iconos), `qml6-module-qt-labs-folderlistmodel` (iconos del escritorio).
-- **KDE/Qt:** `plasma-integration`, `plasma-workspace`, `kde-cli-tools`,
-  `libkf6config-bin`, `kdialog`, `breeze`, `breeze-icon-theme`,
-  `breeze-gtk-theme`, `breeze-cursor-theme`, `qt6-wayland`, `qt6-qpa-plugins`,
-  `qt6-svg-plugins`.
+- **KDE/Qt:** `plasma-integration`, `libkf6config-bin`, `kdialog`, `breeze`,
+  `breeze-icon-theme`, `breeze-gtk-theme`, `breeze-cursor-theme`,
+  `qt6-wayland`, `qt6-qpa-plugins`, `qt6-svg-plugins`.
+  `plasma-workspace` y `kde-cli-tools` **no** son necesarios; solo aportan
+  `plasma-apply-colorscheme` (acento en apps KDE) y herramientas que ALBA no usa.
 - **Audio:** `pipewire`, `pipewire-pulse`, `wireplumber`; `wpctl` para los
   atajos y `paplay` (`pulseaudio-utils`) para las alarmas.
 - **Red:** `network-manager`, `network-manager-openvpn`, `nmcli`, `qrencode`
@@ -470,8 +483,12 @@ Los perfiles de red y VPN viven en `/etc/NetworkManager/system-connections/`
 
 - `gsettings` (`libglib2.0-bin`)
 - `kwriteconfig6` (`libkf6config-bin`)
-- `plasma-apply-colorscheme` (`plasma-workspace`)
 - Breeze (`breeze`, `breeze-icon-theme`, `breeze-gtk-theme`)
+
+`plasma-apply-colorscheme` (`plasma-workspace`) es **opcional**: si está, aplica
+el acento personalizado a las apps KDE; si no, el script deja `ColorScheme` e
+`Icons` en `kdeglobals` y las apps usan Breeze normal. ALBA y GTK no dependen de
+él.
 
 ### 7.7 Puente X11
 

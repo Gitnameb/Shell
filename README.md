@@ -48,6 +48,14 @@ falta o está en pruebas está en `PENDIENTES.md`. Lo más relevante:
 
 La lista completa, por capas, está en `install/packages.txt`.
 
+### Modo ligero
+
+El instalador **no instala `plasma-workspace` ni el escritorio Plasma**. Solo
+instala las librerías y herramientas de KDE que ALBA necesita (`plasma-integration`,
+Breeze, `kdialog`, `kwriteconfig6` y SDDM). Las apps KDE seguirán usando Breeze
+claro/oscuro, pero no heredarán el acento personalizado de ALBA; eso queda como
+mejora pendiente. ALBA, Umbriel y las apps GTK no dependen de Plasma.
+
 ## Instalación
 
 La vía recomendada es el instalador incluido:

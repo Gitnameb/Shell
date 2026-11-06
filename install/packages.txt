@@ -44,15 +44,20 @@ sudo apt install \
   xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-kde \
   xwayland
 
-# Base KDE que usa ALBA/Umbriel si no se instaló task-kde-desktop:
-#   sudo apt install \
-#     sddm plasma-desktop plasma-workspace plasma-integration \
-#     kde-cli-tools libkf6config-bin kdialog \
+# Base KDE ligera que usa ALBA/Umbriel si no se instaló task-kde-desktop.
+# Sin plasma-workspace: no hace falta KWin ni el escritorio Plasma.
+# sddm-theme-maya solo si no hay ya un tema Breeze de SDDM.
+#   sudo apt install --no-install-recommends \
+#     sddm sddm-theme-maya libpam-systemd plasma-integration \
+#     libkf6config-bin kdialog \
 #     breeze breeze-icon-theme breeze-gtk-theme breeze-cursor-theme \
 #     qt6-wayland qt6-qpa-plugins qt6-svg-plugins \
 #     pipewire pipewire-pulse wireplumber \
 #     network-manager upower polkitd bluez bluez-obexd \
 #     libglib2.0-bin librsvg2-common
+#
+# El acento personalizado en apps KDE requiere plasma-apply-colorscheme
+# (paquete plasma-workspace). Es opcional; sin él, las apps usan Breeze.
 
 # ---------------------------------------------------------------------------
 # 4. Dependencias para compilar el fork de Umbriel

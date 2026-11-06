@@ -507,6 +507,10 @@ Tras cerrar sesión y volver a entrar:
   archivos de sistema en `install/`. Antes de formatear, seguir la sección de
   copias y comprobar B3/B5. Falta probar el instalador en una VM o disco
   aparte, y probar la reversión (E4).
+- **Acento de KDE sin `plasma-workspace`:** pendiente. Sin ese paquete, las
+  apps KDE usan Breeze pero no el acento de ALBA. Alternativas a estudiar:
+  generar un `.colors` propio en `~/.local/share/color-schemes`, `matugen` o
+  `wallust`. No instalar `plasma-workspace` solo por esto.
 - **D1 fase 2 aparcada por decisión del usuario (2026-11-05):** se retoma al
   final, después del resto de bloques.
 - A4 (volumen por ventana) sigue descartado.
