@@ -1,0 +1,269 @@
+#!/usr/bin/env bash
+# Compila el fork de Umbriel y sustituye /usr/bin/umbriel de forma atómica.
+#
+# Uso:
+#   ./scripts/install-umbriel-fork.sh [opciones]
+#
+# Opciones:
+#   --source DIR      Árbol de Umbriel (por defecto ~/umbriel-fork)
+#   --patch FILE      Parche para reconstruir el fork (por defecto el del repo)
+#   --build-dir DIR   Directorio de compilación (por defecto DIR/build)
+#   --build-only      Compila y valida, pero no instala
+#   --no-backup       No guarda copia del binario actual
+#   --dry-run         Muestra los comandos sin ejecutarlos
+#   --yes             No pide confirmación antes de instalar
+#   -h, --help        Muestra esta ayuda
+#
+# El script se ejecuta como usuario normal. Solo usa sudo para escribir en
+# /usr/bin y para guardar la copia del binario original.
+
+set -Eeuo pipefail
+
+REPO_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+PATCH="${REPO_DIR}/umbriel-fork.patch"
+UPSTREAM="${UMBRIEL_UPSTREAM:-https://github.com/noctalia-dev/umbriel.git}"
+BASE_COMMIT="${UMBRIEL_BASE_COMMIT:-b6c4b7d}"
+SOURCE_DIR="${UMBRIEL_FORK_DIR:-$HOME/umbriel-fork}"
+BUILD_DIR=""
+INSTALLED_BIN="/usr/bin/umbriel"
+
+DRY_RUN=0
+ASSUME_YES=0
+BUILD_ONLY=0
+BACKUP=1
+
+usage() {
+    cat <<'EOF'
+Compila el fork de Umbriel y sustituye /usr/bin/umbriel de forma atómica.
+
+Uso:
+  ./scripts/install-umbriel-fork.sh [opciones]
+
+Opciones:
+  --source DIR      Árbol de Umbriel (por defecto ~/umbriel-fork)
+  --patch FILE      Parche para reconstruir el fork (por defecto el del repo)
+  --build-dir DIR   Directorio de compilación (por defecto DIR/build)
+  --build-only      Compila y valida, pero no instala
+  --no-backup       No guarda copia del binario actual
+  --dry-run         Muestra los comandos sin ejecutarlos
+  --yes             No pide confirmación antes de instalar
+  -h, --help        Muestra esta ayuda
+EOF
+}
+
+log() {
+    printf '\n\033[1;34m==>\033[0m %s\n' "$*"
+}
+
+warn() {
+    printf '\033[1;33maviso:\033[0m %s\n' "$*" >&2
+}
+
+die() {
+    printf '\033[1;31merror:\033[0m %s\n' "$*" >&2
+    exit 1
+}
+
+run() {
+    printf '\033[2m$\033[0m'
+    printf ' %q' "$@"
+    printf '\n'
+    if (( ! DRY_RUN )); then
+        "$@"
+    fi
+}
+
+run_sudo() {
+    run sudo "$@"
+}
+
+sha() {
+    sha256sum "$1" 2>/dev/null | awk '{print $1}'
+}
+
+while (( $# > 0 )); do
+    case "$1" in
+        --source)
+            [[ $# -ge 2 ]] || die "Falta el valor de --source"
+            SOURCE_DIR=$2
+            shift 2
+            ;;
+        --patch)
+            [[ $# -ge 2 ]] || die "Falta el valor de --patch"
+            PATCH=$2
+            shift 2
+            ;;
+        --build-dir)
+            [[ $# -ge 2 ]] || die "Falta el valor de --build-dir"
+            BUILD_DIR=$2
+            shift 2
+            ;;
+        --build-only)
+            BUILD_ONLY=1
+            shift
+            ;;
+        --no-backup)
+            BACKUP=0
+            shift
+            ;;
+        --dry-run)
+            DRY_RUN=1
+            shift
+            ;;
+        --yes)
+            ASSUME_YES=1
+            shift
+            ;;
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        *)
+            die "Opción desconocida: $1 (usa --help)"
+            ;;
+    esac
+done
+
+if (( EUID == 0 )); then
+    die "Ejecuta este script como tu usuario normal, no con sudo."
+fi
+
+for cmd in git meson ninja sudo; do
+    command -v "$cmd" >/dev/null 2>&1 || die "Falta '$cmd'. Ejecuta primero ./install.sh."
+done
+
+[[ -f "$PATCH" ]] || die "No encuentro el parche: $PATCH"
+
+BUILD_DIR="${BUILD_DIR:-$SOURCE_DIR/build}"
+BINARY="$BUILD_DIR/umbriel"
+
+# Normalizar rutas relativas para que el script funcione desde cualquier sitio.
+case "$SOURCE_DIR" in /*) ;; *) SOURCE_DIR="$(pwd)/$SOURCE_DIR" ;; esac
+case "$BUILD_DIR" in /*) ;; *) BUILD_DIR="$(pwd)/$BUILD_DIR" ;; esac
+case "$PATCH" in /*) ;; *) PATCH="$(pwd)/$PATCH" ;; esac
+BINARY="$BUILD_DIR/umbriel"
+
+if (( ! DRY_RUN && ! BUILD_ONLY )); then
+    sudo -v || die "No se pudo obtener permiso de sudo."
+fi
+
+log "Árbol de Umbriel: $SOURCE_DIR"
+log "Parche: $PATCH"
+log "Compilación: $BUILD_DIR"
+
+# ---------------------------------------------------------------------------
+# 1. Preparar el código
+# ---------------------------------------------------------------------------
+if [[ -d "$SOURCE_DIR/.git" ]]; then
+    if [[ -n "$(git -C "$SOURCE_DIR" status --porcelain 2>/dev/null)" ]]; then
+        log "El árbol tiene cambios locales; se compila tal cual."
+    else
+        current=$(git -C "$SOURCE_DIR" rev-parse HEAD 2>/dev/null || true)
+        if [[ "$current" != "$(git -C "$SOURCE_DIR" rev-parse "$BASE_COMMIT" 2>/dev/null || true)" ]]; then
+            log "Árbol limpio; se cambia a la base $BASE_COMMIT."
+            run git -C "$SOURCE_DIR" checkout -B alba-fork "$BASE_COMMIT"
+        fi
+        log "Aplicando el parche del fork."
+        run git -C "$SOURCE_DIR" apply "$PATCH"
+    fi
+elif [[ -d "$SOURCE_DIR" ]]; then
+    warn "El directorio no es un repositorio git; se compila tal cual."
+else
+    log "Clonando Umbriel desde $UPSTREAM."
+    run git clone "$UPSTREAM" "$SOURCE_DIR"
+    run git -C "$SOURCE_DIR" checkout -B alba-fork "$BASE_COMMIT"
+    run git -C "$SOURCE_DIR" apply "$PATCH"
+fi
+
+# ---------------------------------------------------------------------------
+# 2. Compilar
+# ---------------------------------------------------------------------------
+if [[ -f "$BUILD_DIR/build.ninja" ]]; then
+    log "Reconfigurando el directorio de compilación."
+    if ! run meson setup --reconfigure "$BUILD_DIR" --prefix=/usr --buildtype=release; then
+        warn "La reconfiguración falló; se recrea $BUILD_DIR."
+        run rm -rf "$BUILD_DIR"
+        run meson setup "$BUILD_DIR" "$SOURCE_DIR" --prefix=/usr --buildtype=release
+    fi
+else
+    log "Configurando la compilación."
+    run meson setup "$BUILD_DIR" "$SOURCE_DIR" --prefix=/usr --buildtype=release
+fi
+
+log "Compilando."
+run ninja -C "$BUILD_DIR"
+
+if (( ! DRY_RUN )); then
+    [[ -x "$BINARY" ]] || die "No se generó el binario: $BINARY"
+    missing=$(ldd "$BINARY" 2>/dev/null | grep 'not found' || true)
+    [[ -z "$missing" ]] || die "Faltan bibliotecas para ejecutar el binario:
+$missing"
+fi
+
+log "Binario compilado: $BINARY"
+
+if (( BUILD_ONLY )); then
+    log "Modo --build-only: no se instala nada."
+    exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# 3. Instalar
+# ---------------------------------------------------------------------------
+build_hash=$(sha "$BINARY" 2>/dev/null || true)
+current_hash=$(sha "$INSTALLED_BIN" 2>/dev/null || true)
+
+if [[ -n "$build_hash" && "$build_hash" == "$current_hash" ]]; then
+    log "El binario instalado ya es este mismo fork. No hay nada que hacer."
+    exit 0
+fi
+
+if (( ! ASSUME_YES && ! DRY_RUN )); then
+    printf '\nSe va a sustituir %s por el fork compilado.\n' "$INSTALLED_BIN"
+    read -r -p "¿Continuar? [s/N] " answer || answer=""
+    [[ "$answer" =~ ^[sSyY]$ ]] || die "Cancelado."
+fi
+
+if (( BACKUP )); then
+    if compgen -G "/usr/bin/umbriel.stock-*" >/dev/null 2>&1; then
+        log "Ya existe una copia del binario original; no se sobrescribe."
+    elif dpkg -V umbriel 2>/dev/null | grep -q '/usr/bin/umbriel$'; then
+        warn "El binario actual no coincide con el del paquete; no se guarda como original."
+    else
+        version=$(dpkg-query -W -f='${Version}' umbriel 2>/dev/null | cut -d'~' -f1 || true)
+        [[ -n "$version" ]] || version=$(date +%Y%m%d)
+        stock="/usr/bin/umbriel.stock-$version"
+        run_sudo cp -a "$INSTALLED_BIN" "$stock"
+        log "Copia del binario original: $stock"
+    fi
+fi
+
+log "Instalando de forma atómica."
+tmp="/usr/bin/.umbriel.new.$$"
+cleanup() {
+    if (( ! DRY_RUN )) && [[ -n "${tmp:-}" ]]; then
+        sudo rm -f "$tmp" 2>/dev/null || true
+    fi
+}
+trap cleanup EXIT
+
+run_sudo install -m755 -o root -g root "$BINARY" "$tmp"
+run_sudo mv -f "$tmp" "$INSTALLED_BIN"
+tmp=""
+
+if (( DRY_RUN )); then
+    log "Simulación completada: no se ha instalado nada."
+    exit 0
+fi
+
+installed_hash=$(sha "$INSTALLED_BIN" 2>/dev/null || true)
+[[ "$installed_hash" == "$build_hash" ]] || die "La instalación no coincide con el binario compilado."
+
+log "Fork instalado correctamente."
+"$INSTALLED_BIN" --version 2>/dev/null || warn "No se pudo comprobar 'umbriel --version'."
+
+cat <<'EOF'
+
+Cierra sesión y vuelve a entrar para que el compositor use el binario nuevo.
+Si un 'apt upgrade' reemplaza /usr/bin/umbriel, vuelve a ejecutar este script.
+EOF

@@ -2458,13 +2458,14 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   copias y verificación. Los archivos de sistema que vivían fuera del proyecto
   se guardaron en `install/`: scripts de `~/.local/bin`, configuración de
   Umbriel, `portals.conf`, unidad de alarmas, fuentes de APT y regla de sudoers.
-  La instalación sigue siendo manual; E1 (script) y E4 (prueba de reversión)
-  están pendientes.
+  La instalación está automatizada con `install.sh` y
+  `scripts/install-umbriel-fork.sh`; falta probarla de principio a fin en un
+  Debian limpio y probar la reversión (E4).
 - **Veredicto de uso principal.** El sistema está listo para el día a día en
-  este equipo salvo B3 (captura/uso compartido) sin probar y la instalación
-  manual. B5 sí se puede probar porque el AX210 tiene Wi-Fi y Bluetooth. No
-  bloquean el uso: A4, opciones VPN, pestañas del reloj, iconos del escritorio,
-  perfiles personalizados y adaptación a portátiles.
+  este equipo salvo B3 (captura/uso compartido) sin probar y el instalador sin
+  probar en limpio. B5 sí se puede probar porque el AX210 tiene Wi-Fi y
+  Bluetooth. No bloquean el uso: A4, opciones VPN, pestañas del reloj, iconos
+  del escritorio, perfiles personalizados y adaptación a portátiles.
 - **Escritorios automáticos, idea futura.** El `workspaces = 9` actual depende
   del conector `HDMI-A-1`. Un script que lea `umbriel outputs --json` y escriba
   el inventario por salida evitaría repetir la sección en cada equipo.
@@ -2474,3 +2475,32 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   ayudante con polkit para escribir en `cpufreq`/`intel_pstate`, `amdgpu` o
   `nvidia-smi`, y límites RAPL/`ryzenadj` donde el firmware lo permita. Queda
   anotado como pendiente y no se implementa hasta que concrete los controles.
+
+### 2026-11-05 · Publicación en GitHub e instalador E1
+
+- **Repositorio público.** El proyecto se publicó en
+  `https://github.com/Gitnameb/Shell` bajo GPL-3.0, con `README.md`, aviso de
+  proyecto personal en desarrollo y `.gitignore`. Se excluyeron los binarios de
+  `wl-clipboard`; ahora `wl-copy`/`wl-paste` se usan del sistema y los scripts
+  tienen el binario local solo como respaldo. Se añadió `wl-clipboard` a los
+  paquetes.
+- **Plantillas saneadas.** Las rutas `/home/username` se sustituyeron por
+  `/home/USUARIO` en `install/`, se vaciaron el fondo y la ciudad del clima, y
+  la regla de sudoers usa `USUARIO`.
+- **Instalador general.** `install.sh` añade repositorios, instala paquetes,
+  copia configuración sin sobrescribir, crea la regla de sudoers, activa las
+  alarmas y llama al script del fork. Tiene `--dry-run`, `--skip-packages`,
+  `--skip-fork`, `--skip-config`, `--force-config` y `--with-firmware`.
+- **Fork automatizado.** `scripts/install-umbriel-fork.sh` reutiliza
+  `~/umbriel-fork` o clona upstream, hace checkout de `b6c4b7d`, aplica
+  `umbriel-fork.patch`, compila con meson/ninja, guarda el binario original e
+  instala con `mv` atómico. Valida el hash y detecta si el binario ya es el
+  fork.
+- **Rutas de usuario.** Se quitaron las rutas `/home/username` de los comandos
+  de `alba-idle`, `alba-keyboard-layout` y `alba-umbriel-theme`; ahora usan
+  `Quickshell.env("HOME")`, así que el shell funciona con cualquier usuario.
+- **Pruebas.** Se verificó que el parche reproduce exactamente el árbol del fork
+  y que una compilación desde un clon limpio termina correctamente
+  (`umbriel 0.1.0 (b6c4b7ddfb03-dirty)`). También se probó `install.sh
+  --dry-run`. Falta la instalación completa en una VM o disco aparte y la
+  prueba de reversión E4.

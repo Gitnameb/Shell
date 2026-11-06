@@ -410,12 +410,14 @@ impacto en el uso diario, no por lucimiento.
 ## Fase E · Mantenimiento y robustez
 
 ### E1. Script de compilación (S)
-- `scripts/install-umbriel-fork.sh`: compila, instala con `mv` atómico
-  (el binario en uso no se puede sobrescribir), guarda copia y valida.
-- Detectar si `apt` reemplazó `/usr/bin/umbriel` y avisar.
-- **Hecho parcial:** `INSTALACION.md` y `install/` documentan el proceso
-  completo y guardan los archivos de sistema. Falta convertir esas instrucciones
-  en un script probado.
+- `scripts/install-umbriel-fork.sh`: clona Umbriel si no existe, aplica
+  `umbriel-fork.patch`, compila, instala con `mv` atómico, guarda copia del
+  binario original y valida el hash.
+- `install.sh`: instala repositorios, paquetes, configuración, sudoers y
+  alarmas, y llama al script del fork.
+- **Hecho.** Probado con `--dry-run` y con una compilación completa desde un
+  clon limpio de Umbriel (`b6c4b7d` + parche). Falta la prueba definitiva en un
+  Debian recién instalado.
 
 ### E2. Rebase del fork (M, recurrente)
 - El parche está sobre `b6c4b7d`. Cada actualización de Umbriel exige rebasar

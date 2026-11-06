@@ -6,9 +6,44 @@ incluye repositorios, paquetes, compilación del fork, archivos de usuario,
 servicios y comprobaciones.
 
 > **Estado:** el sistema actual funciona para uso diario en este equipo, pero
-> B3 (captura/uso compartido desde apps) sigue sin probar y la instalación aún
-> es manual. Antes de borrar, hacer copia de seguridad y leer la sección
-> «Antes de formatear».
+> B3 (captura/uso compartido desde apps) sigue sin probar. La instalación ya
+> está automatizada con `./install.sh`, aunque todavía no se ha ejecutado de
+> principio a fin en un Debian recién instalado. Antes de borrar, hacer copia de
+> seguridad y leer la sección «Antes de formatear».
+
+---
+
+## 0. Instalador automático
+
+La vía rápida es clonar el repositorio y ejecutar el instalador **como usuario
+normal**, nunca con `sudo`:
+
+```sh
+git clone git@github.com:Gitnameb/Shell.git ~/Shell
+cd ~/Shell
+./install.sh --dry-run   # revisar qué hará
+./install.sh             # instalar
+```
+
+El instalador:
+
+1. Añade `trixie-backports` y el repositorio de Noctalia.
+2. Instala Quickshell, Umbriel, el portal, KDE/Qt, audio, red y las
+   dependencias de compilación.
+3. Enlaza el shell en `~/.config/quickshell/alba` y copia los scripts a
+   `~/.local/bin`.
+4. Copia la configuración de ALBA y Umbriel **sin sobrescribir** la que ya
+   exista. Con `--force-config` la reemplaza y guarda una copia `.bak`.
+5. Crea la regla de sudoers de `ddcutil` y activa la unidad de alarmas.
+6. Compila e instala el fork de Umbriel con `scripts/install-umbriel-fork.sh`.
+
+Opciones: `--dry-run`, `--skip-packages`, `--skip-fork`, `--skip-config`,
+`--force-config`, `--with-firmware` y `--help`.
+
+> Probado con `--dry-run` y con una compilación completa desde un clon limpio
+> de Umbriel. **Falta la prueba definitiva en un Debian recién instalado.**
+> El resto de esta guía documenta el proceso manual y sirve para revisar o
+> reparar lo que haga el script.
 
 ---
 
@@ -202,6 +237,20 @@ git apply ~/Documents/Alba/umbriel-fork.patch
 
 ### 4.3 Compilar e instalar
 
+La forma recomendada es el script del repositorio, que clona la base si hace
+falta, aplica el parche, compila, guarda el binario original e instala con `mv`
+atómico:
+
+```sh
+./scripts/install-umbriel-fork.sh
+```
+
+Opciones: `--build-only` (compila sin instalar), `--dry-run`, `--source DIR`,
+`--build-dir DIR`, `--no-backup` y `--yes`. Si el árbol `~/umbriel-fork` no
+existe, lo clona desde upstream y aplica `umbriel-fork.patch`.
+
+También se puede hacer a mano:
+
 ```sh
 cd ~/umbriel-fork
 meson setup build --prefix=/usr --buildtype=release
@@ -273,10 +322,10 @@ En `~/.config/umbriel/config.toml`:
 
 ```toml
 [general]
-autostart = ["/home/username/.local/bin/alba-start"]
+autostart = ["/home/TU_USUARIO/.local/bin/alba-start"]
 ```
 
-Si el usuario o la ruta cambian, ajustar esa línea.
+Sustituye `TU_USUARIO` por tu usuario. El instalador lo hace solo.
 
 ### 5.4 Preferencias de ALBA
 
@@ -289,10 +338,10 @@ cp install/config/alba-settings.conf ~/.config/alba/settings.conf
 cp install/config/alba-display.conf ~/.config/alba/display.conf
 ```
 
-Revisar `wallpaperPath` (la imagen actual está en
-`/home/username/Downloads/wallhaven-9oempk.jpg`) y `weatherPlace`. No copiar
-`credenciales` salvo que se sepa que hace falta: es un secreto local y el código
-actual no lo usa.
+Revisar `wallpaperPath` (la plantilla lo deja vacío y usa un color de fondo) y
+`weatherPlace` (vacío significa que se deduce por IP). No copiar `credenciales`
+salvo que se sepa que hace falta: es un secreto local y el código actual no lo
+usa.
 
 Los antiguos `alternar-autoocultar.sh`, `alternar-no-molestar.sh` y
 `alternar-posicion.sh` están en `install/config/` por si se quieren conservar;
@@ -455,7 +504,7 @@ sigue pendiente de probar.
 - `~/.config/autostart/org.kde.xwaylandvideobridge.desktop`.
 - `~/.config/kdeglobals` y `~/.config/gtk-*/` si se quieren conservar; el script
   de tema los recrea.
-- El fondo de pantalla actual: `/home/username/Downloads/wallhaven-9oempk.jpg`.
+- Tu fondo de pantalla (cópialo aparte y ajusta `wallpaperPath`).
 - `~/.local/state/alba/` (historial de portapapeles y progreso; opcional).
 
 ### 8.3 Red y secretos
@@ -491,11 +540,14 @@ Revisar que el archivo de red no se comparte sin protección.
    emparejamiento se pueden validar antes de borrar.
 3. **Decidir A4**: el volumen por ventana sigue en primera versión.
 4. **Guardar la copia** de la sección 8 y comprobar que se puede leer.
-5. **Anotar la contraseña de sudo** o tenerla a mano; el script de instalación
-   del fork la pedirá.
-6. **Comprobar el disco**: no confundir la raíz Debian con las particiones
+5. **Probar el instalador en una VM o en un disco aparte.** Ejecuta primero
+   `./install.sh --dry-run`, revisa la lista y después `./install.sh`. Confirma
+   que ALBA arranca antes de tocar el disco principal.
+6. **Anotar la contraseña de sudo** o tenerla a mano; el instalador la pedirá
+   para apt, el fork y la regla de `ddcutil`.
+7. **Comprobar el disco**: no confundir la raíz Debian con las particiones
    Windows/NTFS.
-7. **No ejecutar `umbriel config-replace`** sin querer: borra los layouts por
+8. **No ejecutar `umbriel config-replace`** sin querer: borra los layouts por
    escritorio. Si se usa, reaplicar con
    `qs ipc -c alba call windows mode <n> <modo>`.
 
@@ -549,6 +601,10 @@ Comprobar a mano:
   `platform_profile`.
 - **Escritorios automáticos:** sustituir la sección manual por un script que
   detecte los conectores y ajuste `workspaces` por salida.
-- **E1/E4:** script de instalación y reversión documentada. Esta guía es el
-  paso previo; el script todavía no existe.
+- **E1:** hecho. `install.sh` y `scripts/install-umbriel-fork.sh` automatizan
+  paquetes, configuración, sudoers, alarmas y compilación del fork. Probados con
+  `--dry-run` y con una compilación completa desde un clon limpio; falta la
+  prueba definitiva en un Debian recién instalado.
+- **E4:** la reversión está documentada en la sección 4.4, pero todavía no se ha
+  probado en una instalación limpia.
 - **Fork:** cada actualización de Umbriel puede requerir rebase y recompilación.

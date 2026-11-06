@@ -32,7 +32,8 @@ falta o está en pruebas está en `PENDIENTES.md`. Lo más relevante:
   verificados de principio a fin.
 - Wi-Fi y Bluetooth funcionan, pero algunos flujos (hotspot, olvidar redes,
   emparejamiento) no se han probado en todo tipo de hardware.
-- La instalación es manual: no hay un instalador automático todavía.
+- La instalación está automatizada con `./install.sh`, pero todavía no se ha
+  probado de principio a fin en un Debian recién instalado.
 - El número de escritorios está fijado por conector (`HDMI-A-1` en este equipo).
 
 ## Requisitos
@@ -49,33 +50,33 @@ La lista completa, por capas, está en `install/packages.txt`.
 
 ## Instalación
 
-La guía detallada está en **[`INSTALACION.md`](INSTALACION.md)**. Resumen:
+La vía recomendada es el instalador incluido:
 
 ```sh
-# 1. Repositorios: trixie-backports y Noctalia (ver INSTALACION.md)
-# 2. Paquetes
-sudo apt install -t trixie-backports quickshell umbriel xdg-desktop-portal-umbriel
-sudo apt install ddcutil qrencode libnotify-bin fonts-inter wvkbd swayidle \
-  kitty network-manager-openvpn power-profiles-daemon pulseaudio-utils \
-  wl-clipboard xwayland
-
-# 3. Enlazar el shell
-ln -sfn "$PWD" ~/.config/quickshell/alba
-
-# 4. Scripts auxiliares
-mkdir -p ~/.local/bin
-install -m755 install/bin/alba-* ~/.local/bin/
-
-# 5. Compilar el fork de Umbriel (opcional pero recomendado)
-#    Ver INSTALACION.md, sección 4.
+git clone git@github.com:Gitnameb/Shell.git ~/Shell
+cd ~/Shell
+./install.sh --dry-run   # muestra lo que hará, sin tocar nada
+./install.sh             # instala y compila
 ```
 
-Después hay que copiar la configuración de Umbriel, `portals.conf`, la unidad de
-alarmas y la regla de sudoers. Todo está explicado paso a paso en
-`INSTALACION.md`.
+El instalador añade los repositorios, instala los paquetes, copia la
+configuración de usuario, crea la regla de sudoers, activa las alarmas y compila
+el fork de Umbriel. **No sobrescribe configuraciones existentes** salvo que se
+use `--force-config`; en ese caso guarda una copia `.bak`.
 
-> En los archivos de `install/` la ruta `/home/USUARIO` es un marcador: cámbiala
-> por tu usuario real antes de usarlos.
+Opciones útiles:
+
+- `--dry-run`: enseña los comandos sin ejecutarlos.
+- `--skip-packages`: solo configura y compila.
+- `--skip-fork`: no toca el compositor.
+- `--with-firmware`: instala también firmware y drivers de este equipo.
+- `--help`: lista todas las opciones.
+
+La guía manual, con el detalle de cada paso, sigue estando en
+**[`INSTALACION.md`](INSTALACION.md)**.
+
+> En los archivos de `install/` la ruta `/home/USUARIO` es un marcador: el
+> instalador la sustituye por tu HOME real.
 
 ## Estructura
 
@@ -88,6 +89,8 @@ alarmas y la regla de sudoers. Todo está explicado paso a paso en
 | `scripts/` | Ayudantes de portapapeles, alarmas, tema, VPN, etc. |
 | `icons/` | Iconos SVG propios. |
 | `install/` | Plantillas para una instalación limpia. |
+| `install.sh` | Instalador para Debian 13 + Umbriel. |
+| `scripts/install-umbriel-fork.sh` | Compila e instala el fork de Umbriel. |
 | `umbriel-fork.patch` | Parche del fork de Umbriel sobre `b6c4b7d`. |
 | `INSTALACION.md` | Guía de instalación. |
 | `PLAN.md`, `PENDIENTES.md`, `CONTEXTO.md` | Plan, tareas e historial. |

@@ -504,7 +504,8 @@ Singleton {
         if (!root.ready)
             return;
         Quickshell.execDetached(["sh", "-c",
-            "/home/username/.local/bin/alba-idle " + root.lockMinutes]);
+            (Quickshell.env("HOME") || "") + "/.local/bin/alba-idle "
+            + root.lockMinutes]);
     }
 
     function write(): void {

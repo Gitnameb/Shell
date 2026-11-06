@@ -1,5 +1,8 @@
 # ALBA / Umbriel · paquetes para Debian 13 (trixie), mismo hardware
 #
+# La vía recomendada es ./install.sh, que aplica esta lista automáticamente.
+# Este archivo queda como referencia manual y para revisar qué instala.
+#
 # Punto de partida recomendado: instalar Debian 13 con el entorno KDE Plasma
 # (task-kde-desktop). Eso aporta SDDM, Qt 6, KDE, Breeze, PipeWire,
 # NetworkManager, BlueZ, UPower, Polkit, kdialog y el portal de KDE.

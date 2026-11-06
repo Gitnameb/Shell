@@ -469,7 +469,8 @@ Scope {
             ? "" : layout).trim().toLowerCase();
         if (!/^[a-z0-9_]+$/.test(clean))
             return root.noteAction("setKeyboardLayout", false);
-        return root.run("/home/username/.local/bin/alba-keyboard-layout "
+        return root.run((Quickshell.env("HOME") || "")
+            + "/.local/bin/alba-keyboard-layout "
             + root.quote(clean), "setKeyboardLayout");
     }
 
@@ -480,7 +481,8 @@ Scope {
         const color = String(accent === undefined || accent === null
             ? "" : accent);
         const clean = /^#[0-9a-f]{6}$/i.test(color) ? color : "#b8bec7";
-        return root.run("/home/username/.local/bin/alba-umbriel-theme "
+        return root.run((Quickshell.env("HOME") || "")
+            + "/.local/bin/alba-umbriel-theme "
             + root.quote(value) + " " + root.quote(clean), "setShellTheme");
     }
 

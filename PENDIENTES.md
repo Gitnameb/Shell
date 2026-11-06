@@ -34,13 +34,17 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   repositorios, paquetes, compilación del fork, configuración de Umbriel,
   portales, sudoers, SDDM y copias de seguridad. Los archivos que vivían fuera
   del proyecto están guardados en `install/` (`bin/`, `config/`, `systemd/`,
-  `sudoers/`, `apt/` y `packages.txt`). Aún no hay script automático (E1) ni se
-  ha probado una reinstalación completa.
+  `sudoers/`, `apt/` y `packages.txt`).
+- **Instalador automático (E1).** `install.sh` instala repositorios, paquetes,
+  configuración de usuario, sudoers y alarmas; `scripts/install-umbriel-fork.sh`
+  clona el fork si hace falta, aplica el parche, compila e instala con `mv`
+  atómico. Probado con `--dry-run` y con una compilación completa desde un clon
+  limpio. Falta ejecutarlo de principio a fin en un Debian recién instalado.
 - **Veredicto para uso principal:** sí en este equipo, con dos reservas: B3
-  sigue sin probar y la instalación es manual. B5 sí es comprobable aquí porque
-  el AX210 tiene Wi-Fi y Bluetooth. Lo pendiente de diseño (reloj, A4, VPN,
-  iconos del escritorio, perfiles personalizados y portátiles) no bloquea el
-  uso diario.
+  sigue sin probar y el instalador aún no se ha probado en limpio. B5 sí es
+  comprobable aquí porque el AX210 tiene Wi-Fi y Bluetooth. Lo pendiente de
+  diseño (reloj, A4, VPN, iconos del escritorio, perfiles personalizados y
+  portátiles) no bloquea el uso diario.
 
 ### Hecho en la sesión del 2026-11-05
 
@@ -496,12 +500,13 @@ Tras cerrar sesión y volver a entrar:
   `~/.config/systemd/user/alba-alarms.service` (contenido abajo).
 
 ### 8. Opcionales (no empezar sin pedirlo)
-- D1 fase 2 (recolocar iconos y persistir posiciones), D2 apps web, E1 script
-  de instalación, E3 prueba automática y E4 reversión.
-- **Instalación limpia:** la guía completa está en `INSTALACION.md` y los
+- D1 fase 2 (recolocar iconos y persistir posiciones), D2 apps web, E3 prueba
+  automática y E4 reversión.
+- **Instalación limpia:** `install.sh` y `scripts/install-umbriel-fork.sh`
+  automatizan el proceso; la guía manual está en `INSTALACION.md` y los
   archivos de sistema en `install/`. Antes de formatear, seguir la sección de
-  copias y comprobar B3/B5. E1 (script automático) y E4 (prueba de reversión)
-  siguen pendientes.
+  copias y comprobar B3/B5. Falta probar el instalador en una VM o disco
+  aparte, y probar la reversión (E4).
 - **D1 fase 2 aparcada por decisión del usuario (2026-11-05):** se retoma al
   final, después del resto de bloques.
 - A4 (volumen por ventana) sigue descartado.
