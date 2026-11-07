@@ -91,8 +91,8 @@ PanelWindow {
 
                 Repeater {
                     model: [
-                        { key: "floating", label: "Flotante" },
-                        { key: "mosaic", label: "Mosaico" }
+                        { key: "mosaic", label: "Mosaico" },
+                        { key: "floating", label: "Ventana" }
                     ]
 
                     delegate: Rectangle {

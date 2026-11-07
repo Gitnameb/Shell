@@ -33,7 +33,7 @@ Singleton {
     property string lastWorkspaceMode: ""
 
     function labelFor(mode): string {
-        return mode === "mosaic" ? "Mosaico" : "Flotante";
+        return mode === "mosaic" ? "Mosaico" : "Ventana";
     }
 
     function modeFor(workspaceId): string {
@@ -44,14 +44,18 @@ Singleton {
     // cada ventana; en Umbriel se cambia el layout nativo del escritorio.
     function applyWorkspace(workspaceId): void {
         const id = Number(workspaceId);
-        if (!isFinite(id) || id <= 0 || !root.backendReady
-                || !CompositorState.windowDataReady)
+        if (!isFinite(id) || id <= 0 || !root.backendReady)
             return;
         const mode = root.modeFor(id);
         if (CompositorState.supports("setWorkspaceMode")) {
+            // El layout nativo no necesita la lista de ventanas: se aplica
+            // aunque el primer `umbriel windows --json` todavía no haya
+            // llegado. Antes, el primer clic tras iniciar sesión se perdía.
             CompositorState.setWorkspaceMode(id, mode);
             return;
         }
+        if (!CompositorState.windowDataReady)
+            return;
         const list = CompositorState.windowsForWorkspace(id);
         for (let i = 0; i < list.length; i++) {
             const win = list[i];

@@ -76,6 +76,18 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   tenga el mismo desenfoque que los paneles. Probado en una sesión anidada con
   D-Bus privado, incluyendo expiración automática, aviso crítico persistente y
   dos avisos seguidos sin recrear la primera tarjeta.
+- **Configuración de ventanas unificada (2026-11-07).** La vista «Modo de
+  ventanas» pasa a llamarse «Configuración de ventanas» y reúne la barra de
+  título, los controles, el modo por escritorio, el tamaño y la cascada de
+  ventanas flotantes y el cristal de las ventanas. En Ajustes del shell queda
+  solo el acceso «Configuración de ventanas»; se eliminó la fila duplicada de
+  «Barra de ventanas». La barra de título va primero, encima de los modos
+  manuales. Los modos se muestran «Mosaico» a la izquierda y «Ventana» a la
+  derecha, sin la opción global ni descripciones. Por defecto el escritorio 1
+  es mosaico, el 2 ventana y el resto (incluidos los nuevos) mosaico. El botón
+  de modo de la píldora enseña el modo al que se va a cambiar. Además,
+  `applyWorkspace` aplica el layout nativo aunque `umbriel windows --json`
+  todavía no haya llegado, así el primer clic tras iniciar sesión ya funciona.
 - **Desenfoque y foco al mantener Super.** Umbriel desenfoca ahora solo el
   contenido de la ventana bajo el puntero mientras se mantiene Mod, como el
   mockup: shader de ventana con blur de 1.4 px y desaturación suave, más un

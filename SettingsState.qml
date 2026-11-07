@@ -60,11 +60,11 @@ Singleton {
     // ------------------------------------------------------- ventanas
     // Modo por defecto de los escritorios. «floating» imita a Windows: las
     // ventanas se abren sueltas y se mueven libremente. «mosaic» las coloca
-    // en mosaico. El valor elegido en el primer arranque manda hasta que el
-    // usuario cambie un escritorio concreto.
-    property string workspaceModeDefault: "floating"
-    // Excepciones por escritorio, codificadas como «1=floating;2=mosaic».
-    property string workspaceModes: ""
+    // en mosaico. El escritorio 2 usa ventana y el resto mosaico; este valor
+    // es el respaldo para los escritorios nuevos.
+    property string workspaceModeDefault: "mosaic"
+    // Excepciones por escritorio, codificadas como «1=mosaic;2=floating».
+    property string workspaceModes: "2=floating"
     // Falso hasta que el usuario elige en la pantalla de bienvenida.
     property bool workspaceModeChosen: false
 
@@ -353,11 +353,11 @@ Singleton {
         root.workspaceModes = pairs.join(";");
     }
 
-    // Primera elección: se aplica a todos los escritorios y se borran las
-    // excepciones para que el modo elegido sea el nuevo punto de partida.
+    // Elección inicial del modo por defecto. Los escritorios 1 y 2 conservan
+    // sus valores de partida (mosaico y ventana); el resto usa el elegido.
     function chooseWorkspaceMode(mode): void {
         root.workspaceModeDefault = root.normalizeWorkspaceMode(mode);
-        root.workspaceModes = "";
+        root.workspaceModes = "1=mosaic;2=floating";
         root.workspaceModeChosen = true;
     }
 

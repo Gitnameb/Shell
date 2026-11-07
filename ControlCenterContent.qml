@@ -735,7 +735,7 @@ ColumnLayout {
         if (view === "settings")
             return "Ajustes del shell";
         if (view === "windows")
-            return "Modo de ventanas";
+            return "Configuración de ventanas";
         if (view === "compositor")
             return "Compositor";
         return "";
@@ -5212,208 +5212,6 @@ ColumnLayout {
                 color: Theme.border
             }
 
-            // ------------------------------------------------------ ventanas
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Ventanas"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                    font.weight: Font.DemiBold
-                }
-
-                Text {
-                    text: "Restablecer"
-                    color: windowResetMouse.containsMouse
-                        ? Theme.accent : Theme.faint
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 8
-
-                    MouseArea {
-                        id: windowResetMouse
-                        anchors.fill: parent
-                        anchors.margins: -4
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            SettingsState.setWindowTransparency(0);
-                            SettingsState.setWindowBlur(12);
-                            SettingsState.setWindowBlurBehind(false);
-                            SettingsState.setWindowSync(false);
-                        }
-                    }
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 1
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Sincronizar con el shell"
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 10
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Usa la misma transparencia y el mismo tipo de "
-                            + "desenfoque que el shell."
-                        color: Theme.faint
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 8
-                        wrapMode: Text.WordWrap
-                    }
-                }
-
-                ShellSwitch {
-                    checked: SettingsState.windowSync
-                    onToggled: SettingsState.setWindowSync(
-                        !SettingsState.windowSync)
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Transparencia"
-                    color: Theme.muted
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                }
-
-                Text {
-                    text: SettingsState.effectiveWindowTransparency + " %"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                    font.weight: Font.DemiBold
-                }
-            }
-
-            ShellSlider {
-                id: windowTransparencySlider
-
-                Layout.fillWidth: true
-                enabled: !SettingsState.windowSync
-                from: 0
-                to: 90
-                stepSize: 2
-                value: SettingsState.effectiveWindowTransparency
-                onMoved: SettingsState.setWindowTransparency(value)
-            }
-
-            Binding {
-                target: windowTransparencySlider
-                property: "value"
-                value: SettingsState.effectiveWindowTransparency
-                when: !windowTransparencySlider.pressed
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Desenfoque"
-                    color: Theme.muted
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                }
-
-                Text {
-                    text: SettingsState.effectiveWindowBlur + " px"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                    font.weight: Font.DemiBold
-                }
-            }
-
-            ShellSlider {
-                id: windowBlurSlider
-
-                Layout.fillWidth: true
-                enabled: !SettingsState.windowSync
-                from: 0
-                to: 40
-                stepSize: 2
-                value: SettingsState.effectiveWindowBlur
-                onMoved: SettingsState.setWindowBlur(value)
-            }
-
-            Binding {
-                target: windowBlurSlider
-                property: "value"
-                value: SettingsState.effectiveWindowBlur
-                when: !windowBlurSlider.pressed
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Tipo de desenfoque"
-                    color: Theme.muted
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                }
-
-                BlurModeChoice {
-                    interactive: !SettingsState.windowSync
-                    behind: SettingsState.effectiveWindowBlurBehind
-                    onSelected: (behind) =>
-                        SettingsState.setWindowBlurBehind(behind)
-                }
-            }
-
-            Text {
-                Layout.fillWidth: true
-                text: SettingsState.windowSync
-                    ? "Los valores vienen del shell mientras la "
-                        + "sincronización esté activa."
-                    : (SettingsState.windowBlurBehind
-                        ? "Las ventanas transparentes desenfocan el contenido "
-                            + "real que hay detrás."
-                        : "Las ventanas transparentes muestran solo el fondo "
-                            + "de pantalla desenfocado.")
-                color: Theme.faint
-                font.family: Theme.fontFamily
-                font.pixelSize: 8
-                wrapMode: Text.WordWrap
-            }
-
-            Text {
-                Layout.fillWidth: true
-                text: "Con transparencia 0 las ventanas vuelven a ser opacas."
-                color: Theme.faint
-                font.family: Theme.fontFamily
-                font.pixelSize: 8
-                wrapMode: Text.WordWrap
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Theme.border
-            }
-
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
@@ -6177,11 +5975,329 @@ ColumnLayout {
 
             RowLayout {
                 Layout.fillWidth: true
+                spacing: 8
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Configuración de ventanas"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                Rectangle {
+                    implicitWidth: 58
+                    implicitHeight: 24
+                    radius: 7
+                    color: openWindowsButton.containsMouse
+                        ? Theme.hover : Theme.surfaceAlt
+                    border.width: 1
+                    border.color: Theme.border
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Abrir"
+                        color: Theme.muted
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 9
+                        font.weight: Font.DemiBold
+                    }
+
+                    MouseArea {
+                        id: openWindowsButton
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.setView("windows")
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: Theme.border
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Compositor"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                Text {
+                    text: CompositorState.name
+                    color: Theme.accent
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                    font.weight: Font.Bold
+                }
+
+                Rectangle {
+                    implicitWidth: 58
+                    implicitHeight: 24
+                    radius: 7
+                    color: compositorButton.containsMouse
+                        ? Theme.hover : Theme.surfaceAlt
+                    border.width: 1
+                    border.color: Theme.border
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Ver"
+                        color: Theme.muted
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 9
+                        font.weight: Font.DemiBold
+                    }
+
+                    MouseArea {
+                        id: compositorButton
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.setView("compositor")
+                    }
+                }
+            }
+
+        }
+
+        // -------------------------------------- Configuración de ventanas
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: root.view === "windows"
+            spacing: 8
+
+            // -------------------------------------------------- barra de título
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Barra de título"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                Row {
+                    spacing: 2
+
+                    Repeater {
+                        model: [
+                            { key: "floating", label: "Flotante" },
+                            { key: "integrated", label: "Integrado" }
+                        ]
+
+                        delegate: Rectangle {
+                            id: titlebarViewChip
+
+                            required property var modelData
+
+                            readonly property bool selected:
+                                SettingsState.windowChrome
+                                    === titlebarViewChip.modelData.key
+
+                            width: titlebarViewLabel.implicitWidth + 14
+                            height: 24
+                            radius: 6
+                            color: titlebarViewChip.selected
+                                ? Theme.accent : "transparent"
+                            border.width: titlebarViewChip.selected ? 0 : 1
+                            border.color: Theme.border
+
+                            Text {
+                                id: titlebarViewLabel
+                                anchors.centerIn: parent
+                                text: titlebarViewChip.modelData.label
+                                color: titlebarViewChip.selected
+                                    ? Theme.accentInk : Theme.muted
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 8
+                                font.weight: Font.DemiBold
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: SettingsState.setWindowChrome(
+                                    titlebarViewChip.modelData.key)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ---------------------------------------------- controles de ventana
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Controles de ventana"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                Rectangle {
+                    implicitWidth: 96
+                    implicitHeight: 24
+                    radius: 7
+                    color: showChromeHover.containsMouse
+                        ? Theme.accentSoft : Theme.surfaceAlt
+                    border.width: 1
+                    border.color: SuperState.active
+                        ? Theme.accentLine : Theme.border
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: SuperState.pinned ? "Ocultar"
+                            : (CompositorState.supports("superHold")
+                                ? "Mostrar con Super"
+                                : "Mostrar con Super+Tab")
+                        color: SuperState.pinned
+                            ? Theme.accent : Theme.muted
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 8
+                        font.weight: Font.DemiBold
+                    }
+
+                    MouseArea {
+                        id: showChromeHover
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: SuperState.togglePinned()
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: Theme.border
+            }
+
+            // -------------------------------------------- modo por escritorio
+            Repeater {
+                model: SettingsState.workspaceIds
+
+                delegate: Rectangle {
+                    id: wsModeRow
+
+                    required property int modelData
+
+                    readonly property string mode:
+                        SettingsState.workspaceMode(wsModeRow.modelData)
+                    readonly property bool active:
+                        Number(WorkspaceModeState.focusedWorkspaceId)
+                            === wsModeRow.modelData
+
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                    radius: 7
+                    color: wsModeRow.active
+                        ? Theme.accentGhost : Theme.surfaceAlt
+                    border.width: wsModeRow.active ? 1 : 0
+                    border.color: Theme.accentLine
+
+                    RowLayout {
+                        anchors {
+                            fill: parent
+                            leftMargin: 9
+                            rightMargin: 4
+                        }
+                        spacing: 6
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: "Escritorio " + wsModeRow.modelData
+                            color: wsModeRow.active
+                                ? Theme.text : Theme.muted
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 9
+                            font.weight: wsModeRow.active
+                                ? Font.DemiBold : Font.Normal
+                        }
+
+                        Row {
+                            spacing: 1
+
+                            Repeater {
+                                model: [
+                                    { key: "mosaic", label: "Mosaico" },
+                                    { key: "floating", label: "Ventana" }
+                                ]
+
+                                delegate: Rectangle {
+                                    id: rowChip
+
+                                    required property var modelData
+
+                                    readonly property bool selected:
+                                        wsModeRow.mode === rowChip.modelData.key
+
+                                    width: rowChipLabel.implicitWidth + 14
+                                    height: 22
+                                    radius: 5
+                                    color: rowChip.selected
+                                        ? Theme.accent
+                                        : (rowChipHover.containsMouse
+                                            ? Theme.hover : "transparent")
+                                    border.width: rowChip.selected ? 0 : 1
+                                    border.color: Theme.border
+
+                                    Text {
+                                        id: rowChipLabel
+                                        anchors.centerIn: parent
+                                        text: rowChip.modelData.label
+                                        color: rowChip.selected
+                                            ? Theme.accentInk : Theme.muted
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 8
+                                        font.weight: Font.DemiBold
+                                    }
+
+                                    MouseArea {
+                                        id: rowChipHover
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: WorkspaceModeState.setMode(
+                                            wsModeRow.modelData,
+                                            rowChip.modelData.key)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: Theme.border
+            }
+
+            // ------------------------------------------ ventanas flotantes
+            RowLayout {
+                Layout.fillWidth: true
                 spacing: 6
 
                 Text {
                     Layout.fillWidth: true
-                    text: "Tamaño de ventanas flotantes"
+                    text: "Tamaño de ventana"
                     color: Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
@@ -6324,238 +6440,41 @@ ColumnLayout {
                 color: Theme.border
             }
 
+            // ------------------------------------------------ cristal de ventanas
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: 6
 
                 Text {
                     Layout.fillWidth: true
-                    text: "Modo de ventanas"
+                    text: "Cristal de ventanas"
                     color: Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
+                    font.weight: Font.DemiBold
                 }
 
                 Text {
-                    text: WorkspaceModeState.labelFor(
-                        SettingsState.workspaceMode(
-                            WorkspaceModeState.focusedWorkspaceId))
-                    color: Theme.accent
+                    text: "Restablecer"
+                    color: windowResetMouse.containsMouse
+                        ? Theme.accent : Theme.faint
                     font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                    font.weight: Font.Bold
-                }
-
-                Rectangle {
-                    implicitWidth: 68
-                    implicitHeight: 24
-                    radius: 7
-                    color: windowModeButton.containsMouse
-                        ? Theme.hover : Theme.surfaceAlt
-                    border.width: 1
-                    border.color: Theme.border
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Configurar"
-                        color: Theme.muted
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 9
-                        font.weight: Font.DemiBold
-                    }
+                    font.pixelSize: 8
 
                     MouseArea {
-                        id: windowModeButton
+                        id: windowResetMouse
                         anchors.fill: parent
+                        anchors.margins: -4
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: root.setView("windows")
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Theme.border
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Barra de ventanas"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                }
-
-                Row {
-                    spacing: 2
-
-                    Repeater {
-                        model: [
-                            { key: "floating", label: "Flotante" },
-                            { key: "integrated", label: "Integrado" }
-                        ]
-
-                        delegate: Rectangle {
-                            id: titlebarChip
-
-                            required property var modelData
-
-                            readonly property bool selected:
-                                SettingsState.windowChrome
-                                    === titlebarChip.modelData.key
-
-                            width: titlebarChipLabel.implicitWidth + 14
-                            height: 24
-                            radius: 6
-                            color: titlebarChip.selected
-                                ? Theme.accent : "transparent"
-                            border.width: titlebarChip.selected ? 0 : 1
-                            border.color: Theme.border
-
-                            Text {
-                                id: titlebarChipLabel
-                                anchors.centerIn: parent
-                                text: titlebarChip.modelData.label
-                                color: titlebarChip.selected
-                                    ? Theme.accentInk : Theme.muted
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 8
-                                font.weight: Font.DemiBold
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: SettingsState.setWindowChrome(
-                                    titlebarChip.modelData.key)
-                            }
+                        onClicked: {
+                            SettingsState.setWindowTransparency(0);
+                            SettingsState.setWindowBlur(12);
+                            SettingsState.setWindowBlurBehind(false);
+                            SettingsState.setWindowSync(false);
                         }
                     }
                 }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Theme.border
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Controles de ventana"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                }
-
-                Rectangle {
-                    implicitWidth: 78
-                    implicitHeight: 24
-                    radius: 7
-                    color: overlayButton.containsMouse
-                        ? Theme.accentSoft : Theme.surfaceAlt
-                    border.width: 1
-                    border.color: SuperState.pinned
-                        ? Theme.accentLine : Theme.border
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: SuperState.pinned ? "Ocultar" : "Mostrar"
-                        color: SuperState.pinned
-                            ? Theme.accent : Theme.muted
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 9
-                        font.weight: Font.DemiBold
-                    }
-
-                    MouseArea {
-                        id: overlayButton
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: SuperState.togglePinned()
-                    }
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Compositor"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                }
-
-                Text {
-                    text: CompositorState.name
-                    color: Theme.accent
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                    font.weight: Font.Bold
-                }
-
-                Rectangle {
-                    implicitWidth: 58
-                    implicitHeight: 24
-                    radius: 7
-                    color: compositorButton.containsMouse
-                        ? Theme.hover : Theme.surfaceAlt
-                    border.width: 1
-                    border.color: Theme.border
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Ver"
-                        color: Theme.muted
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 9
-                        font.weight: Font.DemiBold
-                    }
-
-                    MouseArea {
-                        id: compositorButton
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.setView("compositor")
-                    }
-                }
-            }
-
-        }
-
-        // ------------------------------------------------- Modo de ventanas
-        // Selector visible de «Flotante / Como Windows» y «Mosaico» para cada
-        // escritorio. El overlay de Super enseña el mismo par, pero esta vista
-        // es la alternativa permanente y descubrible.
-        ColumnLayout {
-            Layout.fillWidth: true
-            visible: root.view === "windows"
-            spacing: 8
-
-            Text {
-                Layout.fillWidth: true
-                text: "Las ventanas se abren flotantes, como en Windows, o se "
-                    + "reparten en mosaico. El modo se aplica a las ventanas "
-                    + "que ya están en el escritorio y a las nuevas."
-                color: Theme.muted
-                font.family: Theme.fontFamily
-                font.pixelSize: 9
-                wrapMode: Text.WordWrap
             }
 
             RowLayout {
@@ -6564,310 +6483,125 @@ ColumnLayout {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 0
+                    spacing: 1
 
                     Text {
-                        text: "Para todos los escritorios"
+                        Layout.fillWidth: true
+                        text: "Sincronizar con el shell"
                         color: Theme.text
                         font.family: Theme.fontFamily
                         font.pixelSize: 10
                     }
 
-                    Text {
-                        text: "Borra las excepciones por escritorio"
-                        color: Theme.faint
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 8
-                    }
                 }
 
-                Row {
-                    spacing: 2
-
-                    Repeater {
-                        model: [
-                            { key: "floating", label: "Flotante" },
-                            { key: "mosaic", label: "Mosaico" }
-                        ]
-
-                        delegate: Rectangle {
-                            id: allModeChip
-
-                            required property var modelData
-
-                            readonly property bool selected:
-                                SettingsState.workspaceModeDefault
-                                    === allModeChip.modelData.key
-                                && SettingsState.workspaceModes.length === 0
-
-                            width: allModeLabel.implicitWidth + 16
-                            height: 24
-                            radius: 6
-                            color: allModeChip.selected
-                                ? Theme.accent : (allModeHover.containsMouse
-                                    ? Theme.hover : "transparent")
-                            border.width: allModeChip.selected ? 0 : 1
-                            border.color: Theme.border
-
-                            Text {
-                                id: allModeLabel
-                                anchors.centerIn: parent
-                                text: allModeChip.modelData.label
-                                color: allModeChip.selected
-                                    ? Theme.accentInk : Theme.muted
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 9
-                                font.weight: Font.DemiBold
-                            }
-
-                            MouseArea {
-                                id: allModeHover
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: WorkspaceModeState.choose(
-                                    allModeChip.modelData.key)
-                            }
-                        }
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Theme.border
-            }
-
-            Text {
-                text: "Escritorio por escritorio"
-                color: Theme.faint
-                font.family: Theme.fontFamily
-                font.pixelSize: 8
-                font.weight: Font.DemiBold
-                font.letterSpacing: 0.8
-            }
-
-            Repeater {
-                model: SettingsState.workspaceIds
-
-                delegate: Rectangle {
-                    id: wsModeRow
-
-                    required property int modelData
-
-                    readonly property string mode:
-                        SettingsState.workspaceMode(wsModeRow.modelData)
-                    readonly property bool active:
-                        Number(WorkspaceModeState.focusedWorkspaceId)
-                            === wsModeRow.modelData
-
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 30
-                    radius: 7
-                    color: wsModeRow.active
-                        ? Theme.accentGhost : Theme.surfaceAlt
-                    border.width: wsModeRow.active ? 1 : 0
-                    border.color: Theme.accentLine
-
-                    RowLayout {
-                        anchors {
-                            fill: parent
-                            leftMargin: 9
-                            rightMargin: 4
-                        }
-                        spacing: 6
-
-                        Text {
-                            Layout.fillWidth: true
-                            text: "Escritorio " + wsModeRow.modelData
-                                + (wsModeRow.active ? " · activo" : "")
-                            color: wsModeRow.active
-                                ? Theme.text : Theme.muted
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 9
-                            font.weight: wsModeRow.active
-                                ? Font.DemiBold : Font.Normal
-                        }
-
-                        Row {
-                            spacing: 1
-
-                            Repeater {
-                                model: [
-                                    { key: "floating", label: "Flotante" },
-                                    { key: "mosaic", label: "Mosaico" }
-                                ]
-
-                                delegate: Rectangle {
-                                    id: rowChip
-
-                                    required property var modelData
-
-                                    readonly property bool selected:
-                                        wsModeRow.mode === rowChip.modelData.key
-
-                                    width: rowChipLabel.implicitWidth + 14
-                                    height: 22
-                                    radius: 5
-                                    color: rowChip.selected
-                                        ? Theme.accent
-                                        : (rowChipHover.containsMouse
-                                            ? Theme.hover : "transparent")
-                                    border.width: rowChip.selected ? 0 : 1
-                                    border.color: Theme.border
-
-                                    Text {
-                                        id: rowChipLabel
-                                        anchors.centerIn: parent
-                                        text: rowChip.modelData.label
-                                        color: rowChip.selected
-                                            ? Theme.accentInk : Theme.muted
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 8
-                                        font.weight: Font.DemiBold
-                                    }
-
-                                    MouseArea {
-                                        id: rowChipHover
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: WorkspaceModeState.setMode(
-                                            wsModeRow.modelData,
-                                            rowChip.modelData.key)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Theme.border
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 5
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 0
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Barra de ventanas"
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 10
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Flotante aparece con Super · Integrado queda siempre visible"
-                        color: Theme.faint
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 8
-                        elide: Text.ElideRight
-                    }
-                }
-
-                Row {
-                    spacing: 2
-
-                    Repeater {
-                        model: [
-                            { key: "floating", label: "Flotante" },
-                            { key: "integrated", label: "Integrado" }
-                        ]
-
-                        delegate: Rectangle {
-                            id: titlebarViewChip
-
-                            required property var modelData
-
-                            readonly property bool selected:
-                                SettingsState.windowChrome
-                                    === titlebarViewChip.modelData.key
-
-                            width: titlebarViewLabel.implicitWidth + 14
-                            height: 24
-                            radius: 6
-                            color: titlebarViewChip.selected
-                                ? Theme.accent : "transparent"
-                            border.width: titlebarViewChip.selected ? 0 : 1
-                            border.color: Theme.border
-
-                            Text {
-                                id: titlebarViewLabel
-                                anchors.centerIn: parent
-                                text: titlebarViewChip.modelData.label
-                                color: titlebarViewChip.selected
-                                    ? Theme.accentInk : Theme.muted
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 8
-                                font.weight: Font.DemiBold
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: SettingsState.setWindowChrome(
-                                    titlebarViewChip.modelData.key)
-                            }
-                        }
-                    }
+                ShellSwitch {
+                    checked: SettingsState.windowSync
+                    onToggled: SettingsState.setWindowSync(
+                        !SettingsState.windowSync)
                 }
             }
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: 6
 
                 Text {
                     Layout.fillWidth: true
-                    text: "Controles de ventana ahora"
+                    text: "Transparencia"
+                    color: Theme.muted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                }
+
+                Text {
+                    text: SettingsState.effectiveWindowTransparency + " %"
                     color: Theme.text
                     font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                }
-
-                Rectangle {
-                    implicitWidth: 96
-                    implicitHeight: 24
-                    radius: 7
-                    color: showChromeHover.containsMouse
-                        ? Theme.accentSoft : Theme.surfaceAlt
-                    border.width: 1
-                    border.color: SuperState.active
-                        ? Theme.accentLine : Theme.border
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: SuperState.pinned ? "Ocultar"
-                            : (CompositorState.supports("superHold")
-                                ? "Mostrar con Super"
-                                : "Mostrar con Super+Tab")
-                        color: SuperState.pinned
-                            ? Theme.accent : Theme.muted
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 8
-                        font.weight: Font.DemiBold
-                    }
-
-                    MouseArea {
-                        id: showChromeHover
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: SuperState.togglePinned()
-                    }
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
                 }
             }
+
+            ShellSlider {
+                id: windowTransparencySlider
+
+                Layout.fillWidth: true
+                enabled: !SettingsState.windowSync
+                from: 0
+                to: 90
+                stepSize: 2
+                value: SettingsState.effectiveWindowTransparency
+                onMoved: SettingsState.setWindowTransparency(value)
+            }
+
+            Binding {
+                target: windowTransparencySlider
+                property: "value"
+                value: SettingsState.effectiveWindowTransparency
+                when: !windowTransparencySlider.pressed
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Desenfoque"
+                    color: Theme.muted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                }
+
+                Text {
+                    text: SettingsState.effectiveWindowBlur + " px"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                }
+            }
+
+            ShellSlider {
+                id: windowBlurSlider
+
+                Layout.fillWidth: true
+                enabled: !SettingsState.windowSync
+                from: 0
+                to: 40
+                stepSize: 2
+                value: SettingsState.effectiveWindowBlur
+                onMoved: SettingsState.setWindowBlur(value)
+            }
+
+            Binding {
+                target: windowBlurSlider
+                property: "value"
+                value: SettingsState.effectiveWindowBlur
+                when: !windowBlurSlider.pressed
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Tipo de desenfoque"
+                    color: Theme.muted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                }
+
+                BlurModeChoice {
+                    interactive: !SettingsState.windowSync
+                    behind: SettingsState.effectiveWindowBlurBehind
+                    onSelected: (behind) =>
+                        SettingsState.setWindowBlurBehind(behind)
+                }
+            }
+
         }
 
         // ---------------------------------------------------- Compositor

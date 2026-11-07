@@ -93,16 +93,6 @@ PanelWindow {
                     Repeater {
                         model: [
                             {
-                                key: "floating",
-                                title: "Flotante",
-                                subtitle: "Como Windows",
-                                description: "Las ventanas se abren sueltas, "
-                                    + "con barra de título y controles. "
-                                    + "Ideal si vienes de Windows.",
-                                icon: "window-duplicate-symbolic",
-                                glyph: "❐"
-                            },
-                            {
                                 key: "mosaic",
                                 title: "Mosaico",
                                 subtitle: "Tiling",
@@ -111,6 +101,16 @@ PanelWindow {
                                     + "movimientos de ratón.",
                                 icon: "view-grid-symbolic",
                                 glyph: "▦"
+                            },
+                            {
+                                key: "floating",
+                                title: "Ventana",
+                                subtitle: "Como Windows",
+                                description: "Las ventanas se abren sueltas, "
+                                    + "con barra de título y controles. "
+                                    + "Ideal si vienes de Windows.",
+                                icon: "window-duplicate-symbolic",
+                                glyph: "❐"
                             }
                         ]
 
@@ -120,7 +120,7 @@ PanelWindow {
                             required property var modelData
 
                             readonly property bool recommended:
-                                option.modelData.key === "floating"
+                                option.modelData.key === "mosaic"
 
                             Layout.fillWidth: true
                             Layout.preferredHeight: 226

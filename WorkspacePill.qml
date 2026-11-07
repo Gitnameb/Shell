@@ -387,7 +387,7 @@ Rectangle {
     }
 
     // Botón de modo sobre las fichas atenuadas del escritorio activo. El
-    // icono enseña el modo actual; al pulsarlo se cambia al otro.
+    // icono enseña el modo al que se cambia al pulsarlo.
     Rectangle {
         id: modeButton
 
@@ -405,8 +405,9 @@ Rectangle {
             anchors.centerIn: parent
             size: 14
             color: modeMouse.containsMouse ? Theme.accentInk : Theme.accent
+            // El icono enseña el modo al que se va a cambiar, no el actual.
             source: ShellIcons.src(root.floatingMode
-                ? "mode-float" : "mode-tile")
+                ? "mode-tile" : "mode-float")
         }
 
         MouseArea {
