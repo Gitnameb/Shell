@@ -66,6 +66,7 @@ PanelWindow {
     property string sourceNameDraft: ""
     property string sourceUrlDraft: ""
     property string noteDraft: ""
+    property bool showCalendarHelp: false
 
     function applyWeatherPlace(): void {
         SettingsState.setWeatherPlace(root.placeDraft);
@@ -1246,10 +1247,36 @@ PanelWindow {
 
                 Text {
                     Layout.fillWidth: true
-                    text: "Google Calendar: Ajustes → Integrar calendario → dirección secreta en formato iCal. También vale un archivo .ics local."
+                    text: root.showCalendarHelp
+                        ? "Ocultar ayuda" : "¿Cómo enlazo Google Calendar?"
+                    color: helpToggleMouse.containsMouse
+                        ? Theme.accent : Theme.muted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+                    font.weight: Font.DemiBold
+
+                    MouseArea {
+                        id: helpToggleMouse
+                        anchors.fill: parent
+                        anchors.margins: -4
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.showCalendarHelp = !root.showCalendarHelp
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    visible: root.showCalendarHelp
+                    text: "1. Abre calendar.google.com en el ordenador (la app del móvil no lo muestra).\n"
+                        + "2. Arriba a la derecha: Ajustes → Configuración de mis calendarios → elige el calendario.\n"
+                        + "3. Baja hasta «Integrar el calendario» y copia «Dirección secreta en formato iCal».\n"
+                        + "4. Pega esa dirección en el campo de arriba, ponle un nombre y pulsa +.\n"
+                        + "Es privada y de solo lectura: no la compartas. Las tareas y recordatorios de Google no salen en el iCal."
                     color: Theme.faint
                     font.family: Theme.fontFamily
                     font.pixelSize: 8
+                    lineHeight: 1.25
                     wrapMode: Text.Wrap
                 }
 

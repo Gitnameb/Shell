@@ -509,10 +509,15 @@ y nunca escribe esos archivos directamente.
   con el formato `id|activo|nombre|color|url|ics`.
 - Se admiten direcciones `https://`, `file://` y rutas absolutas a un `.ics`.
 - **Google Calendar** se enlaza con la dirección secreta en formato iCal, sin
-  OAuth ni tokens: Google Calendar → Ajustes → Integrar calendario →
-  «Dirección secreta en formato iCal». Se pega en Agenda → campo de URL y se
+  OAuth ni tokens. En el ordenador (la app del móvil no muestra esa opción):
+  Google Calendar → Ajustes → Configuración de mis calendarios → elegir el
+  calendario → bajar a «Integrar el calendario» → copiar «Dirección secreta en
+  formato iCal». Se pega en Agenda → campo de URL, se le pone un nombre y se
   pulsa «+». Es una suscripción de solo lectura: los cambios se hacen en
-  Google y el shell los recoge al refrescar.
+  Google y el shell los recoge al refrescar. La dirección es privada (cualquiera
+  que la tenga puede leer ese calendario), así que no se comparte. Las tareas y
+  recordatorios de Google no forman parte del iCal; solo los eventos. En el
+  propio panel, «¿Cómo enlazo Google Calendar?» despliega estos pasos.
 - Caché: `~/.local/state/shell/calendars/<id>.ics`. Los remotos se descargan
   como mucho cada 20 minutos (`SHELL_CALENDAR_REFRESH_MINUTES` lo cambia). Si
   la descarga falla se conserva la última copia buena y el error se muestra en
