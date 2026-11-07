@@ -454,8 +454,8 @@ Copiar `install/config/umbriel-config.toml` a
   elegidos.
 - `[display]` con brillo, atenuación y luz nocturna.
 - Los atajos `Mod+1..9`, `Mod+Shift+1..9`, `Mod+Tab`, etc. En las ventanas:
-  `Mod+T` flotar, `Mod+P` fijar, `Mod+M` maximizar, `Mod+Shift+H`
-  minimizar y `Mod+Q` cerrar.
+  `Mod+T` flotar, `Mod+P` fijar, `Mod+M` maximizar, `Mod+F` pantalla
+  completa, `Mod+Shift+H` minimizar y `Mod+Q` cerrar.
 
 Validar siempre:
 

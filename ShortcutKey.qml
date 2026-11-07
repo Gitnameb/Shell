@@ -1,28 +1,29 @@
+import Quickshell
 import QtQuick
 
-// Tecla de atajo compacta, como un botón pequeño. Se usa a la derecha de las
-// opciones de ventana para recordar el atajo sin ocupar toda la fila.
+// Icono de teclado que sustituye al texto del atajo en las opciones de
+// ventana. Al pasar el ratón por encima, AppMenuItem muestra el atajo en un
+// tooltip. No es un botón de configuración: editar atajos desde aquí exigiría
+// escribir en la configuración de Umbriel y recargarla, con más riesgo que
+// beneficio.
 Rectangle {
     id: root
 
     property string label: ""
+    property bool hovered: false
 
-    implicitWidth: shortcut.implicitWidth + 10
-    implicitHeight: 16
+    implicitWidth: 22
+    implicitHeight: 18
     visible: root.label.length > 0
     radius: 4
-    color: Theme.surfaceAlt
+    color: root.hovered ? Theme.hover : Theme.surfaceAlt
     border.width: 1
-    border.color: Theme.border
+    border.color: root.hovered ? Theme.borderStrong : Theme.border
 
-    Text {
-        id: shortcut
-
+    ShellIcon {
         anchors.centerIn: parent
-        text: root.label
-        color: Theme.faint
-        font.family: Theme.fontFamily
-        font.pixelSize: 8
-        font.weight: Font.DemiBold
+        source: ShellIcons.src("keyboard")
+        size: 11
+        color: root.hovered ? Theme.text : Theme.faint
     }
 }

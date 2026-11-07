@@ -236,9 +236,10 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   `user-trash`…). Detalle: `CONFIGURACION-UMBRIEL.md` §18.
 - **Acciones de ventana sincronizadas.** `WindowActions.qml` alimenta la barra
   de título y el clic derecho con la misma lista: flotar, fijar, mover,
-  minimizar, maximizar y cerrar. Flotar desaparece en escritorios flotantes
-  (Umbriel lo rechaza) y su icono/etiqueta cambia entre «Hacer flotante» y
-  «Volver al mosaico». Cada fila muestra su atajo en un botón compacto; se
+  minimizar, maximizar, pantalla completa y cerrar. Flotar desaparece en
+  escritorios flotantes (Umbriel lo rechaza) y su icono/etiqueta cambia entre
+  «Hacer flotante» y «Volver al mosaico». Cada fila lleva un icono de teclado
+  cuyo tooltip muestra el atajo; los escritorios de «Mover» abren plegados. Se
   añadió `Mod+Shift+H` para minimizar. Detalle:
   `CONFIGURACION-UMBRIEL.md` §18.
 - **Orden de las fichas.** La barra ya no hereda el orden de apilado del

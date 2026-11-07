@@ -32,7 +32,7 @@ PanelWindow {
     // Misma lista que dibuja la barra de título: orden, iconos, etiquetas y
     // atajos salen de WindowActions para que no puedan desincronizarse.
     readonly property var windowActions: WindowActions.itemsFor(root.app)
-    property bool showWorkspaces: true
+    property bool showWorkspaces: false
 
     // La tarjeta se centra sobre el icono y se abre hacia dentro de la
     // pantalla (hacia arriba con la barra abajo y hacia abajo con la barra
@@ -126,8 +126,8 @@ PanelWindow {
 
     function dismiss() {
         root.visible = false;
-        // El selector de escritorios vuelve a estar abierto la próxima vez.
-        root.showWorkspaces = true;
+        // El selector de escritorios vuelve a estar plegado la próxima vez.
+        root.showWorkspaces = false;
     }
 
     // Las acciones de ventana pasan por el contrato común. Así el menú de la
@@ -302,11 +302,16 @@ PanelWindow {
 
                     AppMenuItem {
                         Layout.fillWidth: true
-                        label: actionBlock.modelData.label
+                        label: actionBlock.modelData.key === "move"
+                            ? actionBlock.modelData.label
+                                + (root.showWorkspaces ? "  ▴" : "  ▾")
+                            : actionBlock.modelData.label
                         iconName: actionBlock.modelData.icon
                         glyph: actionBlock.modelData.glyph
                         shortcut: actionBlock.modelData.shortcut
                         active: actionBlock.modelData.active === true
+                            || (actionBlock.modelData.key === "move"
+                                && root.showWorkspaces)
                         danger: actionBlock.modelData.danger === true
                         onClicked: {
                             if (actionBlock.modelData.key === "move") {

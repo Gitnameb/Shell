@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 
 // Fila del menú contextual de una app. Usa el icono del tema si existe y, si
@@ -15,6 +16,16 @@ Rectangle {
     property bool active: false
     property bool danger: false
     signal clicked()
+
+    // El atajo se muestra al pasar el ratón por el icono de teclado, no en
+    // toda la fila.
+    readonly property bool shortcutHover: {
+        if (root.shortcut.length === 0 || !mouse.containsMouse)
+            return false;
+        const p = shortcutKey.mapToItem(root, 0, 0);
+        return mouse.mouseX >= p.x - 2
+            && mouse.mouseX <= p.x + shortcutKey.width + 2;
+    }
 
     implicitHeight: 30
     radius: 7
@@ -53,8 +64,11 @@ Rectangle {
         }
 
         ShortcutKey {
-            Layout.preferredHeight: 16
+            id: shortcutKey
+
+            Layout.preferredHeight: 18
             label: root.shortcut
+            hovered: root.shortcutHover
         }
     }
 
@@ -68,4 +82,8 @@ Rectangle {
             ? Qt.PointingHandCursor : Qt.ArrowCursor
         onClicked: root.clicked()
     }
+
+    ToolTip.visible: root.shortcutHover
+    ToolTip.text: root.shortcut
+    ToolTip.delay: 250
 }

@@ -642,25 +642,30 @@ Thunar aporta «Home», «Computer» y «Trash».
 
 Las opciones de ventana del menú y las de la barra de título salen de la misma
 lista, `WindowActions.qml`. Así no pueden desincronizarse: mismo orden, mismas
-etiquetas, mismos iconos y mismos atajos. El orden imita los botones nativos:
-flotar, fijar, mover, minimizar, maximizar y cerrar.
+etiquetas, mismos iconos y mismos atajos. El orden imita los botones nativos
+(flotar, fijar, mover, minimizar, maximizar y cerrar) y añade pantalla
+completa antes de cerrar.
 
 - Se eliminó «Enfocar ventana»; para eso ya sirve pulsar la ficha de la app.
 - La opción de flotar solo aparece cuando puede hacer algo. En un escritorio
   en modo flotante Umbriel rechaza `window-toggle-floating`, así que se oculta.
   En mosaico la etiqueta y el icono cambian: «Hacer flotante»
   (`window-duplicate`) o «Volver al mosaico» (`view-grid`).
-- Maximizar cambia entre «Maximizar» y «Restaurar tamaño»; minimizar entre
-  «Minimizar» y «Restaurar ventana». En pantalla completa se ocultan flotar y
-  maximizar. Cada opción comprueba además la capacidad del backend.
+- Maximizar cambia entre «Maximizar» (`window-maximize`) y «Restaurar tamaño»
+  (`window-restore`); minimizar entre «Minimizar» (`window-minimize`) y
+  «Restaurar ventana» (`window-restore`). En pantalla completa se ocultan
+  flotar y maximizar, pero aparece «Salir de pantalla completa».
 - «Fijar siempre encima» viene de la barra de título y cambia a «Dejar de
-  fijar» cuando la ventana ya está fijada.
-- «Mover a escritorio» muestra los nueve botones en el mismo menú; se puede
-  plegar pulsando la fila.
-- Cada opción lleva un botón pequeño a la derecha con su atajo
-  (`ShortcutKey.qml`): `Super+T` flotar, `Super+P` fijar, `Super+Shift+1…9`
-  mover, `Super+Shift+H` minimizar, `Super+M` maximizar y `Super+Q` cerrar.
-  El atajo de minimizar se añadió a `[keybinds]` como
+  fijar» con el icono `window-unpin` cuando la ventana ya está fijada.
+- «Mover a escritorio» muestra los nueve botones solo al pulsar la fila; por
+  defecto el menú abre con esa lista plegada.
+- Cada opción lleva un icono de teclado a la derecha (`ShortcutKey.qml`). Al
+  pasar el ratón por ese icono aparece un tooltip con el atajo: `Super+T`
+  flotar, `Super+P` fijar, `Super+Shift+1…9` mover, `Super+Shift+H` minimizar,
+  `Super+M` maximizar, `Super+F` pantalla completa y `Super+Q` cerrar. El
+  icono no es configurable al pulsarlo: editar atajos desde ahí obligaría a
+  escribir y recargar la configuración de Umbriel, con más riesgo que
+  beneficio. El atajo de minimizar se añadió a `[keybinds]` como
   `"Mod+Shift+H" = "window-minimize"`.
 
 ## 19. Orden de las fichas de la barra

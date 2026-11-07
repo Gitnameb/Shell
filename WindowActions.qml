@@ -7,8 +7,9 @@ import QtQuick
 // derecho. Una sola lista evita que ambos sitios se desincronicen: mismo
 // orden, mismas etiquetas, mismos iconos y mismos atajos.
 //
-// El orden imita los botones de la barra de título nativa de Umbriel:
-// flotar, fijar, mover, minimizar, maximizar y cerrar.
+// El orden imita los botones de la barra de título nativa de Umbriel
+// (flotar, fijar, mover, minimizar, maximizar y cerrar) y añade pantalla
+// completa antes de cerrar.
 Singleton {
     id: root
 
@@ -62,7 +63,7 @@ Singleton {
             out.push({
                 key: "pin",
                 label: pinned ? "Dejar de fijar" : "Fijar siempre encima",
-                icon: "window-pin",
+                icon: pinned ? "window-unpin" : "window-pin",
                 glyph: "◆",
                 shortcut: "Super+P",
                 active: pinned,
@@ -87,7 +88,7 @@ Singleton {
             out.push({
                 key: "minimize",
                 label: minimized ? "Restaurar ventana" : "Minimizar",
-                icon: minimized ? "view-restore" : "go-down",
+                icon: minimized ? "window-restore" : "window-minimize",
                 glyph: minimized ? "❐" : "—",
                 shortcut: "Super+Shift+H",
                 active: minimized,
@@ -100,10 +101,23 @@ Singleton {
             out.push({
                 key: "maximize",
                 label: maximized ? "Restaurar tamaño" : "Maximizar",
-                icon: maximized ? "view-restore" : "view-fullscreen",
+                icon: maximized ? "window-restore" : "window-maximize",
                 glyph: maximized ? "❐" : "▣",
                 shortcut: "Super+M",
                 active: maximized,
+                danger: false
+            });
+        }
+
+        if (CompositorState.supports("fullscreen")) {
+            out.push({
+                key: "fullscreen",
+                label: fullscreen
+                    ? "Salir de pantalla completa" : "Pantalla completa",
+                icon: fullscreen ? "view-restore" : "view-fullscreen",
+                glyph: fullscreen ? "❐" : "⛶",
+                shortcut: "Super+F",
+                active: fullscreen,
                 danger: false
             });
         }
@@ -142,6 +156,8 @@ Singleton {
         }
         if (key === "maximize")
             return CompositorState.toggleMaximized(address);
+        if (key === "fullscreen")
+            return CompositorState.toggleFullscreen(address);
         if (key === "close")
             return CompositorState.closeWindow(address);
         return false;
