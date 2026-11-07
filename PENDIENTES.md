@@ -39,7 +39,14 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   22) y desenfoque (0–40, por defecto 12). El radio es global y también afecta
   a las ventanas. Pruebas: `scripts/test-glass-rules.sh`. Detalle:
   `CONFIGURACION-UMBRIEL.md` §11.
-- Fork en `~/umbriel-fork`, rama con 24 commits sobre `b6c4b7d`, árbol limpio.
+- **Desenfoque al mantener Super.** Umbriel desenfoca ahora solo el contenido
+  de la ventana bajo el puntero mientras se mantiene Mod, como el mockup:
+  shader de ventana con blur de 1.4 px y desaturación suave, más un velo del
+  10 %. La barra nativa y los botones quedan nítidos porque el shader se aplica
+  al nodo del cliente, no al marco. Sustituye el velo del 28 % que se aplicaba
+  a todas las ventanas. El parche del fork está regenerado; falta instalar el
+  binario nuevo (cerrar sesión) y probarlo con ratón real.
+- Fork en `~/umbriel-fork`, rama de trabajo sobre `b6c4b7d`.
   Parche regenerable en `~/Shell/umbriel-fork.patch` (50 archivos).
 - **Plataforma decidida: solo Umbriel sobre Debian.** Hyprland y cualquier otro
   compositor quedan descartados; no se mantiene ni se prueba ese backend. El

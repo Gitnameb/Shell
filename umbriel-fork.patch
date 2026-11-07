@@ -1,5 +1,5 @@
 diff --git a/docs/user/appearance.md b/docs/user/appearance.md
-index 1146a02..53233b5 100644
+index 1146a02c..53233b54 100644
 --- a/docs/user/appearance.md
 +++ b/docs/user/appearance.md
 @@ -129,6 +129,9 @@ buttons = ["minimize", "maximize", "close"]
@@ -13,7 +13,7 @@ index 1146a02..53233b5 100644
  [colors.title_bar]
  background = "#292933FF"
 diff --git a/docs/user/input.md b/docs/user/input.md
-index 47c4faa..0a50590 100644
+index 47c4faa4..0a505908 100644
 --- a/docs/user/input.md
 +++ b/docs/user/input.md
 @@ -6,12 +6,15 @@ Configure keyboard, pointer, touchpad, tablet, cursor, and focus behavior under
@@ -42,7 +42,7 @@ index 47c4faa..0a50590 100644
  Title bar presses keep the normal cursor until the pointer crosses a threshold of 10 logical pixels from its position at the original button press. Umbriel then starts dragging and switches to the grabbing cursor. Movement before an application's move request counts toward that threshold. If the pointer has already crossed it, dragging starts immediately without requiring another motion event or another threshold.
  
 diff --git a/docs/user/ipc.md b/docs/user/ipc.md
-index 4f1a764..0f05fa0 100644
+index 4f1a7644..0f05fa0f 100644
 --- a/docs/user/ipc.md
 +++ b/docs/user/ipc.md
 @@ -71,7 +71,7 @@ Programs run an [action](actions.md) with a typed request instead of the words p
@@ -55,7 +55,7 @@ index 4f1a764..0f05fa0 100644
  `{"cmd":"focused-window"}` answers with the focused window's listing entry: the window the window actions act on. The seat's focused window wins (for a modal dialog, the dialog itself; for a visible scratchpad window holding the keyboard, that window); while a layer surface or the overview holds the keyboard, the answer falls back to the pointer output's active workspace's remembered focus; and the reply is `{"err": "no focused window"}` while a scratchpad owns the seat with no window focused, or when nothing is focused. The entry is exactly a `windows` entry for that window; its `focused` member stays the workspace-local remembered focus and does not select which window the query answers about.
  
 diff --git a/docs/user/layout.md b/docs/user/layout.md
-index 29a8e7b..e005246 100644
+index 29a8e7b9..e0052468 100644
 --- a/docs/user/layout.md
 +++ b/docs/user/layout.md
 @@ -28,12 +28,31 @@ mode = "stacking"
@@ -92,7 +92,7 @@ index 29a8e7b..e005246 100644
  
  ```toml
 diff --git a/docs/user/workspaces.md b/docs/user/workspaces.md
-index d35aded..e3ad17d 100644
+index d35aded7..e3ad17d8 100644
 --- a/docs/user/workspaces.md
 +++ b/docs/user/workspaces.md
 @@ -184,6 +184,9 @@ Later values replace earlier ones. Strut edges are resolved independently, so a
@@ -106,7 +106,7 @@ index d35aded..e3ad17d 100644
  | `layout.scrolling.center_underfull_strip`    | Center or start-align an underfull strip.                                                                                                   |
  | `layout.scrolling.center_focused`            | Control when focus changes center a column.                                                                                                 |
 diff --git a/examples/config.toml b/examples/config.toml
-index 5083cbf..9f59ca3 100644
+index 5083cbf3..9f59ca34 100644
 --- a/examples/config.toml
 +++ b/examples/config.toml
 @@ -93,6 +93,7 @@ radius = 3
@@ -131,7 +131,7 @@ index 5083cbf..9f59ca3 100644
  [layout.scrolling]
  default_extent_fraction = 0.5
 diff --git a/meson.build b/meson.build
-index 352b148..a0ff2e8 100644
+index 352b1482..a0ff2e8b 100644
 --- a/meson.build
 +++ b/meson.build
 @@ -123,6 +123,7 @@ tomlplusplus_dep = dependency('tomlplusplus')
@@ -159,7 +159,7 @@ index 352b148..a0ff2e8 100644
    libdisplay_info_dep,
    native_drm_policy_deps,
 diff --git a/src/config/change.cpp b/src/config/change.cpp
-index ab6c48f..6f3a30b 100644
+index ab6c48f6..6f3a30b1 100644
 --- a/src/config/change.cpp
 +++ b/src/config/change.cpp
 @@ -229,18 +229,25 @@ namespace umbriel {
@@ -242,7 +242,7 @@ index ab6c48f..6f3a30b 100644
      add(viewChrome, "view chrome");
      add(internalUi, "internal UI");
 diff --git a/src/config/change.h b/src/config/change.h
-index 3d9806e..546472a 100644
+index 3d9806e1..546472ac 100644
 --- a/src/config/change.h
 +++ b/src/config/change.h
 @@ -14,6 +14,7 @@ namespace umbriel {
@@ -290,7 +290,7 @@ index 3d9806e..546472a 100644
            || directScanoutPolicy
            || workspaceInventory
 diff --git a/src/config/config.cpp b/src/config/config.cpp
-index 6e01dda..f9f704b 100644
+index 6e01dda1..f9f704b8 100644
 --- a/src/config/config.cpp
 +++ b/src/config/config.cpp
 @@ -29,6 +29,7 @@ namespace umbriel {
@@ -302,7 +302,7 @@ index 6e01dda..f9f704b 100644
            scratchpadTable(),
            hotCornersTable(),
 diff --git a/src/config/config.h b/src/config/config.h
-index 86a6825..dbd98b1 100644
+index 86a6825c..dbd98b1a 100644
 --- a/src/config/config.h
 +++ b/src/config/config.h
 @@ -119,6 +119,9 @@ namespace umbriel {
@@ -379,7 +379,7 @@ index 86a6825..dbd98b1 100644
        // middle-click paste.
        bool middleClickPaste = true;
 diff --git a/src/config/fields.h b/src/config/fields.h
-index 6f3d130..c21867c 100644
+index 6f3d130c..c21867c8 100644
 --- a/src/config/fields.h
 +++ b/src/config/fields.h
 @@ -130,6 +130,7 @@ namespace umbriel {
@@ -391,7 +391,7 @@ index 6f3d130..c21867c 100644
    registry::Field<Config> hotCornersTable();
    registry::Field<Config> generalTable();
 diff --git a/src/config/fields_general.cpp b/src/config/fields_general.cpp
-index 3e1a991..07431b8 100644
+index 3e1a9910..07431b8a 100644
 --- a/src/config/fields_general.cpp
 +++ b/src/config/fields_general.cpp
 @@ -94,6 +94,7 @@ namespace umbriel {
@@ -442,7 +442,7 @@ index 3e1a991..07431b8 100644
  
    registry::Field<Config> hotCornersTable() {
 diff --git a/src/config/fields_input.cpp b/src/config/fields_input.cpp
-index 47ba479..77ca409 100644
+index 47ba4790..77ca409a 100644
 --- a/src/config/fields_input.cpp
 +++ b/src/config/fields_input.cpp
 @@ -390,6 +390,7 @@ namespace umbriel {
@@ -454,7 +454,7 @@ index 47ba479..77ca409 100644
            boolean("client_window_drag", &In::clientWindowDrag),
            choice(
 diff --git a/src/config/fields_layout.cpp b/src/config/fields_layout.cpp
-index 30ecb31..8494797 100644
+index 30ecb31d..8494797b 100644
 --- a/src/config/fields_layout.cpp
 +++ b/src/config/fields_layout.cpp
 @@ -190,6 +190,9 @@ namespace umbriel {
@@ -468,7 +468,7 @@ index 30ecb31..8494797 100644
        static const Fields<Tabs> tabs{
            choice("default_display", &Tabs::defaultDisplay, columnDisplays()),
 diff --git a/src/config/resolve.cpp b/src/config/resolve.cpp
-index 16a64d4..1742b43 100644
+index 16a64d47..1742b43c 100644
 --- a/src/config/resolve.cpp
 +++ b/src/config/resolve.cpp
 @@ -135,6 +135,15 @@ namespace umbriel {
@@ -498,7 +498,7 @@ index 16a64d4..1742b43 100644
      resolved.tabs.newTabPosition = config.layout.tabs.newTabPosition;
      resolved.tabs.wrapFocus = config.layout.tabs.wrapFocus;
 diff --git a/src/input/cursor.cpp b/src/input/cursor.cpp
-index 04ee05c..b7cced0 100644
+index 04ee05c5..139e39b1 100644
 --- a/src/input/cursor.cpp
 +++ b/src/input/cursor.cpp
 @@ -19,6 +19,7 @@
@@ -731,7 +731,7 @@ index 04ee05c..b7cced0 100644
          setPointerFocus(surface, sx, sy, timeMsec);
          wlr_seat_pointer_notify_motion(m_server->seat()->wlr(), timeMsec, sx, sy);
          return;
-@@ -2421,6 +2520,45 @@ namespace umbriel {
+@@ -2421,6 +2520,48 @@ namespace umbriel {
        resetMode();
      }
  
@@ -744,7 +744,10 @@ index 04ee05c..b7cced0 100644
 +      double sy = 0;
 +      wlr_surface* surface = nullptr;
 +      LayerSurface* layer = nullptr;
-+      m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
++      View* view = m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
++      // The shield branch owns motion while Mod is held, so this is where the
++      // hovered window is tracked.
++      m_server->updateModHoverBlur(layer == nullptr ? view : nullptr);
 +      if (layer != nullptr && surface != nullptr) {
 +        setPointerFocus(surface, sx, sy, timeMsec);
 +        wlr_seat_pointer_notify_motion(m_server->seat()->wlr(), timeMsec, sx, sy);
@@ -777,7 +780,25 @@ index 04ee05c..b7cced0 100644
      wlr_seat* seat = m_server->seat()->wlr();
      updateDataDragEdgeScroll();
      if (seat->drag == nullptr
-@@ -3371,6 +3509,69 @@ namespace umbriel {
+@@ -2443,6 +2584,9 @@ namespace umbriel {
+     wlr_surface* surface = nullptr;
+     LayerSurface* layer = nullptr;
+     View* view = m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
++    // While Mod is held, only the window under the pointer is blurred. This
++    // runs even when follow-mouse focus is off.
++    m_server->updateModHoverBlur(layer == nullptr ? view : nullptr);
+ 
+     if (allowFocusChange
+         && config().input.focus.followsMouse
+@@ -2694,6 +2838,7 @@ namespace umbriel {
+     wlr_surface* surface = nullptr;
+     LayerSurface* layer = nullptr;
+     View* view = m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
++    m_server->updateModHoverBlur(layer == nullptr ? view : nullptr);
+     if (surface == nullptr || !wlr_surface_accepts_tablet_v2(surface, v2tablet)) {
+       setToolEmulating(state, true);
+       processMotion(timeMsec, oldX, oldY);
+@@ -3371,6 +3516,69 @@ namespace umbriel {
      return workspace->layout().sanitizeResizeEdges(view, resizeEdgesForPoint(reachable, x, y));
    }
  
@@ -847,7 +868,7 @@ index 04ee05c..b7cced0 100644
    void Cursor::forgetView(const View* view) {
      if (m_lastTitleBarClick.view == view)
        m_lastTitleBarClick = {};
-@@ -3437,34 +3638,7 @@ namespace umbriel {
+@@ -3437,34 +3645,7 @@ namespace umbriel {
      if (box.width <= 0 || box.height <= 0) {
        return 0;
      }
@@ -883,7 +904,7 @@ index 04ee05c..b7cced0 100644
    }
  
    void Cursor::setCompositorCursor(const char* name) {
-@@ -3548,10 +3722,13 @@ namespace umbriel {
+@@ -3548,10 +3729,13 @@ namespace umbriel {
      wlr_surface* surface = nullptr;
      LayerSurface* layer = nullptr;
      m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -898,7 +919,7 @@ index 04ee05c..b7cced0 100644
        surface = nullptr;
      }
      const bool stale = !pointerFocusPinned() && pointerContentsStale(surface, sx, sy);
-@@ -3615,23 +3792,32 @@ namespace umbriel {
+@@ -3615,23 +3799,32 @@ namespace umbriel {
      wlr_surface* surface = nullptr;
      LayerSurface* layer = nullptr;
      View* view = m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -942,7 +963,7 @@ index 04ee05c..b7cced0 100644
      if (m_server->sessionLocked()) {
        setCompositorCursor(nullptr);
        return;
-@@ -3658,14 +3844,31 @@ namespace umbriel {
+@@ -3658,14 +3851,31 @@ namespace umbriel {
      }
  
      const bool modHeld = (m_server->keyboardModifiers() & m_server->modKey()) != 0;
@@ -977,7 +998,7 @@ index 04ee05c..b7cced0 100644
        return;
      }
  
-@@ -3678,6 +3881,9 @@ namespace umbriel {
+@@ -3678,6 +3888,9 @@ namespace umbriel {
              !hit->view->blocked()
              && (hit->part == SsdFramePart::Close
                  || hit->part == SsdFramePart::Minimize
@@ -987,7 +1008,7 @@ index 04ee05c..b7cced0 100644
                  || (hit->part == SsdFramePart::Maximize && hit->view->ssdFrame()->maximizeEnabled()))
          ) {
            name = "pointer";
-@@ -3697,8 +3903,9 @@ namespace umbriel {
+@@ -3697,8 +3910,9 @@ namespace umbriel {
      double sx = 0;
      double sy = 0;
      wlr_surface* surface = nullptr;
@@ -1000,7 +1021,7 @@ index 04ee05c..b7cced0 100644
  
    void Cursor::processResizeTile() {
 diff --git a/src/input/cursor.h b/src/input/cursor.h
-index 609e9f4..c097317 100644
+index 609e9f45..c097317b 100644
 --- a/src/input/cursor.h
 +++ b/src/input/cursor.h
 @@ -227,7 +227,11 @@ namespace umbriel {
@@ -1053,7 +1074,7 @@ index 609e9f4..c097317 100644
      // View pointer across unmap. Reloading config retires the escape so disabled rules cannot affect native input.
      std::string m_ruleConfinementView;
 diff --git a/src/input/cursor_constraint.cpp b/src/input/cursor_constraint.cpp
-index d19fdfa..3edc273 100644
+index d19fdfa9..3edc273d 100644
 --- a/src/input/cursor_constraint.cpp
 +++ b/src/input/cursor_constraint.cpp
 @@ -1,5 +1,6 @@
@@ -1135,7 +1156,7 @@ index d19fdfa..3edc273 100644
          && m_server->seat()->wlr()->drag == nullptr
          && View::fromSurface(m_server->seat()->wlr()->keyboard_state.focused_surface) == &view;
 diff --git a/src/input/keyboard.cpp b/src/input/keyboard.cpp
-index 9547301..7a86842 100644
+index 95473013..7a868429 100644
 --- a/src/input/keyboard.cpp
 +++ b/src/input/keyboard.cpp
 @@ -13,6 +13,7 @@
@@ -1236,7 +1257,7 @@ index 9547301..7a86842 100644
  
    void Keyboard::armRepeat(const Keybind& bind, uint32_t keycode) {
 diff --git a/src/output/output.cpp b/src/output/output.cpp
-index 12b377c..b98498e 100644
+index 12b377cc..b98498ef 100644
 --- a/src/output/output.cpp
 +++ b/src/output/output.cpp
 @@ -257,17 +257,27 @@ namespace umbriel {
@@ -1286,304 +1307,11 @@ index 12b377c..b98498e 100644
        bind(this, screen, m_output->enabled);
        wlr_scene_output_set_screen_effect(m_sceneOutput, screen, &parameters);
      } else {
-diff --git a/src/scene/app_icon.cpp b/src/scene/app_icon.cpp
-new file mode 100644
-index 0000000..23b3d88
---- /dev/null
-+++ b/src/scene/app_icon.cpp
-@@ -0,0 +1,266 @@
-+#include "scene/app_icon.h"
-+
-+#include "scene/cairo_buffer.h"
-+
-+#include <gdk-pixbuf/gdk-pixbuf.h>
-+
-+#include <algorithm>
-+#include <array>
-+#include <cctype>
-+#include <cstdint>
-+#include <cstdlib>
-+#include <filesystem>
-+#include <fstream>
-+#include <string>
-+#include <string_view>
-+#include <unordered_map>
-+#include <vector>
-+
-+namespace umbriel {
-+  namespace {
-+    namespace fs = std::filesystem;
-+
-+    std::string lower(std::string_view value) {
-+      std::string out(value);
-+      std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) {
-+        return static_cast<char>(std::tolower(c));
-+      });
-+      return out;
-+    }
-+
-+    std::string homeDir() {
-+      const char* home = std::getenv("HOME");
-+      return home != nullptr ? std::string(home) : std::string();
-+    }
-+
-+    std::vector<fs::path> dataDirs() {
-+      std::vector<fs::path> dirs;
-+      const std::string home = homeDir();
-+      if (!home.empty()) {
-+        dirs.emplace_back(fs::path(home) / ".local/share");
-+        dirs.emplace_back(fs::path(home) / ".local/share/flatpak/exports/share");
-+      }
-+      dirs.emplace_back("/usr/local/share");
-+      dirs.emplace_back("/usr/share");
-+      dirs.emplace_back("/var/lib/flatpak/exports/share");
-+      return dirs;
-+    }
-+
-+    // Lee una clave sencilla («Icon=», «StartupWMClass=») de un .desktop.
-+    std::string desktopValue(const fs::path& file, std::string_view key) {
-+      std::ifstream stream(file);
-+      if (!stream)
-+        return {};
-+      std::string line;
-+      const std::string prefix = std::string(key) + "=";
-+      while (std::getline(stream, line)) {
-+        if (line.rfind(prefix, 0) == 0) {
-+          std::string value = line.substr(prefix.size());
-+          while (!value.empty() && (value.back() == '\r' || value.back() == ' '))
-+            value.pop_back();
-+          const size_t start = value.find_first_not_of(' ');
-+          return start == std::string::npos ? std::string() : value.substr(start);
-+        }
-+      }
-+      return {};
-+    }
-+
-+    // Nombre de icono declarado por la app. Se prueba el .desktop con el mismo
-+    // id y, si no existe, se busca por StartupWMClass o por nombre de archivo.
-+    std::string desktopIcon(const std::string& appId) {
-+      static std::unordered_map<std::string, std::string> cache;
-+      if (const auto found = cache.find(appId); found != cache.end())
-+        return found->second;
-+
-+      const std::string wanted = lower(appId);
-+      std::string icon;
-+
-+      for (const fs::path& base : dataDirs()) {
-+        const fs::path applications = base / "applications";
-+        std::error_code error;
-+
-+        const fs::path direct = applications / (appId + ".desktop");
-+        if (fs::is_regular_file(direct, error)) {
-+          icon = desktopValue(direct, "Icon");
-+          if (!icon.empty())
-+            break;
-+        }
-+
-+        if (!fs::is_directory(applications, error))
-+          continue;
-+        for (const fs::directory_entry& entry : fs::directory_iterator(applications, error)) {
-+          if (error || !entry.is_regular_file() || entry.path().extension() != ".desktop")
-+            continue;
-+          if (lower(entry.path().stem().string()) == wanted) {
-+            icon = desktopValue(entry.path(), "Icon");
-+            if (!icon.empty())
-+              break;
-+          }
-+          const std::string wmClass = lower(desktopValue(entry.path(), "StartupWMClass"));
-+          if (!wmClass.empty() && wmClass == wanted) {
-+            icon = desktopValue(entry.path(), "Icon");
-+            if (!icon.empty())
-+              break;
-+          }
-+        }
-+        if (!icon.empty())
-+          break;
-+      }
-+
-+      if (icon.empty())
-+        icon = appId; // muchas apps usan su app_id como nombre de icono
-+      cache.emplace(appId, icon);
-+      return icon;
-+    }
-+
-+    bool isAbsoluteIcon(const std::string& icon, fs::path* out) {
-+      if (icon.empty() || icon.front() != '/')
-+        return false;
-+      std::error_code error;
-+      if (!fs::is_regular_file(icon, error))
-+        return false;
-+      *out = icon;
-+      return true;
-+    }
-+
-+    // Busca «Icon=» en los temas instalados. Primero breeze-dark (el tema que
-+    // usa ALBA), después los demás; los iconos de apps de terceros suelen estar
-+    // en hicolor.
-+    std::string findIconFile(const std::string& icon) {
-+      static constexpr std::array<std::string_view, 8> themes{
-+          "breeze-dark", "breeze", "Breeze_Light", "hicolor", "Adwaita", "oxygen", "locolor", "default"};
-+      // Breeze usa carpetas numéricas («48»), hicolor usa «48x48».
-+      static constexpr std::array<std::string_view, 17> sizes{
-+          "scalable", "256x256", "256", "128x128", "128", "64x64", "64", "48x48", "48",
-+          "32x32", "32", "24x24", "24", "22x22", "22", "16x16", "16"};
-+      static constexpr std::array<std::string_view, 3> categories{"apps", "applications", "mimetypes"};
-+      static constexpr std::array<std::string_view, 3> extensions{".svg", ".png", ".xpm"};
-+
-+      std::vector<fs::path> roots;
-+      const std::string home = homeDir();
-+      if (!home.empty()) {
-+        roots.emplace_back(fs::path(home) / ".local/share/icons");
-+        roots.emplace_back(fs::path(home) / ".icons");
-+        roots.emplace_back(fs::path(home) / ".local/share/flatpak/exports/share/icons");
-+      }
-+      roots.emplace_back("/usr/local/share/icons");
-+      roots.emplace_back("/usr/share/icons");
-+      roots.emplace_back("/var/lib/flatpak/exports/share/icons");
-+      roots.emplace_back("/usr/share/pixmaps");
-+
-+      std::error_code error;
-+      for (const fs::path& root : roots) {
-+        // /usr/share/pixmaps guarda los archivos directamente.
-+        if (root.filename() == "pixmaps") {
-+          for (const std::string_view extension : extensions) {
-+            const fs::path candidate = root / (icon + std::string(extension));
-+            if (fs::is_regular_file(candidate, error))
-+              return candidate.string();
-+          }
-+          continue;
-+        }
-+        if (!fs::is_directory(root, error))
-+          continue;
-+        for (const std::string_view theme : themes) {
-+          const fs::path themeRoot = root / theme;
-+          if (!fs::is_directory(themeRoot, error))
-+            continue;
-+          for (const std::string_view size : sizes) {
-+            for (const std::string_view category : categories) {
-+              // hicolor: <tema>/48x48/apps. Breeze: <tema>/apps/48.
-+              const std::array<fs::path, 2> folders{
-+                  themeRoot / size / category, themeRoot / category / size};
-+              for (const fs::path& folder : folders) {
-+                if (!fs::is_directory(folder, error))
-+                  continue;
-+                for (const std::string_view extension : extensions) {
-+                  const fs::path candidate = folder / (icon + std::string(extension));
-+                  if (fs::is_regular_file(candidate, error))
-+                    return candidate.string();
-+                }
-+              }
-+            }
-+          }
-+        }
-+      }
-+      return {};
-+    }
-+
-+    std::string resolveIconPath(const std::string& appId) {
-+      static std::unordered_map<std::string, std::string> cache;
-+      if (const auto found = cache.find(appId); found != cache.end())
-+        return found->second;
-+
-+      fs::path absolute;
-+      const std::string icon = desktopIcon(appId);
-+      std::string resolved;
-+      if (isAbsoluteIcon(icon, &absolute))
-+        resolved = absolute.string();
-+      else
-+        resolved = findIconFile(icon);
-+      cache.emplace(appId, resolved);
-+      return resolved;
-+    }
-+
-+    cairo_surface_t* pixbufToSurface(GdkPixbuf* pixbuf) {
-+      const int width = gdk_pixbuf_get_width(pixbuf);
-+      const int height = gdk_pixbuf_get_height(pixbuf);
-+      const int channels = gdk_pixbuf_get_n_channels(pixbuf);
-+      const int stride = gdk_pixbuf_get_rowstride(pixbuf);
-+      const bool alpha = gdk_pixbuf_get_has_alpha(pixbuf) != 0;
-+      const guchar* pixels = gdk_pixbuf_get_pixels(pixbuf);
-+      if (width <= 0 || height <= 0 || pixels == nullptr)
-+        return nullptr;
-+
-+      cairo_surface_t* surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
-+      cairo_surface_flush(surface);
-+      auto* destination = reinterpret_cast<uint32_t*>(cairo_image_surface_get_data(surface));
-+      const int destinationStride = cairo_image_surface_get_stride(surface) / 4;
-+      for (int y = 0; y < height; ++y) {
-+        const guchar* row = pixels + static_cast<size_t>(y) * stride;
-+        for (int x = 0; x < width; ++x) {
-+          const guchar* source = row + static_cast<size_t>(x) * channels;
-+          const uint32_t a = alpha ? source[3] : 255U;
-+          const uint32_t r = static_cast<uint32_t>(source[0]) * a / 255U;
-+          const uint32_t g = static_cast<uint32_t>(source[1]) * a / 255U;
-+          const uint32_t b = static_cast<uint32_t>(source[2]) * a / 255U;
-+          destination[static_cast<size_t>(y) * destinationStride + x] = (a << 24U) | (r << 16U) | (g << 8U) | b;
-+        }
-+      }
-+      cairo_surface_mark_dirty(surface);
-+      return surface;
-+    }
-+  } // namespace
-+
-+  wlr_buffer* renderAppIcon(const std::string& appId, int pixels) {
-+    if (appId.empty() || pixels < 8)
-+      return nullptr;
-+    const std::string path = resolveIconPath(appId);
-+    if (path.empty())
-+      return nullptr;
-+
-+    GError* error = nullptr;
-+    GdkPixbuf* pixbuf = gdk_pixbuf_new_from_file_at_scale(path.c_str(), pixels, pixels, TRUE, &error);
-+    if (pixbuf == nullptr) {
-+      if (error != nullptr)
-+        g_error_free(error);
-+      return nullptr;
-+    }
-+    cairo_surface_t* icon = pixbufToSurface(pixbuf);
-+    g_object_unref(pixbuf);
-+    if (icon == nullptr)
-+      return nullptr;
-+
-+    const int width = cairo_image_surface_get_width(icon);
-+    const int height = cairo_image_surface_get_height(icon);
-+    cairo_surface_t* canvas = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pixels, pixels);
-+    cairo_t* context = cairo_create(canvas);
-+    cairo_set_source_surface(
-+        context, icon, (pixels - width) / 2.0, (pixels - height) / 2.0
-+    );
-+    cairo_paint(context);
-+    cairo_destroy(context);
-+    cairo_surface_destroy(icon);
-+    return createCairoBuffer(canvas);
-+  }
-+} // namespace umbriel
-diff --git a/src/scene/app_icon.h b/src/scene/app_icon.h
-new file mode 100644
-index 0000000..ba4956f
---- /dev/null
-+++ b/src/scene/app_icon.h
-@@ -0,0 +1,15 @@
-+#pragma once
-+
-+#include <string>
-+
-+struct wlr_buffer;
-+
-+namespace umbriel {
-+  // Icono real de la aplicación para la barra de título.
-+  //
-+  // Umbriel no depende de GTK ni de un lector de temas de iconos, así que se
-+  // resuelve el .desktop de la app, se busca su Icon= en los temas instalados y
-+  // se rasteriza con gdk-pixbuf en un buffer cuadrado de `pixels` píxeles.
-+  // Devuelve nullptr si no hay icono; el llamador libera el buffer.
-+  [[nodiscard]] wlr_buffer* renderAppIcon(const std::string& appId, int pixels);
-+} // namespace umbriel
 diff --git a/src/scene/effect_registry.cpp b/src/scene/effect_registry.cpp
-index e430353..6f2e6a4 100644
+index e4303532..be8c58e3 100644
 --- a/src/scene/effect_registry.cpp
 +++ b/src/scene/effect_registry.cpp
-@@ -32,6 +32,21 @@ namespace umbriel {
+@@ -32,6 +32,44 @@ namespace umbriel {
      return umbriel_sample(uv) * alpha;
  })";
  
@@ -1602,18 +1330,51 @@ index e430353..6f2e6a4 100644
 +}
 +)";
 +
++    // Window under the pointer while Mod is held. Matches the shell mockup:
++    // a 1.4 px blur and a slight desaturation. It runs as a window effect on
++    // the client content, so the native title bar and its buttons stay sharp.
++    constexpr const char* kModHoverBlur = R"(
++vec4 window(vec2 uv) {
++  vec2 step = min(vec2(0.45), 1.4 / max(umbriel_size, vec2(1.0)));
++  vec2 lo = step;
++  vec2 hi = vec2(1.0) - step;
++  vec4 c = umbriel_sample(uv) * 0.25;
++  c += umbriel_sample(clamp(uv + vec2(step.x, 0.0), lo, hi)) * 0.125;
++  c += umbriel_sample(clamp(uv - vec2(step.x, 0.0), lo, hi)) * 0.125;
++  c += umbriel_sample(clamp(uv + vec2(0.0, step.y), lo, hi)) * 0.125;
++  c += umbriel_sample(clamp(uv - vec2(0.0, step.y), lo, hi)) * 0.125;
++  c += umbriel_sample(clamp(uv + step, lo, hi)) * 0.0625;
++  c += umbriel_sample(clamp(uv - step, lo, hi)) * 0.0625;
++  c += umbriel_sample(clamp(uv + vec2(step.x, -step.y), lo, hi)) * 0.0625;
++  c += umbriel_sample(clamp(uv + vec2(-step.x, step.y), lo, hi)) * 0.0625;
++  float lum = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
++  c.rgb = mix(vec3(lum), c.rgb, 0.82);
++  return c;
++}
++)";
++
      // The drag slot's built-in program. uv spans the drawn rectangle (node plus
      // expand); the inverse lookup contracts by DragPhysics::kContraction per step,
      // so 22 steps reach 0.1 px on a 200 px displacement and most fragments stop
-@@ -235,6 +250,7 @@ vec4 animation(vec2 uv) {
+@@ -124,6 +162,8 @@ vec4 animation(vec2 uv) {
+   void EffectRegistry::clear() {
+     m_programs.clear();
+     m_builtinFade.reset();
++    m_displayFilter.reset();
++    m_hoverBlur.reset();
+     dropDeformation();
+     m_persistentReferenced = false;
+     m_inPlaceReferenced = false;
+@@ -235,6 +275,8 @@ vec4 animation(vec2 uv) {
        // Programs belong to one GL context. A new renderer starts from nothing.
        m_programs.clear();
        m_builtinFade.reset();
 +      m_displayFilter.reset();
++      m_hoverBlur.reset();
        dropDeformation();
        m_renderer = renderer;
      }
-@@ -267,6 +283,20 @@ vec4 animation(vec2 uv) {
+@@ -267,6 +309,34 @@ vec4 animation(vec2 uv) {
      } else if (!fadeNeeded) {
        m_builtinFade.reset();
      }
@@ -1631,10 +1392,24 @@ index e430353..6f2e6a4 100644
 +    // A screen effect draws in place: captures that must stay unfiltered ask
 +    // for a frame without it.
 +    m_inPlaceReferenced = m_inPlaceReferenced || m_displayFilter != nullptr;
++
++    // The Mod-hover blur is built in and has no preset, but it is an in-place
++    // window effect and needs the same buffers as one. Compile it here, never
++    // in a render callback.
++    if (m_hoverBlur == nullptr) {
++      m_hoverBlur = {
++          fx_effect_shader_create(m_renderer, FX_EFFECT_WINDOW, kModHoverBlur, "window.mod_hover_blur"),
++          fx_effect_shader_unref
++      };
++      if (m_hoverBlur == nullptr) {
++        kLog.error("the mod-hover blur program failed to compile; hovering windows stays sharp");
++      }
++    }
++    m_inPlaceReferenced = m_inPlaceReferenced || m_hoverBlur != nullptr;
      if (!settings.animation.enabled || !settings.animation.windowsDrag.physics) {
        dropDeformation();
      } else if (!m_deformationCompiled) {
-@@ -439,6 +469,19 @@ vec4 animation(vec2 uv) {
+@@ -439,6 +509,19 @@ vec4 animation(vec2 uv) {
      }
    }
  
@@ -1655,30 +1430,34 @@ index e430353..6f2e6a4 100644
      const double distance = value.target() - value.from();
      const auto progress = static_cast<float>(
 diff --git a/src/scene/effect_registry.h b/src/scene/effect_registry.h
-index 9b42b18..4a13e0f 100644
+index 9b42b181..130c9c2f 100644
 --- a/src/scene/effect_registry.h
 +++ b/src/scene/effect_registry.h
-@@ -53,6 +53,10 @@ namespace umbriel {
+@@ -53,6 +53,13 @@ namespace umbriel {
      // The drag slot's built-in deformation program, compiled by prepare() for the current renderer. Null while
      // animations or windows_drag.physics are off, or when it failed to compile.
      fx_effect_shader* deformationShader() const;
 +    // The built-in whole-output display filter, or null while every value is neutral.
 +    fx_effect_shader* displayFilterEffect() const { return m_displayFilter.get(); }
++    // Built-in blur for the window under the pointer while Mod is held. Applies to the client content only, so the
++    // native title bar and its buttons stay sharp.
++    fx_effect_shader* modHoverBlurShader() const { return m_hoverBlur.get(); }
 +    // Adds alba_brightness, alba_extra_dim, and alba_warm for displayFilterEffect().
 +    void fillDisplayUniforms(fx_animation_parameters& parameters) const;
      // The preset bound to an animation event through `effect =`, or null (also null for the built-in fade).
      const EffectPreset* animationPreset(AnimationEvent event) const;
      // The animation clock in seconds, read only when a program needs it. Measured from an epoch
-@@ -105,6 +109,7 @@ namespace umbriel {
+@@ -105,6 +112,8 @@ namespace umbriel {
      wlr_renderer* m_renderer = nullptr;
      std::map<std::string, Entry, std::less<>> m_programs;
      std::shared_ptr<fx_effect_shader> m_builtinFade;
 +    std::shared_ptr<fx_effect_shader> m_displayFilter;
++    std::shared_ptr<fx_effect_shader> m_hoverBlur;
      std::shared_ptr<fx_effect_shader> m_deformation; // null once compilation failed
      bool m_deformationCompiled = false;
      bool m_persistentReferenced = false;
 diff --git a/src/scene/ssd_frame.cpp b/src/scene/ssd_frame.cpp
-index 213d236..4329d02 100644
+index 213d2361..4329d02d 100644
 --- a/src/scene/ssd_frame.cpp
 +++ b/src/scene/ssd_frame.cpp
 @@ -1,6 +1,7 @@
@@ -2254,7 +2033,7 @@ index 213d236..4329d02 100644
        frame->setMaximizeEnabled(m_maximizeEnabled);
        frame->setButtons(m_buttons);
 diff --git a/src/scene/ssd_frame.h b/src/scene/ssd_frame.h
-index aad0315..a003e20 100644
+index aad03159..a003e206 100644
 --- a/src/scene/ssd_frame.h
 +++ b/src/scene/ssd_frame.h
 @@ -31,17 +31,27 @@ namespace umbriel {
@@ -2329,7 +2108,7 @@ index aad0315..a003e20 100644
      float m_blurAlpha = 1.0F;
      SsdFramePart m_hovered = SsdFramePart::None;
 diff --git a/src/scene/ssd_frame_geometry.cpp b/src/scene/ssd_frame_geometry.cpp
-index 5e50faf..f1fca68 100644
+index 5e50faf4..f1fca68e 100644
 --- a/src/scene/ssd_frame_geometry.cpp
 +++ b/src/scene/ssd_frame_geometry.cpp
 @@ -9,7 +9,9 @@ extern "C" {
@@ -2411,7 +2190,7 @@ index 5e50faf..f1fca68 100644
      }
      if (!resizable
 diff --git a/src/scene/ssd_frame_geometry.h b/src/scene/ssd_frame_geometry.h
-index e42e5f8..8e2a1b5 100644
+index e42e5f84..8e2a1b59 100644
 --- a/src/scene/ssd_frame_geometry.h
 +++ b/src/scene/ssd_frame_geometry.h
 @@ -12,12 +12,28 @@ extern "C" {
@@ -2481,7 +2260,7 @@ index e42e5f8..8e2a1b5 100644
    wlr_box contentBoxInTile(const wlr_box& tile, int titleBarHeight);
  } // namespace umbriel
 diff --git a/src/scene/title_bar_icon.cpp b/src/scene/title_bar_icon.cpp
-index 80a6fd9..f35fb01 100644
+index 80a6fd98..f35fb01d 100644
 --- a/src/scene/title_bar_icon.cpp
 +++ b/src/scene/title_bar_icon.cpp
 @@ -3,33 +3,96 @@
@@ -2591,7 +2370,7 @@ index 80a6fd9..f35fb01 100644
      cairo_destroy(cr);
      return createCairoBuffer(surface);
 diff --git a/src/server/ipc.cpp b/src/server/ipc.cpp
-index e59e772..efe4bdc 100644
+index e59e7726..efe4bdc0 100644
 --- a/src/server/ipc.cpp
 +++ b/src/server/ipc.cpp
 @@ -133,6 +133,38 @@ namespace umbriel {
@@ -2655,7 +2434,7 @@ index e59e772..efe4bdc 100644
 +
  } // namespace umbriel
 diff --git a/src/server/ipc.h b/src/server/ipc.h
-index 7357ed7..6ed548b 100644
+index 7357ed75..6ed548b7 100644
 --- a/src/server/ipc.h
 +++ b/src/server/ipc.h
 @@ -31,13 +31,16 @@ namespace umbriel {
@@ -2699,7 +2478,7 @@ index 7357ed7..6ed548b 100644
  
  } // namespace umbriel
 diff --git a/src/server/ipc_commands.cpp b/src/server/ipc_commands.cpp
-index 7e1bd5d..436d049 100644
+index 7e1bd5d9..436d0499 100644
 --- a/src/server/ipc_commands.cpp
 +++ b/src/server/ipc_commands.cpp
 @@ -11,6 +11,7 @@
@@ -2814,7 +2593,7 @@ index 7e1bd5d..436d049 100644
         &IpcCommands::focusedWindow, &printWindowRow},
        {"workspaces", "", "list workspaces and their layouts", IpcCommandGroup::Inspect, false, &IpcCommands::workspaces,
 diff --git a/src/server/ipc_commands.h b/src/server/ipc_commands.h
-index 528e137..b4932fa 100644
+index 528e1371..b4932fad 100644
 --- a/src/server/ipc_commands.h
 +++ b/src/server/ipc_commands.h
 @@ -23,6 +23,8 @@ namespace umbriel {
@@ -2827,7 +2606,7 @@ index 528e137..b4932fa 100644
      static nlohmann::json workspaces(Server& server, IpcArgs args);
      static nlohmann::json submap(Server& server, IpcArgs args);
 diff --git a/src/server/server.cpp b/src/server/server.cpp
-index 560eef6..25fec3f 100644
+index 560eef66..25fec3fb 100644
 --- a/src/server/server.cpp
 +++ b/src/server/server.cpp
 @@ -1086,6 +1086,10 @@ namespace umbriel {
@@ -2842,10 +2621,10 @@ index 560eef6..25fec3f 100644
        if (source != nullptr) {
          wl_event_source_remove(source);
 diff --git a/src/server/server.h b/src/server/server.h
-index 03e1060..36463af 100644
+index 03e10604..ff61bb74 100644
 --- a/src/server/server.h
 +++ b/src/server/server.h
-@@ -429,7 +429,25 @@ namespace umbriel {
+@@ -429,7 +429,30 @@ namespace umbriel {
      bool handleVtSwitch(uint32_t keysym, uint32_t modifiers);
      void armModifierTap(const void* source, uint32_t keycode, std::span<const uint32_t> keysyms, uint32_t modifiers);
      [[nodiscard]] std::optional<Keybind> releaseModifierTap(const void* source, uint32_t keycode);
@@ -2866,13 +2645,18 @@ index 03e1060..36463af 100644
 +    // a modifier event. Covers keyboards that report modifiers without a
 +    // separate key press reaching handleKey.
 +    void refreshModTapState();
-+    // Turns the held-Mod presentation (content shield, shade, overlay title
-+    // bars) on or off as one unit.
++    // Turns the held-Mod presentation (content shield, hover blur, overlay
++    // title bars) on or off as one unit.
 +    void setModHoldActive(bool active);
++    // Tracks which window is under the pointer while Mod is held and blurs
++    // only its client content. Passing null clears the previous window.
++    void updateModHoverBlur(View* view);
++    // Called when a view dies so the hover pointer never dangles.
++    void forgetModHoverView(const View* view);
      void arrangeLayers(wlr_output* output);
      // Re-send every surface's output scale (views, layer surfaces, popups). Run after anything that changes an output's
      // scale or moves surfaces between outputs outside setWorkspace; the notifies dedup, so extra calls are cheap.
-@@ -476,6 +494,10 @@ namespace umbriel {
+@@ -476,6 +499,10 @@ namespace umbriel {
      bool syncingKeyboardLocks() const;
      void removeKeyboard(Keyboard* keyboard);
      void removeView(View* view);
@@ -2883,7 +2667,7 @@ index 03e1060..36463af 100644
      void removeLayerSurface(LayerSurface* layerSurface, wlr_output* output);
      void removeSessionLock(SessionLock* lock);
      void activateSessionLock(SessionLock* lock);
-@@ -587,6 +609,8 @@ namespace umbriel {
+@@ -587,6 +614,8 @@ namespace umbriel {
      // when there are none.
      void armBackgroundRenderTimer();
      static int onStartupRulesTimer(void* data);
@@ -2892,7 +2676,7 @@ index 03e1060..36463af 100644
      static int onTerminateSignal(int signal, void* data);
      static void onIpcWindowsIdle(void* data);
      static void onIpcWorkspacesIdle(void* data);
-@@ -950,6 +974,9 @@ namespace umbriel {
+@@ -950,6 +979,9 @@ namespace umbriel {
      wl_event_source* m_backgroundRenderTimer = nullptr;
      // One-shot refresh when dynamic startup rules expire.
      wl_event_source* m_startupRulesTimer = nullptr;
@@ -2902,7 +2686,7 @@ index 03e1060..36463af 100644
      // Non-null while a windows-event idle callback is pending. The idle source
      // removes itself when it runs, so a non-null pointer means "already queued".
      wl_event_source* m_ipcWindowsIdle = nullptr;
-@@ -1020,6 +1047,12 @@ namespace umbriel {
+@@ -1020,6 +1052,14 @@ namespace umbriel {
      Keyboard* m_keyboardLayoutSource = nullptr;
      Keyboard* m_keyboardInputSource = nullptr;
      ModifierTapState m_modifierTap;
@@ -2912,11 +2696,13 @@ index 03e1060..36463af 100644
 +    bool m_modInputShield = false;
 +    // Whether overlay title bars are currently shown while the mod key is held.
 +    bool m_titleBarOverlayVisible = false;
++    // The window blurred under the pointer while Mod is held, if any.
++    View* m_modHoverView = nullptr;
      std::vector<std::unique_ptr<PointerDevice>> m_pointers;
      std::vector<std::unique_ptr<TouchDevice>> m_touchDevices;
      std::vector<std::unique_ptr<TabletDevice>> m_tabletDevices;
 diff --git a/src/server/server_events.cpp b/src/server/server_events.cpp
-index 11f0d54..99c02d6 100644
+index 11f0d54d..4096613a 100644
 --- a/src/server/server_events.cpp
 +++ b/src/server/server_events.cpp
 @@ -783,7 +783,7 @@ namespace umbriel {
@@ -2954,7 +2740,7 @@ index 11f0d54..99c02d6 100644
    View& Server::adoptView(std::unique_ptr<View> view) {
      View& adopted = m_registry.add(std::move(view));
 +    adopted.setTitleBarOverlay(m_titleBarOverlayVisible);
-+    adopted.setModShade(m_modInputShield);
++    adopted.setModHover(false);
      assignLaunchOriginFromEnvironment(adopted);
      return adopted;
    }
@@ -2993,7 +2779,7 @@ index 11f0d54..99c02d6 100644
      if (m_scratchpadManager != nullptr) {
        m_scratchpadManager->remove(view);
 diff --git a/src/server/server_keybinds.cpp b/src/server/server_keybinds.cpp
-index 504a98c..9913e00 100644
+index 504a98c3..086e78b0 100644
 --- a/src/server/server_keybinds.cpp
 +++ b/src/server/server_keybinds.cpp
 @@ -9,6 +9,7 @@
@@ -3012,7 +2798,7 @@ index 504a98c..9913e00 100644
    } // namespace
  
    bool Server::handleVtSwitch(uint32_t keysym, uint32_t modifiers) {
-@@ -317,6 +319,71 @@ namespace umbriel {
+@@ -317,6 +319,104 @@ namespace umbriel {
      return nullptr;
    }
  
@@ -3043,17 +2829,13 @@ index 504a98c..9913e00 100644
 +
 +  void Server::setModHoldActive(bool active) {
 +    // Holding Mod makes the desktop a window-management surface: window
-+    // content stops receiving pointer input and gets a quiet shade, while
-+    // native chrome and panels stay live.
++    // content stops receiving pointer input, and only the window under the
++    // pointer gets the mockup's blur and subtle veil. Native chrome and panels
++    // stay live and sharp.
 +    if (active != m_modInputShield) {
 +      m_modInputShield = active;
 +      if (m_cursor != nullptr) {
 +        m_cursor->setModInputShield(active);
-+      }
-+      for (const auto& view : views()) {
-+        if (view != nullptr) {
-+          view->setModShade(active);
-+        }
 +      }
 +    }
 +    // Overlay title bars are native chrome: the compositor shows them while Mod
@@ -3065,6 +2847,43 @@ index 504a98c..9913e00 100644
 +        if (view != nullptr)
 +          view->setTitleBarOverlay(overlayVisible);
 +      }
++    }
++
++    if (!active) {
++      updateModHoverBlur(nullptr);
++      return;
++    }
++    if (m_cursor != nullptr && !m_sessionLocked) {
++      wlr_surface* surface = nullptr;
++      double sx = 0;
++      double sy = 0;
++      LayerSurface* layer = nullptr;
++      View* hovered = viewAt(m_cursor->wlr()->x, m_cursor->wlr()->y, &surface, &sx, &sy, &layer);
++      updateModHoverBlur(layer == nullptr ? hovered : nullptr);
++    } else {
++      updateModHoverBlur(nullptr);
++    }
++  }
++
++  void Server::updateModHoverBlur(View* view) {
++    if (!m_modInputShield || m_sessionLocked || view == nullptr || !view->mapped()) {
++      view = nullptr;
++    }
++    if (view == m_modHoverView) {
++      return;
++    }
++    if (m_modHoverView != nullptr) {
++      m_modHoverView->setModHover(false);
++    }
++    m_modHoverView = view;
++    if (m_modHoverView != nullptr) {
++      m_modHoverView->setModHover(true);
++    }
++  }
++
++  void Server::forgetModHoverView(const View* view) {
++    if (m_modHoverView == view) {
++      m_modHoverView = nullptr;
 +    }
 +  }
 +
@@ -3085,7 +2904,7 @@ index 504a98c..9913e00 100644
      if (!includeCaptured && m_inputCapture != nullptr && (m_inputCapture->capabilities() & 1U) != 0) {
        return 0;
 diff --git a/src/view/chrome_attachment.h b/src/view/chrome_attachment.h
-index dc29dff..8a0e9d2 100644
+index dc29dff7..8a0e9d2f 100644
 --- a/src/view/chrome_attachment.h
 +++ b/src/view/chrome_attachment.h
 @@ -17,6 +17,8 @@ namespace umbriel {
@@ -3097,8 +2916,102 @@ index dc29dff..8a0e9d2 100644
      // Scale of the output presenting the view, for chrome that renders text.
      float scale = 1.0F;
      // Set while the view draws nothing around its content: unmapped, fullscreen, or maximized to the edges.
+diff --git a/src/view/effects.cpp b/src/view/effects.cpp
+index e997214f..6e2fd1ad 100644
+--- a/src/view/effects.cpp
++++ b/src/view/effects.cpp
+@@ -110,6 +110,12 @@ namespace umbriel {
+     // preset, only while the border effect applies.
+     const EffectPreset* windowPreset = m_window.empty() ? nullptr : registry.presetConfig(m_window);
+     fx_effect_shader* windowShader = windowPreset != nullptr ? registry.preset(m_window, EffectKind::Window) : nullptr;
++    // The Mod-hover blur takes over the window slot while this view is under
++    // the pointer. It is a built-in program with no preset, so it has no time
++    // uniforms to bind.
++    fx_effect_shader* hoverShader = m_hoverBlur ? registry.modHoverBlurShader() : nullptr;
++    const EffectPreset* activeWindowPreset = hoverShader != nullptr ? nullptr : windowPreset;
++    fx_effect_shader* activeWindowShader = hoverShader != nullptr ? hoverShader : windowShader;
+     const EffectPreset* overlayPreset =
+         border != nullptr && !border->overlay.empty() ? registry.presetConfig(border->overlay) : nullptr;
+     fx_effect_shader* overlayShader =
+@@ -122,25 +128,33 @@ namespace umbriel {
+       }
+       fx_animation_parameters parameters{};
+       parameters.scale = input.scale;
+-      registry.fillTimeUniforms(parameters, seconds, *preset, shader);
++      if (preset != nullptr) {
++        registry.fillTimeUniforms(parameters, seconds, *preset, shader);
++      }
+       wlr_scene_node_set_animation(node, slot, shader, &parameters);
+     };
+-    const auto bind = [&](wlr_scene_node* node) {
+-      bindSlot(node, FX_SLOT_WINDOW, windowPreset, windowShader, input.seconds);
++    const auto bind = [&](wlr_scene_node* node, bool live) {
++      bindSlot(
++          node,
++          FX_SLOT_WINDOW,
++          live ? activeWindowPreset : windowPreset,
++          live ? activeWindowShader : windowShader,
++          input.seconds
++      );
+       bindSlot(node, FX_SLOT_OVERLAY, overlayPreset, overlayShader, borderSeconds);
+     };
+-    bind(input.surface);
++    bind(input.surface, true);
+     // The isolated toplevel capture shows window effects only when effects are included in captures.
+     if (config().effects.inCapture) {
+       if (input.captureSurface != nullptr) {
+-        bind(input.captureSurface);
++        bind(input.captureSurface, false);
+       }
+     } else {
+       clearWindowEffectSlots(input.captureSurface);
+     }
+     // Two instances on the surface node, keyed by the node and by its addons member so each has its own owner: the
+     // window slot follows the output's clock, the overlay advances only while the border's clock does.
+-    const bool visible = (windowShader != nullptr || overlayShader != nullptr)
++    const bool visible = (activeWindowShader != nullptr || overlayShader != nullptr)
+         && wlr_scene_node_visible_in_box(input.surface, &input.outputBox);
+     const auto instance = [&](const void* owner, const fx_effect_shader* program, bool advancing) {
+       if (program == nullptr) {
+@@ -158,7 +172,7 @@ namespace umbriel {
+           }
+       );
+     };
+-    instance(input.surface, windowShader, true);
++    instance(input.surface, activeWindowShader, true);
+     instance(&input.surface->addons, overlayShader, borderAdvancing);
+   }
+ 
+diff --git a/src/view/effects.h b/src/view/effects.h
+index e4cf551f..1419cce7 100644
+--- a/src/view/effects.h
++++ b/src/view/effects.h
+@@ -51,10 +51,13 @@ namespace umbriel {
+       wlr_box outputBox{};          // that output's layout box: an instance is visible only inside it
+     };
+     // True when a border or window preset is selected for this view: the caller reads the clock only then.
+-    bool configured() const { return !m_border.empty() || !m_window.empty(); }
++    bool configured() const { return !m_border.empty() || !m_window.empty() || m_hoverBlur; }
+     // True when apply() reads `surface`: a window preset or a border preset with an overlay is selected, or a node of
+     // this view is in the ledger.
+-    bool needsSurface() const { return !m_window.empty() || m_overlay || !m_owners.empty(); }
++    bool needsSurface() const { return !m_window.empty() || m_overlay || !m_owners.empty() || m_hoverBlur; }
++    // While Mod is held, the window under the pointer blurs its client content.
++    void setHoverBlur(bool blur) { m_hoverBlur = blur; }
++    bool hoverBlur() const { return m_hoverBlur; }
+     void apply(const ApplyInput& input);
+     // Ledger removal for every node this object registered; slots are cleared by the caller.
+     void detach();
+@@ -71,6 +74,7 @@ namespace umbriel {
+     std::string m_border;
+     std::string m_window;
+     bool m_overlay = false;            // the border preset names an overlay
++    bool m_hoverBlur = false;          // Mod is held and this window is under the pointer
+     std::vector<const void*> m_owners; // nodes registered in the ledger
+   };
+ 
 diff --git a/src/view/view.cpp b/src/view/view.cpp
-index 2a3b3bc..69586a7 100644
+index 2a3b3bcc..97089f8a 100644
 --- a/src/view/view.cpp
 +++ b/src/view/view.cpp
 @@ -20,6 +20,7 @@ extern "C" {
@@ -3109,20 +3022,29 @@ index 2a3b3bc..69586a7 100644
  #include <cassert>
  #include <ranges>
  #include <utility>
-@@ -178,6 +179,12 @@ namespace umbriel {
+@@ -178,6 +179,13 @@ namespace umbriel {
      m_contentTree->node.data = sceneNodeData(this);
      wlr_scene_node_set_enabled(&m_sceneTree->node, false);
      m_presentation.createBackdrop(m_contentTree);
 +    // The Mod-held shade sits above the client surface but below the chrome,
 +    // which is created later in this same tree, so title bars stay readable.
-+    static constexpr std::array<float, 4> kModShadeColor{0.0F, 0.0F, 0.0F, 0.28F};
++    // The mockup's hover veil: rgba(8,10,14,.10), only over the hovered window.
++    static constexpr std::array<float, 4> kModShadeColor{0.031F, 0.039F, 0.055F, 0.10F};
 +    m_modShade = wlr_scene_rect_create(m_contentTree, 0, 0, kModShadeColor.data());
 +    m_modShade->accepts_input = false;
 +    wlr_scene_node_set_enabled(&m_modShade->node, false);
      m_attachmentTree = wlr_scene_tree_create(m_sceneTree);
  
      // A scene-node capture uses the node's scene as its render source. Keep a
-@@ -418,7 +425,9 @@ namespace umbriel {
+@@ -289,6 +297,7 @@ namespace umbriel {
+   }
+ 
+   View::~View() {
++    m_server->forgetModHoverView(this);
+     clearLaunchPlacement(true, true);
+     if (m_effectSelectionIdle != nullptr) {
+       wl_event_source_remove(m_effectSelectionIdle);
+@@ -418,7 +427,9 @@ namespace umbriel {
        m_workspace = nullptr;
        // Keep an empty destination alive until this view has been attached.
        // addView() reconciles the group after the transfer is complete.
@@ -3134,7 +3056,7 @@ index 2a3b3bc..69586a7 100644
      m_workspace = workspace;
      if (m_workspace != nullptr) {
 diff --git a/src/view/view.h b/src/view/view.h
-index 52a43f6..7365d6a 100644
+index 52a43f63..45f7d814 100644
 --- a/src/view/view.h
 +++ b/src/view/view.h
 @@ -216,7 +216,17 @@ namespace umbriel {
@@ -3147,9 +3069,9 @@ index 52a43f6..7365d6a 100644
 +    // Height of the title bar chrome itself, even when it does not reserve space.
 +    int titleBarChromeHeight() const;
 +    bool titleBarOverlay() const;
-+    // Shades the client content while Mod is held so the desktop reads as
-+    // window-management mode. Native chrome stays undimmed.
-+    void setModShade(bool visible);
++    // Blurs the client content of the window under the pointer while Mod is
++    // held, matching the shell mockup. Native chrome stays sharp and undimmed.
++    void setModHover(bool visible);
 +    // Shows or hides overlay chrome without changing the window's geometry.
 +    void setTitleBarOverlay(bool visible);
      void syncSsdFrame();
@@ -3229,7 +3151,7 @@ index 52a43f6..7365d6a 100644
      std::optional<bool> m_legacyDecorationPreference;
      std::optional<TitleBarMode> m_titleBarMode;
 diff --git a/src/view/view_chrome.cpp b/src/view/view_chrome.cpp
-index 3d39675..1bb9aba 100644
+index 3d39675f..d4fc93ec 100644
 --- a/src/view/view_chrome.cpp
 +++ b/src/view/view_chrome.cpp
 @@ -18,6 +18,7 @@ extern "C" {
@@ -3365,16 +3287,18 @@ index 3d39675..1bb9aba 100644
          shown[count++] = button;
        }
      }
-@@ -383,6 +444,28 @@ namespace umbriel {
+@@ -383,6 +444,30 @@ namespace umbriel {
      wlr_scene_node_raise_to_top(&m_attachmentTree->node);
    }
  
-+  void View::setModShade(bool visible) {
-+    if (m_modShadeVisible == visible) {
++  void View::setModHover(bool visible) {
++    if (m_modShadeVisible == visible && m_effects.hoverBlur() == visible) {
 +      return;
 +    }
 +    m_modShadeVisible = visible;
++    m_effects.setHoverBlur(visible);
 +    syncModShade();
++    syncAnimationEffects();
 +    scheduleFrame();
 +  }
 +
@@ -3394,7 +3318,7 @@ index 3d39675..1bb9aba 100644
    void View::layoutChromeAttachment(int contentWidth, int contentHeight) {
      m_chromeContentWidth = contentWidth;
      m_chromeContentHeight = contentHeight;
-@@ -397,7 +480,8 @@ namespace umbriel {
+@@ -397,7 +482,8 @@ namespace umbriel {
          .contentHeight = contentHeight,
          .borderInset = borderInset(),
          .cornerRadius = m_maximizedToEdges ? 0 : decorationCornerRadius(),
@@ -3404,7 +3328,7 @@ index 3d39675..1bb9aba 100644
          .scale = output != nullptr ? output->wlr()->scale : 1.0F,
          .suppressed = !m_mapped || scheduledFullscreen() || currentFullscreen(),
      };
-@@ -406,9 +490,34 @@ namespace umbriel {
+@@ -406,9 +492,34 @@ namespace umbriel {
      geometry.suppressed = geometry.suppressed || m_maximizedToEdges;
      if (m_chromeAttachment != nullptr)
        m_chromeAttachment->layout(geometry);
@@ -3439,7 +3363,7 @@ index 3d39675..1bb9aba 100644
      syncSsdFrame();
      if (m_ssdFrame != nullptr)
        m_ssdFrame->reloadConfig();
-@@ -419,6 +528,13 @@ namespace umbriel {
+@@ -419,6 +530,13 @@ namespace umbriel {
      // Temporary unfocus would consume pool selections during an unrelated reload.
      setBorderFocused(m_borderFocusedState);
      updateBorderGeometry();
@@ -3454,7 +3378,7 @@ index 3d39675..1bb9aba 100644
      applyDynamicRules();
      if (notifyAloneStateChanged() && m_workspace != nullptr) {
 diff --git a/src/view/view_floating.cpp b/src/view/view_floating.cpp
-index a28244f..2b1c048 100644
+index a28244f7..2b1c048e 100644
 --- a/src/view/view_floating.cpp
 +++ b/src/view/view_floating.cpp
 @@ -328,25 +328,43 @@ namespace umbriel {
@@ -3613,7 +3537,7 @@ index a28244f..2b1c048 100644
      // then fall back to the layout target and committed geometry.
      int width = currentSize().width;
 diff --git a/src/view/view_lifecycle.cpp b/src/view/view_lifecycle.cpp
-index c32740d..b76f172 100644
+index c32740da..b76f1727 100644
 --- a/src/view/view_lifecycle.cpp
 +++ b/src/view/view_lifecycle.cpp
 @@ -384,7 +384,7 @@ namespace umbriel {
@@ -3626,7 +3550,7 @@ index c32740d..b76f172 100644
        // visibility is resolved data-side (no per-render-pass pass to do it).
        if (m_workspace != nullptr) {
 diff --git a/src/view/view_state.cpp b/src/view/view_state.cpp
-index c171665..55f32d7 100644
+index c171665e..55f32d75 100644
 --- a/src/view/view_state.cpp
 +++ b/src/view/view_state.cpp
 @@ -550,7 +550,7 @@ namespace umbriel {
@@ -3799,7 +3723,7 @@ index c171665..55f32d7 100644
        }
        if (usable.width > 0 && usable.height > 0 && keepWidth > 0 && keepHeight > 0) {
 diff --git a/src/workspace/scratchpad.cpp b/src/workspace/scratchpad.cpp
-index 6c9db61..20c4e5e 100644
+index 6c9db618..20c4e5e7 100644
 --- a/src/workspace/scratchpad.cpp
 +++ b/src/workspace/scratchpad.cpp
 @@ -219,6 +219,21 @@ namespace umbriel {
@@ -3862,7 +3786,7 @@ index 6c9db61..20c4e5e 100644
      const auto iterator =
          std::ranges::find_if(m_entries, [view](const Entry& candidate) { return candidate.view == view; });
 diff --git a/src/workspace/scratchpad.h b/src/workspace/scratchpad.h
-index ead8100..1eb50bf 100644
+index ead8100c..1eb50bf1 100644
 --- a/src/workspace/scratchpad.h
 +++ b/src/workspace/scratchpad.h
 @@ -52,6 +52,10 @@ namespace umbriel {
@@ -3888,7 +3812,7 @@ index ead8100..1eb50bf 100644
      // Show one window of the scratchpad at a time: the one after (`direction` > 0) or before the window on show,
      // wrapping at the ends. A hidden pad shows its most recently focused window.
 diff --git a/src/workspace/workspace.cpp b/src/workspace/workspace.cpp
-index abe1f37..49bad88 100644
+index abe1f377..49bad88d 100644
 --- a/src/workspace/workspace.cpp
 +++ b/src/workspace/workspace.cpp
 @@ -439,7 +439,10 @@ namespace umbriel {
@@ -4166,7 +4090,7 @@ index abe1f37..49bad88 100644
          workspace->applyLayoutConfig(std::move(layout));
        } else {
 diff --git a/src/workspace/workspace.h b/src/workspace/workspace.h
-index f72069c..1a3d034 100644
+index f72069c0..1a3d0342 100644
 --- a/src/workspace/workspace.h
 +++ b/src/workspace/workspace.h
 @@ -135,7 +135,7 @@ namespace umbriel {
@@ -4235,7 +4159,7 @@ index f72069c..1a3d034 100644
      // axis first. Called before per-workspace layout resolution.
      void refreshWorkspaceAxis();
 diff --git a/tests/unit/config_load.cpp b/tests/unit/config_load.cpp
-index 4e2e361..1ed3ad6 100644
+index 4e2e3612..1ed3ad63 100644
 --- a/tests/unit/config_load.cpp
 +++ b/tests/unit/config_load.cpp
 @@ -1441,6 +1441,25 @@ UMBRIEL_TEST(middleClickPasteLoadsAndDefaultsEnabled) {

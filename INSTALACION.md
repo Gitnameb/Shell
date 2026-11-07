@@ -282,8 +282,10 @@ sudo apt install -t trixie-backports \
   libeis-dev libseat-dev nlohmann-json3-dev
 ```
 
-El fork está basado en Umbriel `b6c4b7d` y tiene 24 commits propios. El parche
-reproducible es `umbriel-fork.patch` (50 archivos).
+El fork está basado en Umbriel `b6c4b7d` y acumula un conjunto de cambios
+propios. El parche reproducible es `umbriel-fork.patch` (50 archivos). Entre
+esos cambios está el desenfoque del contenido de la ventana bajo el puntero al
+mantener Super; no necesita configuración adicional.
 
 `libpixman-1-dev` y `libpixman-1-0` deben instalarse juntos, igual que
 `libwayland-dev` y `wayland-protocols`: las versiones de desarrollo exigen la

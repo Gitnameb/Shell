@@ -466,3 +466,17 @@ blur = false
   `alpha = (100 - transparencia) / 100`. Por defecto 22 → 0.78.
 - Pruebas: `./scripts/test-glass-rules.sh` y
   `./scripts/test-config-writers.sh`.
+
+### 11.1 Desenfoque al mantener Super
+
+Umbriel incorpora un shader de ventana que se activa mientras se mantiene Mod
+y el puntero está sobre una ventana. Desenfoca **solo el contenido del
+cliente** (1.4 px y una desaturación suave, como el mockup) y añade un velo del
+10 %; la barra de título nativa y sus botones no se tocan. No depende de
+`[appearance.blur]`: es independiente del radio global del cristal.
+
+El estado vive en el compositor (`View::setModHover` y
+`Server::updateModHoverBlur`). Al soltar Mod o salir de la ventana, el slot de
+efecto vuelve al preset configurado para esa ventana, si lo había. El parche
+`umbriel-fork.patch` incluye el shader; para verlo hay que instalar el binario
+nuevo y reiniciar la sesión.
