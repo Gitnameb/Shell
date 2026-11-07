@@ -443,7 +443,7 @@ Bloque que se añade (idempotente, marcado con `# shell-glass: inicio`):
 
 ```toml
 [[layer_rule]]
-match.namespace = "^shell-(bar|side-panel|launcher|calendar|battery|tray|power|app-menu|osd|move-menu|welcome-mode|window-mode)$"
+match.namespace = "^shell-(bar|side-panel|launcher|calendar|battery|tray|power|app-menu|osd|move-menu|welcome-mode|window-mode|notification-popup)$"
 blur = true
 blur_popups = true
 blur_ignore_alpha = 0.04
@@ -680,8 +680,7 @@ Thunar aporta «Home», «Computer» y «Trash».
 Las opciones de ventana del menú y las de la barra de título salen de la misma
 lista, `WindowActions.qml`. Así no pueden desincronizarse: mismo orden, mismas
 etiquetas, mismos iconos y mismos atajos. El orden imita los botones nativos
-(flotar, fijar, mover, minimizar, maximizar y cerrar) y añade pantalla
-completa antes de cerrar.
+(flotar, fijar, pantalla completa, mover, minimizar, maximizar y cerrar).
 
 - Se eliminó «Enfocar ventana»; para eso ya sirve pulsar la ficha de la app.
 - La opción de flotar solo aparece cuando puede hacer algo. En un escritorio
@@ -704,6 +703,24 @@ completa antes de cerrar.
   escribir y recargar la configuración de Umbriel, con más riesgo que
   beneficio. El atajo de minimizar se añadió a `[keybinds]` como
   `"Mod+Shift+H" = "window-minimize"`.
+
+### Redimensionar ventanas
+
+Con Super mantenido (o con el modo ventanas fijado), `WindowHandles.qml` dibuja
+una capa transparente encima de las ventanas:
+
+- una línea de 2 px centrada en el hueco entre cada par de mosaicos vecinos,
+  con un margen del 7 % en los extremos como en el mockup;
+- cuatro puntos en las esquinas de la ventana flotante **enfocada**, unos
+  píxeles hacia dentro para que queden sobre el borde redondeado.
+
+La capa usa `mask: Region {}`: no captura clics. La manipulación la sigue
+haciendo Umbriel. En el fork, un arrastre con Mod que empieza a menos de 12 px
+del borde de una ventana flotante redimensiona en vez de mover, y el cursor
+cambia en esa misma franja. El resto de la ventana sigue moviendo. Si una
+ventana flotante tapa un divisor, la línea correspondiente se oculta para no
+dibujarse sobre su contenido. Probado con un puntero virtual en una sesión
+anidada: el borde derecho cambió el ancho y el centro movió la ventana.
 
 ### Barra de título nativa
 
@@ -766,3 +783,29 @@ Además de `foot` e `Inter Variable`:
   ese archivo directamente.
 - Se eliminó `scripts/fix-network.sh`, que solo era un envoltorio de
   `scripts/network.sh`.
+
+## 21. Notificaciones emergentes
+
+`NotificationPopup.qml` muestra una tarjeta en la esquina superior derecha
+cuando llega un aviso, como en el resto de escritorios. No sustituye al panel:
+las notificaciones siguen guardándose en el historial hasta que se cierran.
+
+- Se apilan hasta tres; las nuevas van arriba. El tiempo de permanencia es
+  `expireTimeout` de la notificación (en milisegundos) y 5 s cuando la app
+  deja que el servidor decida (`-1`). Un `-t 0` o una urgencia crítica se
+  quedan hasta que se cierran.
+- Al pasar el ratón, el temporizador se pausa. Un clic en la tarjeta abre el
+  panel de notificaciones; la «×» descarta el aviso del historial (y con una
+  alarma, `AlarmState` deja de sonar).
+- No se muestran con «No molestar», con el panel abierto, en la vista general
+  ni en la pantalla de bloqueo. Se limpian al abrir el panel o la vista
+  general.
+- Aparecen en el monitor de la ventana enfocada. La capa
+  `shell-notification-popup` está incluida en la regla de cristal, así que
+  hereda el desenfoque y el tono del shell.
+- Diagnóstico: `qs ipc -c shell call notifications popups` devuelve el número
+  y los resúmenes de las tarjetas visibles.
+
+Probado en una sesión anidada con un bus D-Bus privado (el de la sesión real
+ya posee `org.freedesktop.Notifications`) y `notify-send`, incluyendo la
+expiración automática y un aviso crítico persistente.

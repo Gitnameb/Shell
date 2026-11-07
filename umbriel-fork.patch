@@ -13,7 +13,7 @@ index 1146a02c..53233b54 100644
  [colors.title_bar]
  background = "#292933FF"
 diff --git a/docs/user/input.md b/docs/user/input.md
-index 47c4faa4..0a505908 100644
+index 47c4faa4..d863b689 100644
 --- a/docs/user/input.md
 +++ b/docs/user/input.md
 @@ -6,12 +6,15 @@ Configure keyboard, pointer, touchpad, tablet, cursor, and focus behavior under
@@ -37,7 +37,7 @@ index 47c4faa4..0a505908 100644
  `client_window_drag = false` ignores move requests from applications, such as dragging a client-side title bar or the empty tab strip of Chromium, Firefox, or Electron apps. Ordinary window moves then use Mod+drag, keybinds, or an enabled [Umbriel title bar](appearance.md#title-bar). Resizing from client-side borders and tab tear-off operations using `xdg-toplevel-drag-v1` are unaffected.
  
 -When the title bar is shown by `[appearance.title_bar] mode` or a window rule, dragging empty server-side title bar space moves a window without a modifier. Double-click it to maximize or restore. Floating windows resize by dragging the frame's edges or corners with the left button without a modifier, whether or not the Umbriel title bar is shown. This also works for individually floated windows in tiling layouts. Tiled windows use Mod+right-drag for compositor resizing. Application content and client-side resize controls keep their normal pointer behavior. These compositor-owned interactions work with `client_window_drag = false`.
-+When the title bar is shown by `[appearance.title_bar] mode` or a window rule, dragging empty server-side title bar space moves a window without a modifier. Double-click it to maximize or restore. Floating windows resize by dragging the frame's edges or corners with the left button without a modifier, whether or not the Umbriel title bar is shown. This also works for individually floated windows in tiling layouts. Tiled windows resize by dragging the border between two tiles while Mod is held: a left drag that starts within a few pixels of a tile edge, or in the gap between tiles, resizes the split, and the pointer shows the resize cursor there. A Mod+left drag anywhere else still moves the window, and Mod+right-drag resizes from anywhere in the tile's outer third. Panels and shell chrome still receive clicks while Mod is held, so bar buttons such as the workspace mode switch work with Mod down. The resize cursor follows the same rule: it appears over a tile border or in the gap between tiles, and returns to the normal pointer over the bar, panels, and the empty desktop. Application content and client-side resize controls keep their normal pointer behavior. These compositor-owned interactions work with `client_window_drag = false`.
++When the title bar is shown by `[appearance.title_bar] mode` or a window rule, dragging empty server-side title bar space moves a window without a modifier. Double-click it to maximize or restore. Floating windows resize by dragging the frame's edges or corners with the left button without a modifier, whether or not the Umbriel title bar is shown. This also works for individually floated windows in tiling layouts. While Mod is held, a left drag that starts within a few pixels of a floating window's edge or on its corner handles also resizes it; any other point moves the window. Tiled windows resize by dragging the border between two tiles while Mod is held: a left drag that starts within a few pixels of a tile edge, or in the gap between tiles, resizes the split, and the pointer shows the resize cursor there. A Mod+left drag anywhere else still moves the window, and Mod+right-drag resizes from anywhere in the tile's outer third. Panels and shell chrome still receive clicks while Mod is held, so bar buttons such as the workspace mode switch work with Mod down. The resize cursor follows the same rule: it appears over a tile border or in the gap between tiles, and returns to the normal pointer over the bar, panels, and the empty desktop. Application content and client-side resize controls keep their normal pointer behavior. These compositor-owned interactions work with `client_window_drag = false`.
  
  Title bar presses keep the normal cursor until the pointer crosses a threshold of 10 logical pixels from its position at the original button press. Umbriel then starts dragging and switches to the grabbing cursor. Movement before an application's move request counts toward that threshold. If the pointer has already crossed it, dragging starts immediately without requiring another motion event or another threshold.
  
@@ -614,7 +614,7 @@ index 16a64d47..08cfa6a7 100644
      resolved.tabs.newTabPosition = config.layout.tabs.newTabPosition;
      resolved.tabs.wrapFocus = config.layout.tabs.wrapFocus;
 diff --git a/src/input/cursor.cpp b/src/input/cursor.cpp
-index 04ee05c5..d8a23b47 100644
+index 04ee05c5..c923bedc 100644
 --- a/src/input/cursor.cpp
 +++ b/src/input/cursor.cpp
 @@ -19,6 +19,7 @@
@@ -625,13 +625,17 @@ index 04ee05c5..d8a23b47 100644
  #include "server/server.h"
  #include "view/size_hints.h"
  #include "view/view.h"
-@@ -49,10 +50,35 @@ namespace umbriel {
+@@ -49,10 +50,39 @@ namespace umbriel {
      // pair up, so no grab may run and drop the layout's maximize bookkeeping.
      constexpr uint32_t kDoubleClickMsec = 300;
      constexpr double kDoubleClickSlop = 8.0;
 +    // How close to a tile's edge the pointer must be for a Mod+left drag to
 +    // resize instead of move. Wide enough to reach across the layout gap.
 +    constexpr double kTiledBorderSlop = 10.0;
++    // Same idea for floating windows: the shell draws dots at the corners and
++    // subtle bands along the edges while Mod is held, and a press inside them
++    // resizes instead of moving the window.
++    constexpr double kFloatingBorderSlop = 12.0;
 +
 +    uint32_t tiledFrameBorderEdges(const wlr_box& box, double x, double y) {
 +      if (box.width <= 0 || box.height <= 0 || x < box.x - kTiledBorderSlop
@@ -662,7 +666,7 @@ index 04ee05c5..d8a23b47 100644
        if (layer == nullptr) {
          return false;
        }
-@@ -72,7 +98,7 @@ namespace umbriel {
+@@ -72,7 +102,7 @@ namespace umbriel {
          const LayerSurface* hitLayer
      ) {
        const bool covered =
@@ -671,7 +675,7 @@ index 04ee05c5..d8a23b47 100644
        if (covered) {
          return std::nullopt;
        }
-@@ -1489,10 +1515,14 @@ namespace umbriel {
+@@ -1489,10 +1519,14 @@ namespace umbriel {
        }
      }
  
@@ -690,7 +694,7 @@ index 04ee05c5..d8a23b47 100644
  
      if (m_activeConstraint != nullptr && !constraintSurfaceActive()) {
        clearConstraint();
-@@ -1705,7 +1735,32 @@ namespace umbriel {
+@@ -1705,7 +1739,32 @@ namespace umbriel {
                press.view->maximizedToEdges() || press.view->scheduledMaximized() || press.view->floatingMaximized();
            press.view->setMaximizedLikeClientRequest(!maximized);
          } else if (press.part == SsdFramePart::Minimize) {
@@ -724,7 +728,7 @@ index 04ee05c5..d8a23b47 100644
          }
        }
      }
-@@ -1767,7 +1822,7 @@ namespace umbriel {
+@@ -1767,7 +1826,7 @@ namespace umbriel {
        LayerSurface* layer = nullptr;
        m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
        wlr_seat* seat = m_server->seat()->wlr();
@@ -733,7 +737,7 @@ index 04ee05c5..d8a23b47 100644
          if (surface != nullptr) {
            setPointerFocus(surface, sx, sy, timeMsec);
          }
-@@ -1890,6 +1945,10 @@ namespace umbriel {
+@@ -1890,6 +1949,10 @@ namespace umbriel {
              && !target->blocked()
              && (hit->part == SsdFramePart::Close
                  || hit->part == SsdFramePart::Minimize
@@ -744,7 +748,7 @@ index 04ee05c5..d8a23b47 100644
                  || (hit->part == SsdFramePart::Maximize && target->ssdFrame()->maximizeEnabled()))
          ) {
            m_server->focusView(target, FocusReason::PointerPress);
-@@ -1928,10 +1987,28 @@ namespace umbriel {
+@@ -1928,10 +1991,39 @@ namespace umbriel {
      }
  
      const bool modHeld = (m_server->keyboardModifiers() & m_server->modKey()) != 0;
@@ -770,6 +774,17 @@ index 04ee05c5..d8a23b47 100644
 +        }
 +      }
 +      if (view != nullptr) {
++        // A floating window resizes from its visible edge or corner dots; any
++        // other point still drags it, like the rest of the desktop.
++        if (view->floating()) {
++          const uint32_t edges = floatingBorderEdges(view, m_cursor->x, m_cursor->y);
++          if (edges != 0) {
++            m_server->focusView(view, FocusReason::Grab);
++            if (beginResize(view, edges, button)) {
++              return;
++            }
++          }
++        }
 +        m_server->focusView(view, FocusReason::Grab);
 +        if (beginMove(view, button)) {
 +          std::get<MoveGrab>(m_grab).carryTabGroup = true;
@@ -777,7 +792,7 @@ index 04ee05c5..d8a23b47 100644
        }
        return;
      }
-@@ -1979,6 +2056,14 @@ namespace umbriel {
+@@ -1979,6 +2071,14 @@ namespace umbriel {
        return;
      }
  
@@ -792,7 +807,7 @@ index 04ee05c5..d8a23b47 100644
      // Pointer focus must match the surface under the cursor before the button
      // event so wl_data_device drag serial validation succeeds.
      wlr_seat* seat = m_server->seat()->wlr();
-@@ -2055,7 +2140,7 @@ namespace umbriel {
+@@ -2055,7 +2155,7 @@ namespace umbriel {
        wlr_surface* surface = nullptr;
        LayerSurface* layer = nullptr;
        m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -801,7 +816,7 @@ index 04ee05c5..d8a23b47 100644
          if (!overview->interactive()) {
            return;
          }
-@@ -2108,6 +2193,18 @@ namespace umbriel {
+@@ -2108,6 +2208,18 @@ namespace umbriel {
      }
      if (!armed) {
        m_wheelAccum[orientation] = 0;
@@ -820,7 +835,7 @@ index 04ee05c5..d8a23b47 100644
        const double scale = touchpadScrollFactor(event->pointer, isVertical);
        wlr_seat_pointer_notify_axis(
            m_server->seat()->wlr(), event->time_msec, event->orientation, event->delta * scale, event->delta_discrete,
-@@ -2224,7 +2321,7 @@ namespace umbriel {
+@@ -2224,7 +2336,7 @@ namespace umbriel {
  
      // A tap in overview activates like a left click; panels keep their touch.
      if (Overview* overview = m_server->overview();
@@ -829,7 +844,7 @@ index 04ee05c5..d8a23b47 100644
        if (overview->interactive()) {
          overview->handleButton(BTN_LEFT, true, lx, ly, event->time_msec);
          overview->handleButton(BTN_LEFT, false, lx, ly, event->time_msec);
-@@ -2249,6 +2346,11 @@ namespace umbriel {
+@@ -2249,6 +2361,11 @@ namespace umbriel {
        }
      }
  
@@ -841,7 +856,7 @@ index 04ee05c5..d8a23b47 100644
      if (surface != nullptr) {
        // Focus the touched view (click-to-focus equivalent).
        if (!m_server->sessionLocked() && m_server->exclusiveKeyboardLayer() == nullptr) {
-@@ -2360,7 +2462,7 @@ namespace umbriel {
+@@ -2360,7 +2477,7 @@ namespace umbriel {
        wlr_surface* surface = nullptr;
        LayerSurface* layer = nullptr;
        m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -850,7 +865,7 @@ index 04ee05c5..d8a23b47 100644
          setPointerFocus(surface, sx, sy, timeMsec);
          wlr_seat_pointer_notify_motion(m_server->seat()->wlr(), timeMsec, sx, sy);
          return;
-@@ -2421,6 +2523,48 @@ namespace umbriel {
+@@ -2421,6 +2538,48 @@ namespace umbriel {
        resetMode();
      }
  
@@ -899,7 +914,7 @@ index 04ee05c5..d8a23b47 100644
      wlr_seat* seat = m_server->seat()->wlr();
      updateDataDragEdgeScroll();
      if (seat->drag == nullptr
-@@ -2443,6 +2587,9 @@ namespace umbriel {
+@@ -2443,6 +2602,9 @@ namespace umbriel {
      wlr_surface* surface = nullptr;
      LayerSurface* layer = nullptr;
      View* view = m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -909,7 +924,7 @@ index 04ee05c5..d8a23b47 100644
  
      if (allowFocusChange
          && config().input.focus.followsMouse
-@@ -2694,6 +2841,7 @@ namespace umbriel {
+@@ -2694,6 +2856,7 @@ namespace umbriel {
      wlr_surface* surface = nullptr;
      LayerSurface* layer = nullptr;
      View* view = m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -917,7 +932,7 @@ index 04ee05c5..d8a23b47 100644
      if (surface == nullptr || !wlr_surface_accepts_tablet_v2(surface, v2tablet)) {
        setToolEmulating(state, true);
        processMotion(timeMsec, oldX, oldY);
-@@ -3371,6 +3519,69 @@ namespace umbriel {
+@@ -3371,6 +3534,69 @@ namespace umbriel {
      return workspace->layout().sanitizeResizeEdges(view, resizeEdgesForPoint(reachable, x, y));
    }
  
@@ -987,7 +1002,70 @@ index 04ee05c5..d8a23b47 100644
    void Cursor::forgetView(const View* view) {
      if (m_lastTitleBarClick.view == view)
        m_lastTitleBarClick = {};
-@@ -3437,34 +3648,7 @@ namespace umbriel {
+@@ -3401,32 +3627,42 @@ namespace umbriel {
+     return resizeEdgesForPoint(box, m_cursor->x, m_cursor->y);
+   }
+ 
++  uint32_t Cursor::floatingBorderEdges(View* view, double x, double y) const {
++    if (view == nullptr || view->sceneTree() == nullptr) {
++      return 0;
++    }
++    const wlr_box& geo = view->geometryBox();
++    const double left = view->layoutX() + geo.x;
++    const double top = view->layoutY() + geo.y;
++    const double right = left + geo.width;
++    const double bottom = top + geo.height;
++    if (x < left - kFloatingBorderSlop || x > right + kFloatingBorderSlop
++        || y < top - kFloatingBorderSlop || y > bottom + kFloatingBorderSlop) {
++      return 0;
++    }
++    uint32_t edges = 0;
++    if (std::abs(x - left) <= kFloatingBorderSlop) {
++      edges |= WLR_EDGE_LEFT;
++    }
++    if (std::abs(x - right) <= kFloatingBorderSlop) {
++      edges |= WLR_EDGE_RIGHT;
++    }
++    if (std::abs(y - top) <= kFloatingBorderSlop) {
++      edges |= WLR_EDGE_TOP;
++    }
++    if (std::abs(y - bottom) <= kFloatingBorderSlop) {
++      edges |= WLR_EDGE_BOTTOM;
++    }
++    return edges;
++  }
++
+   uint32_t Cursor::hoverResizeEdges(View* view) const {
+     if (view == nullptr) {
+       return 0;
+     }
+-    // Only advertise resize when the pointer is near the edge that would be grabbed.
+-    constexpr double kHoverSlop = 28.0;
+ 
+     if (view->floating()) {
+-      if (view->sceneTree() == nullptr) {
+-        return 0;
+-      }
+-      const wlr_box& geo = view->geometryBox();
+-      const double left = view->layoutX() + geo.x;
+-      const double top = view->layoutY() + geo.y;
+-      const double right = left + geo.width;
+-      const double bottom = top + geo.height;
+-      const double distLeft = std::abs(m_cursor->x - left);
+-      const double distRight = std::abs(m_cursor->x - right);
+-      const double distTop = std::abs(m_cursor->y - top);
+-      const double distBottom = std::abs(m_cursor->y - bottom);
+-      const double nearestH = std::min(distLeft, distRight);
+-      const double nearestV = std::min(distTop, distBottom);
+-      if (std::min(nearestH, nearestV) > kHoverSlop) {
+-        return 0;
+-      }
+-      return floatResizeEdges(view);
++      return floatingBorderEdges(view, m_cursor->x, m_cursor->y);
+     }
+ 
+     if (view->workspace() == nullptr) {
+@@ -3437,34 +3673,7 @@ namespace umbriel {
      if (box.width <= 0 || box.height <= 0) {
        return 0;
      }
@@ -1023,7 +1101,7 @@ index 04ee05c5..d8a23b47 100644
    }
  
    void Cursor::setCompositorCursor(const char* name) {
-@@ -3548,10 +3732,13 @@ namespace umbriel {
+@@ -3548,10 +3757,13 @@ namespace umbriel {
      wlr_surface* surface = nullptr;
      LayerSurface* layer = nullptr;
      m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -1038,7 +1116,7 @@ index 04ee05c5..d8a23b47 100644
        surface = nullptr;
      }
      const bool stale = !pointerFocusPinned() && pointerContentsStale(surface, sx, sy);
-@@ -3615,23 +3802,32 @@ namespace umbriel {
+@@ -3615,23 +3827,32 @@ namespace umbriel {
      wlr_surface* surface = nullptr;
      LayerSurface* layer = nullptr;
      View* view = m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -1082,7 +1160,7 @@ index 04ee05c5..d8a23b47 100644
      if (m_server->sessionLocked()) {
        setCompositorCursor(nullptr);
        return;
-@@ -3658,14 +3854,31 @@ namespace umbriel {
+@@ -3658,14 +3879,31 @@ namespace umbriel {
      }
  
      const bool modHeld = (m_server->keyboardModifiers() & m_server->modKey()) != 0;
@@ -1117,7 +1195,7 @@ index 04ee05c5..d8a23b47 100644
        return;
      }
  
-@@ -3678,6 +3891,10 @@ namespace umbriel {
+@@ -3678,6 +3916,10 @@ namespace umbriel {
              !hit->view->blocked()
              && (hit->part == SsdFramePart::Close
                  || hit->part == SsdFramePart::Minimize
@@ -1128,7 +1206,7 @@ index 04ee05c5..d8a23b47 100644
                  || (hit->part == SsdFramePart::Maximize && hit->view->ssdFrame()->maximizeEnabled()))
          ) {
            name = "pointer";
-@@ -3697,8 +3914,9 @@ namespace umbriel {
+@@ -3697,8 +3939,9 @@ namespace umbriel {
      double sx = 0;
      double sy = 0;
      wlr_surface* surface = nullptr;
@@ -1141,7 +1219,7 @@ index 04ee05c5..d8a23b47 100644
  
    void Cursor::processResizeTile() {
 diff --git a/src/input/cursor.h b/src/input/cursor.h
-index 609e9f45..c097317b 100644
+index 609e9f45..e097d309 100644
 --- a/src/input/cursor.h
 +++ b/src/input/cursor.h
 @@ -227,7 +227,11 @@ namespace umbriel {
@@ -1157,9 +1235,14 @@ index 609e9f45..c097317b 100644
      // Recompute compositor cursor (mod-held resize/move affordance, or active grab).
      void refreshInteractiveCursor();
      // Re-resolve what lies under a stationary cursor on `output` once its content has settled, so the client under it
-@@ -348,6 +352,9 @@ namespace umbriel {
+@@ -347,7 +351,14 @@ namespace umbriel {
+     std::optional<uint32_t>
      clientPointerGrabButton(const View* view, wlr_seat_client* seatClient, uint32_t serial) const;
      uint32_t floatResizeEdges(View* view) const;
++    // Edges of a floating window that the pointer is close enough to grab. Unlike
++    // floatResizeEdges, which divides the window into thirds, this matches the
++    // visible corner dots and edge bands drawn by the shell.
++    uint32_t floatingBorderEdges(View* view, double x, double y) const;
      uint32_t hoverResizeEdges(View* view) const;
 +    // The tiled window whose border is under (x, y), and the resizable edges
 +    // there. A point in the gap between two tiles lands on the nearest one.
@@ -1167,7 +1250,7 @@ index 609e9f45..c097317b 100644
      // True when this press completes a Mod+double-right-click with the
      // recorded one (same window, within the time window and pointer slop).
      bool isModRightDoubleClick(uint32_t timeMsec, const View* view) const;
-@@ -367,7 +374,7 @@ namespace umbriel {
+@@ -367,7 +378,7 @@ namespace umbriel {
      // A Mod+right click that resized nothing still reveals the focused tile,
      // since a grab focus skips the reveal.
      void revealClickedTile(View* view);
@@ -1176,7 +1259,7 @@ index 609e9f45..c097317b 100644
      void setCompositorCursor(const char* name);
      void restoreClientCursor();
      // True while a client owns an implicit pointer grab, which pins focus.
-@@ -412,7 +419,7 @@ namespace umbriel {
+@@ -412,7 +423,7 @@ namespace umbriel {
      void cancelDataDragEdgeScroll();
      static int onDataDragEdgeScrollTimer(void* data);
      int handleDataDragEdgeScrollTimer();
@@ -1185,7 +1268,7 @@ index 609e9f45..c097317b 100644
      void updateConstraintForSurface(wlr_surface* surface);
      bool constraintSurfaceActive() const;
      void warpToConstraintHint(wlr_pointer_constraint_v1* constraint);
-@@ -434,6 +441,7 @@ namespace umbriel {
+@@ -434,6 +445,7 @@ namespace umbriel {
      std::string m_activeXcursorName;
      int m_xcursorSize = 0;
      wlr_pointer_constraint_v1* m_activeConstraint = nullptr;

@@ -225,6 +225,15 @@ PanelWindow {
                     ? "control-first" : "notifications-first");
         }
 
+        // Diagnóstico de las tarjetas emergentes.
+        function popups(): string {
+            const list = NotificationState.banners || [];
+            const parts = [];
+            for (let i = 0; i < list.length; i++)
+                parts.push(list[i].summary);
+            return "count=" + list.length + " items=" + parts.join("|");
+        }
+
         function unified(value: bool): void {
             SettingsState.setUnifiedPanels(value);
         }

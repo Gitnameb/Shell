@@ -22,6 +22,12 @@ Singleton {
     property var receivedTimes: ({})
     property int clockTick: 0
 
+    // Avisos emergentes que aparecen unos segundos al llegar. Es una lista
+    // corta: los tres más recientes. Cada entrada guarda lo necesario para
+    // pintar la tarjeta sin volver a consultar el servidor.
+    property var banners: []
+    property int bannerSerial: 0
+
     readonly property var items: server.trackedNotifications.values
     readonly property int count: items ? items.length : 0
     readonly property var latest: count > 0 ? items[count - 1] : null
@@ -164,6 +170,113 @@ Singleton {
             list[i].dismiss();
     }
 
+    // ------------------------------------------------- avisos emergentes
+    // Añade una tarjeta al principio. Si la app reemplaza el aviso con el
+    // mismo id, la anterior se sustituye en lugar de duplicarse.
+    function showBanner(notification): void {
+        if (!notification || root.panelOpen || root.dnd)
+            return;
+        const id = notification.id;
+        const entry = {
+            key: ++root.bannerSerial,
+            id: id,
+            appName: notification.appName
+                || notification.desktopEntry || "Sistema",
+            appKey: String(notification.desktopEntry
+                || notification.appName || "sistema").toLowerCase(),
+            desktopEntry: notification.desktopEntry || "",
+            icon: notification.appIcon || notification.desktopEntry || "",
+            summary: notification.summary || "",
+            body: notification.body || "",
+            // 0 significa «no caduca»; -1 deja que el servidor decida y usa
+            // el tiempo normal de la tarjeta.
+            persistent: Number(notification.expireTimeout) === 0,
+            timeout: Number(notification.expireTimeout) > 0
+                ? Number(notification.expireTimeout) : 5000,
+            urgency: Number(notification.urgency) || 0,
+            stamp: Date.now(),
+            notification: notification
+        };
+        const list = root.banners.slice();
+        for (let i = list.length - 1; i >= 0; i--) {
+            if (list[i].id === id)
+                list.splice(i, 1);
+        }
+        list.unshift(entry);
+        while (list.length > 3)
+            list.pop();
+        root.banners = list;
+    }
+
+    function removeBanner(key): void {
+        const list = root.banners || [];
+        const out = [];
+        let changed = false;
+        for (let i = 0; i < list.length; i++) {
+            if (list[i].key === key)
+                changed = true;
+            else
+                out.push(list[i]);
+        }
+        if (changed)
+            root.banners = out;
+    }
+
+    // Cerrar la tarjeta descarta también el aviso del historial, igual que
+    // el botón de cerrar de otras distros; así una alarma deja de sonar.
+    function dismissBanner(key): void {
+        const list = root.banners || [];
+        let notification = null;
+        for (let i = 0; i < list.length; i++) {
+            if (list[i].key === key) {
+                notification = list[i].notification;
+                break;
+            }
+        }
+        root.removeBanner(key);
+        if (notification)
+            notification.dismiss();
+    }
+
+    function clearBanners(): void {
+        if (root.banners.length > 0)
+            root.banners = [];
+    }
+
+    // Si el aviso desaparece por otra vía (panel, app o reemplazo), su
+    // tarjeta tampoco debe quedarse colgada.
+    function pruneBanners(): void {
+        const list = root.banners || [];
+        if (list.length === 0)
+            return;
+        const live = items || [];
+        const present = ({});
+        for (let i = 0; i < live.length; i++)
+            present[String(live[i].id)] = true;
+        const out = [];
+        let changed = false;
+        for (let i = 0; i < list.length; i++) {
+            if (present[String(list[i].id)] === true)
+                out.push(list[i]);
+            else
+                changed = true;
+        }
+        if (changed)
+            root.banners = out;
+    }
+
+    onDndChanged: {
+        if (root.dnd)
+            root.clearBanners();
+    }
+
+    onPanelOpenChanged: {
+        if (root.panelOpen)
+            root.clearBanners();
+    }
+
+    onItemsChanged: root.pruneBanners()
+
     Timer {
         interval: 60000
         repeat: true
@@ -190,6 +303,11 @@ Singleton {
             times[notification.id] = Date.now();
             root.receivedTimes = times;
             notification.tracked = true;
+            // Tras recargar el shell, keepOnReload vuelve a emitir el historial:
+            // esos avisos no deben aparecer como si acabaran de llegar.
+            if (notification.lastGeneration === true)
+                return;
+            root.showBanner(notification);
         }
     }
 }

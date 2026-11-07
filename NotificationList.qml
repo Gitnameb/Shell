@@ -17,34 +17,14 @@ ListView {
     boundsBehavior: Flickable.StopAtBounds
 
     // Nombres que algunas apps envían y que no coinciden con su icono instalado.
-    readonly property var iconAliases: ({
-        "firefox": "firefox-esr",
-        "thunderbird": "thunderbird-esr",
-        "org.mozilla.firefox": "firefox-esr",
-        "code": "vscode",
-        "com.visualstudio.code": "vscode",
-        "telegram-desktop": "telegram",
-        "org.telegram.desktop": "telegram"
-    })
-
+    // La resolución vive en NotificationLook para compartirla con las tarjetas
+    // emergentes.
     function tryIcon(name) {
-        if (!name)
-            return "";
-        if (name.startsWith("/") || name.startsWith("file:"))
-            return name;
-        let clean = name;
-        if (clean.endsWith(".desktop"))
-            clean = clean.slice(0, -8);
-        if (Quickshell.hasThemeIcon(clean))
-            return Quickshell.iconPath(clean, "application-x-executable");
-        const alias = root.iconAliases[clean.toLowerCase()];
-        if (alias && Quickshell.hasThemeIcon(alias))
-            return Quickshell.iconPath(alias, "application-x-executable");
-        return "";
+        return NotificationLook.tryIcon(name);
     }
 
     function iconSource(entry) {
-        return root.tryIcon(entry.icon) || root.tryIcon(entry.desktopEntry);
+        return NotificationLook.iconSource(entry);
     }
 
     function toggleGroup(key) {

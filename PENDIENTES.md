@@ -50,6 +50,25 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   `~/.config/shell/settings.conf` y sigue valiendo 9 por defecto. «Tema en las
   apps» ahora explica que propaga el modo y el acento a GTK y a las apps de
   KDE.
+- **Redimensionar ventanas en modo Super (2026-11-07).** Con Super mantenido
+  aparece una línea en cada borde compartido entre mosaicos y cuatro puntos en
+  las esquinas de la ventana flotante enfocada (`WindowHandles.qml`). La capa
+  no captura entrada: Umbriel sigue haciendo el trabajo. En el fork, un
+  arrastre con Mod que empieza a menos de 12 px del borde de una ventana
+  flotante redimensiona en vez de mover; el resto de la ventana sigue
+  moviendo. Las líneas se ocultan si una ventana flotante las tapa. Probado con
+  un puntero virtual en una sesión anidada: el borde derecho cambió el ancho y
+  el centro movió la ventana. Detalle: `CONFIGURACION-UMBRIEL.md` §11 y §18.
+- **Avisos emergentes de notificaciones (2026-11-07).** Al llegar un aviso se
+  muestra una tarjeta en la esquina superior derecha (en el monitor de la
+  ventana enfocada) durante su tiempo de expiración; las de `-t 0` o críticas
+  se quedan hasta cerrarlas. Se apilan hasta tres, se ocultan con «No
+  molestar», al abrir el panel o la vista general, y un clic abre el panel de
+  notificaciones. La «×» descarta el aviso del historial y corta el sonido de
+  una alarma. La capa `shell-notification-popup` se añadió a la regla de
+  cristal para que tenga el mismo desenfoque que los paneles. Probado en una
+  sesión anidada con D-Bus privado, incluyendo expiración automática y aviso
+  crítico persistente.
 - **Desenfoque y foco al mantener Super.** Umbriel desenfoca ahora solo el
   contenido de la ventana bajo el puntero mientras se mantiene Mod, como el
   mockup: shader de ventana con blur de 1.4 px y desaturación suave, más un

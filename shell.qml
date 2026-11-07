@@ -18,11 +18,13 @@ ShellRoot {
     BatteryPanel {}
     TrayPanel {}
     Osd {}
+    NotificationPopup {}
 
     // Fase 3: controles de ventana al mantener Super, barra de título por
     // ventana y elección inicial del modo de escritorio. El cambio de modo
     // vive en el icono del escritorio activo, no en una barra aparte.
     WindowChrome {}
+    WindowHandles {}
     WelcomeMode {}
     WorkspacePicker {}
 
@@ -44,6 +46,7 @@ ShellRoot {
                 return;
             LauncherState.hide();
             NotificationState.hidePanel();
+            NotificationState.clearBanners();
             QuickPanelState.hide();
             CalendarState.hide();
             PowerState.hide();

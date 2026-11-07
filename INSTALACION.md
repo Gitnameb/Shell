@@ -452,6 +452,12 @@ puede editar y aplicar con `shell-glass tone dark|light`, sin recompilar.
 se cambia editando `~/.config/shell/settings.conf`. El resto de ajustes siguen
 funcionando igual.
 
+Las notificaciones nuevas aparecen en tarjetas temporales en la esquina
+superior derecha (`NotificationPopup.qml`). La capa
+`shell-notification-popup` está incluida en la regla de cristal, así que usa el
+mismo desenfoque que los paneles. Se apilan hasta tres, se ocultan con «No
+molestar» y un clic abre el panel de notificaciones.
+
 ---
 
 ## 6. Configuración de Umbriel
