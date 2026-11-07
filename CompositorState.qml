@@ -111,15 +111,43 @@ Singleton {
     readonly property string focusedApp: root.focusedWindow
         ? String(root.focusedWindow.appId || root.focusedWindow.class || "") : ""
 
+    // Orden estable de las fichas de la barra. El backend devuelve las ventanas
+    // en orden de apilado, que cambia al enfocar; aquí se conserva el orden en
+    // que apareció cada ventana. Se mutan solo las claves del objeto (nunca se
+    // reasigna la propiedad) para no invalidar el binding que lo lee.
+    property var windowOrder: ({ "__next": 1 })
+
     // Ventanas que pertenecen a un escritorio, incluidas las minimizadas que
     // el backend sabe devolver a su escritorio de origen. La barra usa esto
     // para conservar el icono aunque la ventana esté en special:minimized.
     function windowsForWorkspace(workspaceId): var {
         const id = Number(workspaceId);
         const list = root.windows || [];
-        const out = [];
+        const order = root.windowOrder;
+        const present = {};
+        const ordered = [];
+        // Asignar el orden sobre la lista completa: todas las píldoras ven el
+        // mismo orden global aunque cada una filtre su escritorio.
         for (let i = 0; i < list.length; i++) {
             const win = list[i];
+            const key = String(win.address || win.id || "");
+            if (key.length === 0)
+                continue;
+            present[key] = true;
+            if (order[key] === undefined)
+                order[key] = order.__next++;
+            ordered.push({ win: win, seq: order[key] });
+        }
+        // Olvidar ventanas cerradas para que el mapa no crezca sin límite.
+        for (const key in order) {
+            if (key !== "__next" && present[key] !== true)
+                delete order[key];
+        }
+        ordered.sort(function (a, b) { return a.seq - b.seq; });
+
+        const out = [];
+        for (let i = 0; i < ordered.length; i++) {
+            const win = ordered[i].win;
             if (Number(win.workspaceId) === id
                     || (win.minimized === true
                         && Number(win.originWorkspaceId) === id))

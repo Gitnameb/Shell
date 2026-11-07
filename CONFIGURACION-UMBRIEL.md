@@ -629,8 +629,32 @@ Thunar aporta «Home», «Computer» y «Trash».
   tema o rutas completas.
 - Si una app no declara `Actions=`, no aparece la sección. Eso depende del
   `.desktop` de la app, no del shell.
+- Iconos de las acciones: primero se usa el `Icon=` que declare el bloque
+  `[Desktop Action ...]`. Muchas apps no lo rellenan (Brave, por ejemplo), así
+  que `DesktopActions.iconFor()` lo deduce del id o del nombre con iconos del
+  tema: `view-private` (sombrero y gafas) para incógnito, `window-new`,
+  `tab-new`, `go-home`, `user-trash`, `computer` y `settings-configure`. Si el
+  tema no tiene ninguno, queda el glifo `▸`.
+- Las acciones con icono de archivo (`Icon=/ruta/icono.svg`) se dibujan a color;
+  las del tema se tiñen como el resto del menú.
 
-## 19. Limpieza de dependencias
+## 19. Orden de las fichas de la barra
+
+El backend devuelve las ventanas en orden de apilado, que cambia al enfocar.
+Para que los iconos no bailen, `CompositorState.windowsForWorkspace()` conserva
+el orden en que apareció cada ventana:
+
+- `windowOrder` guarda un número por dirección de ventana. La primera vez que
+  se ve una ventana recibe el siguiente número; después se ordena por ese
+  número, no por la lista del compositor.
+- Las ventanas nuevas se añaden al final. Una ventana cerrada se olvida y, si
+  se vuelve a abrir, entra como nueva.
+- Las minimizadas conservan su número porque siguen en la lista con su
+  escritorio de origen.
+- El orden es el mismo en todas las píldoras: primero se numera la lista
+  completa y después cada escritorio filtra las suyas.
+
+## 20. Limpieza de dependencias
 
 Además de `foot` e `Inter Variable`:
 

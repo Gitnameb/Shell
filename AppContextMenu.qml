@@ -284,7 +284,7 @@ PanelWindow {
                     required property var modelData
 
                     readonly property string actionIcon:
-                        String(modelData.icon || "")
+                        DesktopActions.iconFor(modelData)
 
                     Layout.fillWidth: true
                     label: String(modelData.name || "")
@@ -292,6 +292,7 @@ PanelWindow {
                         || actionIcon.startsWith("file:")
                         ? actionIcon : ""
                     iconName: iconSource.length === 0 ? actionIcon : ""
+                    iconTint: iconSource.length === 0
                     glyph: "▸"
                     onClicked: root.runAppAction(modelData)
                 }

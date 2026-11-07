@@ -61,6 +61,55 @@ Singleton {
         return entry && entry.actions ? entry.actions : [];
     }
 
+    // Icono de una acción. Muchos .desktop no rellenan `Icon=` dentro de
+    // `[Desktop Action ...]` (Brave, por ejemplo), así que se deduce del id o
+    // del nombre. Los nombres del tema existen en Breeze y Adwaita; si no,
+    // DesktopActions devuelve "" y el menú usa el glifo de siempre.
+    function iconFor(action): string {
+        if (!action)
+            return "";
+        const own = String(action.icon || "").trim();
+        if (own.length > 0)
+            return own;
+
+        const id = String(action.id || "").toLowerCase();
+        const name = String(action.name || "").toLowerCase();
+        const both = id + " " + name;
+        const candidates = [];
+
+        if (both.indexOf("incognito") !== -1
+                || both.indexOf("private") !== -1
+                || both.indexOf("privad") !== -1
+                || both.indexOf("incógnit") !== -1)
+            candidates.push("view-private", "view-private-symbolic");
+        if (both.indexOf("new-window") !== -1
+                || both.indexOf("newwindow") !== -1
+                || both.indexOf("nueva ventana") !== -1)
+            candidates.push("window-new", "window-new-symbolic");
+        if (both.indexOf("new-tab") !== -1
+                || both.indexOf("newtab") !== -1
+                || both.indexOf("nueva pestaña") !== -1)
+            candidates.push("tab-new", "tab-new-symbolic");
+        if (both.indexOf("trash") !== -1 || both.indexOf("papelera") !== -1)
+            candidates.push("user-trash", "user-trash-symbolic");
+        if (both.indexOf("home") !== -1 || both.indexOf("inicio") !== -1)
+            candidates.push("go-home", "go-home-symbolic");
+        if (both.indexOf("computer") !== -1 || both.indexOf("equipo") !== -1)
+            candidates.push("computer", "computer-symbolic");
+        if (both.indexOf("settings") !== -1
+                || both.indexOf("preferences") !== -1
+                || both.indexOf("configur") !== -1)
+            candidates.push("settings-configure", "preferences-system");
+        if (both.indexOf("new") !== -1)
+            candidates.push("window-new", "window-new-symbolic");
+
+        for (let i = 0; i < candidates.length; i++) {
+            if (Quickshell.hasThemeIcon(candidates[i]))
+                return candidates[i];
+        }
+        return "";
+    }
+
     function run(action): void {
         if (!action)
             return;
