@@ -58,9 +58,9 @@ RowLayout {
         radius: 6
         color: eyeMouse.containsMouse ? Theme.hover : "transparent"
 
-        AlbaIcon {
+        ShellIcon {
             anchors.centerIn: parent
-            source: AlbaIcons.src(root.passwordVisible ? "eye-off" : "eye")
+            source: ShellIcons.src(root.passwordVisible ? "eye-off" : "eye")
             color: root.passwordVisible ? Theme.accent : Theme.muted
             size: 14
             fallback: "◉"
@@ -85,9 +85,9 @@ RowLayout {
         color: Theme.accent
         opacity: root.busy ? 0.5 : 1
 
-        AlbaIcon {
+        ShellIcon {
             anchors.centerIn: parent
-            source: AlbaIcons.src("check")
+            source: ShellIcons.src("check")
             color: Theme.accentInk
             size: 14
             fallback: "✓"

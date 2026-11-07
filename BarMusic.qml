@@ -15,22 +15,23 @@ Pill {
     horizontalPadding: 0
     // Mientras se mantiene Super, el borde derecho estira la píldora para
     // leer títulos largos, como el modo de configuración rápida del mockup.
-    preferredWidth: SettingsState.musicWidth
+    // En la barra vertical solo se muestra la portada: el título y el
+    // artista no caben en 44 px.
+    readonly property bool compact: SettingsState.barVertical
+    preferredWidth: root.compact ? 0 : SettingsState.musicWidth
     // Ancho del bloque de texto. Se calcula desde el ancho elegido, nunca
     // desde root.width: si dependiera del ancho real, la píldora y su
     // contenido se darían tamaño mutuamente y la barra temblaría al
     // mantener Super. La suma fija es portada (34) + dos espacios (4 + 4)
     // + margen derecho (8).
-    readonly property real textWidth: SettingsState.musicWidth <= 0
-        ? 90
-        : Math.max(90, SettingsState.musicWidth - 50)
+    readonly property real textWidth: root.compact ? 0
+        : (SettingsState.musicWidth <= 0
+            ? 90
+            : Math.max(90, SettingsState.musicWidth - 50))
 
     onClicked: {
-        if (NotificationState.panelOpen
-                && NotificationState.panelView === "music")
-            NotificationState.hidePanel();
-        else
-            NotificationState.openPanelView("music");
+        const point = root.mapToItem(null, root.width / 2, root.height / 2);
+        QuickPanelState.toggle("music", point.x, point.y);
     }
     onDragStarted: ControlDrag.begin("music", "Música", "bar")
     onDragFinished: ControlDrag.end()
@@ -72,10 +73,10 @@ Pill {
                 }
             }
 
-            AlbaIcon {
+            ShellIcon {
                 anchors.centerIn: parent
                 visible: !coverImage.visible
-                source: AlbaIcons.src("music")
+                source: ShellIcons.src("music")
                 color: Theme.accent
                 size: Math.min(22, SettingsState.barIconSize)
                 fallback: "♪"
@@ -97,6 +98,7 @@ Pill {
         Item {
             width: root.textWidth
             height: Theme.itemHeight
+            visible: !root.compact
 
             Column {
                 anchors.verticalCenter: parent.verticalCenter
@@ -135,9 +137,9 @@ Pill {
                     radius: 6
                     color: prevMouse.containsMouse ? Theme.hover : "transparent"
 
-                    AlbaIcon {
+                    ShellIcon {
                         anchors.centerIn: parent
-                        source: AlbaIcons.src("prev")
+                        source: ShellIcons.src("prev")
                         color: MusicState.canGoPrevious
                             ? Theme.muted : Theme.faint
                         size: Math.min(16, SettingsState.barIconSize)
@@ -159,9 +161,9 @@ Pill {
                     radius: 6
                     color: playMouse.containsMouse ? Theme.accentSoft : "transparent"
 
-                    AlbaIcon {
+                    ShellIcon {
                         anchors.centerIn: parent
-                        source: AlbaIcons.src(MusicState.playing
+                        source: ShellIcons.src(MusicState.playing
                             ? "pause" : "play")
                         color: Theme.accent
                         size: Math.min(16, SettingsState.barIconSize)
@@ -182,9 +184,9 @@ Pill {
                     radius: 6
                     color: nextMouse.containsMouse ? Theme.hover : "transparent"
 
-                    AlbaIcon {
+                    ShellIcon {
                         anchors.centerIn: parent
-                        source: AlbaIcons.src("next")
+                        source: ShellIcons.src("next")
                         color: MusicState.canGoNext
                             ? Theme.muted : Theme.faint
                         size: Math.min(16, SettingsState.barIconSize)
@@ -205,7 +207,7 @@ Pill {
         // Margen derecho para que el texto no toque el borde de la píldora
         // ahora que la portada ocupa todo el lado izquierdo.
         Item {
-            width: 8
+            width: root.compact ? 0 : 8
             height: 1
         }
     }
@@ -219,7 +221,7 @@ Pill {
         // El asa no debe formar parte de esa fila: sin este parent explícito
         // su ancho y sus anclas desplazan el título al aparecer con Super.
         parent: root
-        visible: SuperState.active
+        visible: SuperState.active && !root.compact
         z: 5
         anchors {
             right: parent.right

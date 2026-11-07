@@ -10,7 +10,7 @@ from pathlib import Path
 
 MAX_ENTRIES = 50
 
-path = Path.home() / ".local/state/alba/clipboard.json"
+path = Path.home() / ".local/state/shell/clipboard.json"
 wl_copy = shutil.which("wl-copy") or (
     Path(__file__).resolve().parent / "bin" / "wl-copy"
 )

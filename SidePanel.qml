@@ -5,44 +5,104 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Panel lateral único, pegado a la barra: notificaciones arriba y centro de
-// control compacto abajo. Las opciones avanzadas se abren dentro del panel y
-// comparten el mismo desplazamiento.
+// Panel lateral único, pegado a la barra. En modo completo muestra el centro
+// de control y las notificaciones como dos tarjetas; el orden depende del
+// borde donde viva la barra (con la barra abajo, las notificaciones primero).
+// En modo rápido (al pulsar un control de la barra) muestra solo la vista
+// avanzada de ese control, sin notificaciones, y se coloca junto al icono
+// pulsado: debajo en horizontal o al lado en vertical.
 PanelWindow {
     id: root
 
     // Referenciar el singleton hace que se cree y arranque su temporizador de
     // apagado por inactividad (Quickshell crea los singleton bajo demanda).
     readonly property var autoOff: AutoOffState
+    // Modo rápido: una sola vista avanzada, sin notificaciones.
+    readonly property bool quickMode: QuickPanelState.open
+    // Secciones del panel completo. La campana puede abrir ambas o solo las
+    // notificaciones; el icono de cuadrícula abre solo el centro de control.
+    readonly property bool showNotifications: !root.quickMode
+        && NotificationState.panelOpen
+        && (NotificationState.panelSection === "both"
+            || NotificationState.panelSection === "notifications")
+    readonly property bool showControl: root.quickMode
+        || (NotificationState.panelOpen
+            && (NotificationState.panelSection === "both"
+                || NotificationState.panelSection === "control"))
 
-    visible: NotificationState.panelOpen
+    visible: NotificationState.panelOpen || root.quickMode
     screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
 
+    // En horizontal el panel se abre a la derecha; en vertical se pega al
+    // lado de la barra y se centra con el control pulsado.
+    readonly property bool barVertical: SettingsState.barVertical
+
     anchors {
-        top: SettingsState.barAtTop
-        bottom: !SettingsState.barAtTop
-        right: true
+        top: root.barVertical || SettingsState.barAtTop
+        bottom: !root.barVertical && SettingsState.barAtBottom
+        left: !root.barVertical || SettingsState.barAtLeft
+        right: root.barVertical && SettingsState.barAtRight
     }
     margins {
-        top: SettingsState.barAtTop ? Theme.edge + Theme.barHeight + 10 : 0
-        bottom: SettingsState.barAtTop ? 0 : Theme.edge + Theme.barHeight + 10
-        right: Theme.edge
+        top: root.barVertical ? root.verticalTopMargin
+            : (SettingsState.barAtTop
+                ? Theme.edge + Theme.barHeight + 10 : 0)
+        bottom: root.barVertical ? 0
+            : (SettingsState.barAtTop
+                ? 0 : Theme.edge + Theme.barHeight + 10)
+        left: root.barVertical
+            ? (SettingsState.barAtLeft
+                ? Theme.edge + Theme.barHeight + 10 : 0)
+            : root.leftMargin
+        right: root.barVertical && SettingsState.barAtRight
+            ? Theme.edge + Theme.barHeight + 10 : 0
     }
+    // En modo rápido el panel aparece a la altura del control; en modo
+    // completo se centra en la pantalla.
+    readonly property real verticalTopMargin: {
+        const screenHeight = root.screen ? root.screen.height : 900;
+        const desired = root.quickMode && QuickPanelState.anchorY > 0
+            ? QuickPanelState.anchorY + Theme.edge - root.implicitHeight / 2
+            : (screenHeight - root.implicitHeight) / 2;
+        return Math.max(Theme.edge + 10, Math.min(
+            screenHeight - root.implicitHeight - Theme.edge - 10,
+            desired));
+    }
+    // En modo completo se pega a la derecha; en modo rápido se centra sobre
+    // el control pulsado, sin salirse de la pantalla.
+    readonly property real leftMargin: {
+        const width = root.implicitWidth;
+        const screenWidth = screen ? screen.width : 1280;
+        if (!root.quickMode)
+            return Math.max(Theme.edge, screenWidth - width - Theme.edge);
+        const anchor = QuickPanelState.anchorX;
+        return Math.max(Theme.edge, Math.min(
+            screenWidth - width - Theme.edge,
+            (anchor > 0 ? anchor + Theme.edge : screenWidth - 220)
+                - width / 2));
+    }
+    // Altura máxima de la vista avanzada en modo rápido: el panel puede
+    // crecer, pero nunca más allá de la pantalla.
+    readonly property int quickHeightLimit: Math.max(220,
+        (screen ? screen.height : 800) - Theme.edge * 2
+            - (root.barVertical ? 56 : Theme.barHeight + 56))
     implicitWidth: 360
-    implicitHeight: Math.min(900, panelColumn.implicitHeight + 28)
+    implicitHeight: Math.min(root.barVertical
+            ? (screen ? screen.height : 900) - Theme.edge * 2 : 900,
+        panelColumn.implicitHeight + (root.quickMode ? 28 : 0))
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     focusable: true
 
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.namespace: "alba-side-panel"
-    WlrLayershell.keyboardFocus: NotificationState.panelOpen && focusGate.ready
+    WlrLayershell.namespace: "shell-side-panel"
+    WlrLayershell.keyboardFocus: root.visible && focusGate.ready
         ? WlrKeyboardFocus.OnDemand
         : WlrKeyboardFocus.None
 
     PanelFocusGate {
         id: focusGate
-        active: NotificationState.panelOpen
+        active: root.visible
     }
 
     // Al cambiar de vista, el centro de control vuelve al principio.
@@ -50,6 +110,15 @@ PanelWindow {
         target: NotificationState
 
         function onPanelViewChanged(): void {
+            if (typeof ccFlick !== "undefined")
+                ccFlick.contentY = 0;
+        }
+    }
+
+    Connections {
+        target: QuickPanelState
+
+        function onOpened(): void {
             if (typeof ccFlick !== "undefined")
                 ccFlick.contentY = 0;
         }
@@ -95,13 +164,42 @@ PanelWindow {
             return;
         }
         ControlDrag.panelBounds = Qt.rect(
-            screen.x + screen.width - Theme.edge - root.width,
-            SettingsState.barAtTop
-                ? screen.y + Theme.edge + Theme.barHeight + 10
-                : screen.y + screen.height
-                    - (Theme.edge + Theme.barHeight + 10) - root.height,
+            root.barVertical
+                ? (SettingsState.barAtLeft
+                    ? screen.x + Theme.edge + Theme.barHeight + 10
+                    : screen.x + screen.width
+                        - (Theme.edge + Theme.barHeight + 10) - root.width)
+                : screen.x + root.leftMargin,
+            root.barVertical
+                ? screen.y + root.verticalTopMargin
+                : (SettingsState.barAtTop
+                    ? screen.y + Theme.edge + Theme.barHeight + 10
+                    : screen.y + screen.height
+                        - (Theme.edge + Theme.barHeight + 10) - root.height),
             root.width,
             root.height);
+    }
+
+    IpcHandler {
+        target: "quickpanel"
+
+        function open(view: string): void {
+            QuickPanelState.show(view, -1);
+        }
+
+        function close(): void {
+            QuickPanelState.hide();
+        }
+
+        function toggle(view: string): void {
+            QuickPanelState.toggle(view, -1);
+        }
+
+        function status(): string {
+            return "open=" + (QuickPanelState.open ? "1" : "0")
+                + " key=" + QuickPanelState.key
+                + " anchorX=" + QuickPanelState.anchorX;
+        }
     }
 
     IpcHandler {
@@ -113,6 +211,22 @@ PanelWindow {
 
         function open(): void {
             NotificationState.showPanel();
+        }
+
+        function control(): void {
+            NotificationState.toggleSection("control");
+        }
+
+        function status(): string {
+            return "open=" + (NotificationState.panelOpen ? "1" : "0")
+                + " section=" + NotificationState.panelSection
+                + " view=" + NotificationState.panelView
+                + " order=" + (sectionsLayout.controlFirst
+                    ? "control-first" : "notifications-first");
+        }
+
+        function unified(value: bool): void {
+            SettingsState.setUnifiedPanels(value);
         }
 
         function close(): void {
@@ -128,23 +242,19 @@ PanelWindow {
         }
 
         function wifi(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("wifi");
+            QuickPanelState.show("wifi", -1);
         }
 
         function bluetooth(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("bluetooth");
+            QuickPanelState.show("bluetooth", -1);
         }
 
         function volume(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("volume");
+            QuickPanelState.show("volume", -1);
         }
 
         function mic(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("mic");
+            QuickPanelState.show("mic", -1);
         }
 
         function lockTimeout(minutes: int): void {
@@ -157,13 +267,11 @@ PanelWindow {
         }
 
         function night(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("night");
+            QuickPanelState.show("night", -1);
         }
 
         function brightness(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("brightness");
+            QuickPanelState.show("brightness", -1);
         }
 
         // Atajos que solo ajustan sin abrir el panel; el OSD indica el valor.
@@ -184,13 +292,11 @@ PanelWindow {
         }
 
         function extraDim(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("extraDim");
+            QuickPanelState.show("extraDim", -1);
         }
 
         function hotspot(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("hotspot");
+            QuickPanelState.show("hotspot", -1);
         }
 
         function airplane(): void {
@@ -198,28 +304,23 @@ PanelWindow {
         }
 
         function music(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("music");
+            QuickPanelState.show("music", -1);
         }
 
         function cpu(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("cpu");
+            QuickPanelState.show("cpu", -1);
         }
 
         function gpu(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("gpu");
+            QuickPanelState.show("gpu", -1);
         }
 
         function net(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("net");
+            QuickPanelState.show("net", -1);
         }
 
         function vpn(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("vpn");
+            QuickPanelState.show("vpn", -1);
         }
 
         function keyboard(): void {
@@ -227,8 +328,7 @@ PanelWindow {
         }
 
         function keyboardSettings(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("keyboard");
+            QuickPanelState.show("keyboard", -1);
         }
 
         function keyboardLayout(value: string): void {
@@ -236,8 +336,7 @@ PanelWindow {
         }
 
         function clipboard(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("clipboard");
+            QuickPanelState.show("clipboard", -1);
         }
 
         function clipboardCopy(index: int): void {
@@ -261,8 +360,7 @@ PanelWindow {
         }
 
         function settings(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("settings");
+            QuickPanelState.show("settings", -1);
         }
 
         // Desplaza el contenido del panel; útil para scripts y pruebas.
@@ -271,19 +369,17 @@ PanelWindow {
         }
 
         function windowModes(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("windows");
+            QuickPanelState.show("windows", -1);
         }
 
         function compositor(): void {
-            NotificationState.showPanel();
-            NotificationState.openPanelView("compositor");
+            QuickPanelState.show("compositor", -1);
         }
 
         // Ejecuta una acción del contrato desde scripts o atajos.
         // Ejemplos:
-        //   qs ipc -c alba call notifications compositorAction focus 0x...
-        //   qs ipc -c alba call notifications compositorAction layout 2 master
+        //   qs ipc -c shell call notifications compositorAction focus 0x...
+        //   qs ipc -c shell call notifications compositorAction layout 2 master
         function compositorAction(action: string, target: string,
                 value: string): void {
             CompositorState.runAction(action, target, value);
@@ -301,16 +397,14 @@ PanelWindow {
     Rectangle {
         anchors.fill: parent
         radius: 16
-        color: ControlDrag.active && ControlDrag.origin === "bar"
-            && ControlDrag.overPanel
-            ? Theme.accentGhost
-            : Theme.surface
-        border.width: ControlDrag.active && ControlDrag.origin === "bar"
-            && ControlDrag.overPanel ? 2 : 1
-        border.color: ControlDrag.active && ControlDrag.origin === "bar"
-            && ControlDrag.overPanel
-            ? Theme.accent
-            : Theme.borderStrong
+        readonly property bool dragOver: ControlDrag.active
+            && ControlDrag.origin === "bar" && ControlDrag.overPanel
+        // En modo rápido el fondo y el borde pertenecen a la ventana. En modo
+        // completo cada sección dibuja su propia tarjeta y aquí no hay nada.
+        color: dragOver ? Theme.accentGhost
+            : (root.quickMode ? Theme.surface : "transparent")
+        border.width: dragOver ? 2 : (root.quickMode ? 1 : 0)
+        border.color: dragOver ? Theme.accent : Theme.borderStrong
 
         // Aviso al devolver un control de la barra al centro de control.
         Rectangle {
@@ -342,291 +436,184 @@ PanelWindow {
             id: panelColumn
 
             anchors.fill: parent
-            anchors.margins: 14
-            spacing: 10
+            anchors.margins: root.quickMode ? 14 : 0
+            spacing: 0
 
-            // ------------------------------------------------------- cabecera
-            RowLayout {
+            // Dos tarjetas independientes: el hueco de 8 px es la
+            // única unión, igual que en el diseño de referencia.
+            GridLayout {
+                id: sectionsLayout
+
                 Layout.fillWidth: true
-                spacing: 8
+                columns: 1
+                rowSpacing: 8
 
-                ColumnLayout {
+                readonly property bool controlFirst: root.showControl
+                    && (!root.showNotifications || SettingsState.barAtTop
+                        || root.barVertical)
+                readonly property int notificationRow:
+                    sectionsLayout.controlFirst ? 1 : 0
+                readonly property int controlRow:
+                    sectionsLayout.controlFirst ? 0 : 1
+
+                // Tarjeta de notificaciones: cabecera y avisos dentro.
+                Rectangle {
+                    id: notificationCard
+
+                    Layout.row: sectionsLayout.notificationRow
                     Layout.fillWidth: true
-                    spacing: 0
+                    visible: root.showNotifications
+                    Layout.preferredHeight: notifContent.implicitHeight
+                    radius: root.quickMode ? 0 : 16
+                    color: root.quickMode ? "transparent" : Theme.surface
+                    border.width: root.quickMode ? 0 : 1
+                    border.color: Theme.borderStrong
 
-                    Text {
-                        text: "Notificaciones"
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 14
-                        font.weight: Font.DemiBold
-                    }
+                    ColumnLayout {
+                        id: notifContent
 
-                    Text {
-                        text: NotificationState.count === 0
-                            ? (DependencyState.hasMissing
-                                || DependencyState.error.length > 0
-                                ? "Revisa las dependencias"
-                                : "Todo al día")
-                            : NotificationState.countLabel(
-                                NotificationState.count)
-                        color: Theme.faint
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 9
-                    }
-                }
-
-                // No molestar (solo icono).
-                Rectangle {
-                    implicitWidth: 26
-                    implicitHeight: 26
-                    radius: 8
-                    color: NotificationState.dnd ? Theme.accentSoft : Theme.hover
-                    border.width: NotificationState.dnd ? 1 : 0
-                    border.color: Theme.accentLine
-
-                    AlbaIcon {
-                        anchors.centerIn: parent
-                        name: NotificationState.dnd
-                            ? "notifications-disabled" : "notifications"
-                        fallbackName: "preferences-desktop-notification"
-                        color: NotificationState.dnd
-                            ? Theme.danger : Theme.muted
-                        size: 15
-                        fallback: "!"
-                    }
-
-                    MouseArea {
                         anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: NotificationState.dnd = !NotificationState.dnd
-                    }
-                }
+                        spacing: 0
 
-                // Comprobar dependencias (solo al pulsar).
-                Rectangle {
-                    id: depButton
-
-                    readonly property bool problem: DependencyState.hasMissing
-                        || DependencyState.error.length > 0
-
-                    implicitWidth: 26
-                    implicitHeight: 26
-                    radius: 8
-                    color: depMouse.containsMouse
-                        ? Theme.hover
-                        : (depButton.problem ? Theme.warningSoft : "transparent")
-                    border.width: depButton.problem ? 1 : 0
-                    border.color: Theme.warningLine
-
-                    AlbaIcon {
-                        anchors.centerIn: parent
-                        name: DependencyState.checking
-                            ? "view-refresh"
-                            : (depButton.problem
-                                ? "dialog-warning"
-                                : (DependencyState.checked
-                                    ? "emblem-ok-symbolic" : "dialog-information"))
-                        fallback: DependencyState.checking
-                            ? "↻"
-                            : (depButton.problem
-                                ? "⚠"
-                                : (DependencyState.checked ? "✓" : "i"))
-                        color: DependencyState.checking
-                            ? Theme.accent
-                            : (depButton.problem
-                                ? Theme.warning
-                                : (DependencyState.checked
-                                    ? Theme.accent : Theme.muted))
-                        size: 15
-                    }
-
-                    MouseArea {
-                        id: depMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: DependencyState.checkNow()
-                    }
-
-                    ToolTip.visible: depMouse.containsMouse
-                    ToolTip.text: DependencyState.checking
-                        ? "Comprobando dependencias…"
-                        : "Comprobar dependencias"
-                    ToolTip.delay: 350
-                }
-
-                // Limpiar (solo icono).
-                Rectangle {
-                    visible: NotificationState.count > 0
-                    implicitWidth: 26
-                    implicitHeight: 26
-                    radius: 8
-                    color: clearMouse.containsMouse ? Theme.hover : "transparent"
-
-                    AlbaIcon {
-                        anchors.centerIn: parent
-                        name: "edit-clear-all"
-                        color: clearMouse.containsMouse
-                            ? Theme.danger : Theme.muted
-                        size: 15
-                        fallback: "⌫"
-                    }
-
-                    MouseArea {
-                        id: clearMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: NotificationState.clearAll()
-                    }
-                }
-            }
-
-            // ------------------------------------------ dependencias del sistema
-            Rectangle {
-                id: depWarning
-
-                readonly property bool problem: DependencyState.hasMissing
-                    || DependencyState.error.length > 0
-
-                Layout.fillWidth: true
-                visible: DependencyState.revealed
-                    && (DependencyState.checking || DependencyState.hasResult)
-                implicitHeight: depColumn.implicitHeight + 16
-                radius: 10
-                color: depWarning.problem
-                    ? Theme.warningSoft : Theme.accentSoft
-                border.width: 1
-                border.color: depWarning.problem
-                    ? Theme.warningLine : Theme.accentLine
-
-                ColumnLayout {
-                    id: depColumn
-
-                    anchors {
-                        fill: parent
-                        margins: 8
-                    }
-                    spacing: 5
-
-                    Item {
-                        Layout.fillWidth: true
-                        implicitHeight: depHead.implicitHeight
-
+                        // ------------------------------------------------------- cabecera
                         RowLayout {
-                            id: depHead
-
-                            anchors.fill: parent
-                            spacing: 7
-
-                            AlbaIcon {
-                                name: DependencyState.checking
-                                    ? "view-refresh"
-                                    : (depWarning.problem
-                                        ? "dialog-warning" : "emblem-ok-symbolic")
-                                fallback: DependencyState.checking
-                                    ? "↻"
-                                    : (depWarning.problem ? "⚠" : "✓")
-                                color: depWarning.problem
-                                    ? Theme.warning : Theme.accent
-                                size: 17
-                            }
+                            Layout.fillWidth: true
+                            Layout.leftMargin: 14
+                            Layout.rightMargin: 12
+                            Layout.topMargin: 12
+                            Layout.bottomMargin: 9
+                            visible: root.showNotifications
+                            spacing: 8
 
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 0
 
                                 Text {
-                                    Layout.fillWidth: true
-                                    text: DependencyState.checking
-                                        ? "Comprobando dependencias…"
-                                        : (DependencyState.error.length > 0
-                                            ? "No se pudo comprobar"
-                                            : (DependencyState.hasMissing
-                                                ? DependencyState.title
-                                                : "Todo en orden"))
-                                    color: depWarning.problem
-                                        ? Theme.warning : Theme.accent
+                                    text: "Notificaciones"
+                                    color: Theme.text
                                     font.family: Theme.fontFamily
-                                    font.pixelSize: 9
+                                    font.pixelSize: 14
                                     font.weight: Font.DemiBold
                                 }
 
                                 Text {
-                                    Layout.fillWidth: true
-                                    text: DependencyState.checking
-                                        ? "Revisando los paquetes de red…"
-                                        : (DependencyState.error.length > 0
-                                            ? DependencyState.error
-                                            : (DependencyState.hasMissing
-                                                ? (DependencyState.expanded
-                                                    ? "Paquetes que faltan:"
-                                                    : "Toca para ver qué instalar")
-                                                : "No falta ningún paquete de red."))
-                                    color: Theme.muted
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 8
-                                    wrapMode: Text.Wrap
-                                }
-                            }
-
-                            Text {
-                                visible: DependencyState.hasMissing
-                                    && !DependencyState.checking
-                                text: DependencyState.expanded ? "⌃" : "⌄"
-                                color: Theme.warning
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            enabled: DependencyState.hasMissing
-                                && !DependencyState.checking
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: DependencyState.toggle()
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        visible: DependencyState.expanded
-                            && DependencyState.hasMissing
-                            && !DependencyState.checking
-                        spacing: 3
-
-                        Repeater {
-                            model: DependencyState.missing
-
-                            delegate: RowLayout {
-                                required property var modelData
-
-                                Layout.fillWidth: true
-                                spacing: 6
-
-                                Text {
-                                    text: "•"
-                                    color: Theme.warning
+                                    text: NotificationState.count === 0
+                                        ? (DependencyState.hasMissing
+                                            || DependencyState.error.length > 0
+                                            ? "Revisa las dependencias"
+                                            : "Todo al día")
+                                        : NotificationState.countLabel(
+                                            NotificationState.count)
+                                    color: Theme.faint
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 9
                                 }
+                            }
 
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: modelData.label
-                                    color: Theme.text
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 8
-                                    elide: Text.ElideRight
+                            // No molestar (solo icono).
+                            Rectangle {
+                                implicitWidth: 26
+                                implicitHeight: 26
+                                radius: 8
+                                color: NotificationState.dnd ? Theme.accentSoft : Theme.hover
+                                border.width: NotificationState.dnd ? 1 : 0
+                                border.color: Theme.accentLine
+
+                                ShellIcon {
+                                    anchors.centerIn: parent
+                                    name: NotificationState.dnd
+                                        ? "notifications-disabled" : "notifications"
+                                    fallbackName: "preferences-desktop-notification"
+                                    color: NotificationState.dnd
+                                        ? Theme.danger : Theme.muted
+                                    size: 15
+                                    fallback: "!"
                                 }
 
-                                Text {
-                                    text: modelData.package
-                                    color: Theme.faint
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 8
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: NotificationState.dnd = !NotificationState.dnd
+                                }
+                            }
+
+                            // Comprobar dependencias (solo al pulsar).
+                            Rectangle {
+                                id: depButton
+
+                                readonly property bool problem: DependencyState.hasMissing
+                                    || DependencyState.error.length > 0
+
+                                implicitWidth: 26
+                                implicitHeight: 26
+                                radius: 8
+                                color: depMouse.containsMouse
+                                    ? Theme.hover
+                                    : (depButton.problem ? Theme.warningSoft : "transparent")
+                                border.width: depButton.problem ? 1 : 0
+                                border.color: Theme.warningLine
+
+                                ShellIcon {
+                                    anchors.centerIn: parent
+                                    name: DependencyState.checking
+                                        ? "view-refresh"
+                                        : (depButton.problem
+                                            ? "dialog-warning"
+                                            : (DependencyState.checked
+                                                ? "emblem-ok-symbolic" : "dialog-information"))
+                                    fallback: DependencyState.checking
+                                        ? "↻"
+                                        : (depButton.problem
+                                            ? "⚠"
+                                            : (DependencyState.checked ? "✓" : "i"))
+                                    color: DependencyState.checking
+                                        ? Theme.accent
+                                        : (depButton.problem
+                                            ? Theme.warning
+                                            : (DependencyState.checked
+                                                ? Theme.accent : Theme.muted))
+                                    size: 15
+                                }
+
+                                MouseArea {
+                                    id: depMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: DependencyState.checkNow()
+                                }
+
+                                ToolTip.visible: depMouse.containsMouse
+                                ToolTip.text: DependencyState.checking
+                                    ? "Comprobando dependencias…"
+                                    : "Comprobar dependencias"
+                                ToolTip.delay: 350
+                            }
+
+                            // Limpiar (solo icono).
+                            Rectangle {
+                                visible: NotificationState.count > 0
+                                implicitWidth: 26
+                                implicitHeight: 26
+                                radius: 8
+                                color: clearMouse.containsMouse ? Theme.hover : "transparent"
+
+                                ShellIcon {
+                                    anchors.centerIn: parent
+                                    name: "edit-clear-all"
+                                    color: clearMouse.containsMouse
+                                        ? Theme.danger : Theme.muted
+                                    size: 15
+                                    fallback: "⌫"
+                                }
+
+                                MouseArea {
+                                    id: clearMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: NotificationState.clearAll()
                                 }
                             }
                         }
@@ -634,222 +621,424 @@ PanelWindow {
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 1
-                            Layout.topMargin: 2
-                            color: Theme.warningLine
+                            color: Theme.border
                         }
 
-                        Text {
+                        // ------------------------------------------ dependencias del sistema
+                        Rectangle {
+                            id: depWarning
+
+                            readonly property bool problem: DependencyState.hasMissing
+                                || DependencyState.error.length > 0
+
                             Layout.fillWidth: true
-                            text: "SOLUCIÓN"
-                            color: Theme.faint
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 8
-                            font.weight: Font.DemiBold
-                            font.letterSpacing: 0.8
-                        }
+                            Layout.leftMargin: 12
+                            Layout.rightMargin: 12
+                            Layout.bottomMargin: 6
+                            visible: !root.quickMode
+                                && DependencyState.revealed
+                                && (DependencyState.checking || DependencyState.hasResult)
+                            implicitHeight: depColumn.implicitHeight + 16
+                            radius: 10
+                            color: depWarning.problem
+                                ? Theme.warningSoft : Theme.accentSoft
+                            border.width: 1
+                            border.color: depWarning.problem
+                                ? Theme.warningLine : Theme.accentLine
 
-                        Repeater {
-                            model: DependencyState.fixes
+                            ColumnLayout {
+                                id: depColumn
 
-                            delegate: Rectangle {
-                                required property var modelData
+                                anchors {
+                                    fill: parent
+                                    margins: 8
+                                }
+                                spacing: 5
 
-                                Layout.fillWidth: true
-                                implicitHeight: Math.max(26,
-                                    depFix.implicitHeight + 10)
-                                radius: 6
-                                color: Theme.surface
+                                Item {
+                                    Layout.fillWidth: true
+                                    implicitHeight: depHead.implicitHeight
 
-                                RowLayout {
-                                    anchors {
-                                        fill: parent
-                                        leftMargin: 7
-                                        rightMargin: 4
+                                    RowLayout {
+                                        id: depHead
+
+                                        anchors.fill: parent
+                                        spacing: 7
+
+                                        ShellIcon {
+                                            name: DependencyState.checking
+                                                ? "view-refresh"
+                                                : (depWarning.problem
+                                                    ? "dialog-warning" : "emblem-ok-symbolic")
+                                            fallback: DependencyState.checking
+                                                ? "↻"
+                                                : (depWarning.problem ? "⚠" : "✓")
+                                            color: depWarning.problem
+                                                ? Theme.warning : Theme.accent
+                                            size: 17
+                                        }
+
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 0
+
+                                            Text {
+                                                Layout.fillWidth: true
+                                                text: DependencyState.checking
+                                                    ? "Comprobando dependencias…"
+                                                    : (DependencyState.error.length > 0
+                                                        ? "No se pudo comprobar"
+                                                        : (DependencyState.hasMissing
+                                                            ? DependencyState.title
+                                                            : "Todo en orden"))
+                                                color: depWarning.problem
+                                                    ? Theme.warning : Theme.accent
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 9
+                                                font.weight: Font.DemiBold
+                                            }
+
+                                            Text {
+                                                Layout.fillWidth: true
+                                                text: DependencyState.checking
+                                                    ? "Revisando los paquetes de red…"
+                                                    : (DependencyState.error.length > 0
+                                                        ? DependencyState.error
+                                                        : (DependencyState.hasMissing
+                                                            ? (DependencyState.expanded
+                                                                ? "Paquetes que faltan:"
+                                                                : "Toca para ver qué instalar")
+                                                            : "No falta ningún paquete de red."))
+                                                color: Theme.muted
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 8
+                                                wrapMode: Text.Wrap
+                                            }
+                                        }
+
+                                        Text {
+                                            visible: DependencyState.hasMissing
+                                                && !DependencyState.checking
+                                            text: DependencyState.expanded ? "⌃" : "⌄"
+                                            color: Theme.warning
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 11
+                                        }
                                     }
-                                    spacing: 4
 
-                                    Text {
-                                        id: depFix
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        enabled: DependencyState.hasMissing
+                                            && !DependencyState.checking
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: DependencyState.toggle()
+                                    }
+                                }
 
-                                        Layout.fillWidth: true
-                                        text: String(modelData)
-                                        color: Theme.text
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 8
-                                        wrapMode: Text.Wrap
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    visible: DependencyState.expanded
+                                        && DependencyState.hasMissing
+                                        && !DependencyState.checking
+                                    spacing: 3
+
+                                    Repeater {
+                                        model: DependencyState.missing
+
+                                        delegate: RowLayout {
+                                            required property var modelData
+
+                                            Layout.fillWidth: true
+                                            spacing: 6
+
+                                            Text {
+                                                text: "•"
+                                                color: Theme.warning
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 9
+                                            }
+
+                                            Text {
+                                                Layout.fillWidth: true
+                                                text: modelData.label
+                                                color: Theme.text
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 8
+                                                elide: Text.ElideRight
+                                            }
+
+                                            Text {
+                                                text: modelData.package
+                                                color: Theme.faint
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 8
+                                            }
+                                        }
                                     }
 
                                     Rectangle {
-                                        implicitWidth: 22
-                                        implicitHeight: 22
-                                        radius: 6
-                                        color: depCopyMouse.containsMouse
-                                            ? Theme.hover : "transparent"
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 1
+                                        Layout.topMargin: 2
+                                        color: Theme.warningLine
+                                    }
 
-                                        AlbaIcon {
-                                            anchors.centerIn: parent
-                                            name: DependencyState.copiedText
-                                                === String(modelData)
-                                                ? "emblem-ok-symbolic" : "edit-copy"
-                                            fallback: DependencyState.copiedText
-                                                === String(modelData) ? "✓" : "⧉"
-                                            color: DependencyState.copiedText
-                                                === String(modelData)
-                                                ? Theme.accent : Theme.muted
-                                            size: 13
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: "SOLUCIÓN"
+                                        color: Theme.faint
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 8
+                                        font.weight: Font.DemiBold
+                                        font.letterSpacing: 0.8
+                                    }
+
+                                    Repeater {
+                                        model: DependencyState.fixes
+
+                                        delegate: Rectangle {
+                                            required property var modelData
+
+                                            Layout.fillWidth: true
+                                            implicitHeight: Math.max(26,
+                                                depFix.implicitHeight + 10)
+                                            radius: 6
+                                            color: Theme.surface
+
+                                            RowLayout {
+                                                anchors {
+                                                    fill: parent
+                                                    leftMargin: 7
+                                                    rightMargin: 4
+                                                }
+                                                spacing: 4
+
+                                                Text {
+                                                    id: depFix
+
+                                                    Layout.fillWidth: true
+                                                    text: String(modelData)
+                                                    color: Theme.text
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: 8
+                                                    wrapMode: Text.Wrap
+                                                }
+
+                                                Rectangle {
+                                                    implicitWidth: 22
+                                                    implicitHeight: 22
+                                                    radius: 6
+                                                    color: depCopyMouse.containsMouse
+                                                        ? Theme.hover : "transparent"
+
+                                                    ShellIcon {
+                                                        anchors.centerIn: parent
+                                                        name: DependencyState.copiedText
+                                                            === String(modelData)
+                                                            ? "emblem-ok-symbolic" : "edit-copy"
+                                                        fallback: DependencyState.copiedText
+                                                            === String(modelData) ? "✓" : "⧉"
+                                                        color: DependencyState.copiedText
+                                                            === String(modelData)
+                                                            ? Theme.accent : Theme.muted
+                                                        size: 13
+                                                    }
+
+                                                    MouseArea {
+                                                        id: depCopyMouse
+                                                        anchors.fill: parent
+                                                        hoverEnabled: true
+                                                        cursorShape: Qt.PointingHandCursor
+                                                        onClicked: DependencyState.copy(
+                                                            String(modelData))
+                                                    }
+
+                                                    ToolTip.visible: depCopyMouse.containsMouse
+                                                    ToolTip.text: DependencyState.copiedText
+                                                        === String(modelData)
+                                                        ? "Copiado" : "Copiar solución"
+                                                    ToolTip.delay: 300
+                                                }
+                                            }
                                         }
-
-                                        MouseArea {
-                                            id: depCopyMouse
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: DependencyState.copy(
-                                                String(modelData))
-                                        }
-
-                                        ToolTip.visible: depCopyMouse.containsMouse
-                                        ToolTip.text: DependencyState.copiedText
-                                            === String(modelData)
-                                            ? "Copiado" : "Copiar solución"
-                                        ToolTip.delay: 300
                                     }
                                 }
                             }
                         }
-                    }
-                }
-            }
 
-            // --------------------------------------------------- notificaciones
-            Item {
-                Layout.fillWidth: true
-                Layout.preferredHeight: NotificationState.count === 0
-                    ? 78
-                    : Math.min(360, Math.max(80, notifList.contentHeight))
+                        Item {
+                            id: notificationSection
 
-                NotificationList {
-                    id: notifList
+                            Layout.fillWidth: true
+                            visible: root.showNotifications
+                            // Más alto por defecto: la lista respira y la división con el
+                            // centro de control queda clara incluso sin avisos.
+                            Layout.preferredHeight: NotificationState.count === 0
+                                ? 150
+                                : Math.min(440, Math.max(190,
+                                    notifList.contentHeight + 10))
 
-                    anchors.fill: parent
-                    visible: NotificationState.count > 0
-                }
+                            NotificationList {
+                                id: notifList
 
-                Column {
-                    anchors.centerIn: parent
-                    visible: NotificationState.count === 0
-                    spacing: 3
+                                anchors.fill: parent
+                                anchors.margins: 5
+                                visible: NotificationState.count > 0
+                            }
 
-                    AlbaIcon {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        name: NotificationState.dnd
-                            ? "notifications-disabled" : "notifications"
-                        color: NotificationState.dnd
-                            ? Theme.danger : Theme.faint
-                        size: 22
-                        fallback: "!"
-                    }
+                            Column {
+                                anchors.centerIn: parent
+                                visible: NotificationState.count === 0
+                                spacing: 3
 
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: NotificationState.dnd
-                            ? "No molestar activado"
-                            : "Sin notificaciones"
-                        color: Theme.faint
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
-                    }
-                }
-            }
+                                ShellIcon {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    name: NotificationState.dnd
+                                        ? "notifications-disabled" : "notifications"
+                                    color: NotificationState.dnd
+                                        ? Theme.danger : Theme.faint
+                                    size: 22
+                                    fallback: "!"
+                                }
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Theme.border
-            }
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: NotificationState.dnd
+                                        ? "No molestar activado"
+                                        : "Sin notificaciones"
+                                    color: Theme.faint
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 11
+                                }
+                            }
+                        }
 
-            // ------------------------------------------------- centro de control
-            Text {
-                Layout.fillWidth: true
-                text: "Centro de control"
-                color: Theme.text
-                font.family: Theme.fontFamily
-                font.pixelSize: 12
-                font.weight: Font.DemiBold
-            }
+                    } // notifContent
+                } // notificationCard
 
-            // Área fija de 2 columnas; las filas que no caben se desplazan.
-            Item {
-                id: ccViewport
-
-                Layout.fillWidth: true
-                Layout.preferredHeight: 26 + 8
-                    + SettingsState.centerRows * 38
-                    + (SettingsState.centerRows - 1) * 5
-                clip: true
-
-                function scrollBy(delta): void {
-                    const max = Math.max(0,
-                        ccFlick.contentHeight - ccFlick.height);
-                    ccFlick.contentY = Math.max(0, Math.min(max,
-                        ccFlick.contentY - delta * 0.7));
-                }
-
-                Flickable {
-                    id: ccFlick
-
-                    anchors.fill: parent
-                    contentWidth: width
-                    contentHeight: ccContent.implicitHeight
-                    boundsBehavior: Flickable.StopAtBounds
-                    interactive: false
-
-                    ControlCenterContent {
-                        id: ccContent
-
-                        width: ccFlick.width
-                        active: NotificationState.panelOpen
-                    }
-                }
-
-                Connections {
-                    target: PanelScrollState
-                    function onScrolled(delta): void {
-                        ccViewport.scrollBy(delta);
-                    }
-                }
-
-
-                MouseArea {
-                    anchors.fill: parent
-                    z: 20
-                    acceptedButtons: Qt.MiddleButton
-                    visible: NotificationState.panelView !== ""
-                    onWheel: (wheel) => {
-                        PanelScrollState.request(wheel.angleDelta.y);
-                        wheel.accepted = true;
-                    }
-                }
-
+                // Tarjeta del centro de control.
                 Rectangle {
-                    visible: ccFlick.contentHeight > ccFlick.height
-                    width: 2
-                    height: Math.max(20, ccFlick.height * ccFlick.height
-                        / Math.max(1, ccFlick.contentHeight))
-                    radius: 1
-                    color: Theme.borderStrong
-                    x: ccViewport.width - 3
-                    y: Math.max(0, (ccFlick.height - height)
-                        * (ccFlick.contentY / Math.max(1,
-                            ccFlick.contentHeight - ccFlick.height)))
-                }
-            }
+                    id: controlSection
+
+                    Layout.row: sectionsLayout.controlRow
+                    Layout.fillWidth: true
+                    visible: root.showControl
+                    Layout.preferredHeight: ccCardContent.implicitHeight
+                        + (root.quickMode ? 0 : 24)
+                    radius: root.quickMode ? 0 : 16
+                    color: root.quickMode ? "transparent" : Theme.surface
+                    border.width: root.quickMode ? 0 : 1
+                    border.color: Theme.borderStrong
+
+                    ColumnLayout {
+                        id: ccCardContent
+
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            top: parent.top
+                            margins: root.quickMode ? 0 : 12
+                        }
+                        spacing: 8
+
+                        // ------------------------------------------------- centro de control
+                        Text {
+                            Layout.fillWidth: true
+                            visible: root.showControl && !root.quickMode
+                            text: "Centro de control"
+                            color: Theme.text
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+                            font.weight: Font.DemiBold
+                        }
+
+                        // Área fija de 2 columnas; las filas que no caben se desplazan.
+                        Item {
+                            id: ccViewport
+
+                            Layout.fillWidth: true
+                            visible: root.showControl
+                            Layout.preferredHeight: root.quickMode
+                                ? Math.min(root.quickHeightLimit,
+                                    Math.max(80, ccContent.implicitHeight))
+                                : 26 + 8
+                                    + SettingsState.centerRows * 38
+                                    + (SettingsState.centerRows - 1) * 5
+                            clip: true
+
+                            function scrollBy(delta): void {
+                                const max = Math.max(0,
+                                    ccFlick.contentHeight - ccFlick.height);
+                                ccFlick.contentY = Math.max(0, Math.min(max,
+                                    ccFlick.contentY - delta * 0.7));
+                            }
+
+                            Flickable {
+                                id: ccFlick
+
+                                anchors.fill: parent
+                                contentWidth: width
+                                contentHeight: ccContent.implicitHeight
+                                boundsBehavior: Flickable.StopAtBounds
+                                interactive: false
+
+                                ControlCenterContent {
+                                    id: ccContent
+
+                                    width: ccFlick.width
+                                    active: root.showControl
+                                    standalone: root.quickMode
+                                    viewOverride: root.quickMode
+                                        ? QuickPanelState.key : ""
+                                }
+                            }
+
+                            Connections {
+                                target: PanelScrollState
+                                function onScrolled(delta): void {
+                                    ccViewport.scrollBy(delta);
+                                }
+                            }
+
+
+                            MouseArea {
+                                anchors.fill: parent
+                                z: 20
+                                acceptedButtons: Qt.MiddleButton
+                                visible: root.quickMode
+                                    ? ccFlick.contentHeight > ccFlick.height
+                                    : NotificationState.panelView !== ""
+                                onWheel: (wheel) => {
+                                    PanelScrollState.request(wheel.angleDelta.y);
+                                    wheel.accepted = true;
+                                }
+                            }
+
+                            Rectangle {
+                                visible: ccFlick.contentHeight > ccFlick.height
+                                width: 2
+                                height: Math.max(20, ccFlick.height * ccFlick.height
+                                    / Math.max(1, ccFlick.contentHeight))
+                                radius: 1
+                                color: Theme.borderStrong
+                                x: ccViewport.width - 3
+                                y: Math.max(0, (ccFlick.height - height)
+                                    * (ccFlick.contentY / Math.max(1,
+                                        ccFlick.contentHeight - ccFlick.height)))
+                            }
+                        }
+                    } // ccCardContent
+                } // controlSection
+            } // sectionsLayout
         }
     }
 
     Shortcut {
         sequence: "Escape"
-        enabled: NotificationState.panelOpen
-        onActivated: NotificationState.hidePanel()
+        enabled: root.visible
+        onActivated: {
+            NotificationState.hidePanel();
+            QuickPanelState.hide();
+        }
     }
 }

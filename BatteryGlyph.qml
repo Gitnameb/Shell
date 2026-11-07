@@ -109,7 +109,7 @@ Item {
             anchors.centerIn: parent
             width: Math.round(root.bodyHeight * 1.05)
             height: Math.round(root.bodyHeight * 1.28)
-            source: AlbaIcons.src("battery-bolt")
+            source: ShellIcons.src("battery-bolt")
             fillMode: Image.PreserveAspectFit
             smooth: true
             visible: root.showBolt

@@ -1,4 +1,7 @@
-# ALBA · Traspaso para la siguiente sesión
+# Shell · Traspaso para la siguiente sesión
+
+> Las menciones a «ALBA» en el texto histórico se conservan como registro del
+> nombre anterior; el código y la documentación nuevos usan «shell».
 
 Documento corto para continuar sin reexplicar el proyecto. El detalle largo está
 en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
@@ -14,21 +17,28 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
 - **C2 y C5 completados.** Perfiles de energía, importar/editar VPN, clima
   manual, demonio de alarmas y temporizador persistente. Se instaló
   `network-manager-openvpn` (necesario para `.ovpn`) y se habilitó
-  `alba-alarms.service`. No se tocó el fork; el binario nuevo ya está
+  `shell-alarms.service`. No se tocó el fork; el binario nuevo ya está
   cargado (ver el punto anterior).
 - El usuario confirmó que la restauración de A6 funciona. Si dudas, comprueba:
   `umbriel --version` y `ps -o etime= -p $(pgrep -x umbriel)`; si el proceso es
   anterior al binario, hay que cerrar sesión y volver a entrar.
+- **Red de seguridad de `config.toml` activa.** `umbriel-config-guard` se
+  ejecuta antes de Umbriel (`ExecStartPre`) y repara el archivo si pierde
+  `[general] autostart`. Hay copia `config.toml.good`, plantilla renderizada y
+  registro en `~/.local/state/shell/config-guard.log`. Todas las escrituras
+  pasan por el escritor único `shell-config-set`, que serializa, valida y
+  sustituye el archivo de forma atómica. Detalle y recuperación:
+  `CONFIGURACION-UMBRIEL.md`.
 - Fork en `~/umbriel-fork`, rama con 24 commits sobre `b6c4b7d`, árbol limpio.
-  Parche regenerable en `~/Documents/Alba/umbriel-fork.patch` (50 archivos).
+  Parche regenerable en `~/Shell/umbriel-fork.patch` (50 archivos).
 - **Plataforma decidida: solo Umbriel sobre Debian.** Hyprland y cualquier otro
   compositor quedan descartados; no se mantiene ni se prueba ese backend. El
   código antiguo de `HyprlandBackend.qml` puede quedarse como legado, pero no
   es objetivo de trabajo. Tras la próxima instalación limpia se eliminará si
   estorba.
 - Copia de seguridad del binario original: `/usr/bin/umbriel.stock-0.1.0`.
-- ALBA vive en `~/Documents/Alba` y está enlazado desde
-  `~/.config/quickshell/alba`. Se recarga sola al guardar QML, salvo el pragma
+- El shell vive en `~/Shell` y está enlazado desde
+  `~/.config/quickshell/shell`. Se recarga solo al guardar QML, salvo el pragma
   `UseQApplication` de `shell.qml`, que exige reiniciar el proceso.
 - **Guía de instalación limpia preparada.** `INSTALACION.md` reúne hardware,
   repositorios, paquetes, compilación del fork, configuración de Umbriel,
@@ -48,6 +58,52 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   grupo de backports y añade `cmake`. `network.sh` instala el plugin Bluetooth
   con el stack completo de PipeWire si hace falta y reinicia PipeWire y
   WirePlumber. Falta confirmarlo con otra instalación limpia.
+- **Paneles rápidos por control (2026-11-06).** Los controles de la barra ya no
+  abren el panel de notificaciones: `QuickPanelState` muestra `SidePanel` en
+  modo rápido, solo con la vista avanzada del control y sin la sección de
+  notificaciones. La campana mantiene el panel completo con notificaciones,
+  centro de control y opciones avanzadas. Verificado por IPC y en una instancia
+  aislada de Quickshell; falta la confirmación visual con clic real.
+- **Notificaciones y centro de control separables (2026-11-06).** En Ajustes del
+  shell, «Notificaciones y control juntos» decide si la campana abre ambos
+  bloques o si aparecen dos iconos (campana y cuadrícula). Cuando comparten
+  panel, cada uno va en su propia tarjeta redondeada, con fondo y borde, y solo
+  los une un hueco de 8 px como en el diseño de referencia; con la barra arriba
+  el centro de control queda primero y las notificaciones debajo, y con la barra
+  abajo se invierte. IPC: `notifications status`, `notifications unified
+  true|false` y `notifications control`.
+- **Barra lateral izquierda/derecha (2026-11-06).** «Posición de la barra»
+  admite los cuatro bordes. En los laterales la barra se dibuja en vertical:
+  logo y escritorios arriba, reloj compacto en el centro y controles abajo.
+  Los escritorios muestran solo su número y la música solo la portada para
+  caber en 44 px. Paneles, OSD, bandeja, batería, calendario, energía, menú de
+  apps y reserva de espacio se anclan al lado correcto; el panel rápido se abre
+  junto al control pulsado. Verificado con captura interna y por IPC en la
+  instancia aislada, sin errores QML; falta la prueba con clic real en la
+  sesión.
+- **Renombrado completo (2026-11-06).** Hecho:
+  - tipos QML: `ShellIcon`, `ShellIcons`, `ShellSwitch`, `ShellSlider`;
+  - scripts `scripts/shell-*` e `install/bin/shell-*`;
+  - rutas `~/.config/shell/`, `~/.local/state/shell/`,
+    `~/.local/bin/shell-*` y `~/.config/quickshell/shell`;
+  - servicio `shell-alarms.service`;
+  - instancia `qs -c shell`;
+  - cerrojos y temporales `config.toml.shell-lock` y `.shell-*`;
+  - namespaces de capas (`shell-bar`, `shell-calendar`, `shell-osd`, etc.);
+  - cadenas visibles: bienvenida, autor de las notificaciones, nombre de
+    equipo por defecto, contraseña inicial y perfil del hotspot
+    (`shell-hotspot`);
+  - marcadores internos: heredoc `SHELL`, `$0` de los `sh -c`, marcadores
+    `SHELL-THEME` (con migración del bloque antiguo en `gtk.css`) y variables
+    `SHELL_COMPOSITOR`, `SHELL_ALARMS_FILE` y `SHELL_TIMER_FILE`;
+  - comentarios, docstrings, títulos y rutas de la documentación vigente.
+  En este equipo se migraron los datos a `~/.config/shell` y
+  `~/.local/state/shell`, se instalaron los `shell-*`, se creó el enlace
+  `quickshell/shell` y la unidad `shell-alarms`, y la sesión se reinició con
+  `qs -c shell`. El repo ya no contiene `alba` en código ni configuración.
+  Solo quedan menciones históricas a «ALBA» en `CONTEXTO.md`, `PLAN.md` y
+  `PENDIENTES.md`, y el shader `screen.alba_display` del parche de Umbriel,
+  que no se toca porque pertenece al compositor.
 - **Veredicto para uso principal:** sí en este equipo, con dos reservas: B3
   sigue sin probar y el instalador aún no se ha probado en limpio. B5 sí es
   comprobable aquí porque el AX210 tiene Wi-Fi y Bluetooth. Lo pendiente de
@@ -64,7 +120,7 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   descripción de cada modo; en Ahorro el icono se tiñe de celeste y los avisos
   de batería (naranja al 20 %, rojo al 10 %) tienen prioridad. La energía vive
   solo aquí: Ajustes ya no muestra esa sección. Además del clic, hay IPC:
-  `qs ipc -c alba call battery toggle` (también `openPanel`, `closePanel`,
+  `qs ipc -c shell call battery toggle` (también `openPanel`, `closePanel`,
   `profile`, `status`). Verificado en real: el panel aparece, cambia el perfil
   y el icono pasa a celeste en Ahorro. Falta el clic con ratón físico.
 - **C2 · Energía solo en la batería.** A petición del usuario se quitó la
@@ -127,10 +183,10 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   aplica). Verificado en real: Madrid mostró su tiempo y al vaciar el campo
   volvió a la detección automática.
 - **C5 · Alarmas y temporizador con el shell cerrado.**
-  `scripts/alba-alarms` y la unidad de usuario `alba-alarms.service`
+  `scripts/shell-alarms` y la unidad de usuario `shell-alarms.service`
   (habilitada) leen `alarms.conf`; no duplican avisos si `qs` está abierto y,
   si no lo está, usan `notify-send` o un diálogo de KDialog/Zenity. El
-  temporizador escribe `deadline=` en `~/.config/alba/timer.conf`; el demonio
+  temporizador escribe `deadline=` en `~/.config/shell/timer.conf`; el demonio
   lo termina con el shell cerrado y el panel lo restaura al volver. Verificado:
   aviso de alarma y de temporizador, restauración de una cuenta atrás y
   limpieza del archivo al vencer.
@@ -165,13 +221,13 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   anidado: Flotante→Integrado→Flotante con una ventana en dwindle la mantuvo
   en mosaico, y cambiar `mode` a stacking sí la pasó a flotante.
 - **D1 · Soltar archivos en el escritorio.** `DesktopIcons` acepta arrastres
-  desde Dolphin u otro gestor. `scripts/alba-desktop-drop` mueve los archivos
+  desde Dolphin u otro gestor. `scripts/shell-desktop-drop` mueve los archivos
   de la misma unidad y copia los de otra, añade « (1)», « (2)»… si el nombre
   existe y nunca sobrescribe. El script está probado por separado; falta
   probar el arrastre real con el ratón.
 - **C4 · Fondo por color.** Ajustes → Fondo de pantalla → «Color de fondo»
   (seis muestras y `#RRGGBB`). Se guarda `wallpaperColor=` y sobrevive al
-  reinicio. `alba-system-theme` verificado con GTK 3/4 y KDE.
+  reinicio. `shell-system-theme` verificado con GTK 3/4 y KDE.
 - **D3 · Vista general de Umbriel.** `Mod+Tab` abre/cierra la vista general;
   los controles de ALBA pasan a `Mod+Shift+Tab`. ALBA escucha el evento
   `overview` y cierra sus paneles al abrirse. Verificado con Alt+Tab en anidado.
@@ -237,11 +293,31 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   redimensionar aparece en esa franja. Verificado en dwindle (796/456),
   desde el hueco (586/666) y en master (886/366), además de que el arrastre
   central sigue moviendo.
-- **Incidencia de configuración.** Los scripts `alba-mod-hold` y
-  `alba-floating-defaults` compartían `$cfg.alba-tmp` y, al coincidir,
+- **Incidencia de configuración.** Los scripts `shell-mod-hold` y
+  `shell-floating-defaults` compartían `$cfg.shell-tmp` y, al coincidir,
   truncaron `~/.config/umbriel/config.toml` a 13 líneas. Se restauró desde una
-  copia completa; hay respaldo en `Documents/Alba/umbriel-config-backup.toml`.
+  copia completa; hay respaldo en `Shell/umbriel-config-backup.toml`.
   Ahora usan `flock` y `mktemp`, probado con 25 ejecuciones simultáneas.
+- **Recaída de la truncación y red de seguridad (2026-11-06).** Tras
+  reiniciar, el escritorio quedó negro: `~/.config/umbriel/config.toml` se
+  había reducido a 18 líneas y perdió `[general] autostart`, así que Umbriel
+  arrancaba pero Quickshell nunca se lanzaba. La causa era que, además de los
+  dos scripts ya protegidos, `shell-window-chrome`, `shell-display-filter`,
+  `shell-keyboard-layout` y `shell-umbriel-theme` seguían escribiendo el archivo
+  sin cerrojo, en el sitio o con el temporal compartido. Ahora los seis scripts
+  no escriben el archivo: calculan el valor y llaman a `shell-config-set`, el
+  escritor único que toma `flock` sobre `config.toml.shell-lock`, aplica solo las
+  claves pedidas, valida con `tomllib` y `umbriel config validate` sobre un
+  temporal y hace `os.replace` atómico. Además se añadió
+  `umbriel-config-guard`, un drop-in de systemd (`ExecStartPre` antes de
+  Umbriel), una copia `config.toml.good`, una plantilla renderizada y un
+  registro de incidencias. Se restauró la configuración completa desde
+  `install/config/umbriel-config.toml` y se validó con
+  `umbriel config validate`. Pruebas: 8 escritores concurrentes × 5 rondas,
+  36 comprobaciones del escritor y 39 de los seis scripts; el archivo conserva
+  188 líneas, todas las secciones y `autostart`. Copia del archivo truncado:
+  `~/.config/umbriel/config.toml.truncado-20261106`.
+  **Detalle completo y recuperación:** `CONFIGURACION-UMBRIEL.md`.
 - **A13 · Tamaño y cascada de ventanas flotantes.**
   `[layout.stacking]` gana `default_width_fraction`, `default_height_fraction`
   y `cascade_step`. Flotar una ventana de un mosaico ya no conserva el tamaño
@@ -251,14 +327,14 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   apilarlas. Ajustes → «Tamaño de ventanas flotantes» (40–80 %, pasos de 5) y
   «Separación en cascada» (Auto o 8–96 px); se guarda como
   `floatingSizePercent` y `floatingCascade` y lo aplica
-  `scripts/alba-floating-defaults`. Verificado en anidado: 0,6 da 568×298 en
+  `scripts/shell-floating-defaults`. Verificado en anidado: 0,6 da 568×298 en
   una salida de 946×496; 0,5 y 48 px dan 473×248; tres ventanas en mosaico se
   colocan en 189,99 / 221,131 / 253,163. Binario `af15084668f2` instalado;
   falta cerrar sesión.
 - **A12 · Retardo ajustable, música estable y reloj más legible.**
   Ajustes → «Retardo al mantener Super» (100–1000 ms, pasos de 50) guarda
   `superHoldMs` y escribe `[input] mod_hold_delay_ms` en Umbriel mediante
-  `scripts/alba-mod-hold`. En anidado se comprobó con 600 ms: 300 ms sin velo,
+  `scripts/shell-mod-hold`. En anidado se comprobó con 600 ms: 300 ms sin velo,
   900 ms con velo; un toque de 200 ms no atenúa. Al recargar a 200 ms, 350 ms
   ya atenúa. La música ya no se desplaza ni tiembla al mantener Super: se
   corrigió el ciclo de tamaño, el asa salió de la fila de contenido y el
@@ -271,8 +347,10 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   Mantener Mod ya no se confunde con un toque: Umbriel espera 320 ms antes de
   atenuar el contenido y aislar el puntero (verificado en anidado: 150 ms sin
   velo, 600 ms con velo del 28 %, toque de 100 ms sin velo). Ajustes →
-  «Posición de la barra» permite arriba o abajo y recoloca paneles, OSD y
-  reserva de espacio. La píldora de música tiene un asa de estirado mientras
+  «Posición de la barra» permite abajo, arriba, izquierda o derecha y recoloca
+  paneles, OSD y reserva de espacio; en los laterales la barra se apila en
+  vertical con logo y escritorios arriba, reloj compacto en el centro y
+  controles abajo. La píldora de música tiene un asa de estirado mientras
   se mantiene Mod; guarda `musicWidth` y un doble clic vuelve al ancho
   automático. Falta probarlo con el ratón físico en la sesión real.
 - **A10 · Modo ventanas sin interacción.** Al mantener Mod, Umbriel deja de
@@ -352,21 +430,21 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
 4. **El puntero virtual (`wlrctl`) no sirve para clics en capas de ALBA** en la
    sesión real: mueve el cursor y revela la barra, pero los clics no llegan a
    las layer surfaces. Los clics de barra/paneles se validan con ratón físico o
-   con `qs ipc -c alba call ...`.
+   con `qs ipc -c shell call ...`.
 5. **Instalar el fork solo con `mv` atómico** (no se puede sobrescribir el
    binario en uso):
    ```sh
    cd ~/umbriel-fork && ninja -C build
    sudo cp build/umbriel /usr/bin/umbriel.new && sudo mv -f /usr/bin/umbriel.new /usr/bin/umbriel
-   git diff b6c4b7d > ~/Documents/Alba/umbriel-fork.patch
+   git diff b6c4b7d > ~/Shell/umbriel-fork.patch
    ```
-   La contraseña de sudo está en `~/.config/alba/credenciales` (modo 600).
+   La contraseña de sudo está en `~/.config/shell/credenciales` (modo 600).
    Tras instalar, **cerrar sesión y volver a entrar**: el compositor en marcha
    no cambia de binario.
 6. **No dejes `console.log` de depuración** en los QML. Comprueba el log con:
    `L=$(ls -t /run/user/1000/quickshell/by-id/*/log.qslog | head -1); grep -aE "TypeError|ReferenceError|is not defined|SyntaxError" "$L"`.
 7. **`umbriel config-replace <archivo>` borra los layouts por escritorio.** Si
-   lo usas, reaplica con `qs ipc -c alba call windows mode <n> <modo>`.
+   lo usas, reaplica con `qs ipc -c shell call windows mode <n> <modo>`.
 8. Todo en español, iconos reales, sin emoji. Nada de texto explicativo visible
    en la interfaz.
 
@@ -431,7 +509,7 @@ Tras cerrar sesión y volver a entrar:
 - Reloj → Clima → «Cambiar», escribir una ciudad y pulsar Aplicar; vaciar y
   aplicar para volver a la detección por IP.
 - Reloj → Alarmas: programar una para el minuto siguiente, cerrar ALBA
-  (`qs -c alba kill`) y comprobar que el demonio avisa y suena. Arrancar un
+  (`qs -c shell kill`) y comprobar que el demonio avisa y suena. Arrancar un
   temporizador, cerrar ALBA y volver a abrirla: debe seguir la cuenta atrás.
 
 ### 2. A5 · Persistencia de ventanas (hecho)
@@ -521,7 +599,7 @@ Tras cerrar sesión y volver a entrar:
   `wpasupplicant` y `rfkill`; ejecutar `sudo ./scripts/network.sh` si
   NetworkManager deja la Ethernet como «unmanaged» o el Wi-Fi como
   «unavailable»; copiar `portals.conf` a `~/.config/xdg-desktop-portal/` y
-  volver a enlazar `~/.config/systemd/user/alba-alarms.service` (contenido
+  volver a enlazar `~/.config/systemd/user/shell-alarms.service` (contenido
   abajo).
 
 ### 8. Opcionales (no empezar sin pedirlo)
@@ -540,7 +618,7 @@ Tras cerrar sesión y volver a entrar:
   final, después del resto de bloques.
 - A4 (volumen por ventana) sigue descartado.
 - **Escritorios automáticos (mejora futura).** El inventario fijo de nueve está
-  escrito a mano para `HDMI-A-1`. Conviene un `alba-workspaces` que lea
+  escrito a mano para `HDMI-A-1`. Conviene un `shell-workspaces` que lea
   `umbriel outputs --json`, localice la sección `[output."..."]` correcta y
   escriba `workspaces = N` sin depender del conector. Así funcionará igual en el
   sobremesa y en un portátil (`eDP-1`). No empezar sin pedirlo.
@@ -575,28 +653,37 @@ umbriel msg window-minimize <id>
 umbriel msg window-move-to-scratchpad
 umbriel move-menu <id>                                 # selector Mover desde CLI
 
-qs ipc -c alba call windows status                      # diagnóstico del contrato
-qs ipc -c alba call windows mode <n> <floating|mosaic>  # layout por escritorio
-qs ipc -c alba call appearance chrome floating           # barra flotante/integrada
-qs ipc -c alba call appearance wallpaper <ruta>          # fondo de pantalla
-qs ipc -c alba call notifications settings               # abrir Ajustes
-qs ipc -c alba call notifications scroll -700            # desplazar el panel
-qs ipc -c alba call calendar weather                     # pestaña del clima
+qs ipc -c shell call windows status                      # diagnóstico del contrato
+qs ipc -c shell call windows mode <n> <floating|mosaic>  # layout por escritorio
+qs ipc -c shell call appearance chrome floating           # barra flotante/integrada
+qs ipc -c shell call appearance wallpaper <ruta>          # fondo de pantalla
+qs ipc -c shell call notifications settings               # abrir Ajustes
+qs ipc -c shell call notifications scroll -700            # desplazar el panel
+qs ipc -c shell call calendar weather                     # pestaña del clima
 
 # Energía y VPN
-qs ipc -c alba call power profile rendimiento            # equilibrado/ahorro
-qs ipc -c alba call power status
-qs ipc -c alba call vpn list                             # nombre|tipo|activa|auto
-qs ipc -c alba call vpn importFile /ruta/perfil.ovpn
-qs ipc -c alba call vpn save "viejo" "nuevo" true
-qs ipc -c alba call vpn remove "perfil"
+qs ipc -c shell call power profile rendimiento            # equilibrado/ahorro
+qs ipc -c shell call power status
+qs ipc -c shell call vpn list                             # nombre|tipo|activa|auto
+qs ipc -c shell call vpn importFile /ruta/perfil.ovpn
+qs ipc -c shell call vpn save "viejo" "nuevo" true
+qs ipc -c shell call vpn remove "perfil"
 
 # Clima manual (vacío = detección por IP)
-qs ipc -c alba call appearance weatherPlace Madrid
+qs ipc -c shell call appearance weatherPlace Madrid
 
 # Demonio de alarmas y temporizador
-systemctl --user status alba-alarms.service
-systemctl --user restart alba-alarms.service
+systemctl --user status shell-alarms.service
+systemctl --user restart shell-alarms.service
+
+# Configuración de Umbriel y red de seguridad
+~/.local/bin/shell-config-set --section display brightness=0.900  # escritor único
+~/.local/bin/umbriel-config-guard status
+~/.local/bin/umbriel-config-guard ensure          # repara si falta autostart
+~/.local/bin/umbriel-config-guard save            # guarda copia buena
+systemctl --user show umbriel.service -p ExecStartPre
+tail -20 ~/.local/state/shell/config-guard.log
+tail -20 ~/.local/state/shell/config-writer.log
 
 # log de ALBA
 L=$(ls -t /run/user/1000/quickshell/by-id/*/log.qslog | head -1); tail -50 "$L"
@@ -604,41 +691,48 @@ L=$(ls -t /run/user/1000/quickshell/by-id/*/log.qslog | head -1); tail -50 "$L"
 
 ## Archivos clave
 
-- `~/Documents/Alba/CompositorState.qml` — fachada común de compositores.
-- `~/Documents/Alba/UmbrielBackend.qml` — backend Umbriel (minimizar,
+- `~/Shell/CompositorState.qml` — fachada común de compositores.
+- `~/Shell/UmbrielBackend.qml` — backend Umbriel (minimizar,
   restaurar, foco, mover, layouts).
-- `~/Documents/Alba/WorkspacePill.qml` — fichas, opacidad de minimizadas, clic.
-- `~/Documents/Alba/Bar.qml`, `ControlCenterContent.qml` — barra y centro.
-- `~/Documents/Alba/SettingsState.qml` — ajustes persistentes.
-- `~/Documents/Alba/DesktopState.qml` — modelo de `~/Desktop` y apertura.
-- `~/Documents/Alba/DesktopIcons.qml` — cuadrícula de iconos por pantalla.
-- `~/Documents/Alba/scripts/alba-desktop-drop` — mueve o copia al escritorio lo
+- `~/Shell/WorkspacePill.qml` — fichas, opacidad de minimizadas, clic.
+- `~/Shell/Bar.qml`, `ControlCenterContent.qml` — barra y centro.
+- `~/Shell/SettingsState.qml` — ajustes persistentes.
+- `~/Shell/DesktopState.qml` — modelo de `~/Desktop` y apertura.
+- `~/Shell/DesktopIcons.qml` — cuadrícula de iconos por pantalla.
+- `~/Shell/scripts/shell-desktop-drop` — mueve o copia al escritorio lo
   que se suelta desde Dolphin.
-- `~/Documents/Alba/PowerProfilesState.qml` — perfiles de energía.
-- `~/Documents/Alba/VpnState.qml`, `VpnView.qml` — perfiles VPN, importación y
+- `~/Shell/PowerProfilesState.qml` — perfiles de energía.
+- `~/Shell/VpnState.qml`, `VpnView.qml` — perfiles VPN, importación y
   edición.
-- `~/Documents/Alba/scripts/alba-vpn-pick` — selector de `.ovpn`.
-- `~/Documents/Alba/WeatherState.qml` — clima con ciudad manual o por IP.
-- `~/Documents/Alba/CalendarPanel.qml` — clima, alarmas y temporizador
+- `~/Shell/scripts/shell-vpn-pick` — selector de `.ovpn`.
+- `~/Shell/WeatherState.qml` — clima con ciudad manual o por IP.
+- `~/Shell/CalendarPanel.qml` — clima, alarmas y temporizador
   persistente.
-- `~/Documents/Alba/scripts/alba-alarms` — demonio de alarmas y temporizador.
-- `~/Documents/Alba/alba-alarms.service` — copia de la unidad de usuario; la
+- `~/Shell/scripts/shell-alarms` — demonio de alarmas y temporizador.
+- `~/Shell/shell-alarms.service` — copia de la unidad de usuario; la
   activa está en `~/.config/systemd/user/`.
 - `~/.config/xdg-desktop-portal/portals.conf` — mapea el diálogo Access a GTK;
-  copia en `~/Documents/Alba/portals.conf`. Sin él, captura y uso compartido
+  copia en `~/Shell/portals.conf`. Sin él, captura y uso compartido
   se quedan esperando.
-- `~/Documents/Alba/Wallpaper.qml` — fondo de pantalla en capa Background.
-- `~/Documents/Alba/Audio.qml` — salidas, micrófono y flujos por aplicación.
-- `~/Documents/Alba/scripts/alba-window-chrome` — aplica flotante/integrado a la
+- `~/Shell/Wallpaper.qml` — fondo de pantalla en capa Background.
+- `~/Shell/Audio.qml` — salidas, micrófono y flujos por aplicación.
+- `~/Shell/scripts/shell-window-chrome` — aplica flotante/integrado a la
   configuración de Umbriel.
-- `~/Documents/Alba/scripts/alba-wallpaper-pick` — selector de imagen.
-- `~/Documents/Alba/scripts/alba-display-filter` — escribe `[display]` en la
+- `install/bin/shell-config-set` — escritor único de `config.toml`: aplica el
+  parche, valida y sustituye el archivo de forma atómica.
+- `install/bin/umbriel-config-guard` — repara `config.toml` antes de Umbriel y
+  guarda copias buenas y rotas.
+- `scripts/test-config-set.sh`, `scripts/test-config-writers.sh` y
+  `scripts/test-config-guard.sh` — pruebas del escritor, de los seis scripts y
+  del guardián.
+- `~/Shell/scripts/shell-wallpaper-pick` — selector de imagen.
+- `~/Shell/scripts/shell-display-filter` — escribe `[display]` en la
   configuración de Umbriel y recarga.
-- `~/Documents/Alba/DisplayState.qml` — brillo, atenuación extra y luz
+- `~/Shell/DisplayState.qml` — brillo, atenuación extra y luz
   nocturna; elige filtro nativo de Umbriel o capa QML.
 - `~/.config/umbriel/config.toml` — `[display]` con `brightness`,
   `extra_dim` y `warm`.
-- `~/Documents/Alba/WindowChrome.qml` — barra de título de ALBA (solo si el
+- `~/Shell/WindowChrome.qml` — barra de título del shell (solo si el
   usuario desactiva la nativa).
 - `~/umbriel-fork/src/workspace/scratchpad.cpp` — ocultar/mostrar/restaurar.
 - `~/umbriel-fork/src/view/view_chrome.cpp` y `src/scene/ssd_frame.cpp` — barra
@@ -658,3 +752,7 @@ L=$(ls -t /run/user/1000/quickshell/by-id/*/log.qslog | head -1); tail -50 "$L"
    o un fallo que convenga recordar.
 4. Si tocaste el fork: recompila, instala atómicamente, regenera el parche y
    avisa de que hace falta cerrar sesión.
+5. Si tocaste la configuración de Umbriel o sus escritores, ejecuta
+   `./scripts/test-config-set.sh`, `./scripts/test-config-writers.sh` y
+   `./scripts/test-config-guard.sh`; comprueba que `config.toml` sigue
+   validando y conserva `[general] autostart`.

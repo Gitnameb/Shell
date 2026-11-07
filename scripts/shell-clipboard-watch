@@ -3,7 +3,7 @@
 # sin error para que Quickshell no acumule instancias al recargar.
 set -u
 
-dir="${XDG_STATE_HOME:-$HOME/.local/state}/alba"
+dir="${XDG_STATE_HOME:-$HOME/.local/state}/shell"
 mkdir -p "$dir"
 
 if command -v flock >/dev/null 2>&1; then
@@ -12,7 +12,7 @@ if command -v flock >/dev/null 2>&1; then
 fi
 
 # El primer aviso de wl-paste trae lo que ya estuviera copiado. Se marca para
-# que alba-clipboard-add lo ignore y el historial empiece con copias nuevas.
+# que shell-clipboard-add lo ignore y el historial empiece con copias nuevas.
 : > "$dir/clipboard-first"
 
 base=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
@@ -25,4 +25,4 @@ else
 fi
 
 exec "$wl_paste" --no-newline --watch \
-    python3 "$base/alba-clipboard-add"
+    python3 "$base/shell-clipboard-add"

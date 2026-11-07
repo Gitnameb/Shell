@@ -196,11 +196,11 @@ run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
 
 if [[ ! -e /usr/share/sddm/themes/breeze/Main.qml \
     && ! -e /usr/share/sddm/themes/debian-breeze/Main.qml \
-    && ! -e /etc/sddm.conf.d/20-alba-theme.conf ]]; then
+    && ! -e /etc/sddm.conf.d/20-shell-theme.conf ]]; then
     log "Configurando SDDM con el tema ligero maya."
     run_sudo install -d /etc/sddm.conf.d
     printf '[Theme]\nCurrent=maya\n' \
-        | run_sudo tee /etc/sddm.conf.d/20-alba-theme.conf >/dev/null
+        | run_sudo tee /etc/sddm.conf.d/20-shell-theme.conf >/dev/null
 fi
 
 log "Instalando las dependencias del shell."

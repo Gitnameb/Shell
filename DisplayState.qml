@@ -26,7 +26,7 @@ Singleton {
     // el shell no vuelvan a 0 % ni a los valores iniciales.
     property bool displayReady: false
     readonly property string statePath: (Quickshell.env("HOME") || "/home/username")
-        + "/.config/alba/display.conf"
+        + "/.config/shell/display.conf"
 
     // Brillo real del monitor por DDC/CI. `hardwareAvailable` solo se pone a
     // true cuando `ddcutil` responde; el resto del archivo funciona igual sin
@@ -62,9 +62,9 @@ Singleton {
         ? Math.max(0, Math.min(1, root.nightStrength)) * 0.3 : 0
 
     readonly property string shaderPath: (Quickshell.env("HOME") || "/home/username")
-        + "/.config/alba/display.frag"
+        + "/.config/shell/display.frag"
     readonly property string displayFilterScript: (Quickshell.shellDir || "")
-        + "/scripts/alba-display-filter"
+        + "/scripts/shell-display-filter"
 
     onBrightnessChanged: {
         // Al leer el valor real del monitor no se devuelve la escritura.
@@ -134,7 +134,7 @@ Singleton {
             "sh", "-c",
             "mkdir -p \"$(dirname \"$1\")\" && printf 'extraDim=%s\\nextraDimLevel=%s\\nnightLight=%s\\nnightStrength=%s\\n' "
                 + "\"$2\" \"$3\" \"$4\" \"$5\" > \"$1\"",
-            "alba", root.statePath,
+            "shell", root.statePath,
             root.extraDim.toFixed(3),
             root.extraDimLevel.toFixed(3),
             root.nightLight ? "1" : "0",
@@ -163,7 +163,7 @@ Singleton {
         id: stateLoadProc
 
         command: ["sh", "-c", "cat \"$1\" 2>/dev/null || true",
-            "alba", root.statePath]
+            "shell", root.statePath]
 
         stdout: StdioCollector {
             id: stateLoadOut
@@ -404,9 +404,9 @@ Singleton {
         if (root.filterActive) {
             script = "mkdir -p \""
                 + root.shaderPath.substring(0, root.shaderPath.lastIndexOf("/"))
-                + "\"; cat > \"" + root.shaderPath + "\" <<'ALBA'\n"
+                + "\"; cat > \"" + root.shaderPath + "\" <<'SHELL'\n"
                 + root.shaderSource()
-                + "ALBA\n"
+                + "SHELL\n"
                 + "hyprctl keyword decoration:screen_shader \""
                 + root.shaderPath + "\" >/dev/null 2>&1";
         } else {

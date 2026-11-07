@@ -3,8 +3,8 @@ pragma Singleton
 import Quickshell
 import QtQuick
 
-// Rutas de los iconos dibujados para ALBA, copiados del sprite del diseño.
-// Se tiñen con AlbaIcon igual que los del tema, pero conservan las formas
+// Rutas de los iconos dibujados para el shell, copiados del sprite del diseño.
+// Se tiñen con ShellIcon igual que los del tema, pero conservan las formas
 // exactas del mockup.
 Singleton {
     readonly property string base: (Quickshell.shellDir || "") + "/icons/"

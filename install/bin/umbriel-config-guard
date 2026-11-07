@@ -1,0 +1,217 @@
+#!/bin/sh
+# umbriel-config-guard — evita que una configuración incompleta deje el
+# escritorio en negro.
+#
+# Varios scripts del shell escriben ~/.config/umbriel/config.toml. Si el
+# archivo pierde [general] autostart, Umbriel arranca pero nunca lanza el
+# shell. Este guardián se ejecuta antes de Umbriel (ExecStartPre) y:
+#   1. valida el archivo,
+#   2. detecta la pérdida de autostart o de la mayoría de secciones,
+#   3. guarda una copia de la versión rota,
+#   4. restaura la última copia buena o la plantilla de instalación.
+#
+# Uso:
+#   umbriel-config-guard ensure   repara antes de arrancar el compositor
+#   umbriel-config-guard save     guarda la configuración actual como buena
+#   umbriel-config-guard status   muestra el estado sin tocar nada
+#
+# Variables:
+#   UMBRIEL_CONFIG   ruta alternativa de config.toml (pruebas)
+#   XDG_STATE_HOME   base del registro (por defecto ~/.local/state)
+
+set -eu
+
+cfg="${UMBRIEL_CONFIG:-$HOME/.config/umbriel/config.toml}"
+good="$cfg.good"
+template="$cfg.template"
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/shell"
+log_file="$state_dir/config-guard.log"
+
+log() {
+    mkdir -p "$state_dir" 2>/dev/null || true
+    printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" \
+        >>"$log_file" 2>/dev/null || true
+}
+
+# El directorio debe existir incluso si se llama con un UMBRIEL_CONFIG
+# alternativo en una prueba.
+mkdir -p "$(dirname "$cfg")" 2>/dev/null || true
+
+# Cerrojo compartido con todos los escritores. Si flock no existe, se sigue
+# adelante: en Debian forma parte de util-linux y siempre está.
+lock() {
+    if command -v flock >/dev/null 2>&1; then
+        exec 9>"$cfg.shell-lock"
+        flock 9
+    fi
+}
+
+has_autostart_key() {
+    [ -f "$1" ] || return 1
+    awk '
+        /^[[:space:]]*\[/ {
+            in_general = ($0 ~ /^[[:space:]]*\[general\][[:space:]]*(#.*)?$/)
+            next
+        }
+        in_general && /^[[:space:]]*autostart[[:space:]]*=/ { found = 1 }
+        END { exit(found ? 0 : 1) }
+    ' "$1"
+}
+
+# autostart con un valor no vacío, por ejemplo ["/ruta/al-shell"].
+has_active_autostart() {
+    [ -f "$1" ] || return 1
+    awk '
+        /^[[:space:]]*\[/ {
+            in_general = ($0 ~ /^[[:space:]]*\[general\][[:space:]]*(#.*)?$/)
+            next
+        }
+        in_general && /^[[:space:]]*autostart[[:space:]]*=/ {
+            line = $0
+            sub(/^[^=]*=[[:space:]]*/, "", line)
+            sub(/[[:space:]]*$/, "", line)
+            if (line !~ /^\[[[:space:]]*\]$/ && line !~ /^""$/ \
+                && line !~ /^\047\047$/)
+                found = 1
+        }
+        END { exit(found ? 0 : 1) }
+    ' "$1"
+}
+
+valid_config() {
+    [ -s "$1" ] || return 1
+    if command -v umbriel >/dev/null 2>&1; then
+        umbriel config validate -c "$1" >/dev/null 2>&1 || return 1
+    fi
+    return 0
+}
+
+section_count() {
+    [ -f "$1" ] || { echo 0; return 0; }
+    grep -c '^[[:space:]]*\[' "$1" 2>/dev/null || true
+}
+
+looks_corrupt() {
+    # Sin archivo, Umbriel arranca con valores por defecto y sin autostart.
+    [ -e "$cfg" ] || return 0
+    valid_config "$cfg" || return 0
+
+    # La señal exacta del incidente: el archivo perdió la clave autostart.
+    # La presencia de la clave con valor [] se respeta: es una decisión
+    # explícita de arrancar el shell por otra vía.
+    has_autostart_key "$cfg" || return 0
+
+    # Pérdida masiva de secciones respecto a la última copia buena.
+    if [ -f "$good" ]; then
+        good_sections=$(section_count "$good")
+        cfg_sections=$(section_count "$cfg")
+        good_sections=${good_sections:-0}
+        cfg_sections=${cfg_sections:-0}
+        [ "$good_sections" -ge 5 ] || return 1
+        [ "$cfg_sections" -lt $((good_sections / 2)) ] && return 0
+    fi
+    return 1
+}
+
+atomic_copy() {
+    src=$1
+    dest=$2
+    mode=644
+    if [ -e "$dest" ]; then
+        mode=$(stat -c '%a' "$dest" 2>/dev/null || echo 644)
+    fi
+    tmp=$(mktemp "$dest.shell-XXXXXX") || return 1
+    if cp "$src" "$tmp" && chmod "$mode" "$tmp"; then
+        mv -f "$tmp" "$dest"
+    else
+        rm -f "$tmp"
+        return 1
+    fi
+}
+
+save_good() {
+    valid_config "$cfg" || return 1
+    # No se guarda como buena una configuración sin autostart activo: no
+    # serviría para recuperar el shell tras una truncación.
+    has_active_autostart "$cfg" || return 1
+    atomic_copy "$cfg" "$good"
+    log "copia buena actualizada ($(wc -l <"$cfg") líneas)"
+}
+
+restore_from() {
+    candidate=$1
+    [ -f "$candidate" ] || return 1
+    grep -q '/home/USUARIO' "$candidate" 2>/dev/null && return 1
+    valid_config "$candidate" || return 1
+    has_active_autostart "$candidate" || return 1
+    atomic_copy "$candidate" "$cfg"
+    valid_config "$cfg" || return 1
+    log "configuración restaurada desde $candidate"
+    return 0
+}
+
+ensure() {
+    lock
+    if ! looks_corrupt; then
+        save_good || true
+        return 0
+    fi
+
+    stamp=$(date '+%Y%m%d-%H%M%S')
+    broken="$cfg.broken-$stamp"
+    if [ -e "$cfg" ]; then
+        cp -a "$cfg" "$broken" 2>/dev/null || true
+        log "configuración incompleta detectada; copia en $broken"
+    else
+        log "configuración ausente; se intenta restaurar"
+    fi
+
+    for candidate in "$good" "$template"; do
+        if restore_from "$candidate"; then
+            save_good || true
+            return 0
+        fi
+    done
+
+    log "no hay copia buena ni plantilla válida; no se pudo reparar"
+    return 1
+}
+
+status() {
+    printf 'config:      %s\n' "$cfg"
+    if [ -e "$cfg" ]; then
+        printf '  existe:    sí (%s líneas, %s secciones)\n' \
+            "$(wc -l <"$cfg")" "$(section_count "$cfg")"
+        if valid_config "$cfg"; then
+            printf '  valida:    sí\n'
+        else
+            printf '  valida:    NO\n'
+        fi
+        if has_autostart_key "$cfg"; then
+            printf '  autostart: clave presente\n'
+        else
+            printf '  autostart: CLAVE AUSENTE\n'
+        fi
+    else
+        printf '  existe:    NO\n'
+    fi
+    for copy in "$good" "$template"; do
+        if [ -f "$copy" ]; then
+            printf '%s: %s líneas\n' "$(basename "$copy")" \
+                "$(wc -l <"$copy")"
+        else
+            printf '%s: ausente\n' "$(basename "$copy")"
+        fi
+    done
+    printf 'registro:    %s\n' "$log_file"
+}
+
+case "${1:-}" in
+    ensure) ensure ;;
+    save) lock; save_good ;;
+    status) status ;;
+    *)
+        printf 'Uso: %s {ensure|save|status}\n' "${0##*/}" >&2
+        exit 2
+        ;;
+esac

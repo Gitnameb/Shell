@@ -124,7 +124,7 @@ Rectangle {
                 anchors.centerIn: parent
                 spacing: 0
 
-                AlbaIcon {
+                ShellIcon {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: !root.levelIcon
                     name: root.iconName
@@ -145,7 +145,7 @@ Rectangle {
                     fallback: root.icon
                 }
 
-                AlbaIcon {
+                ShellIcon {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: root.hasSecondary
                     name: root.secondaryIconName

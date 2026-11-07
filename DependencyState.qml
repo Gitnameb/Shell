@@ -61,7 +61,7 @@ Singleton {
         if (value.length === 0)
             return;
         Quickshell.execDetached([
-            "sh", "-c", "printf '%s' \"$1\" | wl-copy", "alba", value
+            "sh", "-c", "printf '%s' \"$1\" | wl-copy", "shell", value
         ]);
         root.copiedText = value;
         copyTimer.restart();

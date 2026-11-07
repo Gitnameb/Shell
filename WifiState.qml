@@ -42,7 +42,7 @@ Singleton {
     property string hiddenError: ""
     signal hiddenConnected()
     readonly property string profileQrPath: Quickshell.cacheDir
-        + "/alba-wifi-qr.png"
+        + "/shell-wifi-qr.png"
     readonly property string helperPath: (Quickshell.shellDir || "")
         + "/scripts/wifi-profile.py"
 
@@ -167,12 +167,12 @@ Singleton {
     // mismo dibujo que la barra y no cambia según el tema de iconos.
     function signalSource(strength): string {
         if (strength >= 0.75)
-            return AlbaIcons.src("wifi-3");
+            return ShellIcons.src("wifi-3");
         if (strength >= 0.5)
-            return AlbaIcons.src("wifi-2");
+            return ShellIcons.src("wifi-2");
         if (strength > 0)
-            return AlbaIcons.src("wifi-1");
-        return AlbaIcons.src("wifi-none");
+            return ShellIcons.src("wifi-1");
+        return ShellIcons.src("wifi-none");
     }
 
     // Devuelve "" si se aplicó o un mensaje si no se puede apagar la última

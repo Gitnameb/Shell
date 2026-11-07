@@ -198,7 +198,7 @@ ColumnLayout {
         Layout.fillWidth: true
         spacing: 8
 
-        AlbaSwitch {
+        ShellSwitch {
             checked: SettingsState.showTemps
             onToggled: SettingsState.setShowTemps(!SettingsState.showTemps)
         }

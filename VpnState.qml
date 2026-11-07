@@ -243,7 +243,7 @@ Singleton {
     Process {
         id: pickProc
 
-        command: [(Quickshell.shellDir || "") + "/scripts/alba-vpn-pick"]
+        command: [(Quickshell.shellDir || "") + "/scripts/shell-vpn-pick"]
 
         stdout: StdioCollector {
             id: pickOut

@@ -35,7 +35,7 @@ Variants {
         color: "transparent"
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Top
-        WlrLayershell.namespace: "alba-filter"
+        WlrLayershell.namespace: "shell-filter"
         mask: Region {}
 
         Rectangle {

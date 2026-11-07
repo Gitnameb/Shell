@@ -183,6 +183,16 @@ if [[ -f "$TARGET_HOME/.config/umbriel/config.toml" ]] \
         || warn "Umbriel no aceptó la configuración; revisa $TARGET_HOME/.config/umbriel/config.toml."
 fi
 
+# La copia buena se actualiza después del fork: la plantilla usa claves que el
+# Umbriel estándar todavía no conoce.
+if [[ -x "$TARGET_HOME/.local/bin/umbriel-config-guard" ]] \
+    && [[ -f "$TARGET_HOME/.config/umbriel/config.toml" ]]; then
+    log "Actualizando la copia buena de la configuración de Umbriel."
+    run env UMBRIEL_CONFIG="$TARGET_HOME/.config/umbriel/config.toml" \
+        "$TARGET_HOME/.local/bin/umbriel-config-guard" save \
+        || warn "No se pudo actualizar config.toml.good; se usará la plantilla si hace falta."
+fi
+
 # ---------------------------------------------------------------------------
 # Resumen
 # ---------------------------------------------------------------------------
@@ -194,6 +204,26 @@ for cmd in qs umbriel ddcutil nmcli; do
         warn "No encuentro '$cmd' en PATH."
     fi
 done
+
+# El guardián repara config.toml antes de Umbriel. Si falta, una escritura
+# incompleta puede volver a dejar el escritorio sin shell.
+for file in "$TARGET_HOME/.local/bin/umbriel-config-guard" \
+        "$TARGET_HOME/.local/bin/shell-config-set" \
+        "$TARGET_HOME/.config/systemd/user/umbriel.service.d/50-config-guard.conf"; do
+    if [[ -f "$file" ]]; then
+        printf '  ok  %s\n' "${file#"$TARGET_HOME"/}"
+    else
+        warn "Falta $file; el escritorio podría quedar negro si config.toml se trunca."
+    fi
+done
+
+if [[ -x "$TARGET_HOME/.local/bin/shell-config-set" ]]; then
+    if "$TARGET_HOME/.local/bin/shell-config-set" --help >/dev/null 2>&1; then
+        printf '  ok  shell-config-set responde\n'
+    else
+        warn "shell-config-set no responde; revisa python3 y el script."
+    fi
+fi
 
 # Los iconos de red, micrófono y volumen son SVG propios: si falta alguno, la
 # barra y las vistas caerían en iconos del tema y se verían distintos según la

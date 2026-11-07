@@ -46,9 +46,10 @@ Variants {
                 return;
             }
 
-            // Se cuentan los controles cuyo centro queda a la izquierda del
-            // cursor, sin contar el que se arrastra. Ese número es la posición
-            // final dentro de la lista sin el control.
+            // En horizontal se compara la coordenada X; en vertical, la Y.
+            // Ese número es la posición final dentro de la lista sin el
+            // control que se arrastra.
+            const vertical = SettingsState.barVertical;
             let target = 0;
             let marker = -1;
             for (let i = 0; i < list.length; i++) {
@@ -58,17 +59,24 @@ Variants {
                 if (!loader)
                     continue;
                 const point = loader.mapToItem(null, 0, 0);
-                const center = bar.screen.x + Theme.edge
-                    + point.x + loader.width / 2;
-                if (ControlDrag.cursorX > center) {
+                const center = vertical
+                    ? bar.screen.y + Theme.edge
+                        + point.y + loader.height / 2
+                    : bar.screen.x + Theme.edge
+                        + point.x + loader.width / 2;
+                const cursor = vertical
+                    ? ControlDrag.cursorY : ControlDrag.cursorX;
+                if (cursor > center) {
                     target++;
-                    marker = point.x + loader.width + 2;
+                    marker = vertical
+                        ? point.y + loader.height + 2
+                        : point.x + loader.width + 2;
                 } else if (marker < 0) {
-                    marker = point.x - 2;
+                    marker = vertical ? point.y - 2 : point.x - 2;
                 }
             }
-            // Si el cursor está a la izquierda de todo, el marcador va delante
-            // del primer control; si está a la derecha, detrás del último.
+            // Si el cursor está antes del primer control, el marcador va
+            // delante; si está después del último, detrás.
             if (marker < 0)
                 marker = 2;
             ControlDrag.targetIndex = target;
@@ -97,14 +105,21 @@ Variants {
             // se suman el margen y el origen de la pantalla para obtenerlas
             // globales.
             const point = anchorItem.mapToItem(null,
-                anchorItem.width / 2, 0);
+                anchorItem.width / 2, anchorItem.height / 2);
             clearMenuTimer.stop();
             bar.appMenuApp = app;
-            bar.appMenuX = currentScreen.x + Theme.edge + point.x;
-            bar.appMenuY = SettingsState.barAtTop
-                ? currentScreen.y + Theme.edge + Theme.barHeight + point.y
-                : currentScreen.y + currentScreen.height
-                    - Theme.edge - Theme.barHeight + point.y;
+            if (SettingsState.barVertical) {
+                // En vertical el menú se abre al lado de la barra y a la
+                // altura del icono. AppContextMenu decide el lado.
+                bar.appMenuX = currentScreen.x + Theme.edge + point.x;
+                bar.appMenuY = currentScreen.y + Theme.edge + point.y;
+            } else {
+                bar.appMenuX = currentScreen.x + Theme.edge + point.x;
+                bar.appMenuY = SettingsState.barAtTop
+                    ? currentScreen.y + Theme.edge + Theme.barHeight
+                    : currentScreen.y + currentScreen.height
+                        - Theme.edge - Theme.barHeight;
+            }
             appMenu.visible = true;
         }
 
@@ -135,6 +150,14 @@ Variants {
         }
 
         Connections {
+            target: QuickPanelState
+
+            function onOpened(): void {
+                bar.closeAppMenu();
+            }
+        }
+
+        Connections {
             target: CalendarState
 
             function onOpenChanged(): void {
@@ -161,23 +184,43 @@ Variants {
             }
         }
 
+        // Orientación de la barra. En los lados ocupa una franja vertical y
+        // los widgets se apilan; arriba y abajo se mantiene horizontal.
+        readonly property bool vertical: SettingsState.barVertical
+
         anchors {
-            top: SettingsState.barAtTop
-            bottom: !SettingsState.barAtTop
-            left: true
-            right: true
+            top: bar.vertical || SettingsState.barAtTop
+            bottom: bar.vertical || SettingsState.barAtBottom
+            left: !bar.vertical || SettingsState.barAtLeft
+            right: !bar.vertical || SettingsState.barAtRight
         }
         margins {
-            top: SettingsState.barAtTop && !bar.autoHide ? Theme.edge : 0
-            bottom: !SettingsState.barAtTop && !bar.autoHide ? Theme.edge : 0
-            left: Theme.edge
-            right: Theme.edge
+            // En horizontal se separa del borde superior o inferior; en
+            // vertical, del lateral. El resto de lados conserva el margen del
+            // tema para que la franja no toque los extremos de la pantalla.
+            top: bar.vertical ? Theme.edge
+                : (SettingsState.barAtTop && !bar.autoHide ? Theme.edge : 0)
+            bottom: bar.vertical ? Theme.edge
+                : (SettingsState.barAtBottom && !bar.autoHide
+                    ? Theme.edge : 0)
+            left: bar.vertical
+                ? (SettingsState.barAtLeft && !bar.autoHide
+                    ? Theme.edge : 0)
+                : Theme.edge
+            right: bar.vertical
+                ? (SettingsState.barAtRight && !bar.autoHide
+                    ? Theme.edge : 0)
+                : Theme.edge
         }
         // Con la barra automática la ventana llega hasta el borde de la
         // pantalla para que la franja que revela la barra quede al alcance del
         // puntero. El margen visual se aplica dentro, al contenido.
-        implicitHeight: bar.autoHide
-            ? Theme.barHeight + Theme.edge : Theme.barHeight
+        implicitWidth: bar.vertical
+            ? (bar.autoHide ? Theme.barHeight + Theme.edge : Theme.barHeight)
+            : 0
+        implicitHeight: bar.vertical
+            ? (bar.screen ? bar.screen.height - Theme.edge * 2 : 800)
+            : (bar.autoHide ? Theme.barHeight + Theme.edge : Theme.barHeight)
         color: "transparent"
         // Reserva espacio para que las ventanas no queden bajo la barra. Con
         // ocultación automática no reserva nada: la barra aparece por encima.
@@ -191,6 +234,7 @@ Variants {
         // Mientras haya un panel, un menú o un arrastre abierto, la barra no
         // se oculta: los paneles se apoyan encima de ella.
         readonly property bool keepVisible: NotificationState.panelOpen
+            || QuickPanelState.open
             || CalendarState.open || LauncherState.open || PowerState.open
             || BatteryState.open || TrayState.open || MoveMenuState.open
             || ControlDrag.active || bar.appMenuApp !== null
@@ -270,16 +314,22 @@ Variants {
         // Cuando está oculta, la ventana solo acepta eventos en la franja del
         // borde; el resto deja pasar los clics a las ventanas de debajo.
         mask: Region {
-            x: 0
-            y: bar.autoHide && bar.barHidden && !SettingsState.barAtTop
-                ? bar.height - bar.revealHeight : 0
-            width: bar.width
-            height: bar.autoHide && bar.barHidden
+            x: bar.vertical
+                ? (bar.autoHide && bar.barHidden && !SettingsState.barAtLeft
+                    ? bar.width - bar.revealHeight : 0)
+                : 0
+            y: bar.vertical ? 0
+                : (bar.autoHide && bar.barHidden
+                    && !SettingsState.barAtTop
+                    ? bar.height - bar.revealHeight : 0)
+            width: bar.vertical && bar.autoHide && bar.barHidden
+                ? bar.revealHeight : bar.width
+            height: !bar.vertical && bar.autoHide && bar.barHidden
                 ? bar.revealHeight : bar.height
         }
 
         WlrLayershell.layer: WlrLayer.Top
-        WlrLayershell.namespace: "alba-bar"
+        WlrLayershell.namespace: "shell-bar"
 
         SystemClock {
             id: clock
@@ -292,10 +342,14 @@ Variants {
             id: barSurface
 
             anchors.fill: parent
-            anchors.topMargin: bar.autoHide && SettingsState.barAtTop
-                ? Theme.edge : 0
-            anchors.bottomMargin: bar.autoHide && !SettingsState.barAtTop
-                ? Theme.edge : 0
+            anchors.topMargin: bar.autoHide && !bar.vertical
+                && SettingsState.barAtTop ? Theme.edge : 0
+            anchors.bottomMargin: bar.autoHide && !bar.vertical
+                && SettingsState.barAtBottom ? Theme.edge : 0
+            anchors.leftMargin: bar.autoHide && bar.vertical
+                && SettingsState.barAtLeft ? Theme.edge : 0
+            anchors.rightMargin: bar.autoHide && bar.vertical
+                && SettingsState.barAtRight ? Theme.edge : 0
             opacity: bar.barOpacity
 
             HoverHandler {
@@ -328,71 +382,87 @@ Variants {
                     : Theme.border
             }
 
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 4
-                anchors.rightMargin: 4
-                spacing: 0
+            // Contenido de la barra. El mismo árbol se usa en horizontal
+            // (tres columnas: inicio, reloj y estado) y en vertical (tres
+            // filas: inicio, reloj y estado).
+            GridLayout {
+                id: barContent
 
-                // ------------------------------------------------------------ izquierda
+                anchors.fill: parent
+                anchors.leftMargin: bar.vertical ? 0 : 4
+                anchors.rightMargin: bar.vertical ? 0 : 4
+                anchors.topMargin: bar.vertical ? 4 : 0
+                anchors.bottomMargin: bar.vertical ? 4 : 0
+                columns: bar.vertical ? 1 : 3
+                columnSpacing: 0
+                rowSpacing: bar.vertical ? 2 : 0
+
+                // Inicio: logo y escritorios.
                 Item {
                     Layout.fillWidth: true
-                    Layout.preferredWidth: 0
                     Layout.fillHeight: true
 
-                    RowLayout {
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 2
+                    GridLayout {
+                            x: bar.vertical ? (parent.width - width) / 2 : 0
+                        y: bar.vertical ? 0 : (parent.height - height) / 2
+                        columns: bar.vertical ? 1 : 99
+                        columnSpacing: bar.vertical ? 0 : 2
+                        rowSpacing: bar.vertical ? 2 : 0
+                        width: implicitWidth
+                        height: implicitHeight
 
-                        // Logo / lanzador
-                        Rectangle {
-                            Layout.preferredWidth: 30
-                            Layout.preferredHeight: 30
-                            radius: 8
-                            color: Theme.accent
+                    // Logo / lanzador
+                    Rectangle {
+                        Layout.preferredWidth: 30
+                        Layout.preferredHeight: 30
+                        radius: 8
+                        color: Theme.accent
+                        Layout.alignment: Qt.AlignHCenter
 
-                            AlbaIcon {
-                                anchors.centerIn: parent
-                                source: Distro.iconSource
-                                color: Theme.accentInk
-                                size: Math.min(26, SettingsState.barIconSize)
-                                fallback: "▦"
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    CalendarState.hide();
-                                    NotificationState.hidePanel();
-                                    LauncherState.toggle();
-                                }
-                            }
+                        ShellIcon {
+                            anchors.centerIn: parent
+                            source: Distro.iconSource
+                            color: Theme.accentInk
+                            size: Math.min(26, SettingsState.barIconSize)
+                            fallback: "▦"
                         }
 
-                        // Escritorios configurables (1..N, por defecto 9). Cada
-                        // indicador resume las apps abiertas en ese escritorio.
-                        Repeater {
-                            model: SettingsState.workspaceIds
-
-                            delegate: WorkspacePill {
-                                required property int modelData
-
-                                workspaceId: modelData
-                                onAppMenuRequested: (anchorItem, app) => {
-                                    bar.openAppMenu(anchorItem, app);
-                                }
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                CalendarState.hide();
+                                NotificationState.hidePanel();
+                                LauncherState.toggle();
                             }
                         }
+                    }
+
+                    // Escritorios configurables (1..N, por defecto 9). Cada
+                    // indicador resume las apps abiertas en ese escritorio.
+                    Repeater {
+                        model: SettingsState.workspaceIds
+
+                        delegate: WorkspacePill {
+                            required property int modelData
+
+                            workspaceId: modelData
+                            compact: SettingsState.barVertical
+                            Layout.alignment: Qt.AlignHCenter
+                            onAppMenuRequested: (anchorItem, app) => {
+                                bar.openAppMenu(anchorItem, app);
+                            }
+                        }
+                    }
                     }
                 }
 
                 // ------------------------------------------------------------- centro
                 Pill {
                     Layout.alignment: Qt.AlignVCenter
-                    horizontalPadding: 6
+                    Layout.fillWidth: SettingsState.barVertical
+                    horizontalPadding: SettingsState.barVertical ? 2 : 6
                     active: CalendarState.open
                     onClicked: {
                         NotificationState.hidePanel();
@@ -402,6 +472,8 @@ Variants {
 
                     Row {
                         id: clockContent
+
+                        visible: !SettingsState.barVertical
 
                         // Altura de la línea superior (hora y número del día)
                         // y de la inferior (día de la semana).
@@ -525,18 +597,54 @@ Variants {
                             }
                         }
                     }
+
+                    // Reloj compacto: en una barra de 44 px solo caben la
+                    // hora y el día abreviado.
+                    Column {
+                        visible: SettingsState.barVertical
+                        spacing: 0
+
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: Qt.formatDateTime(clock.date, "HH:mm")
+                            color: Theme.text
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                            font.weight: Font.DemiBold
+                            font.letterSpacing: -0.3
+                        }
+
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: Fechas.weekdayName(clock.date)
+                                .substr(0, 3).toUpperCase()
+                            color: Theme.muted
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 7
+                            font.weight: Font.DemiBold
+                            font.letterSpacing: 0.4
+                        }
+                    }
                 }
 
-                // ------------------------------------------------------------- derecha
+
+                // Estado: controles, batería, bandeja y accesos.
                 Item {
                     Layout.fillWidth: true
-                    Layout.preferredWidth: 0
                     Layout.fillHeight: true
 
-                    RowLayout {
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 0
+                    GridLayout {
+                            x: bar.vertical
+                            ? (parent.width - width) / 2
+                            : parent.width - width
+                        y: bar.vertical
+                            ? parent.height - height
+                            : (parent.height - height) / 2
+                        columns: bar.vertical ? 1 : 99
+                        columnSpacing: 0
+                        rowSpacing: bar.vertical ? 2 : 0
+                        width: implicitWidth
+                        height: implicitHeight
 
                         // Controles añadidos desde el centro de control.
                         Repeater {
@@ -558,7 +666,8 @@ Variants {
                                     ? item.implicitWidth : 0
                                 Layout.preferredHeight: item
                                     ? item.implicitHeight : 0
-                                Layout.alignment: Qt.AlignVCenter
+                                Layout.alignment: SettingsState.barVertical
+                                    ? Qt.AlignHCenter : Qt.AlignVCenter
 
                                 sourceComponent: controlKey === "music"
                                     ? musicWidget : controlWidget
@@ -566,194 +675,246 @@ Variants {
                                 onLoaded: {
                                     if (item && controlKey !== "music")
                                         item.key = controlKey;
+                                    }
                                 }
                             }
-                        }
 
-                        Component {
-                            id: controlWidget
+                            Component {
+                                id: controlWidget
 
-                            BarControl {}
-                        }
-
-                        Component {
-                            id: musicWidget
-
-                            BarMusic {}
-                        }
-
-                        // Batería / energía. En un equipo sin batería sigue
-                        // visible con el rayo de corriente; en un portátil
-                        // muestra el nivel real. Al pulsarla se abren los
-                        // perfiles de energía.
-                        Pill {
-                            id: batteryButton
-
-                            active: BatteryState.open
-                            horizontalPadding: 1
-                            onClicked: {
-                                const point = batteryButton.mapToItem(
-                                    bar.contentItem, 0, 0);
-                                BatteryState.anchorX = point.x
-                                    + batteryButton.width / 2;
-                                bar.closeAppMenu();
-                                BatteryState.toggle();
+                                BarControl {}
                             }
 
-                            Row {
-                                spacing: 4
+                            Component {
+                                id: musicWidget
 
-                                BatteryGlyph {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    iconSize: SettingsState.barIconSize
-                                    percentage: BatteryState.level
-                                    present: BatteryState.present
-                                    charging: BatteryState.charging
-                                    mains: BatteryState.mains
-                                    tone: BatteryState.tone
+                                BarMusic {}
+                            }
+
+                            // Batería / energía. En un equipo sin batería sigue
+                            // visible con el rayo de corriente; en un portátil
+                            // muestra el nivel real. Al pulsarla se abren los
+                            // perfiles de energía.
+                            Pill {
+                                id: batteryButton
+                                Layout.alignment: SettingsState.barVertical
+                                    ? Qt.AlignHCenter : Qt.AlignVCenter
+
+                                active: BatteryState.open
+                                horizontalPadding: 1
+                                onClicked: {
+                                    const point = batteryButton.mapToItem(
+                                        bar.contentItem, 0, 0);
+                                    BatteryState.anchorX = point.x
+                                        + batteryButton.width / 2;
+                                    BatteryState.anchorY = point.y
+                                        + batteryButton.height / 2;
+                                    bar.closeAppMenu();
+                                    BatteryState.toggle();
                                 }
 
-                                Text {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    visible: BatteryState.present
-                                        && SettingsState.showBatteryPercent
-                                    text: BatteryState.level + "%"
-                                    color: BatteryState.tone
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 10
-                                    font.weight: Font.DemiBold
+                                Row {
+                                    spacing: 4
 
-                                    Behavior on color {
-                                        ColorAnimation {
-                                            duration: 250
-                                            easing.type: Easing.OutQuad
+                                    BatteryGlyph {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        iconSize: SettingsState.barIconSize
+                                        percentage: BatteryState.level
+                                        present: BatteryState.present
+                                        charging: BatteryState.charging
+                                        mains: BatteryState.mains
+                                        tone: BatteryState.tone
+                                    }
+
+                                    Text {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: BatteryState.present
+                                            && SettingsState.showBatteryPercent
+                                            && !SettingsState.barVertical
+                                        text: BatteryState.level + "%"
+                                        color: BatteryState.tone
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 10
+                                        font.weight: Font.DemiBold
+
+                                        Behavior on color {
+                                            ColorAnimation {
+                                                duration: 250
+                                                easing.type: Easing.OutQuad
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
 
-                        // Bandeja del sistema: los iconos de las apps se
-                        // agrupan en TrayPanel para no llenar la barra.
-                        Pill {
-                            id: trayButton
+                            // Bandeja del sistema: los iconos de las apps se
+                            // agrupan en TrayPanel para no llenar la barra.
+                            Pill {
+                                id: trayButton
+                                Layout.alignment: SettingsState.barVertical
+                                    ? Qt.AlignHCenter : Qt.AlignVCenter
 
-                            visible: SystemTray.items
-                                && SystemTray.items.values.length > 0
-                            active: TrayState.open
+                                visible: SystemTray.items
+                                    && SystemTray.items.values.length > 0
+                                active: TrayState.open
 
-                            onClicked: {
-                                const point = trayButton.mapToItem(
-                                    bar.contentItem, 0, 0);
-                                TrayState.anchorX = point.x
-                                    + trayButton.width / 2;
-                                if (!TrayState.open)
-                                    bar.closeAppMenu();
-                                TrayState.toggle();
-                            }
-
-                            Item {
-                                width: SettingsState.barIconSize
-                                height: SettingsState.barIconSize
-
-                                AlbaIcon {
-                                    anchors.centerIn: parent
-                                    source: AlbaIcons.src("chevron-up")
-                                    color: TrayState.open
-                                        ? Theme.accent : Theme.accentFaded
-                                    size: 14
-                                    // Con la barra arriba, la flecha apunta
-                                    // hacia abajo para alejarse del borde.
-                                    rotation: SettingsState.barAtTop ? 180 : 0
-                                    fallback: "^"
+                                onClicked: {
+                                    const point = trayButton.mapToItem(
+                                        bar.contentItem, 0, 0);
+                                    TrayState.anchorX = point.x
+                                        + trayButton.width / 2;
+                                    TrayState.anchorY = point.y
+                                        + trayButton.height / 2;
+                                    if (!TrayState.open)
+                                        bar.closeAppMenu();
+                                    TrayState.toggle();
                                 }
-                            }
-                        }
 
-                        // Campana / notificaciones
-                        Pill {
-                            active: NotificationState.panelOpen || NotificationState.count > 0
-                            onClicked: {
-                                CalendarState.hide();
-                                LauncherState.hide();
-                                PowerState.hide();
-                                NotificationState.togglePanel();
-                            }
-
-                            Row {
-                                spacing: 0
-
-                                // El icono ocupa una caja cuadrada y el punto de
-                                // aviso va en su esquina, como en las apps.
                                 Item {
                                     width: SettingsState.barIconSize
                                     height: SettingsState.barIconSize
 
-                                    AlbaIcon {
+                                    ShellIcon {
                                         anchors.centerIn: parent
-                                        source: AlbaIcons.src(NotificationState.dnd
-                                            ? "bell-off" : "bell")
-                                        color: NotificationState.dnd
-                                            ? Theme.danger
-                                            : ((NotificationState.panelOpen
-                                                || NotificationState.count > 0)
-                                                ? Theme.accent : Theme.accentFaded)
+                                        source: ShellIcons.src("chevron-up")
+                                        color: TrayState.open
+                                            ? Theme.accent : Theme.accentFaded
+                                        size: 14
+                                        // La flecha apunta hacia dentro de la
+                                        // pantalla según el lado de la barra.
+                                        rotation: SettingsState.barVertical
+                                            ? (SettingsState.barAtLeft ? 90 : -90)
+                                            : (SettingsState.barAtTop ? 180 : 0)
+                                        fallback: "^"
+                                    }
+                                }
+                            }
+
+                            // Centro de control con icono propio. Solo aparece
+                            // cuando los paneles están separados en los ajustes.
+                            Pill {
+                                id: controlButton
+                                Layout.alignment: SettingsState.barVertical
+                                    ? Qt.AlignHCenter : Qt.AlignVCenter
+
+                                visible: !SettingsState.unifiedPanels
+                                active: NotificationState.panelOpen
+                                    && NotificationState.panelSection === "control"
+
+                                onClicked: {
+                                    CalendarState.hide();
+                                    LauncherState.hide();
+                                    PowerState.hide();
+                                    NotificationState.toggleSection("control");
+                                }
+
+                                Item {
+                                    width: SettingsState.barIconSize
+                                    height: SettingsState.barIconSize
+
+                                    ShellIcon {
+                                        anchors.centerIn: parent
+                                        source: ShellIcons.src("grid")
+                                        color: controlButton.active
+                                            ? Theme.accent : Theme.accentFaded
                                         size: SettingsState.barIconSize
-                                        fallback: "!"
-                                    }
-
-                                    Rectangle {
-                                        width: 6
-                                        height: 6
-                                        radius: 3
-                                        anchors.top: parent.top
-                                        anchors.right: parent.right
-                                        color: NotificationState.dnd
-                                            ? Theme.danger
-                                            : (DependencyState.hasMissing
-                                                ? Theme.warning : Theme.accent)
-                                        border.width: 2
-                                        border.color: Theme.glass
-                                        visible: NotificationState.count > 0
-                                            || DependencyState.hasMissing
+                                        fallback: "▦"
                                     }
                                 }
                             }
-                        }
 
-                        // Menú de energía
-                        Pill {
-                            active: PowerState.open
-                            onClicked: {
-                                CalendarState.hide();
-                                LauncherState.hide();
-                                NotificationState.hidePanel();
-                                PowerState.toggle();
-                            }
+                            // Campana / notificaciones
+                            Pill {
+                                Layout.alignment: SettingsState.barVertical
+                                    ? Qt.AlignHCenter : Qt.AlignVCenter
+                                active: (NotificationState.panelOpen
+                                        && NotificationState.panelSection !== "control")
+                                    || NotificationState.count > 0
+                                onClicked: {
+                                    CalendarState.hide();
+                                    LauncherState.hide();
+                                    PowerState.hide();
+                                    NotificationState.togglePanel();
+                                }
 
-                            Item {
-                                width: SettingsState.barIconSize
-                                height: SettingsState.barIconSize
+                                Row {
+                                    spacing: 0
 
-                                AlbaIcon {
-                                    anchors.centerIn: parent
-                                    source: AlbaIcons.src("power")
-                                    color: Theme.accent
-                                    size: SettingsState.barIconSize
-                                    fallback: "⏻"
+                                    // El icono ocupa una caja cuadrada y el punto de
+                                    // aviso va en su esquina, como en las apps.
+                                    Item {
+                                        width: SettingsState.barIconSize
+                                        height: SettingsState.barIconSize
+
+                                        ShellIcon {
+                                            anchors.centerIn: parent
+                                            source: ShellIcons.src(NotificationState.dnd
+                                                ? "bell-off" : "bell")
+                                            color: NotificationState.dnd
+                                                ? Theme.danger
+                                                : (((NotificationState.panelOpen
+                                                    && NotificationState.panelSection
+                                                        !== "control")
+                                                    || NotificationState.count > 0)
+                                                    ? Theme.accent : Theme.accentFaded)
+                                            size: SettingsState.barIconSize
+                                            fallback: "!"
+                                        }
+
+                                        Rectangle {
+                                            width: 6
+                                            height: 6
+                                            radius: 3
+                                            anchors.top: parent.top
+                                            anchors.right: parent.right
+                                            color: NotificationState.dnd
+                                                ? Theme.danger
+                                                : (DependencyState.hasMissing
+                                                    ? Theme.warning : Theme.accent)
+                                            border.width: 2
+                                            border.color: Theme.glass
+                                            visible: NotificationState.count > 0
+                                                || DependencyState.hasMissing
+                                        }
+                                    }
                                 }
                             }
-                        }
+
+                            // Menú de energía
+                            Pill {
+                                Layout.alignment: SettingsState.barVertical
+                                    ? Qt.AlignHCenter : Qt.AlignVCenter
+                                active: PowerState.open
+                                onClicked: {
+                                    CalendarState.hide();
+                                    LauncherState.hide();
+                                    NotificationState.hidePanel();
+                                    PowerState.toggle();
+                                }
+
+                                Item {
+                                    width: SettingsState.barIconSize
+                                    height: SettingsState.barIconSize
+
+                                    ShellIcon {
+                                        anchors.centerIn: parent
+                                        source: ShellIcons.src("power")
+                                        color: Theme.accent
+                                        size: SettingsState.barIconSize
+                                        fallback: "⏻"
+                                    }
+                                }
+                            }
                     }
                 }
             }
 
             // Marca de inserción mientras se reordena un control de la barra.
             Rectangle {
-                x: bar.reorderX - 1
-                y: 7
-                width: 3
-                height: parent.height - 14
+                x: bar.vertical ? 7 : bar.reorderX - 1
+                y: bar.vertical ? bar.reorderX - 1 : 7
+                width: bar.vertical ? parent.width - 14 : 3
+                height: bar.vertical ? 3 : parent.height - 14
                 radius: 1
                 color: Theme.accent
                 z: 19
@@ -831,12 +992,19 @@ Variants {
             id: revealArea
 
             anchors {
-                left: parent.left
-                right: parent.right
-                top: SettingsState.barAtTop ? parent.top : undefined
-                bottom: SettingsState.barAtTop ? undefined : parent.bottom
+                left: bar.vertical
+                    ? (SettingsState.barAtLeft ? parent.left : undefined)
+                    : parent.left
+                right: bar.vertical
+                    ? (SettingsState.barAtRight ? parent.right : undefined)
+                    : parent.right
+                top: bar.vertical || SettingsState.barAtTop
+                    ? parent.top : undefined
+                bottom: bar.vertical || !SettingsState.barAtTop
+                    ? parent.bottom : undefined
             }
-            height: bar.revealHeight
+            width: bar.vertical ? bar.revealHeight : undefined
+            height: bar.vertical ? undefined : bar.revealHeight
             z: 100
             hoverEnabled: true
             enabled: bar.autoHide
@@ -854,6 +1022,7 @@ Variants {
 
             screen: bar.screen
             visible: appMenu.visible || NotificationState.panelOpen
+                || QuickPanelState.open
                 || CalendarState.open || PowerState.open
                 || BatteryState.open
                 || MoveMenuState.open || TrayState.open
@@ -868,18 +1037,27 @@ Variants {
             focusable: false
 
             WlrLayershell.layer: WlrLayer.Top
-            WlrLayershell.namespace: "alba-outside-close"
+            WlrLayershell.namespace: "shell-outside-close"
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
             // Solo recibe clics fuera de la barra; su franja de revelado sigue
             // siendo de la barra.
             mask: Region {
-                x: 0
-                y: SettingsState.barAtTop
-                    ? Theme.edge + Theme.barHeight + 6 : 0
-                width: outsideCatcher.width
-                height: Math.max(0, outsideCatcher.height
-                    - (Theme.edge + Theme.barHeight + 6))
+                x: bar.vertical
+                    ? (SettingsState.barAtLeft
+                        ? Theme.edge + Theme.barHeight + 6 : 0)
+                    : 0
+                y: bar.vertical ? 0
+                    : (SettingsState.barAtTop
+                        ? Theme.edge + Theme.barHeight + 6 : 0)
+                width: bar.vertical
+                    ? Math.max(0, outsideCatcher.width
+                        - (Theme.edge + Theme.barHeight + 6))
+                    : outsideCatcher.width
+                height: bar.vertical
+                    ? outsideCatcher.height
+                    : Math.max(0, outsideCatcher.height
+                        - (Theme.edge + Theme.barHeight + 6))
             }
 
             MouseArea {
@@ -888,6 +1066,7 @@ Variants {
                 onClicked: {
                     bar.closeAppMenu();
                     NotificationState.hidePanel();
+                    QuickPanelState.hide();
                     CalendarState.hide();
                     PowerState.hide();
                     BatteryState.hide();

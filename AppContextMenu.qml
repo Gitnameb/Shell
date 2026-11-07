@@ -30,7 +30,16 @@ PanelWindow {
         const screen = root.targetScreen;
         const screenX = screen ? screen.x : 0;
         const screenWidth = screen ? screen.width : 1920;
-        const desired = root.anchorX - root.cardWidth / 2;
+        let desired;
+        if (SettingsState.barVertical) {
+            // Al lado de la barra, nunca encima de ella.
+            desired = SettingsState.barAtLeft
+                ? screenX + Theme.edge + Theme.barHeight + 8
+                : screenX + screenWidth - Theme.edge - Theme.barHeight - 8
+                    - root.cardWidth;
+        } else {
+            desired = root.anchorX - root.cardWidth / 2;
+        }
         return Math.max(screenX + 8,
             Math.min(screenX + screenWidth - root.cardWidth - 8, desired));
     }
@@ -38,9 +47,14 @@ PanelWindow {
         const screen = root.targetScreen;
         const screenY = screen ? screen.y : 0;
         const screenHeight = screen ? screen.height : 1080;
-        const desired = SettingsState.barAtTop
-            ? root.anchorY + 8
-            : root.anchorY - root.cardHeight - 8;
+        let desired;
+        if (SettingsState.barVertical) {
+            desired = root.anchorY - root.cardHeight / 2;
+        } else {
+            desired = SettingsState.barAtTop
+                ? root.anchorY + 8
+                : root.anchorY - root.cardHeight - 8;
+        }
         return Math.max(screenY + 8,
             Math.min(screenY + screenHeight - root.cardHeight - 8, desired));
     }
@@ -65,7 +79,7 @@ PanelWindow {
     focusable: true
 
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.namespace: "alba-app-menu"
+    WlrLayershell.namespace: "shell-app-menu"
     WlrLayershell.keyboardFocus: root.visible
         ? WlrKeyboardFocus.OnDemand
         : WlrKeyboardFocus.None

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# ALBA · Prueba en un Hyprland anidado, sin cerrar la sesión actual.
+# Prueba en un Hyprland anidado, sin cerrar la sesión actual.
 #
-#   bash ~/Documents/Alba/scripts/test-nested.sh
+#   bash ~/Shell/scripts/test-nested.sh
 #
-# Deja capturas en /tmp/alba-shot-*.png y los logs en /tmp/hypr-alba.log y
-# /tmp/alba-qs.log.
+# Deja capturas en /tmp/shell-shot-*.png y los logs en /tmp/hypr-shell.log y
+# /tmp/shell-qs.log.
 #
 # Variables útiles:
 #   KEEP=1   deja Hyprland y Quickshell corriendo al terminar (para mirar a mano)
@@ -12,15 +12,14 @@
 
 set -u
 
-ALBA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HYPR_CONF="${CONFIG:-$HOME/.config/hypr/hyprland.conf}"
 RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr"
-PIDFILE="/tmp/alba-nested.pid"
-SHOT_PREFIX="/tmp/alba-shot"
-QS_LOG="/tmp/alba-qs.log"
-HYPR_LOG="/tmp/hypr-alba.log"
+PIDFILE="/tmp/shell-nested.pid"
+SHOT_PREFIX="/tmp/shell-shot"
+QS_LOG="/tmp/shell-qs.log"
+HYPR_LOG="/tmp/hypr-shell.log"
 
-say() { printf '\n\033[1;35m[alba]\033[0m %s\n' "$*"; }
+say() { printf '\n\033[1;35m[shell]\033[0m %s\n' "$*"; }
 
 # Seguridad: si ya estamos dentro de Hyprland, el script cerraría la barra real
 # (pkill -x qs). Sirve solo desde otra sesión, como KDE o una TTY.
@@ -124,7 +123,7 @@ done
 
 if ! pgrep -x qs > /dev/null; then
     say "El exec-once no lo arrancó; lanzo Quickshell a mano…"
-    hyprctl dispatch exec "sh -c 'QT_QPA_PLATFORMTHEME=gtk3 qs -c alba > \"$QS_LOG\" 2>&1'" > /dev/null
+    hyprctl dispatch exec "sh -c 'QT_QPA_PLATFORMTHEME=gtk3 qs -c shell > \"$QS_LOG\" 2>&1'" > /dev/null
     sleep 4
 fi
 
@@ -141,21 +140,21 @@ hyprctl dispatch exec "grim ${SHOT_PREFIX}-bar.png" > /dev/null
 sleep 2
 
 say "Abriendo el lanzador…"
-qs ipc -c alba --any-display call launcher toggle > /dev/null 2>&1
+qs ipc -c shell --any-display call launcher toggle > /dev/null 2>&1
 sleep 2
 hyprctl dispatch exec "grim ${SHOT_PREFIX}-launcher.png" > /dev/null
 sleep 2
-qs ipc -c alba --any-display call launcher toggle > /dev/null 2>&1
+qs ipc -c shell --any-display call launcher toggle > /dev/null 2>&1
 
 say "Capturando el panel de notificaciones…"
-qs ipc -c alba --any-display call notifications toggle > /dev/null 2>&1
+qs ipc -c shell --any-display call notifications toggle > /dev/null 2>&1
 sleep 2
 hyprctl dispatch exec "grim ${SHOT_PREFIX}-notifications.png" > /dev/null
 sleep 2
-qs ipc -c alba --any-display call notifications toggle > /dev/null 2>&1
+qs ipc -c shell --any-display call notifications toggle > /dev/null 2>&1
 
 say "Capturando el calendario…"
-qs ipc -c alba --any-display call calendar toggle > /dev/null 2>&1
+qs ipc -c shell --any-display call calendar toggle > /dev/null 2>&1
 sleep 2
 hyprctl dispatch exec "grim ${SHOT_PREFIX}-calendar.png" > /dev/null
 sleep 2

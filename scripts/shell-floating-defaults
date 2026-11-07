@@ -1,0 +1,52 @@
+#!/bin/sh
+# Aplica el tamaño y la cascada de las ventanas flotantes a Umbriel.
+#
+# Uso: shell-floating-defaults <porcentaje> <separación>
+#
+# El porcentaje (40–80) se escribe como fracción del área útil en
+# default_width_fraction y default_height_fraction. La separación en píxeles
+# va a cascade_step; 0 deja que Umbriel la calcule desde la barra de título.
+# Los tres valores se guardan mediante el escritor único del shell.
+set -eu
+
+percent="${1:-60}"
+step="${2:-0}"
+case "$percent" in
+    ''|*[!0-9]*) exit 2 ;;
+esac
+case "$step" in
+    ''|*[!0-9]*) exit 2 ;;
+esac
+[ "$percent" -ge 40 ] && [ "$percent" -le 80 ] || exit 2
+[ "$step" -ge 0 ] && [ "$step" -le 96 ] || exit 2
+
+fraction=$(awk -v p="$percent" 'BEGIN { printf "%.2f", p / 100 }')
+
+cfg="${UMBRIEL_CONFIG:-$HOME/.config/umbriel/config.toml}"
+[ -f "$cfg" ] || exit 0
+
+config_set="${SHELL_CONFIG_SET:-$HOME/.local/bin/shell-config-set}"
+if [ ! -x "$config_set" ]; then
+    config_set=$(command -v shell-config-set 2>/dev/null || true)
+fi
+if [ ! -x "$config_set" ]; then
+    here=$(cd "$(dirname "$0")" && pwd)
+    for candidate in "$here/shell-config-set" "$here/../install/bin/shell-config-set"; do
+        if [ -x "$candidate" ]; then
+            config_set=$candidate
+            break
+        fi
+    done
+fi
+[ -n "$config_set" ] && [ -x "$config_set" ] \
+    || { echo "falta shell-config-set" >&2; exit 1; }
+
+status=$("$config_set" --section layout.stacking \
+    "default_width_fraction=$fraction" \
+    "default_height_fraction=$fraction" \
+    "cascade_step=$step") || exit $?
+[ "$status" = "unchanged" ] && exit 0
+
+# El compositor vigila el archivo; el aviso explícito aplica el cambio aunque
+# el vigilante no esté disponible.
+umbriel msg config-reload >/dev/null 2>&1 || true

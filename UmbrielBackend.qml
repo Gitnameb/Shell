@@ -6,7 +6,7 @@ import QtQuick
 //
 // Umbriel no expone enlaces de Quickshell como Hyprland, así que se consulta
 // su IPC documentado (`umbriel windows --json` y `umbriel workspaces --json`)
-// y se ejecutan acciones con `umbriel msg`. El contrato que ve ALBA es el
+// y se ejecutan acciones con `umbriel msg`. El contrato que ve el shell es el
 // mismo que en Hyprland.
 Scope {
     id: root
@@ -35,13 +35,13 @@ Scope {
     property bool windowDataReady: false
 
     // Estado real de la tecla Mod (Super). Umbriel lo publica por su IPC
-    // mientras se mantiene pulsada, así que ALBA puede mostrar los controles
+    // mientras se mantiene pulsada, así que el shell puede mostrar los controles
     // durante el gesto en lugar de esperar al bind que llega al soltar.
     property bool modHeld: false
     // Si el gesto actual sigue siendo un toque limpio. Se conserva entre
     // eventos para que un atajo no abra el lanzador al soltar Mod.
     property bool modTapAllowed: true
-    // Intentos fallidos del flujo de Mod. Sirve para reintentar si ALBA
+    // Intentos fallidos del flujo de Mod. Sirve para reintentar si el shell
     // arranca antes que el socket del compositor, sin repetir para siempre.
     property int modFailures: 0
 
@@ -53,13 +53,13 @@ Scope {
     property real moveMenuX: 0
     property real moveMenuY: 0
 
-    // Vista general de Umbriel. ALBA la usa para cerrar sus paneles cuando
+    // Vista general de Umbriel. El shell la usa para cerrar sus paneles cuando
     // aparece, de modo que no queden flotando encima de las miniaturas.
     property bool overviewOpen: false
 
     readonly property var capabilities: ({
         nativeTitlebar: true,      // barra de título del propio Umbriel
-        shellTitlebar: false,      // ALBA no debe dibujar otra encima
+        shellTitlebar: false,      // el shell no debe dibujar otra encima
         moveWindowTo: true,
         superHold: true,           // Umbriel emite el estado de Mod al instante
         nativeMinimize: false,     // Umbriel solo minimiza ventanas flotantes
@@ -93,7 +93,7 @@ Scope {
 
     // Umbriel identifica los escritorios con cadenas internas («WL-1:3») que
     // no coinciden con el nombre visible: el número del id es un contador y el
-    // nombre («2») puede ser distinto. ALBA usa el índice 1..N, así que hay que
+    // nombre («2») puede ser distinto. El shell usa el índice 1..N, así que hay que
     // resolverlo con el campo `index` y guardar la última tabla conocida por si
     // las ventanas llegan en una lectura anterior a la de escritorios.
     property var workspaceCache: ({})
@@ -173,7 +173,7 @@ Scope {
                 continue;
             const scratchpad = String(win.scratchpad || "");
             // Umbriel oculta al scratchpad las ventanas que no caben en su
-            // minimizar nativo (las mosaicadas). Para ALBA toda ventana del
+            // minimizar nativo (las mosaicadas). Para el shell toda ventana del
             // scratchpad está minimizada, aunque el compositor la muestre
             // temporalmente: así la ficha sigue en la barra y se puede
             // restaurar con `restore-window`.
@@ -188,7 +188,7 @@ Scope {
             const remembered = root.minimizedWorkspaces[address]
                 || root.knownWorkspaces[address] || null;
             // Umbriel publica el escritorio al que volverá una ventana del
-            // scratchpad. Es la fuente exacta y sobrevive a reiniciar ALBA.
+            // scratchpad. Es la fuente exacta y sobrevive a reiniciar el shell.
             const returnIndex = root.numberOr(win.scratchpad_return_index, 0);
             const returnName = String(win.scratchpad_return_name || "");
             // Preferir el nombre: es correcto tanto con el índice 1..N nuevo
@@ -453,7 +453,7 @@ Scope {
             "setWorkspaceLayout");
     }
 
-    // Modo de ALBA («floating» / «mosaic») traducido al layout nativo de
+    // Modo del shell («floating» / «mosaic») traducido al layout nativo de
     // Umbriel. «Flotante» es el layout stacking: ventanas sueltas y
     // redimensionables. «Mosaico» es dwindle: reparto automático.
     function setWorkspaceMode(workspaceId, mode): bool {
@@ -470,7 +470,7 @@ Scope {
         if (!/^[a-z0-9_]+$/.test(clean))
             return root.noteAction("setKeyboardLayout", false);
         return root.run((Quickshell.env("HOME") || "")
-            + "/.local/bin/alba-keyboard-layout "
+            + "/.local/bin/shell-keyboard-layout "
             + root.quote(clean), "setKeyboardLayout");
     }
 
@@ -482,7 +482,7 @@ Scope {
             ? "" : accent);
         const clean = /^#[0-9a-f]{6}$/i.test(color) ? color : "#b8bec7";
         return root.run((Quickshell.env("HOME") || "")
-            + "/.local/bin/alba-umbriel-theme "
+            + "/.local/bin/shell-umbriel-theme "
             + root.quote(value) + " " + root.quote(clean), "setShellTheme");
     }
 
@@ -642,7 +642,7 @@ Scope {
 
     // ------------------------------------------------- selector de escritorio
     // El botón «Mover» de la barra de título nativa pide este menú. Umbriel
-    // solo entrega la ventana y la posición; la tarjeta la dibuja ALBA.
+    // solo entrega la ventana y la posición; la tarjeta la dibuja el shell.
     Process {
         id: moveMenuProc
 
@@ -683,7 +683,7 @@ Scope {
     }
 
     // La vista general del compositor avisa al abrirse y al empezar a
-    // cerrarse. Al abrirse, ALBA cierra sus paneles para no taparla.
+    // cerrarse. Al abrirse, el shell cierra sus paneles para no taparla.
     Process {
         id: overviewProc
 

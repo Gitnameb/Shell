@@ -161,7 +161,7 @@ if [[ -d "$SOURCE_DIR/.git" ]]; then
         current=$(git -C "$SOURCE_DIR" rev-parse HEAD 2>/dev/null || true)
         if [[ "$current" != "$(git -C "$SOURCE_DIR" rev-parse "$BASE_COMMIT" 2>/dev/null || true)" ]]; then
             log "Árbol limpio; se cambia a la base $BASE_COMMIT."
-            run git -C "$SOURCE_DIR" checkout -B alba-fork "$BASE_COMMIT"
+            run git -C "$SOURCE_DIR" checkout -B shell-fork "$BASE_COMMIT"
         fi
         log "Aplicando el parche del fork."
         run git -C "$SOURCE_DIR" apply "$PATCH"
@@ -171,7 +171,7 @@ elif [[ -d "$SOURCE_DIR" ]]; then
 else
     log "Clonando Umbriel desde $UPSTREAM."
     run git clone "$UPSTREAM" "$SOURCE_DIR"
-    run git -C "$SOURCE_DIR" checkout -B alba-fork "$BASE_COMMIT"
+    run git -C "$SOURCE_DIR" checkout -B shell-fork "$BASE_COMMIT"
     run git -C "$SOURCE_DIR" apply "$PATCH"
 fi
 

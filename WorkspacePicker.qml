@@ -81,7 +81,7 @@ PanelWindow {
     focusable: true
 
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.namespace: "alba-move-menu"
+    WlrLayershell.namespace: "shell-move-menu"
     WlrLayershell.keyboardFocus: root.visible
         ? WlrKeyboardFocus.OnDemand
         : WlrKeyboardFocus.None

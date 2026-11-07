@@ -126,8 +126,8 @@ ColumnLayout {
                     }
                     spacing: 7
 
-                    AlbaIcon {
-                        source: AlbaIcons.src(proxyRow.modelData.kind === "wifi"
+                    ShellIcon {
+                        source: ShellIcons.src(proxyRow.modelData.kind === "wifi"
                             ? "wifi" : (proxyRow.usb ? "usb" : "wired"))
                         color: proxyRow.modelData.active
                             ? Theme.accent : Theme.muted

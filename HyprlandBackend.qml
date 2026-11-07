@@ -4,7 +4,7 @@ import Quickshell.Io
 import QtQuick
 
 // Backend de Hyprland para CompositorState. Describe ventanas, escritorios,
-// foco y capacidades con el formato común de ALBA, y ejecuta las acciones
+// foco y capacidades con el formato común del shell, y ejecuta las acciones
 // usando los dispatchers de Hyprland.
 Item {
     id: root
@@ -33,7 +33,7 @@ Item {
 
     readonly property var capabilities: ({
         nativeTitlebar: false,     // necesita hyprbars u otro plugin
-        shellTitlebar: true,       // barra de título de ALBA sobre flotantes
+        shellTitlebar: true,       // barra de título del shell sobre flotantes
         moveWindowTo: true,        // movewindowpixel exact
         superHold: true,           // bind + bindr
         nativeMinimize: false,     // se simula con special:minimized
@@ -349,7 +349,7 @@ Item {
         return root.noteAction("moveToWorkspace", ok);
     }
 
-    // Arrastre de la barra de título de ALBA. Hyprland acepta coordenadas
+    // Arrastre de la barra de título del shell. Hyprland acepta coordenadas
     // absolutas con «movewindowpixel exact».
     function moveWindowTo(windowId, x, y): bool {
         const win = root.windowById(windowId);
@@ -388,7 +388,7 @@ Item {
         return root.noteAction("setWorkspaceLayout", true);
     }
 
-    // Modo de ALBA: flotante suelta las ventanas del escritorio; mosaico las
+    // Modo del shell: flotante suelta las ventanas del escritorio; mosaico las
     // vuelve a repartir. Las minimizadas, fijadas y a pantalla completa no se
     // tocan.
     function setWorkspaceMode(workspaceId, mode): bool {

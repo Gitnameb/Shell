@@ -10,24 +10,28 @@ Pill {
     id: root
 
     property string key: ""
+    // En la barra vertical solo cabe el icono: se ocultan porcentajes y el
+    // tráfico de red se resume con su icono.
+    readonly property bool compact: SettingsState.barVertical
 
     // Como en el ejemplo web, el botón mide el icono más un borde mínimo: es
     // más alto que ancho, los controles quedan juntos y el ancho acompaña a
     // `barIconSize`. El tráfico de red solo lleva el relleno de sus cifras.
-    horizontalPadding: root.key === "net" ? 4 : 3
+    horizontalPadding: root.compact ? 2
+        : (root.key === "net" ? 4 : 3)
     // El tráfico de red mantiene un ancho fijo para que sus cifras, al pasar
     // de «9» a «1,2», no muevan al resto de controles de la barra. 50 px
     // cubren el caso más largo («1024,0 MB/s») sin dejar un hueco excesivo.
-    fixedWidth: root.key === "net" ? 50 : 0
+    fixedWidth: root.key === "net" ? (root.compact ? 30 : 50) : 0
     readonly property real glyphSize: SettingsState.barIconSize
 
     // Elige el SVG del Wi-Fi con la misma escala de bandas que el diseño.
     function wifiSource(strength: real): string {
         if (strength >= 0.75)
-            return AlbaIcons.src("wifi-3");
+            return ShellIcons.src("wifi-3");
         if (strength >= 0.5)
-            return AlbaIcons.src("wifi-2");
-        return AlbaIcons.src("wifi-1");
+            return ShellIcons.src("wifi-2");
+        return ShellIcons.src("wifi-1");
     }
 
     readonly property var wifiDevice: {
@@ -207,10 +211,11 @@ Pill {
         if (root.key === "keyboard")
             return KeyboardState.visible ? Theme.accent : Theme.accentFaded;
         if (root.key === "clipboard")
-            return ClipboardState.count > 0 ? Theme.accent : Theme.accentFaded;
+            return ClipboardState.count > 0
+                || QuickPanelState.isOpen("clipboard")
+                ? Theme.accent : Theme.accentFaded;
         if (root.key === "settings")
-            return NotificationState.panelOpen
-                && NotificationState.panelView === "settings"
+            return QuickPanelState.isOpen("settings")
                 ? Theme.accent : Theme.accentFaded;
         if (root.key === "dns")
             return DnsState.allAuto ? Theme.accentFaded : Theme.accent;
@@ -227,41 +232,41 @@ Pill {
     readonly property string iconSource: {
         if (root.key === "wifi") {
             if (root.wiredConnected)
-                return AlbaIcons.src(root.wiredUsb ? "usb" : "wired");
+                return ShellIcons.src(root.wiredUsb ? "usb" : "wired");
             if (!root.wifiConnected)
-                return AlbaIcons.src("globe-off");
+                return ShellIcons.src("globe-off");
             if (!root.activeWifi)
-                return AlbaIcons.src("wifi-3");
+                return ShellIcons.src("wifi-3");
             return root.wifiSource(root.activeWifi.signalStrength);
         }
         if (root.key === "bluetooth")
-            return AlbaIcons.src("bluetooth");
+            return ShellIcons.src("bluetooth");
         if (root.key === "night")
-            return AlbaIcons.src("moon");
+            return ShellIcons.src("moon");
         if (root.key === "airplane")
-            return AlbaIcons.src("plane");
+            return ShellIcons.src("plane");
         if (root.key === "brightness")
-            return AlbaIcons.src("sun");
+            return ShellIcons.src("sun");
         if (root.key === "extraDim")
-            return AlbaIcons.src("dim");
+            return ShellIcons.src("dim");
         if (root.key === "cpu")
-            return AlbaIcons.src("cpu");
+            return ShellIcons.src("cpu");
         if (root.key === "vpn")
-            return AlbaIcons.src("shield");
+            return ShellIcons.src("shield");
         if (root.key === "net")
-            return AlbaIcons.src("net");
+            return ShellIcons.src("net");
         if (root.key === "keyboard")
-            return AlbaIcons.src("keyboard");
+            return ShellIcons.src("keyboard");
         if (root.key === "clipboard")
-            return AlbaIcons.src("clipboard");
+            return ShellIcons.src("clipboard");
         if (root.key === "hotspot")
-            return AlbaIcons.src("hotspot");
+            return ShellIcons.src("hotspot");
         if (root.key === "settings")
-            return AlbaIcons.src("settings");
+            return ShellIcons.src("settings");
         if (root.key === "dns")
-            return AlbaIcons.src("dns");
+            return ShellIcons.src("dns");
         if (root.key === "gpu")
-            return AlbaIcons.src("gpu");
+            return ShellIcons.src("gpu");
         return "";
     }
 
@@ -304,9 +309,8 @@ Pill {
     }
 
     active: {
-        if (root.key === "settings")
-            return NotificationState.panelOpen
-                && NotificationState.panelView === "settings";
+        if (root.key === "settings" || root.key === "clipboard")
+            return QuickPanelState.isOpen(root.key);
         if (root.key === "wifi")
             return root.wiredConnected || root.wifiConnected;
         if (root.key === "bluetooth")
@@ -335,9 +339,6 @@ Pill {
             return VpnState.active;
         if (root.key === "keyboard")
             return KeyboardState.visible;
-        if (root.key === "clipboard")
-            return NotificationState.panelOpen
-                && NotificationState.panelView === "clipboard";
         if (root.key === "dns")
             return !DnsState.allAuto;
         return false;
@@ -350,12 +351,10 @@ Pill {
             AirplaneState.toggle();
             return;
         }
-        if (NotificationState.panelOpen
-                && NotificationState.panelView === root.key) {
-            NotificationState.hidePanel();
-        } else {
-            NotificationState.openPanelView(root.key);
-        }
+        // Cada control abre su propio panel rápido, sin la sección de
+        // notificaciones. El ancla es el centro del control en la barra.
+        const point = root.mapToItem(null, root.width / 2, root.height / 2);
+        QuickPanelState.toggle(root.key, point.x, point.y);
     }
     onDragStarted: ControlDrag.begin(root.key, BarState.label(root.key), "bar")
     onDragFinished: ControlDrag.end()
@@ -379,7 +378,7 @@ Pill {
     // Controles normales: icono de estado (y, en Wi-Fi, un segundo icono si
     // hay cable y Wi-Fi conectados a la vez).
     Row {
-        visible: root.key !== "net"
+        visible: root.key !== "net" || root.compact
         spacing: 4
 
         Item {
@@ -392,7 +391,7 @@ Pill {
             width: shown ? root.glyphSize : 0
             height: root.glyphSize
 
-            AlbaIcon {
+            ShellIcon {
                 id: mainIcon
 
                 anchors.centerIn: parent
@@ -440,12 +439,12 @@ Pill {
             width: shown ? side : 0
             height: root.glyphSize
 
-            AlbaIcon {
+            ShellIcon {
                 anchors.centerIn: parent
                 visible: wifiSlot.shown
                 source: root.activeWifi
                     ? root.wifiSource(root.activeWifi.signalStrength)
-                    : AlbaIcons.src("wifi-3")
+                    : ShellIcons.src("wifi-3")
                 color: root.activeWifi
                     && root.activeWifi.signalStrength < 0.5
                     ? Theme.warning : Theme.accent
@@ -456,7 +455,8 @@ Pill {
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            visible: (root.key === "volume" && Audio.available
+            visible: !root.compact
+                && ((root.key === "volume" && Audio.available
                     && (SettingsState.showVolumePercent || Audio.muted))
                 || (root.key === "brightness"
                     && SettingsState.showBrightnessPercent)
@@ -467,7 +467,7 @@ Pill {
                 || (root.key === "gpu" && SettingsState.showTemps)
                 || (root.key === "bluetooth"
                     && SettingsState.showBluetoothPercent
-                    && root.btBatteryLevel >= 0)
+                    && root.btBatteryLevel >= 0))
             text: {
                 if (root.key === "volume")
                     return Audio.muted ? "Mudo" : Math.round(Audio.volume * 100) + "%";
@@ -496,7 +496,7 @@ Pill {
     // Tráfico de red: número y unidad a la izquierda, flechas a la derecha,
     // igual que el widget del diseño (sin icono intermedio).
     Row {
-        visible: root.key === "net"
+        visible: root.key === "net" && !root.compact
         spacing: 1
 
         Column {

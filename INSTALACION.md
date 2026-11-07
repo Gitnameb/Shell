@@ -1,6 +1,6 @@
-# ALBA · Instalación limpia en Debian 13
+# Shell · Instalación limpia en Debian 13
 
-Guía para reconstruir ALBA + Umbriel en el mismo equipo, partiendo de un
+Guía para reconstruir el shell + Umbriel en el mismo equipo, partiendo de un
 Debian limpio. Está pensada para no depender de esta sesión ni de la memoria:
 incluye repositorios, paquetes, compilación del fork, archivos de usuario,
 servicios y comprobaciones.
@@ -30,11 +30,11 @@ El instalador:
 1. Añade `trixie-backports` y el repositorio de Noctalia.
 2. Instala Quickshell, Umbriel, el portal, KDE/Qt, audio, red y las
    dependencias de compilación.
-3. Enlaza el shell en `~/.config/quickshell/alba` y copia los scripts a
+3. Enlaza el shell en `~/.config/quickshell/shell` y copia los scripts a
    `~/.local/bin`.
 4. Configura NetworkManager para que gestione Ethernet y Wi-Fi (instala
    `wpasupplicant` y `rfkill`, y retira las interfaces de ifupdown).
-5. Copia la configuración de ALBA y Umbriel **sin sobrescribir** la que ya
+5. Copia la configuración del shell y Umbriel **sin sobrescribir** la que ya
    exista. Con `--force-config` la reemplaza y guarda una copia `.bak`.
 6. Crea la regla de sudoers de `ddcutil` y activa la unidad de alarmas.
 7. Compila e instala el fork de Umbriel con `scripts/install-umbriel-fork.sh`.
@@ -66,7 +66,7 @@ Opciones: `--dry-run`, `--skip-packages`, `--skip-fork`, `--skip-config`,
 | Bluetooth | Intel AX210 (bluez) |
 | Ethernet | Realtek RTL8111 |
 | Monitor | LG FULL HD por HDMI-A-1, 1920×1080 |
-| Batería | No hay; el icono de ALBA muestra corriente y no porcentaje |
+| Batería | No hay; el icono del shell muestra corriente y no porcentaje |
 | Sesión | Umbriel (Wayland), SDDM |
 | Escritorios | 9 fijos, configurados en Umbriel |
 | Repos extra | `trixie-backports` y Noctalia (`pkg.noctalia.dev`) |
@@ -138,15 +138,15 @@ Los archivos de referencia están copiados en `install/apt/`.
 ## 3. Paquetes
 
 La vía más fiel a esta instalación es instalar Debian 13 con el entorno
-**KDE Plasma** (`task-kde-desktop`). Aunque ALBA sustituye a Plasma como shell,
+**KDE Plasma** (`task-kde-desktop`). Aunque el shell sustituye a Plasma,
 KDE aporta SDDM, Qt 6, Breeze, `kdialog`, `plasma-integration`, PipeWire,
 NetworkManager, BlueZ, UPower, Polkit y el portal de KDE.
 
 El instalador también funciona sobre un Debian mínimo: instala solo las
-librerías y herramientas de KDE que necesita ALBA, **sin `plasma-workspace` ni
+librerías y herramientas de KDE que necesita el shell, **sin `plasma-workspace` ni
 `kde-cli-tools`**. Eso evita arrastrar KWin y el escritorio Plasma completo.
 La contrapartida es que las apps KDE usarán Breeze claro/oscuro, pero no
-heredarán el acento personalizado de ALBA; eso queda pendiente de una
+heredarán el acento personalizado del shell; eso queda pendiente de una
 alternativa ligera.
 
 > **Si quieres el modo ligero de verdad**, instala Debian **sin** el task de KDE
@@ -174,7 +174,7 @@ sudo apt install \
 La lista completa, separada por capas y con notas sobre lo que no hace falta,
 está en `install/packages.txt`.
 
-### Dependencias que usa ALBA
+### Dependencias que usa el shell
 
 - **Qt/Quickshell:** `quickshell`, `qml6-module-qtquick-effects`,
   `qml6-module-qt5compat-graphicaleffects` (portada redondeada y tintado de
@@ -183,7 +183,7 @@ está en `install/packages.txt`.
   `breeze-icon-theme`, `breeze-gtk-theme`, `breeze-cursor-theme`,
   `qt6-wayland`, `qt6-qpa-plugins`, `qt6-svg-plugins`.
   `plasma-workspace` y `kde-cli-tools` **no** son necesarios; solo aportan
-  `plasma-apply-colorscheme` (acento en apps KDE) y herramientas que ALBA no usa.
+  `plasma-apply-colorscheme` (acento en apps KDE) y herramientas que el shell no usa.
 - **Audio:** `pipewire`, `pipewire-bin`, `pipewire-pulse`, `wireplumber`,
   `libpipewire-0.3-0t64`, `libpipewire-0.3-modules` y `libspa-0.2-modules`,
   **todos de `trixie-backports` y en el mismo bloque**; `wpctl` para los atajos
@@ -201,7 +201,7 @@ está en `install/packages.txt`.
   (QR del hotspot).
 - **Energía:** `upower`, `power-profiles-daemon`, `powerprofilesctl`.
 - **Brillo:** `ddcutil` y una regla de sudoers (ver abajo).
-- **Bloqueo:** `swayidle` y `hyprlock`; el script `alba-idle` los usa.
+- **Bloqueo:** `swayidle` y `hyprlock`; el script `shell-idle` los usa.
 - **Teclado en pantalla:** `wvkbd` (`wvkbd-mobintl`).
 - **Notificaciones/diálogos:** `libnotify-bin`, `kdialog`; `zenity` es un
   respaldo opcional que no está instalado.
@@ -262,7 +262,7 @@ sudo apt install -t trixie-backports wayland-protocols libwayland-dev
 ## 4. Compilar e instalar el fork de Umbriel
 
 El paquete `umbriel` instala el binario original, la sesión de SDDM,
-`start-umbriel`, la configuración de ejemplo y el portal. El fork de ALBA
+`start-umbriel`, la configuración de ejemplo y el portal. El fork del shell
 sustituye solo `/usr/bin/umbriel` para añadir la barra nativa con seis botones,
 icono, subtítulo y otras mejoras.
 
@@ -305,7 +305,7 @@ Opción B, partir de Umbriel upstream y aplicar el parche:
 git clone https://github.com/noctalia-dev/umbriel.git ~/umbriel-fork
 cd ~/umbriel-fork
 git checkout b6c4b7d
-git apply ~/Documents/Alba/umbriel-fork.patch
+git apply ~/Shell/umbriel-fork.patch
 ```
 
 ### 4.3 Compilar e instalar
@@ -337,7 +337,7 @@ sudo cp build/umbriel /usr/bin/umbriel.new
 sudo mv -f /usr/bin/umbriel.new /usr/bin/umbriel
 
 # Regenerar el parche si se tocó el fork
-git diff b6c4b7d > ~/Documents/Alba/umbriel-fork.patch
+git diff b6c4b7d > ~/Shell/umbriel-fork.patch
 ```
 
 Después hay que **cerrar sesión y volver a entrar** para que el compositor use
@@ -361,16 +361,16 @@ sudo mv -f /usr/bin/umbriel.restore /usr/bin/umbriel
 ```
 
 Cerrar sesión y volver a entrar. Esto elimina la barra nativa del fork, pero
-ALBA sigue funcionando con el binario estándar.
+El shell sigue funcionando con el binario estándar.
 
 ---
 
-## 5. Instalar ALBA
+## 5. Instalar el shell
 
 ### 5.1 Enlazar el shell
 
 ```sh
-ln -sfn ~/Documents/Alba ~/.config/quickshell/alba
+ln -sfn ~/Shell ~/.config/quickshell/shell
 ```
 
 Quickshell recarga los QML al guardar. El pragma `UseQApplication` de
@@ -382,17 +382,24 @@ Copiar desde `install/bin/` a `~/.local/bin/` y dar permisos:
 
 ```sh
 mkdir -p ~/.local/bin
-install -m755 install/bin/alba-start ~/.local/bin/alba-start
-install -m755 install/bin/alba-idle ~/.local/bin/alba-idle
-install -m755 install/bin/alba-keyboard-layout ~/.local/bin/alba-keyboard-layout
-install -m755 install/bin/alba-umbriel-theme ~/.local/bin/alba-umbriel-theme
+install -m755 install/bin/shell-start ~/.local/bin/shell-start
+install -m755 install/bin/shell-idle ~/.local/bin/shell-idle
+install -m755 install/bin/shell-keyboard-layout ~/.local/bin/shell-keyboard-layout
+install -m755 install/bin/shell-umbriel-theme ~/.local/bin/shell-umbriel-theme
+install -m755 install/bin/shell-config-set ~/.local/bin/shell-config-set
+install -m755 install/bin/umbriel-config-guard ~/.local/bin/umbriel-config-guard
 ```
 
-- `alba-start`: exporta `QT_QPA_PLATFORMTHEME=kde` y
-  `QS_ICON_THEME=breeze-dark`, y ejecuta `qs -c alba -d`.
-- `alba-idle`: bloqueo con `swayidle` + `hyprlock`.
-- `alba-keyboard-layout`: escribe `[input.keyboard] layout` en Umbriel.
-- `alba-umbriel-theme`: sincroniza colores y acento con la barra nativa.
+- `shell-start`: exporta `QT_QPA_PLATFORMTHEME=kde` y
+  `QS_ICON_THEME=breeze-dark`, y ejecuta `qs -c shell -d`. También llama al
+  guardián antes de arrancar el shell.
+- `shell-idle`: bloqueo con `swayidle` + `hyprlock`.
+- `shell-keyboard-layout`: escribe `[input.keyboard] layout` en Umbriel.
+- `shell-umbriel-theme`: sincroniza colores y acento con la barra nativa.
+- `shell-config-set`: único programa que sustituye `config.toml`; aplica el
+  parche, valida y hace la sustitución atómica.
+- `umbriel-config-guard`: repara `config.toml` antes de Umbriel y guarda copias
+  buenas y rotas.
 
 ### 5.3 Arranque automático
 
@@ -400,20 +407,20 @@ En `~/.config/umbriel/config.toml`:
 
 ```toml
 [general]
-autostart = ["/home/TU_USUARIO/.local/bin/alba-start"]
+autostart = ["/home/TU_USUARIO/.local/bin/shell-start"]
 ```
 
 Sustituye `TU_USUARIO` por tu usuario. El instalador lo hace solo.
 
-### 5.4 Preferencias de ALBA
+### 5.4 Preferencias del shell
 
 Si se quieren conservar la disposición actual de la barra, el fondo, el clima y
 los modos por escritorio:
 
 ```sh
-mkdir -p ~/.config/alba
-cp install/config/alba-settings.conf ~/.config/alba/settings.conf
-cp install/config/alba-display.conf ~/.config/alba/display.conf
+mkdir -p ~/.config/shell
+cp install/config/shell-settings.conf ~/.config/shell/settings.conf
+cp install/config/shell-display.conf ~/.config/shell/display.conf
 ```
 
 Revisar `wallpaperPath` (la plantilla lo deja vacío y usa un color de fondo) y
@@ -448,9 +455,56 @@ Validar siempre:
 umbriel config validate -c ~/.config/umbriel/config.toml
 ```
 
+### 6.1 Red de seguridad de la configuración
+
+Todos los ajustes que escriben `config.toml` pasan por `shell-config-set`, que
+serializa, valida y sustituye el archivo de forma atómica. Para que una
+escritura incompleta no deje el escritorio negro, el instalador añade:
+
+- `~/.local/bin/shell-config-set`: único programa que sustituye
+  `config.toml`. Aplica parches por sección y conserva comentarios y el resto
+  del archivo.
+- `~/.config/umbriel/config.toml.template`: plantilla completa ya renderizada
+  para el usuario.
+- `~/.config/umbriel/config.toml.good`: última configuración válida con
+  `autostart` activo.
+- `~/.local/bin/umbriel-config-guard`: repara el archivo antes de arrancar
+  Umbriel y guarda copias de las versiones rotas.
+- `~/.config/systemd/user/umbriel.service.d/50-config-guard.conf`: ejecuta el
+  guardián como `ExecStartPre` de `umbriel.service`.
+
+Si instalas a mano, copia también el drop-in:
+
+```sh
+mkdir -p ~/.config/systemd/user/umbriel.service.d
+cp install/systemd/umbriel-config-guard.conf \
+    ~/.config/systemd/user/umbriel.service.d/50-config-guard.conf
+systemctl --user daemon-reload
+```
+
+Comprobar que está activo:
+
+```sh
+~/.local/bin/shell-config-set --help
+~/.local/bin/umbriel-config-guard status
+systemctl --user show umbriel.service -p ExecStartPre
+```
+
+Pruebas del escritor y de los seis scripts que lo usan:
+
+```sh
+./scripts/test-config-set.sh
+./scripts/test-config-writers.sh
+./scripts/test-config-guard.sh
+```
+
+Si el escritorio vuelve a quedar negro, la recuperación paso a paso está en
+`CONFIGURACION-UMBRIEL.md`. El resumen es: `Ctrl+Alt+F3`,
+`~/.local/bin/umbriel-config-guard ensure`, validar y volver a lanzar el shell.
+
 Si el monitor no es `HDMI-A-1`, cambiar el conector. En un portátil será
 `eDP-1` o el que corresponda. **Pendiente de automatizar**: hoy hay que repetir
-esa sección por conector; más adelante conviene un `alba-workspaces` que lea
+esa sección por conector; más adelante conviene un `shell-workspaces` que lea
 `umbriel outputs --json` y escriba el inventario correcto.
 
 ---
@@ -484,24 +538,24 @@ Paquetes: `xdg-desktop-portal`, `xdg-desktop-portal-gtk`,
 
 ```sh
 mkdir -p ~/.config/systemd/user
-cp install/systemd/alba-alarms.service ~/.config/systemd/user/
+cp install/systemd/shell-alarms.service ~/.config/systemd/user/
 systemctl --user daemon-reload
-systemctl --user enable --now alba-alarms.service
+systemctl --user enable --now shell-alarms.service
 ```
 
-La unidad ejecuta `%h/Documents/Alba/scripts/alba-alarms`. Comprueba
-`alarms.conf` y `timer.conf` en `~/.config/alba/`.
+La unidad ejecuta `%h/Shell/scripts/shell-alarms`. Comprueba
+`alarms.conf` y `timer.conf` en `~/.config/shell/`.
 
 ### 7.3 Brillo por DDC/CI
 
 `ddcutil` instala la regla udev `60-ddcutil-i2c.rules`, que da acceso al
-usuario al bus I2C del monitor. Aun así, ALBA llama a `sudo -n ddcutil`, así que
+usuario al bus I2C del monitor. Aun así, el shell llama a `sudo -n ddcutil`, así que
 hace falta la regla de sudoers:
 
 ```sh
 sudo install -m440 -o root -g root \
-  install/sudoers/alba-ddcutil /etc/sudoers.d/alba-ddcutil
-sudo visudo -cf /etc/sudoers.d/alba-ddcutil
+  install/sudoers/shell-ddcutil /etc/sudoers.d/shell-ddcutil
+sudo visudo -cf /etc/sudoers.d/shell-ddcutil
 sudo -n ddcutil detect
 ```
 
@@ -517,7 +571,7 @@ en el primer arranque hay que elegir **Umbriel** una vez.
 Si se quiere autoinicio (opcional):
 
 ```ini
-# /etc/sddm.conf.d/20-alba.conf
+# /etc/sddm.conf.d/20-autologin.conf
 [Autologin]
 User=username
 Session=umbriel
@@ -582,9 +636,9 @@ No es necesario para el funcionamiento normal.
 - **Proxy por red:** el engranaje general de la vista Red permite elegir por
   conexión entre sin proxy, automático (PAC) o manual. NetworkManager solo
   admite `none`/`auto`, así que el modo manual se guarda como un PAC generado.
-  Los datos editables viven en `~/.config/alba/proxy.json`. Si la red está
+  Los datos editables viven en `~/.config/shell/proxy.json`. Si la red está
   activa, el proxy manual también se escribe en
-  `~/.config/environment.d/90-alba-proxy.conf` para la próxima sesión.
+  `~/.config/environment.d/90-shell-proxy.conf` para la próxima sesión.
 - **Aviso de dependencias:** el icono de comprobación situado junto a
   «No molestar» ejecuta `scripts/check-deps.sh` solo al pulsarlo. Si falta algo,
   muestra una tarjeta con los paquetes y el comando para instalarlos, con un
@@ -596,7 +650,7 @@ Los perfiles de red y VPN viven en `/etc/NetworkManager/system-connections/`
 
 ### 7.6 Tema de apps
 
-`alba-system-theme` necesita:
+`shell-system-theme` necesita:
 
 - `gsettings` (`libglib2.0-bin`)
 - `kwriteconfig6` (`libkf6config-bin`)
@@ -604,7 +658,7 @@ Los perfiles de red y VPN viven en `/etc/NetworkManager/system-connections/`
 
 `plasma-apply-colorscheme` (`plasma-workspace`) es **opcional**: si está, aplica
 el acento personalizado a las apps KDE; si no, el script deja `ColorScheme` e
-`Icons` en `kdeglobals` y las apps usan Breeze normal. ALBA y GTK no dependen de
+`Icons` en `kdeglobals` y las apps usan Breeze normal. El shell y GTK no dependen de
 él.
 
 ### 7.7 Puente X11
@@ -625,43 +679,43 @@ sigue pendiente de probar.
 
 ### 8.1 Proyecto y fork
 
-- `~/Documents/Alba/` completo (no es un repositorio git).
+- `~/Shell/` completo, incluido `.git` si se quiere conservar la historia.
 - `~/umbriel-fork/` completo, incluido `.git` si se quiere conservar la historia.
-- `~/Documents/Alba/umbriel-fork.patch`.
+- `~/Shell/umbriel-fork.patch`.
 - `/usr/bin/umbriel.stock-0.1.0` (binario original del paquete).
 
 ### 8.2 Configuración de usuario
 
-- `~/.config/alba/`: `settings.conf`, `display.conf`, `alarms.conf`,
+- `~/.config/shell/`: `settings.conf`, `display.conf`, `alarms.conf`,
   `notificaciones.json`, `autoocultar`, scripts `alternar-*.sh`.
-- `~/.config/alba/credenciales`: contraseña local de sudo, modo 600. No la usa
+- `~/.config/shell/credenciales`: contraseña local de sudo, modo 600. No la usa
   el código actual; no incluirla en copias compartidas.
 - `~/.config/umbriel/config.toml`.
 - `~/.config/xdg-desktop-portal/portals.conf`.
-- `~/.config/systemd/user/alba-alarms.service`.
-- `~/.local/bin/alba-*`.
+- `~/.config/systemd/user/shell-alarms.service`.
+- `~/.local/bin/shell-*`.
 - `~/.config/autostart/org.kde.xwaylandvideobridge.desktop`.
 - `~/.config/kdeglobals` y `~/.config/gtk-*/` si se quieren conservar; el script
   de tema los recrea.
 - Tu fondo de pantalla (cópialo aparte y ajusta `wallpaperPath`).
-- `~/.local/state/alba/` (historial de portapapeles y progreso; opcional).
+- `~/.local/state/shell/` (historial de portapapeles y progreso; opcional).
 
 ### 8.3 Red y secretos
 
 - `/etc/NetworkManager/system-connections/` (Wi-Fi, VPN; permisos root).
-- `/etc/sudoers.d/alba-ddcutil`.
-- Claves SSH/GPG y demás datos personales, fuera del alcance de ALBA.
+- `/etc/sudoers.d/shell-ddcutil`.
+- Claves SSH/GPG y demás datos personales, fuera del alcance del shell.
 
 ### 8.4 Copia rápida
 
 ```sh
-mkdir -p ~/backup-alba
-tar -C "$HOME" -czf ~/backup-alba/alba-config.tar.gz \
-  Documents/Alba .config/alba .config/umbriel \
+mkdir -p ~/backup-shell
+tar -C "$HOME" -czf ~/backup-shell/shell-config.tar.gz \
+  Shell .config/shell .config/umbriel \
   .config/xdg-desktop-portal .config/systemd/user \
   .config/autostart .local/bin
-sudo tar -C / -czf ~/backup-alba/alba-system.tar.gz \
-  etc/sudoers.d/alba-ddcutil \
+sudo tar -C / -czf ~/backup-shell/shell-system.tar.gz \
+  etc/sudoers.d/shell-ddcutil \
   etc/NetworkManager/system-connections \
   usr/bin/umbriel.stock-0.1.0
 ```
@@ -681,14 +735,14 @@ Revisar que el archivo de red no se comparte sin protección.
 4. **Guardar la copia** de la sección 8 y comprobar que se puede leer.
 5. **Probar el instalador en una VM o en un disco aparte.** Ejecuta primero
    `./install.sh --dry-run`, revisa la lista y después `./install.sh`. Confirma
-   que ALBA arranca antes de tocar el disco principal.
+   que el shell arranca antes de tocar el disco principal.
 6. **Anotar la contraseña de sudo** o tenerla a mano; el instalador la pedirá
    para apt, el fork y la regla de `ddcutil`.
 7. **Comprobar el disco**: no confundir la raíz Debian con las particiones
    Windows/NTFS.
 8. **No ejecutar `umbriel config-replace`** sin querer: borra los layouts por
    escritorio. Si se usa, reaplicar con
-   `qs ipc -c alba call windows mode <n> <modo>`.
+   `qs ipc -c shell call windows mode <n> <modo>`.
 
 ---
 
@@ -696,16 +750,21 @@ Revisar que el archivo de red no se comparte sin protección.
 
 ```sh
 # Shell y compositor
-qs -c alba
-qs ipc -c alba call windows status
+qs -c shell
+qs ipc -c shell call windows status
 umbriel config validate -c ~/.config/umbriel/config.toml
 umbriel workspaces --json
+
+# Red de seguridad de config.toml (debe mostrar la ruta expandida y ignore_errors=yes)
+~/.local/bin/shell-config-set --help >/dev/null
+~/.local/bin/umbriel-config-guard status
+systemctl --user show umbriel.service -p ExecStartPre
 
 # Debe haber 9 escritorios y el 9 debe poder seleccionarse
 umbriel msg workspace-switch 9
 
 # Servicios
-systemctl --user status alba-alarms --no-pager
+systemctl --user status shell-alarms --no-pager
 systemctl status bluetooth NetworkManager power-profiles-daemon --no-pager
 
 # Red: la Ethernet debe estar «connected» y el Wi-Fi no «unmanaged»/«unavailable»
@@ -722,10 +781,10 @@ Comprobar a mano:
 - Música: portada redondeada, título/artista, controles al pasar el ratón.
 - Tráfico de red con ancho fijo.
 - VPN: importar `.ovpn`, engranaje, nombre y arranque automático.
-- Clima manual, alarmas y temporizador con ALBA cerrada.
+- Clima manual, alarmas y temporizador con el shell cerrado.
 - Portapapeles, teclado en pantalla, bandeja del sistema.
 - Brillo, atenuación extra y luz nocturna.
-- Bloqueo con `Mod+Shift+L` y `alba-idle`.
+- Bloqueo con `Mod+Shift+L` y `shell-idle`.
 - Reinicio de sesión y vuelta a entrar sin perder ventanas minimizadas.
 
 ---

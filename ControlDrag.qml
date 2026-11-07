@@ -37,12 +37,34 @@ Singleton {
     readonly property var screen: Quickshell.screens.length > 0
         ? Quickshell.screens[0]
         : null
+    readonly property bool vertical: SettingsState.barVertical
+    readonly property bool autoHide: SettingsState.autoHideBar
+    readonly property real barLeft: !root.screen
+        ? 0
+        : (root.vertical
+            ? (SettingsState.barAtLeft
+                ? root.screen.x + (root.autoHide ? 0 : Theme.edge)
+                : root.screen.x + root.screen.width
+                    - Theme.edge - Theme.barHeight)
+            : root.screen.x + Theme.edge)
     readonly property real barTop: !root.screen
         ? 0
-        : (SettingsState.barAtTop
+        : (root.vertical
             ? root.screen.y + Theme.edge
-            : root.screen.y + root.screen.height - Theme.edge - Theme.barHeight)
-    readonly property real barBottom: root.barTop + Theme.barHeight
+            : (SettingsState.barAtTop
+                ? root.screen.y + (root.autoHide ? 0 : Theme.edge)
+                : root.screen.y + root.screen.height
+                    - Theme.edge - Theme.barHeight))
+    readonly property real barRight: !root.screen
+        ? 0
+        : (root.vertical
+            ? root.barLeft + Theme.barHeight
+            : root.screen.x + root.screen.width - Theme.edge)
+    readonly property real barBottom: !root.screen
+        ? 0
+        : (root.vertical
+            ? root.screen.y + root.screen.height - Theme.edge
+            : root.barTop + Theme.barHeight)
 
     function begin(key: string, label: string, origin: string): void {
         root.key = key;
@@ -66,10 +88,10 @@ Singleton {
         if (!s)
             return;
 
-        root.overBar = y >= root.barTop
-            && y <= root.barBottom
-            && x >= s.x + Theme.edge
-            && x <= s.x + s.width - Theme.edge;
+        root.overBar = x >= root.barLeft
+            && x <= root.barRight
+            && y >= root.barTop
+            && y <= root.barBottom;
 
         const bounds = root.panelBounds;
         root.overPanel = bounds.width > 0

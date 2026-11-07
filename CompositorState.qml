@@ -3,7 +3,7 @@ pragma Singleton
 import Quickshell
 import QtQuick
 
-// Contrato común entre ALBA y el compositor. La interfaz (barra, centro de
+// Contrato común entre el shell y el compositor. La interfaz (barra, centro de
 // control, overlay de ventanas) habla solo con este objeto; cada compositor
 // aporta un backend intercambiable que traduce ventanas, escritorios,
 // capacidades y acciones a este formato.
@@ -21,9 +21,9 @@ Singleton {
         String(Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") || "")
     readonly property string umbrielSocket:
         String(Quickshell.env("UMBRIEL_SOCKET") || "")
-    // Permite forzar un backend al probar: ALBA_COMPOSITOR=hyprland.
+    // Permite forzar un backend al probar: SHELL_COMPOSITOR=hyprland.
     readonly property string override:
-        String(Quickshell.env("ALBA_COMPOSITOR") || "").toLowerCase()
+        String(Quickshell.env("SHELL_COMPOSITOR") || "").toLowerCase()
 
     // El orden importa. Primero manda el escritorio que declara la sesión
     // actual; después los sockets. Así una sesión anidada (por ejemplo Umbriel
@@ -234,7 +234,7 @@ Singleton {
     }
 
     // Mueve una ventana flotante a coordenadas globales. Lo usa la barra de
-    // título de ALBA para arrastrar sin depender de un plugin del compositor.
+    // título del shell para arrastrar sin depender de un plugin del compositor.
     function moveWindowTo(windowId, x, y): bool {
         return root.callBackend("moveWindowTo", windowId, x, y);
     }
@@ -247,7 +247,7 @@ Singleton {
         return root.callBackend("setWorkspaceLayout", workspaceId, layout);
     }
 
-    // Aplica el modo de ALBA al escritorio. Hyprland lo resuelve flotando o
+    // Aplica el modo del shell al escritorio. Hyprland lo resuelve flotando o
     // mosaicando sus ventanas; Umbriel cambia el layout nativo del escritorio.
     function setWorkspaceMode(workspaceId, mode): bool {
         return root.callBackend("setWorkspaceMode", workspaceId, mode);

@@ -22,7 +22,7 @@ PanelWindow {
     focusable: root.visible
 
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.namespace: "alba-welcome-mode"
+    WlrLayershell.namespace: "shell-welcome-mode"
     WlrLayershell.keyboardFocus: root.visible
         ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
@@ -58,7 +58,7 @@ PanelWindow {
 
                 Text {
                     Layout.fillWidth: true
-                    text: "Bienvenido a ALBA"
+                    text: "Bienvenido"
                     color: Theme.accent
                     font.family: Theme.fontFamily
                     font.pixelSize: 9
@@ -149,7 +149,7 @@ PanelWindow {
                                         border.width: 1
                                         border.color: Theme.accentLine
 
-                                        AlbaIcon {
+                                        ShellIcon {
                                             anchors.centerIn: parent
                                             name: option.modelData.icon
                                             color: Theme.accent

@@ -12,7 +12,35 @@ ColumnLayout {
     id: root
 
     property bool active: false
-    readonly property string view: NotificationState.panelView
+    // Vista forzada para el panel rápido de la barra. Vacío usa la vista del
+    // panel de notificaciones; con valor, este componente se muestra solo.
+    property string viewOverride: ""
+    // En modo independiente no hay cuadrícula ni panel de notificaciones: la
+    // vista se pinta sola y el botón de volver la cierra.
+    property bool standalone: false
+    readonly property string view: root.viewOverride.length > 0
+        ? root.viewOverride : NotificationState.panelView
+
+    function setView(value): void {
+        if (root.standalone) {
+            // La vista la fija el panel rápido; se cambia en su estado para
+            // que el binding de SidePanel siga mandando.
+            QuickPanelState.key = String(value || "");
+            return;
+        }
+        NotificationState.panelView = value;
+    }
+
+    function closeView(): void {
+        root.pendingNetworkName = "";
+        root.wifiListFrozen = false;
+        root.syncWifiNetworks();
+        if (root.standalone) {
+            QuickPanelState.hide();
+            return;
+        }
+        NotificationState.panelView = "";
+    }
     // Nombre de la red cuya contraseña se está escribiendo. Se guarda el
     // nombre, no el objeto de NetworkManager, porque los puntos de acceso se
     // destruyen y recrean en cada búsqueda.
@@ -88,12 +116,12 @@ ColumnLayout {
             const text = (pairOut.text || "") + "\n" + (pairErr.text || "");
             root.btBusy = false;
             root.btBusyAddress = "";
-            if (text.indexOf("ALBA_PAIR_OK") !== -1) {
+            if (text.indexOf("SHELL_PAIR_OK") !== -1) {
                 root.btError = "";
                 root.btAdding = false;
                 if (root.btAdapter)
                     root.btAdapter.discovering = false;
-            } else if (text.indexOf("ALBA_PAIR_FAILED") !== -1) {
+            } else if (text.indexOf("SHELL_PAIR_FAILED") !== -1) {
                 root.btError = "No se pudo vincular. Mantén los auriculares "
                     + "en modo vinculación y vuelve a intentarlo.";
             } else if (code !== 0) {
@@ -258,7 +286,7 @@ ColumnLayout {
     readonly property bool networkConnected: root.wiredConnected
         || root.wifiConnected
     readonly property string networkIcon: root.networkConnected
-        ? AlbaIcons.src("globe") : AlbaIcons.src("globe-off")
+        ? ShellIcons.src("globe") : ShellIcons.src("globe-off")
     // `nmManaged` permite distinguir una interfaz que NetworkManager no
     // controla (por ejemplo, porque ifupdown la configuró al instalar Debian)
     // de una que simplemente está desconectada.
@@ -436,14 +464,14 @@ ColumnLayout {
         pairProc.command = [
             "sh", "-c",
             "if bluetoothctl info \"$1\" 2>/dev/null | grep -q 'Paired: yes'; then "
-            + "echo 'ALBA_ALREADY_PAIRED'; "
+            + "echo 'SHELL_ALREADY_PAIRED'; "
             + "else out=$(timeout 30 bluetoothctl pair \"$1\" 2>&1); echo \"$out\"; fi; "
             + "if bluetoothctl info \"$1\" 2>/dev/null | grep -q 'Paired: yes'; then "
             + "bluetoothctl trust \"$1\" >/dev/null 2>&1; "
-            + "echo ALBA_PAIR_OK; "
+            + "echo SHELL_PAIR_OK; "
             + "timeout 12 bluetoothctl connect \"$1\" 2>&1; "
-            + "else echo 'ALBA_PAIR_FAILED'; fi",
-            "alba", dev.address
+            + "else echo 'SHELL_PAIR_FAILED'; fi",
+            "shell", dev.address
         ];
         pairProc.running = true;
     }
@@ -1132,7 +1160,7 @@ ColumnLayout {
             // dentro, junto al estado de Ethernet.
             toggleEnabled: false
             onToggled: Networking.wifiEnabled = !Networking.wifiEnabled
-            onOpened: NotificationState.panelView = "wifi"
+            onOpened: root.setView("wifi")
         }
 
         CcItem {
@@ -1142,7 +1170,7 @@ ColumnLayout {
             iconName: root.btAdapter && root.btAdapter.enabled
                 ? "network-bluetooth-activated"
                 : "network-bluetooth"
-            iconSource: AlbaIcons.src("bluetooth")
+            iconSource: ShellIcons.src("bluetooth")
             iconColor: root.btStateColor()
             label: "Bluetooth"
             dragKey: "bluetooth"
@@ -1163,7 +1191,7 @@ ColumnLayout {
                 if (root.btAdapter)
                     root.btAdapter.enabled = !root.btAdapter.enabled;
             }
-            onOpened: NotificationState.panelView = "bluetooth"
+            onOpened: root.setView("bluetooth")
         }
 
         CcItem {
@@ -1192,7 +1220,7 @@ ColumnLayout {
                 : "No disponible"
             active: Audio.available && !Audio.muted
             onToggled: Audio.toggleMute()
-            onOpened: NotificationState.panelView = "volume"
+            onOpened: root.setView("volume")
         }
 
         CcItem {
@@ -1214,7 +1242,7 @@ ColumnLayout {
                 : (Audio.micMuted ? "Silenciado" : "Activo")
             active: Audio.micAvailable && !Audio.micMuted
             onToggled: Audio.toggleMicMute()
-            onOpened: NotificationState.panelView = "mic"
+            onOpened: root.setView("mic")
         }
 
         CcItem {
@@ -1222,14 +1250,14 @@ ColumnLayout {
             visible: !BarState.has("night") && centerIndex >= 0
             icon: "☾"
             iconName: "redshift-status-on"
-            iconSource: AlbaIcons.src("moon")
+            iconSource: ShellIcons.src("moon")
             iconColor: DisplayState.nightLight ? Theme.warm : Theme.muted
             label: "Luz nocturna"
             dragKey: "night"
             meta: DisplayState.nightLight ? "Activada" : "Desactivada"
             active: DisplayState.nightLight
             onToggled: DisplayState.toggleNight()
-            onOpened: NotificationState.panelView = "night"
+            onOpened: root.setView("night")
         }
 
         CcItem {
@@ -1237,7 +1265,7 @@ ColumnLayout {
             visible: !BarState.has("airplane") && centerIndex >= 0
             icon: "✈"
             iconName: "flightmode-on"
-            iconSource: AlbaIcons.src("plane")
+            iconSource: ShellIcons.src("plane")
             iconColor: root.airplaneActive ? Theme.accent : Theme.muted
             label: "Modo avión"
             dragKey: "airplane"
@@ -1252,7 +1280,7 @@ ColumnLayout {
             visible: !BarState.has("brightness") && centerIndex >= 0
             icon: "☀"
             iconName: "video-display-brightness"
-            iconSource: AlbaIcons.src("sun")
+            iconSource: ShellIcons.src("sun")
             iconColor: DisplayState.brightness < 0.99
                 ? Theme.accent : Theme.muted
             label: "Brillo"
@@ -1262,7 +1290,7 @@ ColumnLayout {
                 ? Math.round(DisplayState.brightness * 100) + "%"
                 : (DisplayState.brightness < 0.99 ? "Ajustado" : "Normal")
             active: DisplayState.brightness < 0.99
-            onOpened: NotificationState.panelView = "brightness"
+            onOpened: root.setView("brightness")
         }
 
         CcItem {
@@ -1270,7 +1298,7 @@ ColumnLayout {
             visible: !BarState.has("extraDim") && centerIndex >= 0
             icon: "◐"
             iconName: "brightness-low"
-            iconSource: AlbaIcons.src("dim")
+            iconSource: ShellIcons.src("dim")
             iconColor: DisplayState.extraDim > 0.01
                 ? Theme.accent : Theme.muted
             label: "Atenuación extra"
@@ -1282,7 +1310,7 @@ ColumnLayout {
                 : "Desactivada"
             active: DisplayState.extraDim > 0.01
             onToggled: DisplayState.toggleExtraDim()
-            onOpened: NotificationState.panelView = "extraDim"
+            onOpened: root.setView("extraDim")
         }
 
         CcItem {
@@ -1290,7 +1318,7 @@ ColumnLayout {
             visible: !BarState.has("hotspot") && centerIndex >= 0
             icon: "◌"
             iconName: "network-wireless-hotspot"
-            iconSource: AlbaIcons.src("hotspot")
+            iconSource: ShellIcons.src("hotspot")
             iconColor: HotspotState.busy
                 ? Theme.warning
                 : (HotspotState.active ? Theme.accent : Theme.muted)
@@ -1301,14 +1329,14 @@ ColumnLayout {
                 : (HotspotState.active ? HotspotState.ssid : "Desactivado")
             active: HotspotState.active
             onToggled: HotspotState.toggle()
-            onOpened: NotificationState.panelView = "hotspot"
+            onOpened: root.setView("hotspot")
         }
 
         CcItem {
             Layout.fillWidth: true
             visible: !BarState.has("music") && centerIndex >= 0
             icon: "♪"
-            iconSource: AlbaIcons.src("music")
+            iconSource: ShellIcons.src("music")
             iconColor: MusicState.playing ? Theme.accent : Theme.muted
             label: "Música"
             dragKey: "music"
@@ -1317,7 +1345,7 @@ ColumnLayout {
                 ? MusicState.title : "Sin reproducción"
             active: MusicState.playing
             onToggled: MusicState.toggle()
-            onOpened: NotificationState.panelView = "music"
+            onOpened: root.setView("music")
         }
 
         CcItem {
@@ -1325,7 +1353,7 @@ ColumnLayout {
             visible: !BarState.has("keyboard") && centerIndex >= 0
             icon: "⌨"
             iconName: "input-keyboard-symbolic"
-            iconSource: AlbaIcons.src("keyboard")
+            iconSource: ShellIcons.src("keyboard")
             iconColor: KeyboardState.visible
                 ? Theme.accent
                 : (KeyboardState.available ? Theme.muted : Theme.faint)
@@ -1335,14 +1363,14 @@ ColumnLayout {
                 + (KeyboardState.visible ? " · Visible" : "")
             active: KeyboardState.visible
             onToggled: KeyboardState.toggle()
-            onOpened: NotificationState.panelView = "keyboard"
+            onOpened: root.setView("keyboard")
         }
 
         CcItem {
             Layout.fillWidth: true
             visible: !BarState.has("clipboard") && centerIndex >= 0
             icon: "▤"
-            iconSource: AlbaIcons.src("clipboard")
+            iconSource: ShellIcons.src("clipboard")
             iconColor: ClipboardState.count > 0
                 ? Theme.accent : Theme.muted
             label: "Portapapeles"
@@ -1353,7 +1381,7 @@ ColumnLayout {
                 : (ClipboardState.count === 1
                     ? "1 texto" : ClipboardState.count + " textos")
             active: ClipboardState.count > 0
-            onOpened: NotificationState.panelView = "clipboard"
+            onOpened: root.setView("clipboard")
         }
 
         CcItem {
@@ -1361,7 +1389,7 @@ ColumnLayout {
             visible: !BarState.has("vpn") && centerIndex >= 0
             icon: "⛨"
             iconName: "network-vpn"
-            iconSource: AlbaIcons.src("shield")
+            iconSource: ShellIcons.src("shield")
             iconColor: VpnState.active
                 ? Theme.accent
                 : (VpnState.configured ? Theme.muted : Theme.faint)
@@ -1373,7 +1401,7 @@ ColumnLayout {
                 : (VpnState.configured ? "Desactivada" : "Sin configurar")
             active: VpnState.active
             onToggled: VpnState.toggleActive()
-            onOpened: NotificationState.panelView = "vpn"
+            onOpened: root.setView("vpn")
         }
 
         CcItem {
@@ -1381,7 +1409,7 @@ ColumnLayout {
             visible: !BarState.has("cpu") && centerIndex >= 0
             icon: "▣"
             iconName: "cpu"
-            iconSource: AlbaIcons.src("cpu")
+            iconSource: ShellIcons.src("cpu")
             iconColor: SystemStats.cpuTemp >= 0
                 ? SystemStats.thermalColor(SystemStats.cpuTemp) : Theme.muted
             label: "Procesador"
@@ -1391,7 +1419,7 @@ ColumnLayout {
                 ? Math.round(SystemStats.cpuLoad) + "% · "
                     + Math.round(SystemStats.cpuTemp) + "°"
                 : "Sin datos"
-            onOpened: NotificationState.panelView = "cpu"
+            onOpened: root.setView("cpu")
         }
 
         CcItem {
@@ -1409,14 +1437,14 @@ ColumnLayout {
                 ? Math.round(SystemStats.gpuLoad) + "% · "
                     + Math.round(SystemStats.gpuTemp) + "°"
                 : "Sin datos"
-            onOpened: NotificationState.panelView = "gpu"
+            onOpened: root.setView("gpu")
         }
 
         CcItem {
             Layout.fillWidth: true
             visible: !BarState.has("net") && centerIndex >= 0
             icon: "⇅"
-            iconSource: AlbaIcons.src("net")
+            iconSource: ShellIcons.src("net")
             iconColor: (SystemStats.netDown + SystemStats.netUp) > 1024
                 ? Theme.accent : Theme.muted
             label: "Red"
@@ -1427,21 +1455,21 @@ ColumnLayout {
                     + "  ↑ " + SystemStats.formatRateShort(SystemStats.netUp)
                 : "Sin conexión"
             active: (SystemStats.netDown + SystemStats.netUp) > 1024
-            onOpened: NotificationState.panelView = "net"
+            onOpened: root.setView("net")
         }
 
         CcItem {
             Layout.fillWidth: true
             visible: !BarState.has("dns") && centerIndex >= 0
             icon: "D"
-            iconSource: AlbaIcons.src("dns")
+            iconSource: ShellIcons.src("dns")
             iconColor: DnsState.allAuto ? Theme.muted : Theme.accent
             label: "DNS"
             dragKey: "dns"
             toggleEnabled: false
             active: !DnsState.allAuto
             meta: DnsState.summary
-            onOpened: NotificationState.panelView = "dns"
+            onOpened: root.setView("dns")
         }
 
         CcItem {
@@ -1449,13 +1477,13 @@ ColumnLayout {
             visible: !BarState.has("settings") && centerIndex >= 0
             icon: "⚙"
             iconName: "applications-system-symbolic"
-            iconSource: AlbaIcons.src("settings")
+            iconSource: ShellIcons.src("settings")
             iconColor: Theme.muted
             label: "Ajustes"
             dragKey: "settings"
             toggleEnabled: false
             meta: "Del shell"
-            onOpened: NotificationState.panelView = "settings"
+            onOpened: root.setView("settings")
         }
 
     }
@@ -1479,10 +1507,12 @@ ColumnLayout {
 
                 Text {
                     anchors.centerIn: parent
-                    text: "‹"
+                    // En el panel rápido no hay cuadrícula a la que volver: el
+                    // mismo botón cierra la ventana.
+                    text: root.standalone ? "×" : "‹"
                     color: Theme.muted
                     font.family: Theme.fontFamily
-                    font.pixelSize: 18
+                    font.pixelSize: root.standalone ? 15 : 18
                 }
 
                 MouseArea {
@@ -1495,10 +1525,7 @@ ColumnLayout {
                             root.closeWifiNetwork();
                             return;
                         }
-                        root.pendingNetworkName = "";
-                        root.wifiListFrozen = false;
-                        root.syncWifiNetworks();
-                        NotificationState.panelView = "";
+                        root.closeView();
                     }
                 }
             }
@@ -1522,9 +1549,9 @@ ColumnLayout {
                 radius: 7
                 color: addWifiMouse.containsMouse ? Theme.hover : "transparent"
 
-                AlbaIcon {
+                ShellIcon {
                     anchors.centerIn: parent
-                    source: AlbaIcons.src("plus")
+                    source: ShellIcons.src("plus")
                     color: root.hiddenNetworkOpen
                         ? Theme.accent : Theme.muted
                     size: 14
@@ -1567,7 +1594,7 @@ ColumnLayout {
                     width: 15
                     height: 15
 
-                    AlbaIcon {
+                    ShellIcon {
                         anchors.fill: parent
                         name: "view-refresh-symbolic"
                         fallbackName: "view-refresh"
@@ -1608,7 +1635,7 @@ ColumnLayout {
                 radius: 7
                 color: clipClearMouse.containsMouse ? Theme.hover : "transparent"
 
-                AlbaIcon {
+                ShellIcon {
                     anchors.centerIn: parent
                     name: "edit-clear-all"
                     color: clipClearMouse.containsMouse
@@ -1650,7 +1677,7 @@ ColumnLayout {
                 border.width: optionsGear.open ? 1 : 0
                 border.color: Theme.accentLine
 
-                AlbaIcon {
+                ShellIcon {
                     anchors.centerIn: parent
                     name: "applications-system-symbolic"
                     fallbackName: "preferences-system-symbolic"
@@ -1679,7 +1706,7 @@ ColumnLayout {
                 }
             }
 
-            AlbaSwitch {
+            ShellSwitch {
                 visible: (root.view === "wifi"
                     || root.view === "bluetooth"
                     || root.view === "night"
@@ -1766,10 +1793,10 @@ ColumnLayout {
                         }
                         spacing: 7
 
-                        AlbaIcon {
+                        ShellIcon {
                             // Icono propio de puerto Ethernet o USB según el
                             // nombre de la interfaz.
-                            source: AlbaIcons.src(root.wiredIsUsb(wiredRow.dev)
+                            source: ShellIcons.src(root.wiredIsUsb(wiredRow.dev)
                                 ? "usb" : "wired")
                             color: wiredRow.dev.connected
                                 ? Theme.accent
@@ -1868,7 +1895,7 @@ ColumnLayout {
                     Layout.preferredWidth: 15
                     Layout.preferredHeight: 15
 
-                    AlbaIcon {
+                    ShellIcon {
                         anchors.fill: parent
                         visible: wifiSpin.busy
                         name: "view-refresh-symbolic"
@@ -2106,7 +2133,7 @@ ColumnLayout {
                             z: 1
                             spacing: 6
 
-                            AlbaIcon {
+                            ShellIcon {
                                 Layout.preferredWidth: 16
                                 Layout.preferredHeight: 16
                                 source: WifiState.signalSource(
@@ -2210,7 +2237,7 @@ ColumnLayout {
                                 color: netGearMouse.containsMouse
                                     ? Theme.hover : "transparent"
 
-                                AlbaIcon {
+                                ShellIcon {
                                     anchors.centerIn: parent
                                     name: "applications-system-symbolic"
                                     fallbackName: "preferences-system-symbolic"
@@ -2408,7 +2435,7 @@ ColumnLayout {
                         font.pixelSize: 10
                     }
 
-                    AlbaSwitch {
+                    ShellSwitch {
                         checked: WifiState.profileAutoconnect
                         onToggled: WifiState.setAutoconnect(
                             root.wifiNetworkSsid,
@@ -2511,7 +2538,7 @@ ColumnLayout {
                         anchors.centerIn: parent
                         spacing: 6
 
-                        AlbaIcon {
+                        ShellIcon {
                             anchors.verticalCenter: parent.verticalCenter
                             name: "edit-delete"
                             fallbackName: "user-trash"
@@ -2570,7 +2597,7 @@ ColumnLayout {
                         font.pixelSize: 10
                     }
 
-                    AlbaSwitch {
+                    ShellSwitch {
                         checked: SettingsState.wifiAutoOff
                         onToggled: SettingsState.setWifiAutoOff(
                             !SettingsState.wifiAutoOff)
@@ -2661,7 +2688,7 @@ ColumnLayout {
                         font.pixelSize: 10
                     }
 
-                    AlbaSwitch {
+                    ShellSwitch {
                         checked: SettingsState.showHiddenWifi
                         onToggled: SettingsState.showHiddenWifi
                             = !SettingsState.showHiddenWifi
@@ -2780,7 +2807,7 @@ ColumnLayout {
                         font.pixelSize: 10
                     }
 
-                    AlbaSwitch {
+                    ShellSwitch {
                         checked: root.btAdapter !== null && root.btAdapter.discoverable
                         onToggled: {
                             if (root.btAdapter)
@@ -2801,7 +2828,7 @@ ColumnLayout {
                         font.pixelSize: 10
                     }
 
-                    AlbaSwitch {
+                    ShellSwitch {
                         checked: root.btAdapter !== null && root.btAdapter.pairable
                         onToggled: {
                             if (root.btAdapter)
@@ -2840,7 +2867,7 @@ ColumnLayout {
                         font.pixelSize: 10
                     }
 
-                    AlbaSwitch {
+                    ShellSwitch {
                         checked: SettingsState.btAutoOff
                         onToggled: SettingsState.setBtAutoOff(
                             !SettingsState.btAutoOff)
@@ -2931,7 +2958,7 @@ ColumnLayout {
                         font.pixelSize: 10
                     }
 
-                    AlbaSwitch {
+                    ShellSwitch {
                         checked: SettingsState.showBluetoothPercent
                         onToggled: SettingsState.showBluetoothPercent =
                             !SettingsState.showBluetoothPercent
@@ -3035,7 +3062,7 @@ ColumnLayout {
                             }
                             spacing: 7
 
-                            AlbaIcon {
+                            ShellIcon {
                                 Layout.preferredWidth: 15
                                 Layout.preferredHeight: 15
                                 name: root.btIcon(btRow.modelData)
@@ -3388,9 +3415,9 @@ ColumnLayout {
                             Layout.preferredWidth: 16
                             Layout.preferredHeight: 16
 
-                            AlbaIcon {
+                            ShellIcon {
                                 anchors.fill: parent
-                                source: AlbaIcons.src(streamRow.muted
+                                source: ShellIcons.src(streamRow.muted
                                     ? "volume-off" : "volume-3")
                                 color: streamRow.muted ? Theme.danger : Theme.accent
                                 size: 15
@@ -3430,7 +3457,7 @@ ColumnLayout {
                             }
                         }
 
-                        AlbaSlider {
+                        ShellSlider {
                             Layout.preferredWidth: 86
                             Layout.alignment: Qt.AlignVCenter
                             from: 0
@@ -3518,7 +3545,7 @@ ColumnLayout {
                         }
                         spacing: 8
 
-                        AlbaIcon {
+                        ShellIcon {
                             Layout.preferredWidth: 15
                             Layout.preferredHeight: 15
                             name: "audio-card"
@@ -3564,9 +3591,9 @@ ColumnLayout {
                 }
             }
 
-            // AlbaSlider tiene una altura táctil real; el Slider anterior tenía
+            // ShellSlider tiene una altura táctil real; el Slider anterior tenía
             // altura implícita cero y por eso el arrastre no recibía eventos.
-            AlbaSlider {
+            ShellSlider {
                 id: volumeSlider
 
                 Layout.fillWidth: true
@@ -3608,7 +3635,7 @@ ColumnLayout {
                     font.pixelSize: 10
                 }
 
-                AlbaSwitch {
+                ShellSwitch {
                     checked: SettingsState.showVolumePercent
                     onToggled: SettingsState.showVolumePercent =
                         !SettingsState.showVolumePercent
@@ -3696,10 +3723,10 @@ ColumnLayout {
                         }
                         spacing: 8
 
-                        AlbaIcon {
+                        ShellIcon {
                             Layout.preferredWidth: 15
                             Layout.preferredHeight: 15
-                            source: AlbaIcons.src("mic")
+                            source: ShellIcons.src("mic")
                             color: sourceRow.selected
                                 ? Theme.accent : Theme.muted
                             size: 15
@@ -3754,7 +3781,7 @@ ColumnLayout {
                     font.pixelSize: 10
                 }
 
-                AlbaSwitch {
+                ShellSwitch {
                     checked: Audio.micMuted
                     onToggled: Audio.toggleMicMute()
                 }
@@ -3792,9 +3819,9 @@ ColumnLayout {
                         anchors.centerIn: parent
                         spacing: 5
 
-                        AlbaIcon {
+                        ShellIcon {
                             anchors.verticalCenter: parent.verticalCenter
-                            source: AlbaIcons.src("keyboard")
+                            source: ShellIcons.src("keyboard")
                             color: root.micShortcutCapture
                                 ? Theme.accent : Theme.muted
                             size: 14
@@ -3890,7 +3917,7 @@ ColumnLayout {
                 }
             }
 
-            AlbaSlider {
+            ShellSlider {
                 Layout.fillWidth: true
                 from: 0
                 to: 1
@@ -3937,7 +3964,7 @@ ColumnLayout {
                 }
             }
 
-            AlbaSlider {
+            ShellSlider {
                 Layout.fillWidth: true
                 from: 0
                 to: 1
@@ -3974,7 +4001,7 @@ ColumnLayout {
                 }
             }
 
-            AlbaSlider {
+            ShellSlider {
                 Layout.fillWidth: true
                 from: 0
                 to: 1
@@ -4002,7 +4029,7 @@ ColumnLayout {
                     font.pixelSize: 10
                 }
 
-                AlbaSwitch {
+                ShellSwitch {
                     checked: SettingsState.showBrightnessPercent
                     onToggled: SettingsState.showBrightnessPercent =
                         !SettingsState.showBrightnessPercent
@@ -4041,7 +4068,7 @@ ColumnLayout {
                 }
             }
 
-            AlbaSlider {
+            ShellSlider {
                 Layout.fillWidth: true
                 from: 0
                 to: 0.8
@@ -4069,7 +4096,7 @@ ColumnLayout {
                     font.pixelSize: 10
                 }
 
-                AlbaSwitch {
+                ShellSwitch {
                     checked: SettingsState.showExtraDimPercent
                     onToggled: SettingsState.showExtraDimPercent =
                         !SettingsState.showExtraDimPercent
@@ -4253,7 +4280,7 @@ ColumnLayout {
                             }
                             spacing: 8
 
-                            AlbaIcon {
+                            ShellIcon {
                                 Layout.preferredWidth: 15
                                 Layout.preferredHeight: 15
                                 name: "computer"
@@ -4462,7 +4489,7 @@ ColumnLayout {
                         font.pixelSize: 10
                     }
 
-                    AlbaSwitch {
+                    ShellSwitch {
                         checked: HotspotState.hidden
                         enabled: !HotspotState.active && !HotspotState.busy
                         onToggled: HotspotState.hidden = !HotspotState.hidden
@@ -4489,7 +4516,7 @@ ColumnLayout {
                         font.pixelSize: 10
                     }
 
-                    AlbaSwitch {
+                    ShellSwitch {
                         checked: SettingsState.hotspotAutoOff
                         onToggled: SettingsState.setHotspotAutoOff(
                             !SettingsState.hotspotAutoOff)
@@ -4683,7 +4710,7 @@ ColumnLayout {
                     font.pixelSize: 9
                 }
 
-                AlbaSwitch {
+                ShellSwitch {
                     checked: KeyboardState.visible
                     enabled: KeyboardState.available
                     onToggled: KeyboardState.toggle()
@@ -4734,7 +4761,7 @@ ColumnLayout {
                         }
                         spacing: 8
 
-                        AlbaIcon {
+                        ShellIcon {
                             Layout.alignment: Qt.AlignVCenter
                             name: "edit-paste"
                             fallbackName: "edit-copy"
@@ -4787,7 +4814,7 @@ ColumnLayout {
                             ? Theme.hover : "transparent"
                         z: 3
 
-                        AlbaIcon {
+                        ShellIcon {
                             anchors.centerIn: parent
                             name: "edit-delete"
                             color: clipDeleteMouse.containsMouse
@@ -4816,9 +4843,9 @@ ColumnLayout {
                     Layout.preferredHeight: 18
                 }
 
-                AlbaIcon {
+                ShellIcon {
                     Layout.alignment: Qt.AlignHCenter
-                    source: AlbaIcons.src("clipboard")
+                    source: ShellIcons.src("clipboard")
                     color: Theme.faint
                     size: 22
                 }
@@ -4890,8 +4917,8 @@ ColumnLayout {
                                     anchors.centerIn: parent
                                     spacing: 3
 
-                                    AlbaIcon {
-                                        source: AlbaIcons.src(modeChip.modelData.icon)
+                                    ShellIcon {
+                                        source: ShellIcons.src(modeChip.modelData.icon)
                                         color: modeChip.selected
                                             ? Theme.accentInk : Theme.muted
                                         size: 11
@@ -5033,7 +5060,7 @@ ColumnLayout {
                     font.pixelSize: 10
                 }
 
-                AlbaSwitch {
+                ShellSwitch {
                     checked: SettingsState.systemTheme
                     onToggled: SettingsState.setSystemTheme(
                         !SettingsState.systemTheme)
@@ -5317,7 +5344,7 @@ ColumnLayout {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: NotificationState.panelView = "keyboard"
+                        onClicked: root.setView("keyboard")
                     }
                 }
             }
@@ -5409,7 +5436,9 @@ ColumnLayout {
                     Repeater {
                         model: [
                             { key: "abajo", label: "Abajo" },
-                            { key: "arriba", label: "Arriba" }
+                            { key: "arriba", label: "Arriba" },
+                            { key: "izquierda", label: "Izquierda" },
+                            { key: "derecha", label: "Derecha" }
                         ]
 
                         delegate: Rectangle {
@@ -5574,10 +5603,29 @@ ColumnLayout {
                     font.pixelSize: 10
                 }
 
-                AlbaSwitch {
+                ShellSwitch {
                     checked: SettingsState.autoHideBar
                     onToggled: SettingsState.setAutoHideBar(
                         !SettingsState.autoHideBar)
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Notificaciones y control juntos"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                ShellSwitch {
+                    checked: SettingsState.unifiedPanels
+                    onToggled: SettingsState.setUnifiedPanels(
+                        !SettingsState.unifiedPanels)
                 }
             }
 
@@ -6065,7 +6113,7 @@ ColumnLayout {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: NotificationState.panelView = "windows"
+                        onClicked: root.setView("windows")
                     }
                 }
             }
@@ -6227,7 +6275,7 @@ ColumnLayout {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: NotificationState.panelView = "compositor"
+                        onClicked: root.setView("compositor")
                     }
                 }
             }
@@ -6594,7 +6642,7 @@ ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 7
 
-                        AlbaIcon {
+                        ShellIcon {
                             name: "preferences-system-windows"
                             fallbackName: "applications-system"
                             color: Theme.accent
@@ -6767,7 +6815,7 @@ ColumnLayout {
                         anchors.centerIn: parent
                         spacing: 4
 
-                        AlbaIcon {
+                        ShellIcon {
                             anchors.verticalCenter: parent.verticalCenter
                             name: "view-refresh-symbolic"
                             fallbackName: "view-refresh"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ajustes de los perfiles Wi-Fi de NetworkManager para ALBA.
+"""Ajustes de los perfiles Wi-Fi de NetworkManager para el shell.
 
 Uso:
     wifi-profile.py profile <ssid> <ruta-qr>

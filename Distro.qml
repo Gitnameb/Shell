@@ -48,12 +48,12 @@ Singleton {
                 if (Quickshell.hasThemeIcon(candidates[i]))
                     return Quickshell.iconPath(candidates[i]);
             }
-            return AlbaIcons.src("grid");
+            return ShellIcons.src("grid");
         }
         const name = root.iconNames[id];
         if (name && Quickshell.hasThemeIcon(name))
             return Quickshell.iconPath(name);
-        return AlbaIcons.src("grid");
+        return ShellIcons.src("grid");
     }
 
     Process {

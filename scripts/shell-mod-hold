@@ -1,0 +1,41 @@
+#!/bin/sh
+# Aplica el retardo del gesto de mantener Super al compositor Umbriel.
+#
+# Uso: shell-mod-hold <milisegundos>
+#
+# Umbriel espera ese tiempo antes de entrar en el modo ventanas. Un toque más
+# corto abre el lanzador sin atenuar el contenido. El valor se guarda en
+# [input] mod_hold_delay_ms mediante el escritor único del shell.
+set -eu
+
+ms="${1:-320}"
+case "$ms" in
+    ''|*[!0-9]*) exit 2 ;;
+esac
+[ "$ms" -ge 50 ] && [ "$ms" -le 2000 ] || exit 2
+
+cfg="${UMBRIEL_CONFIG:-$HOME/.config/umbriel/config.toml}"
+[ -f "$cfg" ] || exit 0
+
+config_set="${SHELL_CONFIG_SET:-$HOME/.local/bin/shell-config-set}"
+if [ ! -x "$config_set" ]; then
+    config_set=$(command -v shell-config-set 2>/dev/null || true)
+fi
+if [ ! -x "$config_set" ]; then
+    here=$(cd "$(dirname "$0")" && pwd)
+    for candidate in "$here/shell-config-set" "$here/../install/bin/shell-config-set"; do
+        if [ -x "$candidate" ]; then
+            config_set=$candidate
+            break
+        fi
+    done
+fi
+[ -n "$config_set" ] && [ -x "$config_set" ] \
+    || { echo "falta shell-config-set" >&2; exit 1; }
+
+status=$("$config_set" --section input "mod_hold_delay_ms=$ms") || exit $?
+[ "$status" = "unchanged" ] && exit 0
+
+# El compositor vigila el archivo, pero el aviso explícito hace el cambio
+# inmediato también cuando el vigilante no está disponible.
+umbriel msg config-reload >/dev/null 2>&1 || true

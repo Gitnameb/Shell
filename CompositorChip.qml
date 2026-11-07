@@ -1,7 +1,7 @@
 import QtQuick
 
 // Chip pequeño y reutilizable para las acciones del compositor. Mantiene el
-// mismo lenguaje visual que el resto de ALBA: borde fino, acento cuando la
+// mismo lenguaje visual que el resto del shell: borde fino, acento cuando la
 // acción ya está activa y rojo solo para lo destructivo.
 Rectangle {
     id: root

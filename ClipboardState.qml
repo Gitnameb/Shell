@@ -22,12 +22,12 @@ Singleton {
 
     readonly property int count: root.entries.length
     readonly property string path: (Quickshell.env("HOME") || "/home/username")
-        + "/.local/state/alba/clipboard.json"
+        + "/.local/state/shell/clipboard.json"
 
     readonly property string watchScript: (Quickshell.shellDir || "")
-        + "/scripts/alba-clipboard-watch"
+        + "/scripts/shell-clipboard-watch"
     readonly property string copyScript: (Quickshell.shellDir || "")
-        + "/scripts/alba-clipboard-copy"
+        + "/scripts/shell-clipboard-copy"
 
     function normalize(list): var {
         const result = [];
@@ -135,7 +135,7 @@ Singleton {
             "sh", "-c",
             "umask 077; mkdir -p \"$(dirname \"$1\")\"; "
                 + "[ -f \"$1\" ] || printf '[]' > \"$1\"",
-            "alba", root.path
+            "shell", root.path
         ]
 
         onExited: {

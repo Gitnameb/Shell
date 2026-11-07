@@ -3,7 +3,7 @@
 
 Lo ejecuta `wl-paste --watch` cada vez que cambia el portapapeles. Se guarda
 solo texto, se eliminan duplicados y se conservan las 50 entradas más
-recientes en ~/.local/state/alba/clipboard.json.
+recientes en ~/.local/state/shell/clipboard.json.
 """
 
 import json
@@ -15,8 +15,8 @@ from pathlib import Path
 MAX_ENTRIES = 50
 MAX_BYTES = 400000
 
-path = Path.home() / ".local/state/alba/clipboard.json"
-first_flag = Path.home() / ".local/state/alba/clipboard-first"
+path = Path.home() / ".local/state/shell/clipboard.json"
+first_flag = Path.home() / ".local/state/shell/clipboard-first"
 
 
 def main():

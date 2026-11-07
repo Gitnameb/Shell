@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""DNS y proxy de los perfiles de NetworkManager para ALBA.
+"""DNS y proxy de los perfiles de NetworkManager para el shell.
 
 Uso:
     network-settings.py list
@@ -15,7 +15,7 @@ Las direcciones DNS se aceptan separadas por espacios o comas. `set` cambia un
 perfil y `set-all` aplica lo mismo a todas las conexiones Wi-Fi y Ethernet.
 Si la conexión está activa, el DNS se aplica con `nmcli device reapply` sin
 cortar el enlace. El proxy manual de la conexión activa también se escribe en
-`~/.config/environment.d/90-alba-proxy.conf` para la próxima sesión. La salida
+`~/.config/environment.d/90-shell-proxy.conf` para la próxima sesión. La salida
 siempre es JSON.
 """
 
@@ -214,7 +214,7 @@ def reapply(connection):
 
 
 def proxy_config_path():
-    return os.path.expanduser("~/.config/alba/proxy.json")
+    return os.path.expanduser("~/.config/shell/proxy.json")
 
 
 def load_proxy_config():
@@ -241,7 +241,7 @@ def save_proxy_config(config):
 
 def env_file_path():
     return os.path.expanduser(
-        "~/.config/environment.d/90-alba-proxy.conf")
+        "~/.config/environment.d/90-shell-proxy.conf")
 
 
 def remove_env_file():

@@ -295,8 +295,8 @@ ColumnLayout {
             Layout.fillWidth: true
             spacing: 7
 
-            AlbaIcon {
-                source: AlbaIcons.src(dnsRow.modelData.kind === "wifi"
+            ShellIcon {
+                source: ShellIcons.src(dnsRow.modelData.kind === "wifi"
                     ? "wifi" : (dnsRow.usb ? "usb" : "wired"))
                 color: dnsRow.modelData.active
                     ? Theme.accent : Theme.muted

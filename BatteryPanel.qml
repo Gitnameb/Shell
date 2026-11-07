@@ -14,19 +14,38 @@ PanelWindow {
     visible: BatteryState.open
     screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
 
+    readonly property real verticalTop: {
+        const screenHeight = root.screen ? root.screen.height : 800;
+        const anchor = BatteryState.anchorY;
+        const desired = anchor > 0
+            ? anchor + Theme.edge - root.implicitHeight / 2
+            : (screenHeight - root.implicitHeight) / 2;
+        return Math.max(Theme.edge + 8, Math.min(
+            screenHeight - root.implicitHeight - Theme.edge - 8, desired));
+    }
+
     anchors {
-        top: SettingsState.barAtTop
-        bottom: !SettingsState.barAtTop
-        left: true
+        top: SettingsState.barVertical || SettingsState.barAtTop
+        bottom: !SettingsState.barVertical && !SettingsState.barAtTop
+        left: !SettingsState.barVertical || SettingsState.barAtLeft
+        right: SettingsState.barVertical && SettingsState.barAtRight
     }
     margins {
-        top: SettingsState.barAtTop ? Theme.edge + Theme.barHeight + 8 : 0
-        bottom: SettingsState.barAtTop ? 0 : Theme.edge + Theme.barHeight + 8
-        left: Math.max(Theme.edge, Math.min(
-            (screen ? screen.width : 1280) - root.implicitWidth - Theme.edge,
-            (BatteryState.anchorX > 0
-                ? BatteryState.anchorX
-                : (screen ? screen.width - 260 : 1000)) - root.implicitWidth / 2))
+        top: SettingsState.barVertical ? root.verticalTop
+            : (SettingsState.barAtTop ? Theme.edge + Theme.barHeight + 8 : 0)
+        bottom: !SettingsState.barVertical && !SettingsState.barAtTop
+            ? Theme.edge + Theme.barHeight + 8 : 0
+        left: SettingsState.barVertical
+            ? (SettingsState.barAtLeft
+                ? Theme.edge + Theme.barHeight + 8 : 0)
+            : Math.max(Theme.edge, Math.min(
+                (screen ? screen.width : 1280) - root.implicitWidth - Theme.edge,
+                (BatteryState.anchorX > 0
+                    ? BatteryState.anchorX
+                    : (screen ? screen.width - 260 : 1000))
+                    - root.implicitWidth / 2))
+        right: SettingsState.barVertical && SettingsState.barAtRight
+            ? Theme.edge + Theme.barHeight + 8 : 0
     }
     implicitWidth: 236
     implicitHeight: content.implicitHeight + 24
@@ -35,7 +54,7 @@ PanelWindow {
     focusable: true
 
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.namespace: "alba-battery"
+    WlrLayershell.namespace: "shell-battery"
     WlrLayershell.keyboardFocus: BatteryState.open && focusGate.ready
         ? WlrKeyboardFocus.OnDemand
         : WlrKeyboardFocus.None
@@ -113,7 +132,7 @@ PanelWindow {
                         ColorAnimation { duration: 120 }
                     }
 
-                    AlbaIcon {
+                    ShellIcon {
                         anchors.centerIn: parent
                         name: "window-close"
                         color: closeMouse.containsMouse
@@ -210,8 +229,8 @@ PanelWindow {
                         }
                         spacing: 9
 
-                        AlbaIcon {
-                            source: AlbaIcons.src(
+                        ShellIcon {
+                            source: ShellIcons.src(
                                 PowerProfilesState.iconName(option.modelData))
                             color: option.selected
                                 ? Theme.accent
@@ -316,7 +335,7 @@ PanelWindow {
                     font.pixelSize: 10
                 }
 
-                AlbaSwitch {
+                ShellSwitch {
                     checked: SettingsState.showBatteryPercent
                     onToggled: SettingsState.showBatteryPercent =
                         !SettingsState.showBatteryPercent

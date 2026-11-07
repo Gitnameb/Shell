@@ -7,7 +7,7 @@ import QtQuick
 // Progreso de tareas externas (copias, descargas, renderizados...) que se
 // muestra como un anillo alrededor del icono de la app o del escritorio.
 // Cualquier programa puede alimentarlo escribiendo líneas `clave=porcentaje`
-// en ~/.local/state/alba/progress. El script `scripts/alba-progress` ofrece
+// en ~/.local/state/shell/progress. El script `scripts/shell-progress` ofrece
 // una forma cómoda de actualizarlo.
 Singleton {
     id: root
@@ -18,7 +18,7 @@ Singleton {
     property string lastText: ""
 
     readonly property string path: (Quickshell.env("HOME") || "/home/username")
-        + "/.local/state/alba/progress"
+        + "/.local/state/shell/progress"
 
     function normalize(value) {
         return String(value).toLowerCase().replace(/[^a-z0-9]/g, "");

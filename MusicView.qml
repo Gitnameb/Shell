@@ -105,10 +105,10 @@ ColumnLayout {
                 visible: status === Image.Ready
             }
 
-            AlbaIcon {
+            ShellIcon {
                 anchors.centerIn: parent
                 visible: !art.visible
-                source: AlbaIcons.src("music")
+                source: ShellIcons.src("music")
                 color: Theme.accent
                 size: 30
                 fallback: "♪"
@@ -175,7 +175,7 @@ ColumnLayout {
         spacing: 1
         visible: MusicState.available
 
-        AlbaSlider {
+        ShellSlider {
             id: seek
 
             Layout.fillWidth: true
@@ -235,7 +235,7 @@ ColumnLayout {
             radius: 16
             color: prevMouse.containsMouse ? Theme.hover : "transparent"
 
-            AlbaIcon {
+            ShellIcon {
                 anchors.centerIn: parent
                 name: "media-skip-backward"
                 color: MusicState.canGoPrevious ? Theme.muted : Theme.faint
@@ -260,7 +260,7 @@ ColumnLayout {
             border.width: 1
             border.color: Theme.accentLine
 
-            AlbaIcon {
+            ShellIcon {
                 anchors.centerIn: parent
                 name: MusicState.playing
                     ? "media-playback-pause" : "media-playback-start"
@@ -284,7 +284,7 @@ ColumnLayout {
             radius: 16
             color: nextMouse.containsMouse ? Theme.hover : "transparent"
 
-            AlbaIcon {
+            ShellIcon {
                 anchors.centerIn: parent
                 name: "media-skip-forward"
                 color: MusicState.canGoNext ? Theme.muted : Theme.faint
@@ -312,14 +312,14 @@ ColumnLayout {
         spacing: 8
         visible: MusicState.canSetVolume
 
-        AlbaIcon {
-            source: AlbaIcons.src("volume-2")
+        ShellIcon {
+            source: ShellIcons.src("volume-2")
             color: Theme.muted
             size: 14
             fallback: "◖"
         }
 
-        AlbaSlider {
+        ShellSlider {
             id: volume
 
             Layout.fillWidth: true

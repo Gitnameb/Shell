@@ -64,6 +64,7 @@ Singleton {
     // ------------------------------------------------------------ panel
     property bool open: false
     property real anchorX: -1
+    property real anchorY: -1
 
     signal opened()
 

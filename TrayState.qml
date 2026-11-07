@@ -12,6 +12,8 @@ Singleton {
     property bool open: false
     // -1 significa «sin botón conocido»: el panel cae a la derecha.
     property real anchorX: -1
+    // Altura del botón para colocar el panel en la barra vertical.
+    property real anchorY: -1
 
     signal opened()
 

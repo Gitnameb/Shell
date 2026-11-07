@@ -13,15 +13,27 @@ PanelWindow {
     visible: CalendarState.open
     screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
 
+    readonly property real verticalTop: Math.max(Theme.edge + 10,
+        ((screen ? screen.height : 900) - root.implicitHeight) / 2)
+
     anchors {
-        top: SettingsState.barAtTop
-        bottom: !SettingsState.barAtTop
-        left: true
+        top: SettingsState.barVertical || SettingsState.barAtTop
+        bottom: !SettingsState.barVertical && !SettingsState.barAtTop
+        left: !SettingsState.barVertical || SettingsState.barAtLeft
+        right: SettingsState.barVertical && SettingsState.barAtRight
     }
     margins {
-        top: SettingsState.barAtTop ? Theme.edge + Theme.barHeight + 10 : 0
-        bottom: SettingsState.barAtTop ? 0 : Theme.edge + Theme.barHeight + 10
-        left: Math.round(((screen ? screen.width : 1280) - implicitWidth) / 2)
+        top: SettingsState.barVertical ? root.verticalTop
+            : (SettingsState.barAtTop ? Theme.edge + Theme.barHeight + 10 : 0)
+        bottom: !SettingsState.barVertical && !SettingsState.barAtTop
+            ? Theme.edge + Theme.barHeight + 10 : 0
+        left: SettingsState.barVertical
+            ? (SettingsState.barAtLeft
+                ? Theme.edge + Theme.barHeight + 10 : 0)
+            : Math.round(((screen ? screen.width : 1280)
+                - implicitWidth) / 2)
+        right: SettingsState.barVertical && SettingsState.barAtRight
+            ? Theme.edge + Theme.barHeight + 10 : 0
     }
     implicitWidth: 344
     implicitHeight: root.tab === "calendar" ? 492
@@ -32,7 +44,7 @@ PanelWindow {
     focusable: true
 
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.namespace: "alba-calendar"
+    WlrLayershell.namespace: "shell-calendar"
     WlrLayershell.keyboardFocus: CalendarState.open && focusGate.ready
         ? WlrKeyboardFocus.OnDemand
         : WlrKeyboardFocus.None
@@ -68,7 +80,7 @@ PanelWindow {
     property bool alarmsReady: false
 
     readonly property string alarmsPath: (Quickshell.env("HOME")
-        || "/home/username") + "/.config/alba/alarms.conf"
+        || "/home/username") + "/.config/shell/alarms.conf"
     readonly property string alarmSound:
         "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"
     readonly property string doneSound:
@@ -84,7 +96,7 @@ PanelWindow {
     // que el demonio de alarmas pueda terminarlo con el shell cerrado.
     property int timerDeadline: 0
     readonly property string timerPath: (Quickshell.env("HOME")
-        || "/home/username") + "/.config/alba/timer.conf"
+        || "/home/username") + "/.config/shell/timer.conf"
 
     function pad(value): string {
         return value < 10 ? "0" + value : "" + value;
@@ -141,7 +153,7 @@ PanelWindow {
     }
 
     function notify(title, body): void {
-        Quickshell.execDetached(["notify-send", "-a", "ALBA", title, body]);
+        Quickshell.execDetached(["notify-send", "-a", "Shell", title, body]);
     }
 
     function validTime(value): bool {
@@ -176,7 +188,7 @@ PanelWindow {
     function playSound(path): void {
         Quickshell.execDetached(["sh", "-c",
             "paplay \"$1\" 2>/dev/null || pw-play \"$1\" 2>/dev/null || true",
-            "alba", path]);
+            "shell", path]);
     }
 
     function saveAlarms(): void {
@@ -192,7 +204,7 @@ PanelWindow {
         }
         alarmSave.command = ["sh", "-c",
             "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"",
-            "alba", root.alarmsPath, text];
+            "shell", root.alarmsPath, text];
         alarmSave.running = true;
     }
 
@@ -231,7 +243,7 @@ PanelWindow {
         timerSave.command = ["sh", "-c",
             "mkdir -p \"$(dirname \"$1\")\" && if [ \"$2\" -gt 0 ]; then "
                 + "printf 'deadline=%s\\n' \"$2\" > \"$1\"; else rm -f \"$1\"; fi",
-            "alba", root.timerPath, deadline];
+            "shell", root.timerPath, deadline];
         timerSave.running = true;
     }
 
@@ -319,7 +331,7 @@ PanelWindow {
 
         command: ["sh", "-c",
             "if [ -f \"$1\" ]; then cat \"$1\"; else echo __missing__; fi",
-            "alba", root.alarmsPath]
+            "shell", root.alarmsPath]
 
         stdout: StdioCollector {
             id: alarmOut
@@ -366,7 +378,7 @@ PanelWindow {
         id: timerLoad
 
         command: ["sh", "-c", "cat \"$1\" 2>/dev/null || true",
-            "alba", root.timerPath]
+            "shell", root.timerPath]
 
         stdout: StdioCollector {
             id: timerOut
@@ -449,7 +461,7 @@ PanelWindow {
                     tabKey: "calendar"
                     label: "Calendario"
                     iconName: "x-office-calendar"
-                    iconSource: AlbaIcons.src("calendar")
+                    iconSource: ShellIcons.src("calendar")
                     fallback: "▦"
                     selected: root.tab === "calendar"
                     onActivated: root.tab = "calendar"
@@ -460,7 +472,7 @@ PanelWindow {
                     tabKey: "weather"
                     label: "Clima"
                     iconName: "weather-few-clouds"
-                    iconSource: AlbaIcons.src("cloud")
+                    iconSource: ShellIcons.src("cloud")
                     fallback: "☁"
                     selected: root.tab === "weather"
                     onActivated: root.tab = "weather"
@@ -471,7 +483,7 @@ PanelWindow {
                     tabKey: "alarms"
                     label: "Alarmas"
                     iconName: "kalarm"
-                    iconSource: AlbaIcons.src("alarm")
+                    iconSource: ShellIcons.src("alarm")
                     fallback: "◷"
                     selected: root.tab === "alarms"
                     onActivated: root.tab = "alarms"
@@ -482,7 +494,7 @@ PanelWindow {
                     tabKey: "timer"
                     label: "Temporizador"
                     iconName: "chronometer"
-                    iconSource: AlbaIcons.src("timer")
+                    iconSource: ShellIcons.src("timer")
                     fallback: "⏱"
                     selected: root.tab === "timer"
                     onActivated: root.tab = "timer"
@@ -818,7 +830,7 @@ PanelWindow {
                     Layout.fillWidth: true
                     spacing: 12
 
-                    AlbaIcon {
+                    ShellIcon {
                         Layout.alignment: Qt.AlignVCenter
                         name: WeatherState.currentIcon
                         color: Theme.accent
@@ -906,7 +918,7 @@ PanelWindow {
                                     font.pixelSize: 8
                                 }
 
-                                AlbaIcon {
+                                ShellIcon {
                                     Layout.alignment: Qt.AlignHCenter
                                     name: modelData.icon
                                     color: Theme.muted
@@ -955,7 +967,7 @@ PanelWindow {
                             width: 35
                         }
 
-                        AlbaIcon {
+                        ShellIcon {
                             name: modelData.icon
                             color: Theme.faint
                             size: 14
@@ -1124,7 +1136,7 @@ PanelWindow {
                                 }
                             }
 
-                            AlbaSwitch {
+                            ShellSwitch {
                                 checked: alarmRow.modelData.enabled
                                 onToggled: root.updateAlarm(
                                     alarmRow.index, "enabled",

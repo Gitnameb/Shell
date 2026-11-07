@@ -1,11 +1,11 @@
 #!/bin/sh
-# Sincroniza los colores de la barra nativa de Umbriel con el tema de ALBA.
+# Sincroniza los colores de la barra nativa de Umbriel con el tema del shell.
 #
-# Uso: alba-umbriel-theme dark|light [#rrggbb]
+# Uso: shell-umbriel-theme dark|light [#rrggbb]
 #
-# Umbriel no lee la configuración de Quickshell, así que ALBA reescribe las
-# tablas [colors], [colors.border] y [colors.title_bar] y recarga Umbriel en
-# caliente. El resto del archivo queda intacto.
+# Umbriel no lee la configuración de Quickshell, así que el shell reescribe las
+# tablas [colors], [colors.border] y [colors.title_bar] mediante el escritor
+# único y recarga Umbriel en caliente. El resto del archivo queda intacto.
 
 set -eu
 
@@ -23,11 +23,28 @@ esac
 cfg="${UMBRIEL_CONFIG:-$HOME/.config/umbriel/config.toml}"
 [ -f "$cfg" ] || { echo "no existe $cfg" >&2; exit 1; }
 
-python3 - "$cfg" "$mode" "$accent" <<'PY'
-import re
+config_set="${SHELL_CONFIG_SET:-$HOME/.local/bin/shell-config-set}"
+if [ ! -x "$config_set" ]; then
+    config_set=$(command -v shell-config-set 2>/dev/null || true)
+fi
+if [ ! -x "$config_set" ]; then
+    here=$(cd "$(dirname "$0")" && pwd)
+    for candidate in "$here/shell-config-set" "$here/../install/bin/shell-config-set"; do
+        if [ -x "$candidate" ]; then
+            config_set=$candidate
+            break
+        fi
+    done
+fi
+[ -n "$config_set" ] && [ -x "$config_set" ] \
+    || { echo "falta shell-config-set" >&2; exit 1; }
+
+status=$(python3 - "$config_set" "$mode" "$accent" <<'PY'
+import json
+import subprocess
 import sys
 
-path, mode, accent = sys.argv[1], sys.argv[2], sys.argv[3]
+writer, mode, accent = sys.argv[1], sys.argv[2], sys.argv[3]
 light = mode == "light"
 
 
@@ -107,35 +124,30 @@ else:
         "minimize_glyph_hover": "#141519",
     }
 
-with open(path, encoding="utf-8") as handle:
-    text = handle.read()
+args = [writer]
+for section, values in (
+    ("colors", colors),
+    ("colors.border", border),
+    ("colors.title_bar", title),
+):
+    args += ["--section", section]
+    for key, value in values.items():
+        args.append(f"{key}={json.dumps(value + 'FF')}")
 
-
-def update(section, values):
-    global text
-    pattern = re.compile(r"^\[%s\][^\[]*" % re.escape(section), re.M | re.S)
-
-    def repl(match):
-        block = match.group(0)
-        for key, value in values.items():
-            block = re.sub(
-                r"^%s\s*=.*$" % re.escape(key),
-                '%s = "%sFF"' % (key, value),
-                block,
-                count=1,
-                flags=re.M,
-            )
-        return block
-
-    text = pattern.sub(repl, text, count=1)
-
-
-update("colors", colors)
-update("colors.border", border)
-update("colors.title_bar", title)
-
-with open(path, "w", encoding="utf-8") as handle:
-    handle.write(text)
+result = subprocess.run(
+    args,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    text=True,
+    check=False,
+)
+if result.returncode != 0:
+    sys.stderr.write(result.stderr)
+    raise SystemExit(result.returncode)
+print(result.stdout.strip())
 PY
+) || exit $?
+
+[ "$status" = "unchanged" ] && exit 0
 
 umbriel msg config-reload

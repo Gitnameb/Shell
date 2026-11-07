@@ -1,0 +1,21 @@
+#!/bin/sh
+# Arranca el shell dentro de una sesión de Umbriel.
+# Umbriel ya publica WAYLAND_DISPLAY y UMBRIEL_SOCKET para sus hijos, así que
+# CompositorState detecta el backend correcto sin variables extra.
+export QT_QPA_PLATFORMTHEME=kde
+export QS_ICON_THEME=breeze-dark
+
+# Segunda capa de seguridad: si el arranque se hizo a mano y la configuración
+# perdió [general] autostart, se repara antes de lanzar Quickshell. La primera
+# capa es el ExecStartPre de umbriel.service.
+if [ -x "$HOME/.local/bin/umbriel-config-guard" ]; then
+    "$HOME/.local/bin/umbriel-config-guard" ensure >/dev/null 2>&1 || true
+    # Los ajustes del arranque terminan de escribirse unos segundos después.
+    # Entonces se guarda una copia buena para el próximo arranque.
+    (
+        sleep 15
+        "$HOME/.local/bin/umbriel-config-guard" save >/dev/null 2>&1 || true
+    ) &
+fi
+
+exec qs -c shell -d

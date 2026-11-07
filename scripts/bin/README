@@ -2,9 +2,9 @@ wl-paste y wl-copy
 =================
 
 Binarios de wl-clipboard 2.2.1 (Debian trixie, amd64), extraídos del paquete
-para que ALBA pueda vigilar el portapapeles sin pedir una instalación con sudo.
+para que el shell pueda vigilar el portapapeles sin pedir una instalación con sudo.
 
 - Licencia: GPLv3. Texto completo en `wl-clipboard.copyright`.
-- Se usan desde `scripts/alba-clipboard-watch` y `scripts/alba-clipboard-copy`.
+- Se usan desde `scripts/shell-clipboard-watch` y `scripts/shell-clipboard-copy`.
 - Si algún día se instala `wl-clipboard` en el sistema, se pueden borrar estos
   binarios y cambiar las rutas de los scripts a `wl-paste` y `wl-copy`.

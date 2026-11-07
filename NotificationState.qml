@@ -11,6 +11,9 @@ Singleton {
 
     property bool panelOpen: false
     property bool dnd: false
+    // Sección visible del panel: "both" (notificaciones y centro de control),
+    // "notifications" o "control". El panel rápido de la barra no usa esto.
+    property string panelSection: "both"
     // Vista avanzada activa del centro de control ("wifi", "volume", ...).
     property string panelView: ""
 
@@ -101,32 +104,50 @@ Singleton {
             list[i].notification.dismiss();
     }
 
-    function togglePanel(): void {
-        TrayState.hide();
-        BatteryState.hide();
-        if (!panelOpen) {
-            CalendarState.hide();
-            LauncherState.hide();
-            PowerState.hide();
-        }
-        panelOpen = !panelOpen;
-    }
-
-    function showPanel(): void {
+    // Abre el panel con la sección indicada. Sin argumento usa la preferencia
+    // del usuario: ambos juntos o solo las notificaciones.
+    function showSection(section: string): void {
+        const value = section === "notifications" || section === "control"
+            ? section : "both";
         TrayState.hide();
         BatteryState.hide();
         CalendarState.hide();
         LauncherState.hide();
         PowerState.hide();
+        panelView = "";
+        panelSection = value;
         panelOpen = true;
+        QuickPanelState.hide();
+    }
+
+    function toggleSection(section: string): void {
+        const value = section === "notifications" || section === "control"
+            ? section : "both";
+        if (panelOpen && panelSection === value) {
+            hidePanel();
+            return;
+        }
+        showSection(value);
+    }
+
+    function togglePanel(): void {
+        toggleSection(SettingsState.unifiedPanels ? "both" : "notifications");
+    }
+
+    function showPanel(): void {
+        showSection(SettingsState.unifiedPanels ? "both" : "notifications");
     }
 
     function hidePanel(): void {
         panelOpen = false;
+        panelView = "";
+        panelSection = "both";
     }
 
     function openPanelView(view: string): void {
-        showPanel();
+        // Las vistas avanzadas viven en el centro de control. Con los paneles
+        // separados se abre esa sección; con el panel unificado, ambas.
+        showSection(SettingsState.unifiedPanels ? "both" : "control");
         panelView = view;
     }
 

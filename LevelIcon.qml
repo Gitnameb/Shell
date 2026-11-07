@@ -20,13 +20,13 @@ Item {
             ? "1"
             : (root.level < 0.666 ? "2" : "3"))
     readonly property string iconSource: root.kind === "mic"
-        ? AlbaIcons.src(root.muted ? "mic-off" : "mic")
-        : AlbaIcons.src("volume-" + root.state)
+        ? ShellIcons.src(root.muted ? "mic-off" : "mic")
+        : ShellIcons.src("volume-" + root.state)
 
     implicitWidth: root.size
     implicitHeight: root.size
 
-    AlbaIcon {
+    ShellIcon {
         anchors.fill: parent
         source: root.iconSource
         color: root.color

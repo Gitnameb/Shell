@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Mueve o copia archivos soltados sobre el escritorio de ALBA.
+"""Mueve o copia archivos soltados sobre el escritorio del shell.
 
-Uso: alba-desktop-drop <ruta>...
+Uso: shell-desktop-drop <ruta>...
 
 Los archivos que vienen del mismo sistema de archivos que ~/Desktop se mueven,
 como al arrastrarlos al escritorio de Windows; los de otro dispositivo se

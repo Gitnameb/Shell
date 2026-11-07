@@ -3,7 +3,7 @@ import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
 
-// Barra de título y controles de ALBA para cada ventana.
+// Barra de título y controles del shell para cada ventana.
 //
 // Cada ventana recibe una superficie pequeña encima de su franja superior. La
 // máscara de entrada solo cubre la barra y el menú de escritorios, así que el
@@ -13,7 +13,7 @@ Variants {
     id: root
 
     // Con un compositor que dibuja barras nativas (Umbriel) no se crea
-    // ninguna superficie de ALBA: la decoración ya forma parte de la ventana.
+    // ninguna superficie del shell: la decoración ya forma parte de la ventana.
     model: CompositorState.supports("shellTitlebar")
         ? CompositorState.windows : []
 
@@ -91,7 +91,7 @@ Variants {
         focusable: false
 
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.namespace: "alba-window-chrome"
+        WlrLayershell.namespace: "shell-window-chrome"
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
         // El borde solo aparece en el modo ventanas de Super; con «Siempre»

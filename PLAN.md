@@ -1,4 +1,7 @@
-# ALBA · Plan para completar la integración
+# Shell · Plan para completar la integración
+
+> Las menciones a «ALBA» en el texto histórico se conservan como registro del
+> nombre anterior; el código y la documentación nuevos usan «shell».
 
 Actualizado: 2026-11-05, ya dentro de la sesión real de Umbriel.
 
@@ -137,7 +140,7 @@ impacto en el uso diario, no por lucimiento.
 - **Curiosidad descartada:** recordar la geometría de cada app entre sesiones.
   Choca con el tamaño por defecto de A20 y con las reglas de ventana; no se
   implementa.
-- Aceptación: minimizar en mosaico y flotante, `qs -c alba kill`, relanzar y
+- Aceptación: minimizar en mosaico y flotante, `qs -c shell kill`, relanzar y
   ver las fichas en su escritorio; restaurar una.
 
 ### A6. Fichas minimizadas y restauración (hecho)
@@ -210,7 +213,7 @@ impacto en el uso diario, no por lucimiento.
 - Ajustes → «Fondo de pantalla» tiene miniatura, «Elegir» (selector KDE o
   Zenity) y «Quitar». La ruta se guarda en `settings.conf` y se mantiene entre
   sesiones; también se puede fijar con
-  `qs ipc -c alba call appearance wallpaper <ruta>`.
+  `qs ipc -c shell call appearance wallpaper <ruta>`.
 - Aceptación: con la imagen 1920×1080 de Umbriel se vio a pantalla completa,
   también con espacios en la ruta; quitar la imagen devolvió el fondo del
   compositor.
@@ -231,7 +234,7 @@ impacto en el uso diario, no por lucimiento.
 
 ### B2. Bloqueo e inactividad (hecho)
 - `swayidle` instalado y `hyprlock` ya estaba.
-- `~/.local/bin/alba-idle MINUTOS` arranca `swayidle` contra
+- `~/.local/bin/shell-idle MINUTOS` arranca `swayidle` contra
   `ext_idle_notifier_v1` de Umbriel y lanza `hyprlock` al cumplirse el tiempo.
   También bloquea antes de suspender.
 - Ajuste «Bloqueo automático» en el centro de control, con opciones Nunca, 1,
@@ -315,11 +318,11 @@ impacto en el uso diario, no por lucimiento.
   visible, con rayo de corriente y sin porcentaje. Al pulsarlo se abre un panel
   con «Ahorro / Equilibrado / Rendimiento», estado y descripción; en Ahorro el
   icono se tiñe de celeste, y los avisos de batería mandan. También hay IPC:
-  `qs ipc -c alba call battery toggle` y `battery profile ahorro`.
+  `qs ipc -c shell call battery toggle` y `battery profile ahorro`.
 - Energía solo en la batería: por decisión del usuario, Ajustes ya no muestra
   la sección «ENERGÍA». Los tres perfiles de `power-profiles-daemon` se
   cambian desde el panel del icono de batería. El IPC
-  `qs ipc -c alba call power profile ahorro` se mantiene para atajos y pruebas.
+  `qs ipc -c shell call power profile ahorro` se mantiene para atajos y pruebas.
 - Perfiles personalizados: idea futura, no implementada. Requiere un ayudante
   privilegiado para límites de CPU/GPU/TDP y detección de lo que expone cada
   equipo; no se inventan controles ni valores.
@@ -345,7 +348,7 @@ impacto en el uso diario, no por lucimiento.
   campo `#RRGGBB`. Elegir un color quita la imagen; quitar la imagen vuelve al
   color. Se guarda como `wallpaperColor=` en `settings.conf` y se puede cambiar
   por IPC con `appearance wallpaperColor`.
-- `alba-system-theme` verificado en la sesión real: GTK 3/4 reciben el acento
+- `shell-system-theme` verificado en la sesión real: GTK 3/4 reciben el acento
   en `gtk.css`, y KDE recibe `BreezeDark` y el mismo acento en `kdeglobals`.
 - Verificado en anidado: el color sobrevive al reinicio de ALBA y se ve en la
   capa de fondo.
@@ -356,13 +359,13 @@ impacto en el uso diario, no por lucimiento.
   Clima, «Cambiar» abre un campo con «Aplicar» (Intro también aplica).
   Aceptación: Madrid mostró su tiempo y al vaciar el campo volvió a la ciudad
   detectada por IP.
-- **Alarmas con el shell cerrado.** `scripts/alba-alarms` corre como servicio
-  de usuario (`alba-alarms.service`) y lee `alarms.conf`. Si `qs` está
+- **Alarmas con el shell cerrado.** `scripts/shell-alarms` corre como servicio
+  de usuario (`shell-alarms.service`) y lee `alarms.conf`. Si `qs` está
   abierto no hace nada, para no duplicar el aviso del panel; si no lo está,
   usa `notify-send` o, cuando no hay servidor de notificaciones, un diálogo de
   KDialog/Zenity, y reproduce el sonido de alarma.
 - **Temporizador persistente.** Al arrancar una cuenta atrás se escribe
-  `deadline=` en `~/.config/alba/timer.conf`; al pausar o terminar se borra.
+  `deadline=` en `~/.config/shell/timer.conf`; al pausar o terminar se borra.
   El demonio termina el temporizador con el shell cerrado y el panel restaura
   la cuenta atrás al volver. Aceptación: se recuperó una cuenta atrás de
   01:12 «En marcha» tras recargar, un vencimiento con el shell abierto avisó y
@@ -379,12 +382,12 @@ impacto en el uso diario, no por lucimiento.
   `FolderListModel` y `DesktopIcons.qml` pinta una capa por pantalla debajo de
   las ventanas. Muestra carpetas, archivos, imágenes como miniatura y
   lanzadores `.desktop` con su nombre e icono reales; selección con un clic y
-  apertura con doble clic o `qs ipc -c alba call desktop open <índice>`.
+  apertura con doble clic o `qs ipc -c shell call desktop open <índice>`.
 - Aceptación: con dos carpetas, una imagen, un `.desktop` y un texto, la
   cuadrícula los mostró en orden, con Firefox ESR y su icono; abrir la carpeta
   por IPC lanzó Dolphin en esa ruta.
 - Se puede soltar un archivo desde Dolphin sobre el escritorio: `DropArea` en
-  `DesktopIcons.qml` llama a `scripts/alba-desktop-drop`, que mueve dentro de
+  `DesktopIcons.qml` llama a `scripts/shell-desktop-drop`, que mueve dentro de
   la misma unidad, copia entre unidades y evita pisar nombres. El script está
   probado por separado; falta la prueba del arrastre real.
 - Pendiente fase 2: arrastrar para recolocar con posiciones persistentes,
@@ -486,8 +489,8 @@ impacto en el uso diario, no por lucimiento.
 9. **Al final, por decisión del usuario (2026-11-05):** fase 2 de D1
    (recolocar iconos, renombrar, papelera y menú contextual).
 10. **Antes de la instalación limpia:** E1 (script único de compilación e
-    instalación), E4 (reversión documentada) y una copia de `~/Documents/Alba`,
-    `~/.config/alba`, `~/.config/umbriel` y el parche del fork.
+    instalación), E4 (reversión documentada) y una copia de `~/Shell`,
+    `~/.config/shell`, `~/.config/umbriel` y el parche del fork.
 11. **Opcional / aparcado:** botón nativo de volumen por ventana, D2 y E3.
 
 ## Decisiones tomadas
@@ -527,7 +530,7 @@ impacto en el uso diario, no por lucimiento.
   capturas por defecto (`effects.in_capture = false`), así una captura conserva
   los colores reales.
 - `DisplayState.qml` usa este camino cuando el backend declara
-  `displayFilter`. `scripts/alba-display-filter` escribe los tres valores en
+  `displayFilter`. `scripts/shell-display-filter` escribe los tres valores en
   `~/.config/umbriel/config.toml` y pide `config-reload`; si no cambian, no
   toca el archivo. La capa QML de respaldo sigue existiendo para compositores
   sin filtro nativo.
@@ -579,7 +582,7 @@ impacto en el uso diario, no por lucimiento.
 - El retardo del gesto de mantener Mod ya no es una constante. Umbriel lee
   `[input] mod_hold_delay_ms` (320 por defecto, 50–2000) y ALBA lo ajusta en
   Ajustes → «Retardo al mantener Super» con pasos de 50 ms. El valor se guarda
-  como `superHoldMs` en `settings.conf` y el script `alba-mod-hold` lo escribe
+  como `superHoldMs` en `settings.conf` y el script `shell-mod-hold` lo escribe
   en la configuración del compositor y recarga. `SuperState.holdDelay` usa el
   mismo valor para que el overlay no se adelante ni se retrase.
 - La música deja de temblar al mantener Super. La causa era un ciclo de
@@ -617,7 +620,7 @@ impacto en el uso diario, no por lucimiento.
 - ALBA lo ajusta en Ajustes → «Tamaño de ventanas flotantes» (40–80 %, pasos
   de 5) y «Separación en cascada» (0 = automático, hasta 96 px, pasos de 8).
   Se guarda como `floatingSizePercent` y `floatingCascade` en `settings.conf`;
-  `scripts/alba-floating-defaults` escribe la configuración de Umbriel y
+  `scripts/shell-floating-defaults` escribe la configuración de Umbriel y
   recarga.
 - Aceptación en Umbriel anidado (946×496): con 0,6 una ventana flotante mide
   568×298 y aparece centrada; con 0,5 y cascada de 48 mide 473×248. Tres
@@ -662,12 +665,12 @@ impacto en el uso diario, no por lucimiento.
   `a13ce3462695372c…`); falta cerrar sesión para estrenarlo.
 
 ### Incidencia: configuración de Umbriel restaurada
-- Al recargar ALBA, `alba-mod-hold` y `alba-floating-defaults` podían correr a
-  la vez y compartían el temporal `config.toml.alba-tmp`; uno movía el archivo
+- Al recargar ALBA, `shell-mod-hold` y `shell-floating-defaults` podían correr a
+  la vez y compartían el temporal `config.toml.shell-tmp`; uno movía el archivo
   mientras el otro escribía y `config.toml` quedó reducido a 13 líneas. Se
   restauró la copia completa (180 líneas) y se guardó una copia en
-  `Documents/Alba/umbriel-config-backup.toml`.
-- Ambos scripts usan ahora un cerrojo `flock` sobre `config.toml.alba-lock` y
+  `Shell/umbriel-config-backup.toml`.
+- Ambos scripts usan ahora un cerrojo `flock` sobre `config.toml.shell-lock` y
   un temporal único de `mktemp`. Probado con 25 ejecuciones simultáneas: el
   archivo conserva sus 180 líneas y `umbriel config validate` lo acepta.
 

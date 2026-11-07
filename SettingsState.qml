@@ -20,9 +20,14 @@ Singleton {
     // Si está activo, la barra se oculta al dejar de usarla y vuelve a
     // aparecer al acercar el puntero al borde donde vive.
     property bool autoHideBar: false
-    // Dónde vive la barra: «abajo» (por defecto) o «arriba».
+    // Dónde vive la barra: «abajo» (por defecto), «arriba», «izquierda» o
+    // «derecha». En los lados, la barra se dibuja en vertical.
     property string barPosition: "abajo"
     readonly property bool barAtTop: root.barPosition === "arriba"
+    readonly property bool barAtBottom: root.barPosition === "abajo"
+    readonly property bool barAtLeft: root.barPosition === "izquierda"
+    readonly property bool barAtRight: root.barPosition === "derecha"
+    readonly property bool barVertical: root.barAtLeft || root.barAtRight
     // Ancho del reproductor de música, ajustable manteniendo Super. 0 deja
     // que la píldora mida lo que pida su contenido.
     property int musicWidth: 0
@@ -47,6 +52,10 @@ Singleton {
     property bool showBatteryPercent: false
     // Muestra la temperatura junto a los iconos de CPU y GPU en la barra.
     property bool showTemps: false
+    // Un solo icono abre las notificaciones y el centro de control juntos.
+    // Desactivado, la campana abre solo las notificaciones y el icono de
+    // cuadrícula abre solo el centro de control.
+    property bool unifiedPanels: true
 
     // ------------------------------------------------------- ventanas
     // Modo por defecto de los escritorios. «floating» imita a Windows: las
@@ -59,9 +68,9 @@ Singleton {
     // Falso hasta que el usuario elige en la pantalla de bienvenida.
     property bool workspaceModeChosen: false
 
-    // Barra de título de ALBA para ventanas flotantes en backends sin cromo
-    // nativo (Hyprland). El valor público de ALBA es windowChrome; este se
-    // deriva de él para conservar el respaldo anterior.
+    // Barra de título del shell para ventanas flotantes en backends sin cromo
+    // nativo (Hyprland). El valor público es windowChrome; este se deriva de
+    // él para conservar el respaldo anterior.
     //   auto   → aparece con Super
     //   always → siempre visible (útil para quien viene de Windows)
     //   never  → solo los controles del overlay
@@ -141,17 +150,17 @@ Singleton {
     property bool floatingApplyPending: false
 
     readonly property string path: (Quickshell.env("HOME") || "/home/username")
-        + "/.config/alba/settings.conf"
+        + "/.config/shell/settings.conf"
     readonly property string systemThemeScript: (Quickshell.shellDir || "")
-        + "/scripts/alba-system-theme"
+        + "/scripts/shell-system-theme"
     readonly property string windowChromeScript: (Quickshell.shellDir || "")
-        + "/scripts/alba-window-chrome"
+        + "/scripts/shell-window-chrome"
     readonly property string superHoldScript: (Quickshell.shellDir || "")
-        + "/scripts/alba-mod-hold"
+        + "/scripts/shell-mod-hold"
     readonly property string floatingScript: (Quickshell.shellDir || "")
-        + "/scripts/alba-floating-defaults"
+        + "/scripts/shell-floating-defaults"
     readonly property string wallpaperPickScript: (Quickshell.shellDir || "")
-        + "/scripts/alba-wallpaper-pick"
+        + "/scripts/shell-wallpaper-pick"
 
     readonly property var workspaceIds: {
         const list = [];
@@ -181,7 +190,8 @@ Singleton {
     }
 
     function setBarPosition(value: string): void {
-        root.barPosition = value === "arriba" ? "arriba" : "abajo";
+        root.barPosition = value === "arriba" || value === "izquierda"
+            || value === "derecha" ? value : "abajo";
     }
 
     function setMusicWidth(value: int): void {
@@ -263,7 +273,7 @@ Singleton {
             script += "hyprctl keyword unbind '" + root.micShortcut
                 + "' >/dev/null 2>&1\n";
             script += "hyprctl keyword bind '" + root.micShortcut
-                + ",exec,qs ipc -c alba call notifications micToggle'"
+                + ",exec,qs ipc -c shell call notifications micToggle'"
                 + " >/dev/null 2>&1\n";
         }
         root.appliedMicShortcut = root.micShortcut;
@@ -275,6 +285,10 @@ Singleton {
 
     function setShowTemps(value: bool): void {
         root.showTemps = value;
+    }
+
+    function setUnifiedPanels(value: bool): void {
+        root.unifiedPanels = value;
     }
 
     // ------------------------------------------------------- ventanas
@@ -332,7 +346,7 @@ Singleton {
 
     // Estilo de barra de ventanas del mockup. Umbriel lo aplica en caliente
     // escribiendo [appearance.title_bar] overlay; los demás backends usan la
-    // barra de ALBA como respaldo.
+    // barra del shell como respaldo.
     function setWindowChrome(value): void {
         const clean = String(value);
         if (clean !== "floating" && clean !== "integrated")
@@ -514,7 +528,7 @@ Singleton {
         if (!root.ready)
             return;
         Quickshell.execDetached(["sh", "-c",
-            (Quickshell.env("HOME") || "") + "/.local/bin/alba-idle "
+            (Quickshell.env("HOME") || "") + "/.local/bin/shell-idle "
             + root.lockMinutes]);
     }
 
@@ -531,6 +545,7 @@ Singleton {
             + "showBluetoothPercent=%s\\n"
             + "showBatteryPercent=%s\\n"
             + "showTemps=%s\\n"
+            + "unifiedPanels=%s\\n"
             + "hotspotAutoOff=%s\\n"
             + "hotspotMinutes=%s\\n"
             + "wifiAutoOff=%s\\n"
@@ -574,6 +589,7 @@ Singleton {
             root.showBluetoothPercent ? "1" : "0",
             root.showBatteryPercent ? "1" : "0",
             root.showTemps ? "1" : "0",
+            root.unifiedPanels ? "1" : "0",
             root.hotspotAutoOff ? "1" : "0",
             root.hotspotMinutes,
             root.wifiAutoOff ? "1" : "0",
@@ -610,7 +626,7 @@ Singleton {
             root.airplaneRestoreBt ? "1" : "0",
             root.showHiddenWifi ? "1" : "0"
         ];
-        saveProc.command = ["sh", "-c", format, "alba", root.path].concat(values);
+        saveProc.command = ["sh", "-c", format, "shell", root.path].concat(values);
         saveProc.running = true;
     }
 
@@ -646,6 +662,7 @@ Singleton {
     onShowBluetoothPercentChanged: saveTimer.restart()
     onShowBatteryPercentChanged: saveTimer.restart()
     onShowTempsChanged: saveTimer.restart()
+    onUnifiedPanelsChanged: saveTimer.restart()
     onWorkspaceModeDefaultChanged: saveTimer.restart()
     onWorkspaceModesChanged: saveTimer.restart()
     onWorkspaceModeChosenChanged: saveTimer.restart()
@@ -725,7 +742,7 @@ Singleton {
     Process {
         id: loadProc
 
-        command: ["sh", "-c", "cat \"$1\" 2>/dev/null || true", "alba", root.path]
+        command: ["sh", "-c", "cat \"$1\" 2>/dev/null || true", "shell", root.path]
 
         stdout: StdioCollector {
             id: loadOut
@@ -749,6 +766,7 @@ Singleton {
             let pctBluetooth = root.showBluetoothPercent;
             let pctBattery = root.showBatteryPercent;
             let temps = root.showTemps;
+            let unified = root.unifiedPanels;
             let mode = root.themeMode;
             let accent = root.accentColor;
             let sysTheme = root.systemTheme;
@@ -811,7 +829,8 @@ Singleton {
                 } else if (key === "autoHideBar") {
                     autoHide = value === "1" || value === "true";
                 } else if (key === "barPosition") {
-                    barPos = value === "arriba" ? "arriba" : "abajo";
+                    barPos = value === "arriba" || value === "izquierda"
+                        || value === "derecha" ? value : "abajo";
                 } else if (key === "musicWidth") {
                     const parsed = parseInt(value, 10);
                     if (!isNaN(parsed))
@@ -833,6 +852,8 @@ Singleton {
                     shortcut = value;
                 } else if (key === "showTemps") {
                     temps = value === "1" || value === "true";
+                } else if (key === "unifiedPanels") {
+                    unified = value === "1" || value === "true";
                 } else if (key === "themeMode") {
                     mode = value === "light" ? "light" : "dark";
                 } else if (key === "accentColor") {
@@ -915,6 +936,7 @@ Singleton {
             root.showBluetoothPercent = pctBluetooth;
             root.showBatteryPercent = pctBattery;
             root.showTemps = temps;
+            root.unifiedPanels = unified;
             root.themeMode = mode;
             root.accentColor = accent;
             root.systemTheme = sysTheme;

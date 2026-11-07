@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Aplica el modo y el acento de ALBA a GTK y a las apps de KDE.
+"""Aplica el modo y el acento del shell a GTK y a las apps de KDE.
 
-Uso: alba-system-theme dark|light '#RRGGBB'
+Uso: shell-system-theme dark|light '#RRGGBB'
 Se ejecuta al arrancar el shell y cada vez que cambia el tema. No es
 obligatorio: si está desactivado en Ajustes, no se llama.
 """
@@ -14,11 +14,11 @@ from pathlib import Path
 
 HOME = Path.home()
 CONFIG = HOME / ".config"
-BACKUP = CONFIG / "alba" / "backups"
+BACKUP = CONFIG / "shell" / "backups"
 DEVNULL = subprocess.DEVNULL
 
-START = "/* ALBA-THEME-START */"
-END = "/* ALBA-THEME-END */"
+START = "/* SHELL-THEME-START */"
+END = "/* SHELL-THEME-END */"
 
 # Acentos predefinidos de GNOME, para que libadwaita tenga una aproximación
 # válida aunque el color exacto se escriba después en el CSS de GTK.
@@ -181,6 +181,14 @@ def write_gtk_css(path, accent, ink, unfocused):
             flags=re.S,
         )
     else:
+        # Migración: quita el bloque de una versión anterior con otro prefijo
+        # de marcador antes de añadir el actual.
+        text = re.sub(
+            r"/\* [A-Z]+-THEME-START \*/.*?/\* [A-Z]+-THEME-END \*/",
+            "",
+            text,
+            flags=re.S,
+        )
         text = text.rstrip() + "\n\n" + START + "\n" + block + "\n" + END + "\n"
 
     try:
@@ -208,7 +216,7 @@ def apply_kde(accent, light):
 
     # El acento personalizado sí necesita plasma-apply-colorscheme (paquete
     # plasma-workspace). Si no está, se conserva el acento por defecto de
-    # Breeze; el resto de ALBA y GTK no se ve afectado.
+    # Breeze; el resto del shell y GTK no se ve afectado.
     if not shutil.which("plasma-apply-colorscheme"):
         return
     if not Path(f"/usr/share/color-schemes/{scheme}.colors").exists():
@@ -228,10 +236,10 @@ def main():
     unfocused = rgb_to_hex(mix(accent_rgb, base, 0.58))
 
     # Copia de seguridad única de lo que se modifica.
-    backup_once(CONFIG / "kdeglobals", "kdeglobals.pre-alba")
+    backup_once(CONFIG / "kdeglobals", "kdeglobals.pre-shell")
     for version in ("gtk-3.0", "gtk-4.0"):
-        backup_once(CONFIG / version / "settings.ini", f"{version}-settings.ini.pre-alba")
-        backup_once(CONFIG / version / "gtk.css", f"{version}-gtk.css.pre-alba")
+        backup_once(CONFIG / version / "settings.ini", f"{version}-settings.ini.pre-shell")
+        backup_once(CONFIG / version / "gtk.css", f"{version}-gtk.css.pre-shell")
 
     # GTK: tema, iconos y esquema de color.
     theme = "Breeze" if light else "Breeze-Dark"

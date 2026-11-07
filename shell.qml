@@ -38,12 +38,13 @@ ShellRoot {
         }
 
         // La vista general de Umbriel ocupa toda la pantalla. Al abrirse se
-        // retiran los paneles de ALBA para no dejarlos flotando encima.
+        // retiran los paneles del shell para no dejarlos flotando encima.
         function onOverviewOpenChanged(): void {
             if (!CompositorState.overviewOpen)
                 return;
             LauncherState.hide();
             NotificationState.hidePanel();
+            QuickPanelState.hide();
             CalendarState.hide();
             PowerState.hide();
             BatteryState.hide();
@@ -61,6 +62,7 @@ ShellRoot {
         function onOpened(): void {
             LauncherState.hide();
             NotificationState.hidePanel();
+            QuickPanelState.hide();
             CalendarState.hide();
             PowerState.hide();
             BatteryState.hide();
@@ -70,7 +72,7 @@ ShellRoot {
     }
 
     // Iconos del escritorio: apertura por indice para pruebas y atajos.
-    //   qs ipc -c alba call desktop open 0
+    //   qs ipc -c shell call desktop open 0
     IpcHandler {
         target: "desktop"
 
@@ -84,9 +86,9 @@ ShellRoot {
     }
 
     // Cambios de apariencia desde la terminal o desde un atajo:
-    //   qs ipc -c alba call appearance toggle
-    //   qs ipc -c alba call appearance mode light
-    //   qs ipc -c alba call appearance accent "#c9b8f5"
+    //   qs ipc -c shell call appearance toggle
+    //   qs ipc -c shell call appearance mode light
+    //   qs ipc -c shell call appearance accent "#c9b8f5"
     IpcHandler {
         target: "appearance"
 
@@ -104,9 +106,9 @@ ShellRoot {
         }
 
         // Fondo de pantalla desde la terminal o un atajo:
-        //   qs ipc -c alba call appearance wallpaper /ruta/imagen.png
-        //   qs ipc -c alba call appearance wallpaperChoose
-        //   qs ipc -c alba call appearance wallpaperClear
+        //   qs ipc -c shell call appearance wallpaper /ruta/imagen.png
+        //   qs ipc -c shell call appearance wallpaperChoose
+        //   qs ipc -c shell call appearance wallpaperClear
         function wallpaper(path: string): void {
             SettingsState.setWallpaperPath(path);
         }
@@ -119,7 +121,7 @@ ShellRoot {
             SettingsState.clearWallpaper();
         }
 
-        //   qs ipc -c alba call appearance wallpaperColor "#141821"
+        //   qs ipc -c shell call appearance wallpaperColor "#141821"
         function wallpaperColor(value: string): void {
             SettingsState.setWallpaperColor(value);
         }
@@ -129,21 +131,21 @@ ShellRoot {
         }
 
         // Estilo de barra de ventanas: flotante o integrada.
-        //   qs ipc -c alba call appearance chrome integrated
+        //   qs ipc -c shell call appearance chrome integrated
         function chrome(style: string): void {
             SettingsState.setWindowChrome(style);
         }
 
         // Ciudad del clima; vacío vuelve a la detección por IP.
-        //   qs ipc -c alba call appearance weatherPlace Madrid
+        //   qs ipc -c shell call appearance weatherPlace Madrid
         function weatherPlace(value: string): void {
             SettingsState.setWeatherPlace(value);
         }
     }
 
     // Diagnóstico y control de red desde la terminal:
-    //   qs ipc -c alba call network status
-    //   qs ipc -c alba call network scan
+    //   qs ipc -c shell call network status
+    //   qs ipc -c shell call network scan
     IpcHandler {
         target: "network"
 
@@ -193,7 +195,7 @@ ShellRoot {
         }
 
         function open(): void {
-            NotificationState.openPanelView("wifi");
+            QuickPanelState.show("wifi", -1);
         }
 
         function close(): void {
@@ -202,8 +204,8 @@ ShellRoot {
     }
 
     // VPN de NetworkManager desde la terminal o un atajo:
-    //   qs ipc -c alba call vpn list
-    //   qs ipc -c alba call vpn importFile /ruta/perfil.ovpn
+    //   qs ipc -c shell call vpn list
+    //   qs ipc -c shell call vpn importFile /ruta/perfil.ovpn
     IpcHandler {
         target: "vpn"
 
@@ -245,7 +247,7 @@ ShellRoot {
     }
 
     // Bandeja del sistema desde la terminal o un atajo:
-    //   qs ipc -c alba call tray toggle
+    //   qs ipc -c shell call tray toggle
     IpcHandler {
         target: "tray"
 
@@ -259,10 +261,10 @@ ShellRoot {
     }
 
     // Control del modo ventanas desde Hyprland y desde scripts:
-    //   qs ipc -c alba call windows superPress
-    //   qs ipc -c alba call windows superRelease
-    //   qs ipc -c alba call windows mode 2 mosaic
-    //   qs ipc -c alba call windows titlebar integrated
+    //   qs ipc -c shell call windows superPress
+    //   qs ipc -c shell call windows superRelease
+    //   qs ipc -c shell call windows mode 2 mosaic
+    //   qs ipc -c shell call windows titlebar integrated
     IpcHandler {
         target: "windows"
 
@@ -353,7 +355,7 @@ ShellRoot {
         }
 
         // Diagnóstico rápido del contrato y de los modos.
-        //   qs ipc -c alba call windows status
+        //   qs ipc -c shell call windows status
         function status(): string {
             let text = "titlebar=" + SettingsState.windowChrome
                 + " default=" + SettingsState.workspaceModeDefault

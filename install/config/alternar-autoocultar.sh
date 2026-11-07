@@ -1,12 +1,12 @@
 #!/bin/sh
-# ALBA · Alternar el autoocultado de la barra (lo usa el atajo SUPER+B).
+# Alternar el autoocultado de la barra (lo usa el atajo SUPER+B).
 # La barra mira este «interruptor» una vez por segundo.
-ARCHIVO="$HOME/.config/alba/autoocultar"
+ARCHIVO="$HOME/.config/shell/autoocultar"
 if [ -e "$ARCHIVO" ]; then
     rm -f "$ARCHIVO"
-    echo "Barra ALBA: modo FIJA (siempre visible)."
+    echo "Barra: modo FIJA (siempre visible)."
 else
-    mkdir -p "$HOME/.config/alba"
+    mkdir -p "$HOME/.config/shell"
     touch "$ARCHIVO"
-    echo "Barra ALBA: modo AUTOOCULTO (roza su borde para verla)."
+    echo "Barra: modo AUTOOCULTO (roza su borde para verla)."
 fi

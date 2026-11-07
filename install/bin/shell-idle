@@ -1,7 +1,7 @@
 #!/bin/sh
-# Bloqueo automático de ALBA.
+# Bloqueo automático del shell.
 #
-# Uso: alba-idle MINUTOS
+# Uso: shell-idle MINUTOS
 #
 # MINUTOS = 0 desactiva el bloqueo. Cualquier otro valor arranca `swayidle`
 # contra el protocolo de inactividad del compositor y ejecuta `hyprlock` al
@@ -17,7 +17,7 @@ case "$minutes" in
 esac
 [ "$minutes" -gt 120 ] && minutes=120
 
-# Solo hay un temporizador de ALBA. Si se cambia el ajuste, se reemplaza.
+# Solo hay un temporizador del shell. Si se cambia el ajuste, se reemplaza.
 pkill -x swayidle 2>/dev/null || true
 
 [ "$minutes" -eq 0 ] && exit 0

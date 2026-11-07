@@ -94,9 +94,9 @@ ColumnLayout {
                 radius: 10
                 color: Theme.surfaceAlt
 
-                AlbaIcon {
+                ShellIcon {
                     anchors.centerIn: parent
-                    source: AlbaIcons.src("shield")
+                    source: ShellIcons.src("shield")
                     color: Theme.faint
                     size: 22
                     fallback: "⛨"
@@ -164,8 +164,8 @@ ColumnLayout {
                         }
                         spacing: 7
 
-                        AlbaIcon {
-                            source: AlbaIcons.src("shield")
+                        ShellIcon {
+                            source: ShellIcons.src("shield")
                             color: modelData.active ? Theme.accent : Theme.muted
                             size: 16
                             fallback: "⛨"
@@ -242,9 +242,9 @@ ColumnLayout {
                             color: editMouse.containsMouse
                                 ? Theme.hover : "transparent"
 
-                            AlbaIcon {
+                            ShellIcon {
                                 anchors.centerIn: parent
-                                source: AlbaIcons.src("settings")
+                                source: ShellIcons.src("settings")
                                 color: root.editingName === modelData.name
                                     ? Theme.accent : Theme.muted
                                 size: 13
@@ -339,7 +339,7 @@ ColumnLayout {
                                 font.pixelSize: 9
                             }
 
-                            AlbaSwitch {
+                            ShellSwitch {
                                 checked: root.editingAuto
                                 onToggled: root.editingAuto = !root.editingAuto
                             }

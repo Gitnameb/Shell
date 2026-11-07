@@ -21,7 +21,7 @@ Rectangle {
     border.width: root.selected ? 1 : 0
     border.color: Theme.accentLine
 
-    AlbaIcon {
+    ShellIcon {
         anchors.centerIn: parent
         name: root.iconName
         source: root.iconSource

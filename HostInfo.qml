@@ -11,7 +11,7 @@ Singleton {
     id: root
 
     property string name: ""
-    readonly property string displayName: root.name.length > 0 ? root.name : "ALBA"
+    readonly property string displayName: root.name.length > 0 ? root.name : "Shell"
 
     // Se consulta una sola vez al arrancar; no hay Component.onCompleted en
     // los singletons de Quickshell, así que se usa un temporizador corto.

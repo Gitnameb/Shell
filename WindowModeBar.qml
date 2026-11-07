@@ -29,13 +29,21 @@ PanelWindow {
     visible: SuperState.active
     screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
     anchors {
-        top: SettingsState.barAtTop
-        bottom: !SettingsState.barAtTop
+        top: !SettingsState.barVertical && SettingsState.barAtTop
+        bottom: SettingsState.barVertical || !SettingsState.barAtTop
         left: true
         right: true
     }
-    margins.top: SettingsState.barAtTop ? Theme.edge + Theme.barHeight + 12 : 0
-    margins.bottom: SettingsState.barAtTop ? 0 : Theme.edge + Theme.barHeight + 12
+    margins {
+        top: SettingsState.barVertical ? 0
+            : (SettingsState.barAtTop ? Theme.edge + Theme.barHeight + 12 : 0)
+        bottom: SettingsState.barVertical ? Theme.edge + 12
+            : (SettingsState.barAtTop ? 0 : Theme.edge + Theme.barHeight + 12)
+        left: SettingsState.barVertical
+            ? Theme.edge + Theme.barHeight + 12 : 0
+        right: SettingsState.barVertical
+            ? Theme.edge + Theme.barHeight + 12 : 0
+    }
     implicitWidth: Math.min(Quickshell.screens.length > 0
         ? Quickshell.screens[0].width - 32 : 900, bar.implicitWidth + 24)
     implicitHeight: 46
@@ -44,7 +52,7 @@ PanelWindow {
     focusable: false
 
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.namespace: "alba-window-mode"
+    WlrLayershell.namespace: "shell-window-mode"
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
     Rectangle {

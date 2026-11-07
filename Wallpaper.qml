@@ -25,7 +25,7 @@ Variants {
         focusable: false
 
         WlrLayershell.layer: WlrLayer.Background
-        WlrLayershell.namespace: "alba-wallpaper"
+        WlrLayershell.namespace: "shell-wallpaper"
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
         // Si la imagen elegida ya no existe, se vuelve al color de fondo.

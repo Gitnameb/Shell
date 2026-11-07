@@ -9,6 +9,9 @@ Rectangle {
     id: root
 
     property int workspaceId: 1
+    // En la barra vertical no caben las fichas de las apps: se muestra solo
+    // el número del escritorio para que la franja no se ensanche.
+    property bool compact: false
 
     // El menú contextual vive en Bar.qml; la ficha solo le pasa el icono y la app.
     signal appMenuRequested(var anchorItem, var app)
@@ -30,6 +33,7 @@ Rectangle {
     // que alterna entre mosaico y flotante, como en el mockup. Las apps siguen
     // ahí, atenuadas, para no perder el contexto del escritorio.
     readonly property bool modeSwitch: root.focused && SuperState.active
+        && !root.compact
     readonly property string workspaceMode:
         SettingsState.workspaceMode(root.workspaceId)
     readonly property bool floatingMode: root.workspaceMode === "floating"
@@ -77,9 +81,9 @@ Rectangle {
         }
         return out;
     }
-    readonly property var visibleApps: root.focused
+    readonly property var visibleApps: root.focused && !root.compact
         ? root.apps.slice(0, root.maxIcons) : []
-    readonly property int hiddenApps: root.focused
+    readonly property int hiddenApps: root.focused && !root.compact
         ? Math.max(0, root.apps.length - root.visibleApps.length) : 0
 
     // Progreso de tareas: las apps lo muestran en su propia ficha. Los
@@ -221,9 +225,10 @@ Rectangle {
         return false;
     }
 
-    implicitWidth: Math.max(content.implicitWidth + 14,
+    implicitWidth: Math.max(root.compact ? 26 : 0,
+        content.implicitWidth + 14,
         root.modeSwitch ? 38 : 0)
-    implicitHeight: 34
+    implicitHeight: root.compact ? 28 : 34
     radius: 8
     // El escritorio actual lleva el mismo fondo que al pasar el ratón, así se
     // sabe dónde estamos aunque no haya ninguna app abierta. Los demás siguen
@@ -390,11 +395,11 @@ Rectangle {
         border.width: 1
         border.color: Theme.accentLine
 
-        AlbaIcon {
+        ShellIcon {
             anchors.centerIn: parent
             size: 14
             color: modeMouse.containsMouse ? Theme.accentInk : Theme.accent
-            source: AlbaIcons.src(root.floatingMode
+            source: ShellIcons.src(root.floatingMode
                 ? "mode-float" : "mode-tile")
         }
 

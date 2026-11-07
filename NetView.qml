@@ -19,7 +19,7 @@ ColumnLayout {
             RowLayout {
                 spacing: 4
 
-                AlbaIcon {
+                ShellIcon {
                     name: "arrow-down"
                     color: Theme.info
                     size: 14
@@ -49,7 +49,7 @@ ColumnLayout {
             RowLayout {
                 spacing: 4
 
-                AlbaIcon {
+                ShellIcon {
                     name: "arrow-up"
                     color: Theme.accent
                     size: 14

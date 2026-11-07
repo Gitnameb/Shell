@@ -24,7 +24,7 @@ Variants {
         focusable: false
 
         WlrLayershell.layer: WlrLayer.Bottom
-        WlrLayershell.namespace: "alba-desktop-icons"
+        WlrLayershell.namespace: "shell-desktop-icons"
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
         MouseArea {

@@ -26,7 +26,7 @@ Rectangle {
         }
         spacing: 8
 
-        AlbaIcon {
+        ShellIcon {
             Layout.preferredWidth: 15
             Layout.preferredHeight: 15
             name: root.iconName

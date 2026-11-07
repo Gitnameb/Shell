@@ -24,7 +24,7 @@ PanelWindow {
     focusable: false
 
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.namespace: "alba-osd"
+    WlrLayershell.namespace: "shell-osd"
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
     readonly property bool mutedKind: (OsdState.kind === "volume"
@@ -42,11 +42,11 @@ PanelWindow {
     }
     readonly property string iconSource: {
         if (OsdState.kind === "brightness")
-            return AlbaIcons.src("sun");
+            return ShellIcons.src("sun");
         if (OsdState.kind === "extraDim")
-            return AlbaIcons.src("dim");
+            return ShellIcons.src("dim");
         if (OsdState.kind === "night")
-            return AlbaIcons.src("moon");
+            return ShellIcons.src("moon");
         return "";
     }
     readonly property color iconColor: {
@@ -118,7 +118,7 @@ PanelWindow {
                     fallback: OsdState.kind === "mic" ? "◉" : "◖"
                 }
 
-                AlbaIcon {
+                ShellIcon {
                     anchors.centerIn: parent
                     visible: root.iconSource.length > 0
                     source: root.iconSource

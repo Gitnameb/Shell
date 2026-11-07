@@ -43,8 +43,9 @@ Singleton {
         const now = Date.now();
         // Mientras se está viendo la lista de redes, el apagado automático no
         // debe empezar a contar: el usuario puede tardar en elegir una red.
-        const viewingWifi = NotificationState.panelOpen
-            && NotificationState.panelView === "wifi";
+        const viewingWifi = (NotificationState.panelOpen
+            && NotificationState.panelView === "wifi")
+            || QuickPanelState.isOpen("wifi");
 
         // ------------------------------------------------ punto de acceso
         if (HotspotState.active) {

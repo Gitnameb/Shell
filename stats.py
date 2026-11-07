@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Muestreo de CPU, GPU y red para ALBA.
+"""Muestreo de CPU, GPU y red para el shell.
 
 Imprime una línea JSON por segundo. No necesita privilegios: usa /proc,
 /sys/class/hwmon y /sys/class/drm, y `ping` al gateway para la latencia.

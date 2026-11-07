@@ -1,5 +1,9 @@
-# ALBA · Contexto del proyecto
+# Shell · Contexto del proyecto
 
+> Las menciones a «ALBA» en el texto histórico se conservan como registro del
+> nombre anterior; el código y la documentación nuevos usan «shell». La ruta
+> antigua `~/Shell` corresponde ahora a `~/Shell`.
+>
 > Documento vivo. Si algo no está aquí, probablemente se nos olvidó.
 > Última actualización: 2026-11-05
 >
@@ -42,7 +46,7 @@ Prioridad acordada:
   El shell no dibuja su contenido.
 - La barra de ventanas, el tiling, el pin, el movimiento entre escritorios y el
   minimizar son responsabilidad de **Hyprland** + scripts/overlays, no de Quickshell.
-- El proyecto viejo **ALBA en Rust/GTK4** (`~/alba`, `~/Documents/instalar-alba-completo.sh`)
+- El proyecto viejo **ALBA en Rust/GTK4** (`~/alba`, `~/Documents/instalar-shell-completo.sh`)
   queda como referencia y respaldo. No se borra.
 - El mockup incluye una función de “apps web” solo para demos; no es prioridad.
 - Un control del centro de control solo puede estar en un sitio: si se arrastra a la
@@ -67,7 +71,7 @@ Prioridad acordada:
   centro de control para quitarlos. El orden es de sesión: al reiniciar Quickshell
   vuelve el orden por defecto.
 - El punto de acceso Wi-Fi se gestiona con NetworkManager (`nmcli`), con perfil
-  propio `ALBA-Hotspot` y SSID/clave editables. Por defecto el SSID visible es el
+  propio `shell-hotspot` y SSID/clave editables. Por defecto el SSID visible es el
   nombre de la máquina (`hostname`), no un nombre genérico del shell. La vista
   incluye banda (2.4/5 GHz) y un QR WPA generado con `qrencode`.
 - El adaptador Bluetooth también usa el nombre de la máquina por defecto. Su nombre
@@ -110,8 +114,8 @@ Prioridad acordada:
   guardada puede usar sin proxy, automático (PAC) o manual (HTTP, HTTPS, SOCKS y
   excepciones). NetworkManager solo admite `none`/`auto`, así que el modo manual
   se guarda como un PAC generado en el perfil. Si la red está activa, también se
-  escribe `~/.config/environment.d/90-alba-proxy.conf` para la próxima sesión.
-  Los datos editables se guardan en `~/.config/alba/proxy.json`. Lo implementan
+  escribe `~/.config/environment.d/90-shell-proxy.conf` para la próxima sesión.
+  Los datos editables se guardan en `~/.config/shell/proxy.json`. Lo implementan
   `ProxySettings.qml`, `ProxyState.qml` y el mismo ayudante.
 - El panel de notificaciones tiene un icono de comprobación junto a
   «No molestar». Al pulsarlo ejecuta `scripts/check-deps.sh` y muestra una
@@ -139,7 +143,7 @@ Prioridad acordada:
   muy oscura y el acento por defecto es un gris claro; el modo claro reutiliza el
   mismo acento y lo oscurece automáticamente para conservar el contraste. Ambos se
   eligen en Ajustes y se guardan en `settings.conf`.
-- Los widgets usan iconos reales del tema Breeze mediante `AlbaIcon.qml`, no emojis.
+- Los widgets usan iconos reales del tema Breeze mediante `ShellIcon.qml`, no emojis.
   El color del icono comunica el estado: acento para activo, ámbar para aviso (señal
   débil, batería media), rojo para peligro (mudo, batería baja), cálido para luz
   nocturna y gris para apagado. La campana se tiñe cuando hay avisos sin leer; brillo,
@@ -151,7 +155,7 @@ Prioridad acordada:
   `volume`, `cpu`, `gpu` y `net`.
 - Los iconos de **Música, luz nocturna, VPN, modo avión, CPU, atenuación extra, brillo,
   tráfico de red, teclado, energía y las pestañas del reloj** son SVG propios copiados
-  del sprite del diseño (`AlbaIcons.qml` + `icons/`), con el mismo trazo de 1,8 px;
+  del sprite del diseño (`ShellIcons.qml` + `icons/`), con el mismo trazo de 1,8 px;
   los de Wi-Fi usan 2,2 px para que no se vean finos al tamaño de la barra.
   El resto de iconos sigue usando el tema Breeze. La hora de la barra es solo texto,
   como en el diseño; no lleva icono.
@@ -200,7 +204,7 @@ Prioridad acordada:
   uno con `nmtui` o importando un `.ovpn`.
 - El teclado en pantalla usa **wvkbd** (protocolo de teclado virtual de Wayland). Se
   instala como paquete del sistema y se muestra/oculta desde el centro de control, la
-  barra (si se añade) o `qs ipc -c alba call notifications keyboard`.
+  barra (si se añade) o `qs ipc -c shell call notifications keyboard`.
 - Mostrar la temperatura de CPU/GPU junto al icono es opcional (`showTemps`), se
   controla desde la vista de rendimiento y se guarda en `settings.conf`.
 - El punto de acceso tiene una vista principal limpia con el **QR y los dispositivos
@@ -217,7 +221,7 @@ Prioridad acordada:
   encendidas antes. Su ficha del centro y su icono de la barra son solo un
   interruptor: no tienen vista de opciones.
 - La barra muestra **1..9 escritorios por defecto**. El máximo se cambia desde
-  **Ajustes** (1–20) y se guarda en `~/.config/alba/settings.conf`. Cada escritorio
+  **Ajustes** (1–20) y se guarda en `~/.config/shell/settings.conf`. Cada escritorio
   enseña los iconos de sus apps abiertas; al pulsar un icono se enfoca esa ventana.
   En el escritorio **activo** se oculta el número y solo quedan sus apps; los demás
   conservan el número. Los atajos `SUPER+1..9` siguen siendo los mismos.
@@ -234,7 +238,7 @@ Prioridad acordada:
   `SUPER+Espacio` sigue funcionando como alternativa.
 - El panel del reloj está anclado a la barra inferior y tiene pestañas de
   **calendario, clima, alarmas y temporizador**. El clima se consulta a `wttr.in`
-  (sin clave de API). Las alarmas se guardan en `~/.config/alba/alarms.conf`, se
+  (sin clave de API). Las alarmas se guardan en `~/.config/shell/alarms.conf`, se
   comprueban cada segundo y suenan con `paplay` además de avisar con `notify-send`;
   el temporizador también suena al terminar.
 - Contraseña de sudo disponible para esta sesión de trabajo. **No se guarda en este documento.**
@@ -252,12 +256,12 @@ Prioridad acordada:
   - Barra de título nativa (`mode = "forced"`, 34 px) que **reserva espacio**: el
     contenido empieza debajo, no se superpone.
   - Layout por escritorio: `stacking` (Flotante) y `dwindle` (Mosaico).
-  - Autostart de ALBA mediante `~/.local/bin/alba-start`.
+  - Autostart de ALBA mediante `~/.local/bin/shell-start`.
   - Teclado en español: `[input.keyboard] layout = "es"`.
 - Hyprland (respaldo): `0.55.2+ds-1~bpo13+1` desde `trixie-backports`.
   - Config actual: `~/.config/hypr/hyprland.conf` (valida: `config ok`).
   - Teclado configurado en español: `input { kb_layout = es }`.
-  - La config vieja de `alba-bar` ya está fuera; arranca `qs -c alba`.
+  - La config vieja de `shell-bar` ya está fuera; arranca `qs -c shell`.
 - Quickshell: `0.3.0-1~bpo13+1` desde `trixie-backports`.
   - Binarios: `/usr/bin/qs` y `/usr/bin/quickshell`.
   - Módulos Qt disponibles: QtQuick, Controls, Layouts, Effects, Shapes, etc.
@@ -276,7 +280,7 @@ Prioridad acordada:
 - Audio: PipeWire + WirePlumber (`wpctl`); para Bluetooth,
   `libspa-0.2-bluetooth`.
 - Brillo: el monitor LG `HDMI-A-1` admite **DDC/CI**. Se instaló `ddcutil` y se
-  creó `/etc/sudoers.d/alba-ddcutil` para que el usuario pueda leer y escribir el
+  creó `/etc/sudoers.d/shell-ddcutil` para que el usuario pueda leer y escribir el
   brillo sin contraseña (`sudo -n ddcutil ...`). Si el monitor no responde, el shell
   vuelve al shader global de Hyprland. No hay `/sys/class/backlight` ni
   `brightnessctl` porque es un equipo de escritorio con monitor externo.
@@ -292,21 +296,21 @@ Prioridad acordada:
 | Ruta | Qué es |
 |---|---|
 | `~/Documents/Desktop.html` | Mockup de referencia (541 KB). Barra inferior, paneles, launcher, centro de control, notificaciones, iconos, ventanas, ajustes. |
-| `~/Documents/instalar-alba-completo.sh` | Instalador de la ALBA vieja (Rust + GTK4 + gtk4-layer-shell). Referencia de funciones y atajos. |
+| `~/Documents/instalar-shell-completo.sh` | Instalador de la ALBA vieja (Rust + GTK4 + gtk4-layer-shell). Referencia de funciones y atajos. |
 | `~/alba/` | Código viejo de la barra ALBA en Rust/GTK4. Respaldo, no se toca. |
 | `~/.config/hypr/hyprland.conf` | Config actual de Hyprland. Tiene atajos y autostart de la barra vieja. |
-| `~/.config/alba/` | Scripts de la barra vieja (`alternar-autoocultar.sh`, etc.). Referencia. |
-| `~/Documents/Alba/` | **Este proyecto**: documentación + configuración de Quickshell. |
-| `~/Documents/Alba/INSTALACION.md` | Guía de instalación limpia: hardware, repos, paquetes, fork, configuración, portales, backups y verificación. |
-| `~/Documents/Alba/install/` | Archivos de sistema guardados para la reinstalación: scripts de `~/.local/bin`, config de Umbriel, portales, unidad de alarmas, fuentes APT y sudoers. |
+| `~/.config/shell/` | Scripts de la barra vieja (`alternar-autoocultar.sh`, etc.). Referencia. |
+| `~/Shell/` | **Este proyecto**: documentación + configuración de Quickshell. |
+| `~/Shell/INSTALACION.md` | Guía de instalación limpia: hardware, repos, paquetes, fork, configuración, portales, backups y verificación. |
+| `~/Shell/install/` | Archivos de sistema guardados para la reinstalación: scripts de `~/.local/bin`, config de Umbriel, portales, unidad de alarmas, fuentes APT y sudoers. |
 | `~/.config/umbriel/config.toml` | Config de la sesión Umbriel: barra nativa, colores, teclado `es`, atajos y autostart de ALBA. |
-| `~/.local/bin/alba-start` | Arranca `qs -c alba -d` dentro de Umbriel con el tema Qt y el tema de iconos. |
-| `~/.local/bin/alba-keyboard-layout` | Cambia `[input.keyboard] layout` y recarga Umbriel. |
-| `~/.local/bin/alba-idle` | Arranca `swayidle` con el tiempo de bloqueo elegido y lanza `hyprlock`. |
-| `~/.local/bin/alba-umbriel-theme` | Sincroniza los colores de la barra nativa con el modo y el acento de ALBA. |
+| `~/.local/bin/shell-start` | Arranca `qs -c shell -d` dentro de Umbriel con el tema Qt y el tema de iconos. |
+| `~/.local/bin/shell-keyboard-layout` | Cambia `[input.keyboard] layout` y recarga Umbriel. |
+| `~/.local/bin/shell-idle` | Arranca `swayidle` con el tiempo de bloqueo elegido y lanza `hyprlock`. |
+| `~/.local/bin/shell-umbriel-theme` | Sincroniza los colores de la barra nativa con el modo y el acento de ALBA. |
 | `~/umbriel-fork/` | Código de Umbriel con el fork de la barra (icono, subtítulo, seis botones). |
-| `~/Documents/Alba/umbriel-fork.patch` | Parche reproducible del fork sobre Umbriel `b6c4b7d`. |
-| `~/Documents/Alba/PLAN.md` | Plan por fases de lo que queda por integrar. |
+| `~/Shell/umbriel-fork.patch` | Parche reproducible del fork sobre Umbriel `b6c4b7d`. |
+| `~/Shell/PLAN.md` | Plan por fases de lo que queda por integrar. |
 | `/usr/bin/umbriel` | Binario del fork instalado; el original queda en `/usr/bin/umbriel.stock-0.1.0`. |
 
 ## 5. Arquitectura
@@ -333,7 +337,7 @@ La UI no llama a Hyprland directamente para las ventanas: pide una lista normali
 lo que no exista. Los dos backends ejecutan acciones reales: enfocar, cerrar, flotar,
 fijar, maximizar, pantalla completa, mover entre escritorios, cambiar el layout/modo
 de un escritorio y minimizar/restaurar. La página **Ajustes → Compositor**
-(o `qs ipc -c alba call notifications compositor`) enseña el estado real y permite
+(o `qs ipc -c shell call notifications compositor`) enseña el estado real y permite
 probar cada acción. El menú contextual de las apps de la barra y el clic de los
 escritorios usan el mismo contrato.
 
@@ -403,8 +407,8 @@ compositor; si es el contenido de una app → la app.**
    `journalctl --user -b`).
 2. **KWin no soporta `wlr-layer-shell`** para clientes externos. Los paneles de Quickshell
    no se verán en la sesión KDE. Hay que probar en Hyprland.
-3. **Doble barra**: resuelto. `~/.config/hypr/hyprland.conf` ya no arranca `alba-bar`;
-   ahora usa `exec-once = qs -c alba`. Copia de la config anterior:
+3. **Doble barra**: resuelto. `~/.config/hypr/hyprland.conf` ya no arranca `shell-bar`;
+   ahora usa `exec-once = qs -c shell`. Copia de la config anterior:
    `~/.config/hypr/hyprland.conf.bak-20261103-221009`.
 4. **Notificaciones en la prueba anidada**: KDE ya tiene registrado
    `org.freedesktop.Notifications`, así que Quickshell no puede registrarse dentro de la
@@ -423,9 +427,9 @@ compositor; si es el contenido de una app → la app.**
 9. **Bandeja del sistema vacía en Hyprland**: no hay `org.kde.StatusNotifierWatcher`
    (lo aportaba KDE). Quickshell avisa `UnknownObject '/StatusNotifierWatcher'` y no
    aparecen iconos de bandeja. Habrá que arrancar un watcher (o integrarlo) más adelante.
-10. **`qs kill -c alba` a veces deja el proceso vivo** y al relanzar quedan dos barras
+10. **`qs kill -c shell` a veces deja el proceso vivo** y al relanzar quedan dos barras
     (una encima de otra por el `exclusiveZone`). Si pasa: `pkill -x qs` y arrancar una
-    sola instancia con `hyprctl dispatch exec "qs -c alba"`.
+    sola instancia con `hyprctl dispatch exec "qs -c shell"`.
 11. **Arrastre a la barra en varios monitores**: `ControlDrag` usa la geometría de
     `Quickshell.screens[0]` y la barra inferior de esa pantalla. En multimonitor habría
     que elegir la pantalla bajo el cursor.
@@ -437,11 +441,11 @@ compositor; si es el contenido de una app → la app.**
     panel arrastrándolos.
 13. **Iconos del tema**: Quickshell fija `QS_ICON_THEME=breeze-dark` para que los
     iconos no dependan del tema GTK ni de que el shell tenga el foco. Las apps
-    reciben `breeze` o `breeze-dark` según el modo desde `scripts/alba-system-theme`.
+    reciben `breeze` o `breeze-dark` según el modo desde `scripts/shell-system-theme`.
     Si cambia el tema de iconos, algunos nombres pueden dejar de resolver y se usa el
     emoji/inicial de respaldo.
 14. **Brillo real por DDC/CI**: funciona si el monitor responde a `ddcutil` y si
-    existe la regla `/etc/sudoers.d/alba-ddcutil` (instalada en este equipo). Si el
+    existe la regla `/etc/sudoers.d/shell-ddcutil` (instalada en este equipo). Si el
     monitor no responde, `DisplayState` usa el shader global de Hyprland como
     respaldo. La atenuación extra y la luz nocturna siempre son un filtro global
     (`decoration:screen_shader`): afectan a todos los monitores y también a las
@@ -451,7 +455,7 @@ compositor; si es el contenido de una app → la app.**
     basta con volver a tocar el control. Las escrituras DDC tardan unos 0,5 s y se
     agrupan al dejar de mover el deslizador.
 15. **Visualización persistente**: `DisplayState` guarda `extraDim`, `extraDimLevel`,
-    `nightLight` y `nightStrength` en `~/.config/alba/display.conf`. Los niveles por
+    `nightLight` y `nightStrength` en `~/.config/shell/display.conf`. Los niveles por
     defecto de atenuación extra y luz nocturna son 50 %. El brillo real se sigue
     leyendo del monitor al arrancar y no se guarda. Si Hyprland se recarga, el shader
     se limpia; hay que volver a tocar el control para reaplicarlo.
@@ -483,7 +487,7 @@ compositor; si es el contenido de una app → la app.**
 22. **Clima**: se consulta a `wttr.in` y la ubicación se deduce por IP. Sin conexión
     el panel muestra un error y el botón «Actualizar»; no hay ubicación manual todavía.
 23. **Alarmas y temporizador**: las alarmas se guardan en
-    `~/.config/alba/alarms.conf` y suenan con `paplay`/`pw-play`; el temporizador
+    `~/.config/shell/alarms.conf` y suenan con `paplay`/`pw-play`; el temporizador
     sigue corriendo aunque el panel esté cerrado y también suena al terminar. Si
     Quickshell no está abierto no hay alarma, porque no hay un demonio aparte. Si el
     archivo se edita a mano, los cambios se leen al arrancar el shell.
@@ -520,7 +524,7 @@ compositor; si es el contenido de una app → la app.**
     Por defecto los tres quedan en 15 min. Mientras el hotspot está activo, el contador
     del Wi-Fi se detiene.
 33. **Deslizadores y pasos**: el control de volumen anterior no tenía altura efectiva y
-    por eso no aceptaba el arrastre; ahora usa `AlbaSlider`. La rueda de la barra y las
+    por eso no aceptaba el arrastre; ahora usa `ShellSlider`. La rueda de la barra y las
     teclas multimedia suben/bajan el volumen y el micrófono de 2 en 2; el brillo, la
     atenuación extra y la luz nocturna van de 5 en 5. El arrastre del deslizador usa el
     mismo paso.
@@ -561,7 +565,7 @@ compositor; si es el contenido de una app → la app.**
 40. **Teclado en pantalla**: usa `wvkbd`, que es una superficie `wlr-layer-shell`
     anclada abajo. Mientras está visible **cubre la barra**, porque wvkbd no acepta
     márgenes; se oculta desde su propio icono, desde el centro de control o con
-    `qs ipc -c alba call notifications keyboard`. El layout es el internacional de
+    `qs ipc -c shell call notifications keyboard`. El layout es el internacional de
     wvkbd (QWERTY con acentos y capas), no un layout `es` específico. Requiere el
     paquete `wvkbd`.
 41. **Vinculación Bluetooth**: el flujo del panel usa `bluetoothctl` y puede tardar
@@ -624,11 +628,11 @@ compositor; si es el contenido de una app → la app.**
 52. **Anillo de progreso**: `ProgressRing.qml` dibuja un trazo de 2 px sobre un
     rectángulo redondeado, empezando arriba y avanzando en sentido horario. Las apps
     usan su color y los escritorios el acento. `ProgressState.qml` lee
-    `~/.local/state/alba/progress`, con líneas `clave=valor`; la clave es la clase de
+    `~/.local/state/shell/progress`, con líneas `clave=valor`; la clave es la clase de
     la app (`firefox`, `kitty`, `dolphin`...) o `ws:N` para un escritorio. El valor
     admite `34`, `34%` o `0.34`. En el escritorio activo los anillos van en cada ficha
     de app; los inactivos resumen el máximo de sus apps y `ws:N` permite bordear la
-    píldora completa. `scripts/alba-progress` actualiza el archivo con bloqueo y
+    píldora completa. `scripts/shell-progress` actualiza el archivo con bloqueo y
     escritura atómica. No hay detección universal: cada tarea debe informar su
     progreso; el shell no adivina el de cualquier app.
 53. **Aviso de la campana**: cuando hay notificaciones se muestra un punto en la
@@ -650,17 +654,17 @@ compositor; si es el contenido de una app → la app.**
     `QS_ICON_THEME=breeze-dark`; las apps sí cambian entre `breeze` y `breeze-dark`
     con el modo. Los iconos de widget se tiñen, así que no pierden contraste.
 56. **Tema en las apps**: `SettingsState.systemTheme` (activado por defecto) llama a
-    `scripts/alba-system-theme` al arrancar y cuando cambian el modo o el acento. El
+    `scripts/shell-system-theme` al arrancar y cuando cambian el modo o el acento. El
     script aplica:
     - GTK: `color-scheme`, `gtk-theme`, `icon-theme` y `accent-color` con
       `gsettings`; actualiza `settings.ini` de GTK 3 y 4; y escribe un bloque
-      `ALBA-THEME` en sus `gtk.css` con el acento exacto.
+      `SHELL-THEME` en sus `gtk.css` con el acento exacto.
     - KDE: escribe `ColorScheme` e `Icons` en `kdeglobals` y ejecuta
       `plasma-apply-colorscheme --accent-color` con `BreezeDark` o `BreezeLight`.
     - El bloque de GTK quita el `@import 'colors.css'` que genera
       `kde-config-gtk-style`, porque esa paleta puede quedarse con el modo anterior;
       el tema Breeze/Breeze-Dark ya aporta las bases correctas.
-    - Antes de tocar nada guarda copias en `~/.config/alba/backups/` (solo la primera
+    - Antes de tocar nada guarda copias en `~/.config/shell/backups/` (solo la primera
       vez): `kdeglobals`, `gtk-3.0/{settings.ini,gtk.css}` y
       `gtk-4.0/{settings.ini,gtk.css}`.
     - Las apps GTK suelen actualizarse en caliente; las de KDE pueden necesitar
@@ -676,10 +680,10 @@ compositor; si es el contenido de una app → la app.**
     vacío si ninguna ventana de Quickshell tiene el foco, así que no sirve para
     vigilar lo que copian otras apps. Se incluyeron `wl-paste` y `wl-copy` de
     `wl-clipboard` en `scripts/bin/` (GPLv3, ver `wl-clipboard.copyright`). Un único
-    `wl-paste --watch` (protegido con `flock`) llama a `scripts/alba-clipboard-add`,
+    `wl-paste --watch` (protegido con `flock`) llama a `scripts/shell-clipboard-add`,
     que guarda solo texto, sin duplicados y con un máximo de 50 entradas en
-    `~/.local/state/alba/clipboard.json` (permisos 600). `ClipboardState.qml` vigila
-    ese JSON con `FileView`; al pulsar una entrada, `scripts/alba-clipboard-copy` la
+    `~/.local/state/shell/clipboard.json` (permisos 600). `ClipboardState.qml` vigila
+    ese JSON con `FileView`; al pulsar una entrada, `scripts/shell-clipboard-copy` la
     copia con `wl-copy`. La ficha **Portapapeles** y su vista permiten borrar una
     entrada o todo el historial. El vigilante sobrevive a las recargas de Quickshell
     para no perder copias y el `flock` evita instancias duplicadas.
@@ -716,17 +720,17 @@ sudo apt install qrencode
 ### Ejecutar el shell
 
 La sesión **Umbriel** está disponible en SDDM y es la principal. `~/.config/umbriel/config.toml`
-lanza `~/.local/bin/alba-start`, que arranca `qs -c alba -d` con el tema Qt y el tema
+lanza `~/.local/bin/shell-start`, que arranca `qs -c shell -d` con el tema Qt y el tema
 de iconos. La sesión **Hyprland** sigue disponible como respaldo; allí
-`exec-once = env QS_ICON_THEME=breeze-dark qs -c alba` hace lo mismo.
+`exec-once = env QS_ICON_THEME=breeze-dark qs -c shell` hace lo mismo.
 
 ```bash
-# El symlink ya existe: ~/.config/quickshell/alba -> ~/Documents/Alba
+# El symlink ya existe: ~/.config/quickshell/shell -> ~/Shell
 # Desde una sesión Umbriel o Hyprland:
-QS_ICON_THEME=breeze-dark qs -c alba
+QS_ICON_THEME=breeze-dark qs -c shell
 
 # Alternativa sin symlink:
-QS_ICON_THEME=breeze-dark qs -p ~/Documents/Alba
+QS_ICON_THEME=breeze-dark qs -p ~/Shell
 ```
 
 ### Recargar
@@ -734,17 +738,17 @@ QS_ICON_THEME=breeze-dark qs -p ~/Documents/Alba
 Quickshell recarga solo al guardar los `.qml`. Para reiniciar a mano:
 
 ```bash
-qs kill -c alba   # o: pkill -f 'qs -c alba'
+qs kill -c shell   # o: pkill -f 'qs -c shell'
 ```
 
 ### Logs
 
 ```bash
 qs list --all                                  # instancias vivas
-qs log -c alba                                 # logs de ALBA
-qs ipc -c alba --any-display call launcher toggle
-qs ipc -c alba --any-display call notifications toggle
-qs ipc -c alba --any-display call calendar toggle
+qs log -c shell                                 # logs de ALBA
+qs ipc -c shell --any-display call launcher toggle
+qs ipc -c shell --any-display call notifications toggle
+qs ipc -c shell --any-display call calendar toggle
 ```
 
 `--any-display` hace falta cuando el shell corre en otro compositor (por ejemplo en la
@@ -760,17 +764,17 @@ dentro de la sesión actual y se lanza una copia de ALBA con su propio socket:
 python3 - <<'EOF'
 src = open('/home/username/.config/umbriel/config.toml').read()
 open('/tmp/opencode/umbriel-test.toml','w').write(
-    src.replace('autostart = ["/home/username/.local/bin/alba-start"]', 'autostart = []'))
+    src.replace('autostart = ["/home/username/.local/bin/shell-start"]', 'autostart = []'))
 EOF
 umbriel -c /tmp/opencode/umbriel-test.toml -s kitty &
 
 # Copia con ruta propia para que el IPC no choque con la instancia real
-cp -a ~/Documents/Alba /tmp/opencode/alba-copy
-ln -sfn /tmp/opencode/alba-copy ~/.config/quickshell/alba-copy
+cp -a ~/Shell /tmp/opencode/shell-copy
+ln -sfn /tmp/opencode/shell-copy ~/.config/quickshell/shell-copy
 WAYLAND_DISPLAY=wayland-0 \
 UMBRIEL_SOCKET=/run/user/1000/umbriel-wayland-0.sock \
-ALBA_COMPOSITOR=umbriel \
-QS_ICON_THEME=breeze-dark qs -c alba-copy -d
+SHELL_COMPOSITOR=umbriel \
+QS_ICON_THEME=breeze-dark qs -c shell-copy -d
 ```
 
 `--any-display` hace falta para hablar con la copia desde la sesión padre.
@@ -811,48 +815,48 @@ resto de atajos de `~/.config/hypr/hyprland.conf`.
 
 ```bash
 # Apariencia
-qs ipc -c alba call appearance toggle
-qs ipc -c alba call appearance mode light|dark
-qs ipc -c alba call appearance accent '#c9b8f5'
+qs ipc -c shell call appearance toggle
+qs ipc -c shell call appearance mode light|dark
+qs ipc -c shell call appearance accent '#c9b8f5'
 
 # Teclado y portapapeles
-qs ipc -c alba call notifications keyboardSettings
-qs ipc -c alba call notifications keyboardLayout us
-qs ipc -c alba call notifications clipboard
-qs ipc -c alba call notifications clipboardCopy 0
-qs ipc -c alba call notifications clipboardRemove 0
-qs ipc -c alba call notifications clipboardClear
+qs ipc -c shell call notifications keyboardSettings
+qs ipc -c shell call notifications keyboardLayout us
+qs ipc -c shell call notifications clipboard
+qs ipc -c shell call notifications clipboardCopy 0
+qs ipc -c shell call notifications clipboardRemove 0
+qs ipc -c shell call notifications clipboardClear
 
 # Compositor: diagnóstico y acciones
-qs ipc -c alba call notifications compositor
-qs ipc -c alba call notifications compositorAction float 0xDIRECCION
-qs ipc -c alba call notifications compositorAction minimize 0xDIRECCION
-qs ipc -c alba call notifications compositorAction close 0xDIRECCION
-qs ipc -c alba call notifications compositorAction move 0xDIRECCION 2
-qs ipc -c alba call notifications compositorAction layout 2 master
-qs ipc -c alba call notifications compositorAction workspace 2
+qs ipc -c shell call notifications compositor
+qs ipc -c shell call notifications compositorAction float 0xDIRECCION
+qs ipc -c shell call notifications compositorAction minimize 0xDIRECCION
+qs ipc -c shell call notifications compositorAction close 0xDIRECCION
+qs ipc -c shell call notifications compositorAction move 0xDIRECCION 2
+qs ipc -c shell call notifications compositorAction layout 2 master
+qs ipc -c shell call notifications compositorAction workspace 2
 
 # Modo de ventanas y Super
-qs ipc -c alba call notifications windowModes
-qs ipc -c alba call windows status
-qs ipc -c alba call windows choose floating|mosaic
-qs ipc -c alba call windows mode 2 mosaic
-qs ipc -c alba call windows defaultMode floating
-qs ipc -c alba call windows titlebar auto|always|never
-qs ipc -c alba call windows toggleFocused
-qs ipc -c alba call windows pinned
-qs ipc -c alba call windows superPress
-qs ipc -c alba call windows superRelease
-qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
+qs ipc -c shell call notifications windowModes
+qs ipc -c shell call windows status
+qs ipc -c shell call windows choose floating|mosaic
+qs ipc -c shell call windows mode 2 mosaic
+qs ipc -c shell call windows defaultMode floating
+qs ipc -c shell call windows titlebar auto|always|never
+qs ipc -c shell call windows toggleFocused
+qs ipc -c shell call windows pinned
+qs ipc -c shell call windows superPress
+qs ipc -c shell call windows superRelease
+qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 ```
 
 ## 9. Estado actual
 
 - Hyprland reinstalado y config validada (`config ok`): **sí**.
 - Quickshell instalado (`0.3.0`): **sí**.
-- Symlink de configuración: `~/.config/quickshell/alba -> ~/Documents/Alba`.
+- Symlink de configuración: `~/.config/quickshell/shell -> ~/Shell`.
 - `~/.config/hypr/hyprland.conf`: limpio, sin la barra vieja, con
-  `env = QT_QPA_PLATFORMTHEME,kde`, `exec-once = env QS_ICON_THEME=breeze-dark qs -c alba`
+  `env = QT_QPA_PLATFORMTHEME,kde`, `exec-once = env QS_ICON_THEME=breeze-dark qs -c shell`
   y atajos de ALBA.
 - Barra, lanzador, notificaciones, calendario, menú de energía y bloqueo: **funcionando
   y verificados en la sesión Hyprland real**.
@@ -866,13 +870,13 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   inyectados. La vinculación real se probó con unos Galaxy Buds Pro (ver más abajo).
 - Wi-Fi: lista con icono de señal, seguridad y botones de banda por red; el cambio de
   banda se aplica al perfil de NetworkManager. Verificado el escaneo y la lógica de
-  bandas; el cambio de banda de un perfil se probó con `ALBA-Hotspot` y los botones
+  bandas; el cambio de banda de un perfil se probó con `shell-hotspot` y los botones
   responden a clics reales (inyectados con `ydotool`).
 - Hotspot y Bluetooth usan el nombre de la máquina (`Desktop`) como nombre visible
   por defecto.
 - **Tema en las apps**: activo por defecto. Se verificó con Firefox y Dolphin en
   claro y oscuro; KDE necesita reiniciar la app para aplicar el cambio. Las copias de
-  seguridad de GTK/KDE están en `~/.config/alba/backups/`.
+  seguridad de GTK/KDE están en `~/.config/shell/backups/`.
 - **Teclado**: la distribución se cambia desde la vista **Teclado** o desde Ajustes;
   se aplica en caliente con `hyprctl` y se guarda en `settings.conf`. Probado
   `es -> us -> es`.
@@ -911,7 +915,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 - **Escritorio activo**: se oculta su número y quedan solo los iconos de sus apps; los
   demás números siguen visibles. Las fichas pasaron a 26 px con iconos de 18 px.
   **Verificado** con captura.
-- Punto de acceso Wi-Fi: **verificado** de extremo a extremo (`ALBA-Hotspot` se activa
+- Punto de acceso Wi-Fi: **verificado** de extremo a extremo (`shell-hotspot` se activa
   y se apaga; la Wi-Fi normal vuelve a quedar desconectada).
 - Documentación: **este archivo**.
 - **Widgets nuevos**: Música, Procesador, Gráficos, Red, VPN y Bluetooth. La barra
@@ -927,7 +931,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   y los picos se reinician desde la propia vista. `showTemps` se guardó y releyó desde
   `settings.conf`.
 - **VPN**: la vista vacía explica cómo crear un perfil; se probó con un perfil
-  WireGuard temporal (`ALBA-Test`) que apareció en la lista y se borró después. No se
+  WireGuard temporal (`shell-test`) que apareció en la lista y se borró después. No se
   probó una conexión real porque no hay perfiles configurados.
 - **Teclado en pantalla**: `wvkbd` se instaló y se verificó mostrarlo y ocultarlo desde
   IPC y desde la cuadrícula. Falta probar la escritura en un campo de texto real. Mientras
@@ -1005,13 +1009,14 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 | `WorkspacePill.qml` | Indicador de escritorio: el activo muestra hasta 5 fichas de ventanas (26 px, icono configurable de 22 px por defecto) y oculta su número; los demás solo el número. Hay una ficha por ventana, aunque sean de la misma app, y las minimizadas siguen visibles atenuadas en su escritorio de origen. Al pulsar una ficha enfoca (o restaura) esa ventana; con clic derecho abre su menú contextual. Los clics de ventana y escritorio pasan por `CompositorState`. |
 | `AppContextMenu.qml` | Menú contextual de una ventana: enfocar, maximizar/restaurar, minimizar/restaurar, flotante/mosaico, mover al escritorio y cerrar esa ventana. Las acciones pasan por `CompositorState`. |
 | `AppMenuItem.qml` | Fila reutilizable del menú contextual, con icono del tema o glifo de respaldo. |
-| `AlbaIcon.qml` | Icono de widget del tema Breeze con color de estado mediante `ColorOverlay`; sustituye a los emojis. |
+| `ShellIcon.qml` | Icono de widget del tema Breeze con color de estado mediante `ColorOverlay`; sustituye a los emojis. |
 | `SettingsState.qml` | Preferencias persistentes: modo claro/oscuro, color de acento, tema en las apps, distribución del teclado, máximo de escritorios, filas visibles y tamaños de iconos del centro y de la barra, porcentajes por panel (volumen, brillo, atenuación, batería y Bluetooth), temperatura en la barra, atajo del micrófono, ocultación automática de la barra, apagados automáticos, modo avión, redes ocultas, modo por defecto y por escritorio, y barra de título (`auto`/`always`/`never`). |
 | `HostInfo.qml` | Nombre de la máquina, usado por el hotspot y el Bluetooth. |
 | `WeatherState.qml` | Clima actual y previsión desde `wttr.in`, sin clave de API. |
 | `ClockTab.qml` | Pestaña reutilizable del panel del reloj. |
 | `Launcher.qml` | Lanzador de apps con búsqueda y teclado. |
-| `SidePanel.qml` | Panel único pegado a la barra: notificaciones arriba y centro de control de alto fijo abajo, con desplazamiento para filas y vistas que no caben. |
+| `SidePanel.qml` | Panel único pegado a la barra: en modo completo, notificaciones arriba y centro de control de alto fijo abajo; en modo rápido (controles de la barra), solo la vista avanzada del control, sin notificaciones. |
+| `QuickPanelState.qml` | Estado del panel rápido: vista activa, ancla bajo el control pulsado y cierre al abrir otro panel. |
 | `PanelFocusGate.qml` | Retrasa 150 ms el foco de teclado de los paneles para que el clic de cierre llegue a la barra sin mover el ratón. |
 | `NotificationList.qml` | Avisos agrupados por app, icono real, contador y chevron a la derecha, y texto completo al pulsar. El borrado individual está oculto por ahora; queda «Limpiar todo». |
 | `ControlCenterContent.qml` | Cuadrícula fija de dos columnas, ajustes por red Wi-Fi (QR, reconexión, olvidar) y vistas avanzadas de Wi-Fi, Bluetooth, volumen, micrófono, luz nocturna, brillo, atenuación extra, punto de acceso, música, rendimiento, red, VPN, teclado, portapapeles, ajustes, modo de ventanas y diagnóstico del compositor. Ajustes incluye tema, acento, tema en las apps, distribución del teclado, tamaños, modo por defecto, barra de título y acceso al compositor. |
@@ -1027,9 +1032,9 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 | `VpnView.qml` | Vista de VPN con la lista real de perfiles. |
 | `KeyboardState.qml` | Teclado en pantalla con `wvkbd`; estado, disponibilidad y proceso. |
 | `icons/cpu.svg`, `icons/gpu.svg` | Iconos propios de chip y tarjeta gráfica para teñir por estado. |
-| `AlbaIcons.qml` | Rutas de los iconos SVG copiados del diseño (`music`, `moon`, `shield`, `plane`, `sun`, `dim`, `net`, `keyboard`, `clipboard`, `power`, `calendar`, `cloud`, `alarm`, `timer`, `lock`, `restart`, `logout`). |
+| `ShellIcons.qml` | Rutas de los iconos SVG copiados del diseño (`music`, `moon`, `shield`, `plane`, `sun`, `dim`, `net`, `keyboard`, `clipboard`, `power`, `calendar`, `cloud`, `alarm`, `timer`, `lock`, `restart`, `logout`). |
 | `LevelIcon.qml` | Icono de nivel para volumen y micrófono. El volumen usa `icons/volume-1/2/3.svg` y `volume-off.svg`; el micrófono, `icons/mic.svg` e `icons/mic-off.svg`. |
-| `icons/music.svg`, `icons/moon.svg`, `icons/shield.svg`, `icons/plane.svg`, `icons/sun.svg`, `icons/dim.svg`, `icons/net.svg`, `icons/keyboard.svg`, `icons/clipboard.svg`, `icons/power.svg`, `icons/calendar.svg`, `icons/cloud.svg`, `icons/alarm.svg`, `icons/timer.svg`, `icons/lock.svg`, `icons/restart.svg`, `icons/logout.svg` | Iconos exactos del sprite del diseño (o del mismo trazo), teñidos con `AlbaIcon`. |
+| `icons/music.svg`, `icons/moon.svg`, `icons/shield.svg`, `icons/plane.svg`, `icons/sun.svg`, `icons/dim.svg`, `icons/net.svg`, `icons/keyboard.svg`, `icons/clipboard.svg`, `icons/power.svg`, `icons/calendar.svg`, `icons/cloud.svg`, `icons/alarm.svg`, `icons/timer.svg`, `icons/lock.svg`, `icons/restart.svg`, `icons/logout.svg` | Iconos exactos del sprite del diseño (o del mismo trazo), teñidos con `ShellIcon`. |
 | `icons/mic.svg`, `icons/mic-off.svg` | Micrófono normal y silenciado con trazo propio, para que la barra, el centro de control y el OSD no dependan del tema. |
 | `icons/volume-1.svg`, `icons/volume-2.svg`, `icons/volume-3.svg`, `icons/volume-off.svg` | Volumen con uno, dos o tres arcos y variante tachada, con el mismo trazo que los demás iconos. |
 | `icons/wifi-1.svg`, `icons/wifi-2.svg`, `icons/wifi-3.svg`, `icons/wifi-none.svg`, `icons/wifi-off.svg` | Señal Wi-Fi por niveles y variantes sin señal o apagada, con trazo de 2,2 px; se usan en la barra y en la lista de redes. |
@@ -1038,12 +1043,12 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 | `icons/grid.svg` | Cuadrícula de cuatro cuadros usada como logotipo de respaldo del lanzador. |
 | `BarControl.qml` | Icono de un control del centro de control colocado en la barra; alterna su vista al pulsarlo, incluye batería Bluetooth, los dos iconos de cable + Wi-Fi, el tráfico de red numérico y los iconos de nivel. El botón mide el icono más 6 px de relleno, así que `barIconSize` cambia también su ancho. |
 | `ProgressRing.qml` | Anillo de progreso de 2 px sobre un rectángulo redondeado; se dibuja con Canvas desde el borde superior en sentido horario. |
-| `ProgressState.qml` | Lee tareas de `~/.local/state/alba/progress`, las normaliza a 0..1 y las asocia a clases de app o a escritorios (`ws:N`). |
-| `scripts/alba-progress` | CLI para fijar, borrar y listar el progreso de apps y escritorios con escritura atómica. |
-| `ClipboardState.qml` | Historial de textos: vigila `~/.local/state/alba/clipboard.json` con `FileView`, copia con `wl-copy`, reordena, borra entradas y vacía el historial. |
-| `scripts/alba-clipboard-add` | Recibe el texto de `wl-paste --watch`, elimina duplicados y guarda las 50 entradas más recientes con permisos 600. |
-| `scripts/alba-clipboard-copy` | Copia al portapapeles la entrada del índice indicado y la mueve al principio. |
-| `scripts/alba-clipboard-watch` | Arranca un único `wl-paste --watch` protegido con `flock`; si ya hay otro, sale sin error. |
+| `ProgressState.qml` | Lee tareas de `~/.local/state/shell/progress`, las normaliza a 0..1 y las asocia a clases de app o a escritorios (`ws:N`). |
+| `scripts/shell-progress` | CLI para fijar, borrar y listar el progreso de apps y escritorios con escritura atómica. |
+| `ClipboardState.qml` | Historial de textos: vigila `~/.local/state/shell/clipboard.json` con `FileView`, copia con `wl-copy`, reordena, borra entradas y vacía el historial. |
+| `scripts/shell-clipboard-add` | Recibe el texto de `wl-paste --watch`, elimina duplicados y guarda las 50 entradas más recientes con permisos 600. |
+| `scripts/shell-clipboard-copy` | Copia al portapapeles la entrada del índice indicado y la mueve al principio. |
+| `scripts/shell-clipboard-watch` | Arranca un único `wl-paste --watch` protegido con `flock`; si ya hay otro, sale sin error. |
 | `scripts/bin/wl-paste`, `scripts/bin/wl-copy` | Binarios de `wl-clipboard` 2.2.1 extraídos del paquete Debian; no requieren instalación con `sudo`. GPLv3 en `scripts/bin/wl-clipboard.copyright`. |
 | `BarState.qml` | Lista y orden de controles fijos de la barra (`music`, `wifi`, `bluetooth`, `volume`, `cpu`, `gpu`, `net` por defecto), orden propio de la cuadrícula del centro (incluye teclado y portapapeles), controles que quedan en cada sitio y `move()`/`moveCenter()` para reordenar. |
 | `ControlDrag.qml` | Arrastre de controles en ambos sentidos, reordenación en vivo del centro con hueco de destino, reordenación en la barra y detección del puntero/panel/barra con coordenadas que envía el `MouseArea`. |
@@ -1055,14 +1060,14 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 | `WifiState.qml` | Bandas, seguridad y señal de las redes vía `nmcli`; perfil, QR compartible y reconexión automática de cada red; preferencias de banda por SSID y conexión manual a redes ocultas (`hidden yes`). |
 | `EthernetState.qml` | Diagnóstico por interfaz cableada: muestra si la controla NetworkManager, ifupdown o dhcpcd. Mantiene una etiqueta por nombre para las listas con varias Ethernet. |
 | `scripts/wifi-profile.py` | Lee el perfil de una red, genera el QR WPA, cambia `connection.autoconnect` y olvida la red desde NetworkManager. |
-| `AlbaSlider.qml` | Deslizador compacto de las vistas avanzadas, con pasos del 2%. |
+| `ShellSlider.qml` | Deslizador compacto de las vistas avanzadas, con pasos del 2%. |
 | `CalendarPanel.qml` | Panel del reloj pegado a la barra: calendario, clima, alarmas y temporizador. |
 | `PowerMenu.qml` | Menú de energía en su propia capa. |
-| `CcItem.qml`, `AlbaSwitch.qml` | Ítem compacto (con icono del tema o icono de nivel), rueda para ajustar el control, reordenación dentro de la cuadrícula e interruptor reutilizables. |
+| `CcItem.qml`, `ShellSwitch.qml` | Ítem compacto (con icono del tema o icono de nivel), rueda para ajustar el control, reordenación dentro de la cuadrícula e interruptor reutilizables. |
 | `Audio.qml` | Estado compartido de PipeWire: salidas, entradas, predeterminadas, volumen y micrófono. |
 | `Osd.qml` | OSD sobre la barra para volumen, micrófono, brillo, atenuación extra y luz nocturna. |
 | `Theme.qml` | Colores, medidas y colores de estado. Deriva toda la paleta de `themeMode` y `accentColor`: superficies y textos cambian entre oscuro y claro, y el acento se aclara u oscurece según el fondo. |
-| `scripts/alba-system-theme` | Propaga modo y acento a GTK y KDE: `gsettings`, `settings.ini` y `gtk.css` de GTK 3/4, `kdeglobals` con `kwriteconfig6` y, si existe, `plasma-apply-colorscheme`. Guarda copias de seguridad la primera vez. |
+| `scripts/shell-system-theme` | Propaga modo y acento a GTK y KDE: `gsettings`, `settings.ini` y `gtk.css` de GTK 3/4, `kdeglobals` con `kwriteconfig6` y, si existe, `plasma-apply-colorscheme`. Guarda copias de seguridad la primera vez. |
 | `Fechas.qml` | Nombres de meses/días en español. |
 | `LauncherState.qml`, `CalendarState.qml`, `PowerState.qml`, `OsdState.qml` | Estado de los paneles. |
 | `NotificationState.qml` | Estado del panel y de su vista (`panelView`), `NotificationServer` de D-Bus, hora de llegada y agrupación por app. |
@@ -1083,7 +1088,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   escritorio activo.
 - ~~¿La barra de título nativa debe empezar en Automática?~~ Resuelto: `Automática` por
   defecto; `Siempre` para ventanas flotantes y `Nunca` deja solo los controles de Super.
-- ¿Instalamos Umbriel en una sesión aparte (`alba-umbriel`) para probar el segundo
+- ¿Instalamos Umbriel en una sesión aparte (`shell-umbriel`) para probar el segundo
   backend sin tocar la sesión diaria de Hyprland? El backend ya existe, pero no se ha
   probado en una sesión Umbriel real.
 - ¿Qué cambios concretos quieres hacer al diseño? (lista de “esto sí / esto no”).
@@ -1104,9 +1109,9 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 ### 2026-11-03
 
 - Hyprland reinstalado desde `trixie-backports`; `Hyprland --verify-config` → `config ok`.
-- Quickshell `0.3.0` instalado y configurado como `qs -c alba`.
-- Config de Hyprland limpiada: fuera los dos `exec-once` de `alba-bar`, dentro
-  `exec-once = qs -c alba`, atajos de lanzador/notificaciones/calendario/bloqueo y
+- Quickshell `0.3.0` instalado y configurado como `qs -c shell`.
+- Config de Hyprland limpiada: fuera los dos `exec-once` de `shell-bar`, dentro
+  `exec-once = qs -c shell`, atajos de lanzador/notificaciones/calendario/bloqueo y
   blur activado.
 - Barra funcional: escritorios 1–10, reloj en español, volumen PipeWire, red
   (Ethernet/Wi-Fi), batería condicional, bandeja SNI (oculta iconos rotos), campana,
@@ -1122,9 +1127,14 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   reales con `notify-send`, «No molestar», limpiar, lanzador, calendario y menú de energía.
 - OSD de volumen y silencio compartido con la barra (`Audio.qml`, `Osd.qml`), con
   teclas multimedia.
-- Panel lateral unificado: la campana (y `SUPER+N`) abre notificaciones arriba y
-  centro de control abajo, en la misma superficie. Wi-Fi (lista, conectar y
-  contraseña), Bluetooth, volumen, micrófono y «No molestar».
+- Panel lateral unificado: la campana (y `SUPER+N`) abre notificaciones y centro
+  de control como dos tarjetas redondeadas independientes, con fondo y borde
+  propios, unidas solo por un hueco de 8 px. Con la barra arriba, el centro de
+  control va primero y las notificaciones debajo; con la barra abajo se
+  invierte. Los controles de la barra abren esa misma superficie en modo rápido,
+  solo con su vista avanzada y sin notificaciones. En Ajustes del shell,
+  «Notificaciones y control juntos» permite separarlos en dos iconos de barra
+  (campana y cuadrícula).
 - Corregido tras revisión: se eliminó el icono ⚙ y el panel separado de centro de
   control; ahora ambos apartados viven en `SidePanel.qml`.
 - Panel pegado a la barra (abajo a la derecha) y centro de control compacto en
@@ -1160,9 +1170,9 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   su hueco lo ocupa la luz nocturna.
 - Nuevos controles: brillo, atenuación extra y punto de acceso Wi-Fi. Brillo y
   atenuación usan un shader global de Hyprland; la luz nocturna añade un tono cálido
-  regulable. El punto de acceso usa `nmcli` con el perfil `ALBA-Hotspot`.
+  regulable. El punto de acceso usa `nmcli` con el perfil `shell-hotspot`.
 - Los iconos del centro de control pasan a usar el tema `breeze-dark`, con emoji de
-  respaldo. Se añadió `AlbaSlider.qml` para los deslizadores de las vistas.
+  respaldo. Se añadió `ShellSlider.qml` para los deslizadores de las vistas.
 - La burbuja con el número de avisos y el chevron de expandir se movió al lado derecho
   de la cabecera del grupo. Se ocultó por ahora el borrado individual (la «×»); el
   botón de «Limpiar todo» sigue en la cabecera del panel.
@@ -1172,7 +1182,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 - `SettingsState.qml` guarda el modo claro/oscuro, el color de acento, el máximo de
   escritorios, los tamaños de iconos del centro y de la barra, la ocultación
   automática de la barra y los porcentajes de cada panel en
-  `~/.config/alba/settings.conf`.
+  `~/.config/shell/settings.conf`.
 - El lanzador limpia `HL_INITIAL_WORKSPACE_TOKEN` al abrir apps; se probó abriendo Ark
   desde el escritorio 2 y la ventana apareció en el 2.
 - **Ajustes** pasa a ser un control más de la cuadrícula (icono `preferences-system`),
@@ -1215,7 +1225,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   Apaga el hotspot sin clientes y el Wi-Fi sin conexión; no toca el Wi-Fi mientras el
   hotspot está activo. Los valores se guardan en `settings.conf`.
 - **Pasos de 2%**: rueda de la barra, teclas multimedia (`hyprland.conf`) y
-  deslizadores. El deslizador de volumen pasa a `AlbaSlider`, que tiene altura real y
+  deslizadores. El deslizador de volumen pasa a `ShellSlider`, que tiene altura real y
   acepta el arrastre; antes el `Slider` tenía altura implícita cero.
 - **Iconos del escritorio**: se había perdido la clase de las ventanas porque
   `HyprlandToplevel.lastIpcObject` llega vacío en Quickshell 0.3. Ahora la clase se lee
@@ -1237,7 +1247,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   Quickshell 0.3 segfaulteaba al cerrarse. Verificado con clics inyectados: maximizar y
   restaurar, flotante, mover al escritorio 2, cerrar una ventana y cerrar dos ventanas
   de la misma app, sin crashes nuevos.
-- **Iconos reales y colores de estado**: nuevo `AlbaIcon.qml`, que carga el icono del
+- **Iconos reales y colores de estado**: nuevo `ShellIcon.qml`, que carga el icono del
   tema Breeze y lo tiñe con `ColorOverlay`. Se sustituyeron los emojis de la barra
   (campana, energía y batería), del panel de notificaciones (No molestar, limpiar y
   estado vacío), del centro de control, del OSD de volumen, de las pestañas y el clima,
@@ -1267,7 +1277,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 - **Barra por defecto (primera versión)**: pasa a `music`, `wifi`, `volume`, `cpu`,
   `gpu`, `net`. Después se añadió Bluetooth; todos los controles nuevos se pueden
   arrastrar al centro de control y viceversa.
-- **Iconos del diseño**: se añadieron `AlbaIcons.qml` y los SVG `music`, `moon`,
+- **Iconos del diseño**: se añadieron `ShellIcons.qml` y los SVG `music`, `moon`,
   `shield`, `plane`, `sun`, `dim`, `net`, `keyboard`, `power`, `calendar`, `cloud`,
   `alarm` y `timer`, copiados del sprite de `Desktop.html`. Música usa una nota; luz
   nocturna, VPN, modo avión, CPU, atenuación extra, brillo, tráfico de red, teclado y
@@ -1294,11 +1304,10 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   `QS_ICON_THEME=breeze-dark` (ya está en `exec-once` de Hyprland). Sin esa variable,
   Qt puede usar `hicolor` y los iconos de Breeze aparecen como glifos de respaldo.
   `QT_QPA_PLATFORMTHEME` se reserva para las apps (`kde`).
-- **Abrir y cerrar widgets con el mismo clic**: los controles de la barra comparan
-  `NotificationState.panelOpen` y `panelView`; si su vista ya está abierta, el clic
-  cierra el panel; si no, la abre. Se eliminó la «×» de la cabecera del panel y se
-  mantienen la campana y Escape como cierres alternativos. Verificado con clics
-  inyectados en Volumen y Música.
+- **Abrir y cerrar widgets con el mismo clic**: los controles de la barra usan
+  `QuickPanelState`; si su vista ya está abierta, el clic cierra el panel; si no, la
+  abre en modo rápido, sin notificaciones. La campana abre el panel completo con
+  notificaciones y centro de control. Escape cierra ambos.
 - **Música sin carátula**: Firefox publica un MPRIS nativo sin `artUrl` y otro de
   `plasma-browser-integration` con carátula y artista. `MusicState.player` ahora
   prefiere al que tiene metadatos, `artist` normaliza `trackArtist`/`trackArtists` y la
@@ -1326,7 +1335,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   iconos; los demás conservan el número. Así el escritorio actual se reconoce por el
   que no enseña número. Verificado con captura.
 - **Brillo real del monitor**: se instaló `ddcutil` y se creó
-  `/etc/sudoers.d/alba-ddcutil` (`username ALL=(root) NOPASSWD: /usr/bin/ddcutil`).
+  `/etc/sudoers.d/shell-ddcutil` (`username ALL=(root) NOPASSWD: /usr/bin/ddcutil`).
   `DisplayState.qml` lee el brillo al arrancar, escribe los cambios con
   `sudo -n ddcutil setvcp 10` (agrupados para no lanzar un proceso por cada paso) y
   usa el shader solo para la atenuación extra y la luz nocturna. Probado de 100 % a
@@ -1418,7 +1427,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 - **Temperaturas apagadas por defecto**: `showTemps` arranca en `0`; se puede activar
   desde las opciones de rendimiento. `settings.conf` se actualizó a `showTemps=0`.
 - **Atenuación y luz nocturna persistentes**: `DisplayState` guarda sus valores en
-  `~/.config/alba/display.conf`. Al activarlas por primera vez usan 50 % y, si se
+  `~/.config/shell/display.conf`. Al activarlas por primera vez usan 50 % y, si se
   ajustan, se recuperan al reiniciar el shell. Probado activando ambas al 50 %,
   reiniciando Quickshell y comprobando que seguían activas y con el mismo nivel.
 - **Atajo del micrófono**: la vista de micrófono tiene un botón de atajo con icono de
@@ -1468,7 +1477,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   y silenciado en la barra y el OSD. Es la única excepción al trazo 1.8.
 - **Reloj más funcional**: el calendario permite elegir cualquier día, también de los
   meses vecinos, con un botón «Hoy» para volver. Las alarmas se guardan en
-  `~/.config/alba/alarms.conf`, se comprueban cada segundo, suenan con
+  `~/.config/shell/alarms.conf`, se comprueban cada segundo, suenan con
   `alarm-clock-elapsed.oga` y avisan; se probó una alarma a la hora actual y apareció
   en el panel con el sonido. El temporizador acepta minutos a medida en el campo
   «Otro» y suena con `complete.oga` al terminar.
@@ -1477,7 +1486,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   «No molestar» el punto es rojo. Verificado con `notify-send` y con «Limpiar todo».
 - **Anillo de progreso**: `ProgressRing.qml` bordea las fichas de app y los
   escritorios con un trazo que avanza en sentido horario. Las apps toman el progreso
-  de `ProgressState`, que lee `~/.local/state/alba/progress`; `scripts/alba-progress`
+  de `ProgressState`, que lee `~/.local/state/shell/progress`; `scripts/shell-progress`
   permite escribir tareas (`set firefox 34`, `set ws:2 60`, `clear`, `clear-all`).
   Verificado con Firefox al 50 %, kitty al 62 % y el escritorio 2 al 30 %, y con el
   archivo borrado para comprobar que los anillos desaparecen. El anillo de una app
@@ -1487,9 +1496,9 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   (`#b8bec7`). El tema claro reutiliza ese mismo acento y lo oscurece solo para
   mantener el contraste. Se probaron ambos modos, varios acentos y la persistencia
   tras reiniciar Quickshell. También se expuso `appearance` por IPC
-  (`qs ipc -c alba call appearance toggle|mode|accent`) para cambiarlo desde un
+  (`qs ipc -c shell call appearance toggle|mode|accent`) para cambiarlo desde un
   atajo o un script. Quedan pendientes la opacidad y el desenfoque real.
-- **Tema en las apps**: se añadió `scripts/alba-system-theme` y el interruptor
+- **Tema en las apps**: se añadió `scripts/shell-system-theme` y el interruptor
   **Tema en las apps**. El modo y el acento efectivo se aplican a GTK
   (`gsettings`, `settings.ini`, `gtk.css` de GTK 3/4) y a KDE (`kdeglobals`,
   `plasma-apply-colorscheme`). Se verificó con Firefox en claro y en oscuro y con
@@ -1504,16 +1513,16 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   la vista **Portapapeles**. Se probó copiando desde otra app GTK y desde la
   terminal, recargando Quickshell, copiando una entrada, borrando una y vaciando todo.
   Solo guarda texto, no imágenes.
-- **Arranque**: `exec-once` pasó de `QT_QPA_PLATFORMTHEME=gtk3 qs -c alba` a
-  `QS_ICON_THEME=breeze-dark qs -c alba`; la sesión fija
+- **Arranque**: `exec-once` pasó de `QT_QPA_PLATFORMTHEME=gtk3 qs -c shell` a
+  `QS_ICON_THEME=breeze-dark qs -c shell`; la sesión fija
   `QT_QPA_PLATFORMTHEME=kde` para que las apps Qt/KDE no hereden el tema GTK.
 - **Estado final**: una sola instancia de `qs`, un `stats.py` y un vigilante del
   portapapeles; sin errores QML; brillo en 100 %; preferencias actuales del usuario
   `barIconSize=20`, `centerIconSize=20`, `autoHideBar=1`, `themeMode=dark`,
   `accentColor=#b8bec7`, `systemTheme=1` y `keyboardLayout=es`; volumen al 18 % sin
-  silencio; alarmas de ejemplo en `~/.config/alba/alarms.conf` desactivadas; historial
+  silencio; alarmas de ejemplo en `~/.config/shell/alarms.conf` desactivadas; historial
   del portapapeles vacío; sin tareas de progreso de prueba en
-  `~/.local/state/alba/progress`; `/dev/uinput` sigue en `crw------- root input` y
+  `~/.local/state/shell/progress`; `/dev/uinput` sigue en `crw------- root input` y
   solo quedan capturas de prueba en `/tmp`.
 
 ### 2026-11-04 · Abstracción de compositor (fase 1)
@@ -1523,7 +1532,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   `focusedWorkspace` y contadores. Detecta el compositor por
   `XDG_CURRENT_DESKTOP` primero y luego por `UMBRIEL_SOCKET` /
   `HYPRLAND_INSTANCE_SIGNATURE`, para no confundir una sesión anidada con las
-  variables heredadas del padre. `ALBA_COMPOSITOR=hyprland|umbriel|...` fuerza un
+  variables heredadas del padre. `SHELL_COMPOSITOR=hyprland|umbriel|...` fuerza un
   backend al probar. El backend se crea en caliente con `Qt.createComponent`; añadir un
   compositor será añadir un archivo y una línea en `backendFile()`.
 - Nuevo **`HyprlandBackend.qml`** en **solo lectura**: normaliza las ventanas de
@@ -1534,7 +1543,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   `blur`, `moveToWorkspace`, `floatingToggle`, `pin`, `fullscreen`, `focus` y `close`
   disponibles; `nativeTitlebar`, `nativeMinimize` y `snapZones` todavía no.
 - Nuevo **diagnóstico en Ajustes → Compositor** y por IPC
-  (`qs ipc -c alba call notifications compositor`). Muestra compositor detectado,
+  (`qs ipc -c shell call notifications compositor`). Muestra compositor detectado,
   conexión, enfoque actual, escritorios con su layout, ventanas con su estado y
   geometría, y una lista de capacidades con ✓/—. Se refresca cada segundo solo
   mientras la vista está abierta.
@@ -1579,7 +1588,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 - **Menú contextual real**: maximizar/restaurar, minimizar/restaurar, flotante,
   mover y cerrar usan `CompositorState`; se añadió la fila de minimizar. Los clics de
   ventana y de escritorio de `WorkspacePill` también usan el contrato.
-- **IPC**: `qs ipc -c alba call notifications compositorAction <acción> <objetivo>
+- **IPC**: `qs ipc -c shell call notifications compositorAction <acción> <objetivo>
   [valor]`, por ejemplo `float 0x...`, `minimize 0x...`, `move 0x... 2`,
   `layout 2 master` o `workspace 2`.
 - **Verificado con una ventana `kitty` desechable**: flotar, fijar/soltar,
@@ -1644,7 +1653,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 - **Backend de Umbriel.** `UmbrielBackend.qml` usa el IPC documentado
   (`umbriel windows --json`, `umbriel workspaces --json`, `umbriel msg ...`) y declara
   capacidades equivalentes. Se validó que compila y se detecta con
-  `ALBA_COMPOSITOR=umbriel`, pero no hay una sesión Umbriel instalada para probar
+  `SHELL_COMPOSITOR=umbriel`, pero no hay una sesión Umbriel instalada para probar
   acciones reales.
 - **Corrección de datos de Hyprland.** `lastIpcObject` no actualizaba `floating`,
   `pinned` ni la geometría. El backend ahora completa cada ventana con una lectura
@@ -1676,8 +1685,8 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   `/tmp/opencode/paquetes-antes.txt`.
 - **Sesión.** `/usr/share/wayland-sessions/umbriel.desktop` (`Exec=start-umbriel`)
   aparece en SDDM. `start-umbriel` usa el servicio de usuario `umbriel.service`;
-  Umbriel lanza `~/.local/bin/alba-start`, que exporta el tema Qt y el tema de
-  iconos y ejecuta `qs -c alba -d`. También se instaló
+  Umbriel lanza `~/.local/bin/shell-start`, que exporta el tema Qt y el tema de
+  iconos y ejecuta `qs -c shell -d`. También se instaló
   `xdg-desktop-portal-umbriel` y su entrada de portal.
 - **Barra nativa verificada.** `[appearance.title_bar]` con `mode = "forced"` y
   34 px dibuja título a la izquierda y minimizar/maximizar/cerrar a la derecha.
@@ -1706,7 +1715,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 - **Ventanas nuevas.** `scanNewWindows()` se desactiva cuando el compositor tiene
   layouts nativos (`autoFloatNewWindows: false`); el layout del escritorio decide.
 - **Teclado.** Umbriel no tiene una acción para fijar un layout concreto, solo
-  `keyboard-layout-next`. `~/.local/bin/alba-keyboard-layout` edita
+  `keyboard-layout-next`. `~/.local/bin/shell-keyboard-layout` edita
   `[input.keyboard] layout` en la config y ejecuta `umbriel msg config-reload`;
   `SettingsState.applyKeyboardLayout()` pasa por `CompositorState`, que usa
   `hyprctl` en Hyprland y el ayudante en Umbriel.
@@ -1772,7 +1781,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   fondo transparente que cierra al pulsar fuera, y la tarjeta se coloca en la
   posición calculada. Se añadió la capacidad `hyprlandFocusGrab` para elegir el
   camino. Verificado con clic derecho real: el menú abre y cierra al pulsar fuera.
-- **Tema de la barra nativa.** `~/.local/bin/alba-umbriel-theme` reescribe
+- **Tema de la barra nativa.** `~/.local/bin/shell-umbriel-theme` reescribe
   `[colors]`, `[colors.border]` y `[colors.title_bar]` con los colores del modo
   claro/oscuro y el acento de ALBA, y ejecuta `umbriel msg config-reload`.
   `SettingsState.requestShellTheme()` lo llama al arrancar y al cambiar de modo o
@@ -1841,13 +1850,13 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 - **Medidas.** Icono de app a 20 px, título `sans 11` y subtítulo un punto por
   debajo, como la cabecera integrada del diseño.
 - **Bloqueo.** `swayidle` se instaló desde Debian; Umbriel expone
-  `ext_idle_notifier_v1`. `~/.local/bin/alba-idle` detiene la instancia
+  `ext_idle_notifier_v1`. `~/.local/bin/shell-idle` detiene la instancia
   anterior, arranca `swayidle` con el tiempo pedido y ejecuta `hyprlock`
   (también antes de suspender). `SettingsState.lockMinutes` (0–120, por defecto
   5) se guarda en `settings.conf` y se aplica al arrancar y al cambiarlo.
 - **Interfaz.** Nueva fila «Bloqueo automático» en Ajustes con chips Nunca, 1,
   5, 10, 15 y 30 minutos. También hay IPC
-  `qs ipc -c alba call notifications lockTimeout 10`.
+  `qs ipc -c shell call notifications lockTimeout 10`.
 - **Verificado.** `lockTimeout 1` deja `swayidle timeout 60`; volver a 5 deja
   `timeout 300`. En Umbriel anidado, `hyprlock` dibuja la pantalla de bloqueo
   con la hora y la fecha en español y se desbloquea con la contraseña real
@@ -1890,7 +1899,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 ### 2026-11-04 · Cierre al pulsar fuera, menús y modo en el escritorio
 
 - **Cierre exterior.** Una capa transparente en la capa superior del shell,
-  `alba-outside-close`, se mapea mientras hay un panel, el calendario, el menú
+  `shell-outside-close`, se mapea mientras hay un panel, el calendario, el menú
   de energía o el menú de una app abiertos. Su máscara deja libre la franja de
   la barra, así que un clic fuera cierra lo abierto y un clic en otro widget
   abre su panel en el mismo gesto. Verificado con Umbriel real.
@@ -1951,7 +1960,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   en `/usr/bin/umbriel.stock-0.1.0`.
 - **Nota de mantenimiento.** `umbriel config-replace` borra los overrides de
   layout de los escritorios. Tras usarlo para una prueba, hay que volver a
-  aplicar los modos con `qs ipc -c alba call windows mode <n> <modo>` o
+  aplicar los modos con `qs ipc -c shell call windows mode <n> <modo>` o
   reiniciar ALBA. Esta vez se restauró la configuración real y se reaplicaron
   los nueve modos.
 
@@ -2046,7 +2055,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   usan el icono del tema, las imágenes se ven como miniatura, y los
   `.desktop` se resuelven con `DesktopEntries.byId(fileName)` para tomar
   nombre e icono reales. Un clic selecciona y doble clic abre; también hay
-  `qs ipc -c alba call desktop open <índice>` para probar. Verificado con
+  `qs ipc -c shell call desktop open <índice>` para probar. Verificado con
   carpetas, una imagen, un texto y Firefox ESR; abrir una carpeta lanzó
   Dolphin en esa ruta.
 - **Volumen por aplicación.** `Audio.qml` expone `streams` (nodos
@@ -2069,7 +2078,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   en `settings.conf`. Se eliminaron los antiguos Automática/Siempre/Nunca de la
   interfaz; `nativeTitlebar` queda solo como respaldo para backends sin cromo
   nativo (Hyprland), donde flotante→auto e integrado→always.
-- **Aplicación en Umbriel.** `scripts/alba-window-chrome` escribe
+- **Aplicación en Umbriel.** `scripts/shell-window-chrome` escribe
   `[appearance.title_bar] overlay` en `~/.config/umbriel/config.toml` sin tocar
   el resto del archivo, con inserción segura si falta la sección o la clave, y
   lanza `umbriel msg config-reload`. `SettingsState.applyWindowChrome()` lo
@@ -2086,7 +2095,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 - **Fondo de pantalla.** `Wallpaper.qml` crea una `PanelWindow` por pantalla en
   `WlrLayer.Background`, con `Image` en `PreserveAspectCrop`. Ajustes muestra
   miniatura, «Elegir» y «Quitar»; el selector usa `kdialog` y cae a `zenity`
-  (`scripts/alba-wallpaper-pick`). La ruta se guarda como `wallpaperPath` y se
+  (`scripts/shell-wallpaper-pick`). La ruta se guarda como `wallpaperPath` y se
   puede fijar por IPC. Verificado con la imagen 1920×1080 del sistema y con
   una ruta con espacios; quitarla devuelve el fondo del compositor.
 - **Pruebas.** En la sesión real se comprobó la capa de fondo, el selector
@@ -2145,7 +2154,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   `extra_dim`, `warm`) y un shader de salida `screen.alba_display` en
   `EffectRegistry`, aplicado por `Output::applyOutputEffects` después de todas
   las superficies. `DisplayState.qml` escribe esos valores con
-  `scripts/alba-display-filter` y recarga; la capa QML queda como respaldo para
+  `scripts/shell-display-filter` y recarga; la capa QML queda como respaldo para
   otros compositores.
 - **Shader.** El tinte cálido multiplica por `vec3(1, 1-0.16*warm,
   1-0.36*warm)` y el brillo/atenuación multiplica por
@@ -2212,12 +2221,18 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   `wtype -M alt -s 1200 -m alt`: captura a 150 ms con brillo 0,914 (sin velo) y
   a 600 ms con 0,659 (28 % negro); al soltar vuelve a 0,914. Un toque de 100 ms
   se queda en 0,914 en todas las capturas.
-- **Barra arriba o abajo.** `SettingsState.barPosition` (`abajo` por defecto)
-  se guarda en `settings.conf` y se elige en Ajustes → «Posición de la barra».
-  `Bar.qml` mueve anclas, márgenes, máscara y franja de revelado; `Pill.qml` y
-  `ControlDrag.qml` recalculan el borde de la barra; calendario, energía,
-  panel lateral, OSD, barra del modo ventanas y menú de apps eligen su ancla
-  según `SettingsState.barAtTop`.
+- **Barra en los cuatro bordes.** `SettingsState.barPosition` (`abajo` por
+  defecto) se guarda en `settings.conf` y se elige en Ajustes → «Posición de
+  la barra»: abajo, arriba, izquierda o derecha. En los laterales la barra se
+  dibuja en vertical con el mismo árbol de widgets apilado: logo y
+  escritorios arriba, reloj compacto en el centro y controles/estado abajo. Los
+  escritorios pasan a mostrar solo su número y la música solo la portada para
+  caber en 44 px. `Bar.qml` mueve anclas, márgenes, máscara, franja de
+  revelado y reserva de espacio; `Pill.qml` y `ControlDrag.qml` recalculan el
+  borde de la barra, y calendario, energía, bandeja, batería, panel lateral,
+  panel rápido, OSD, barra del modo ventanas y menú de apps eligen su ancla
+  según el lado. Con la barra lateral, el panel rápido se abre al lado y a la
+  altura del control pulsado.
 - **Música ajustable.** `Pill.qml` admite `preferredWidth` y `BarMusic.qml` lo
   usa para respetar `musicWidth`. Mientras `SuperState.active`, un asa en el
   borde derecho estira la píldora entre 140 y 420 px; doble clic la devuelve al
@@ -2231,7 +2246,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 - **Retardo de Mod configurable.** `[input] mod_hold_delay_ms` sustituye a la
   constante de 320 ms. Umbriel lo lee en cada evento de modificadores; ALBA lo
   expone en Ajustes → «Retardo al mantener Super» (pasos de 50 ms), lo guarda
-  como `superHoldMs` y `scripts/alba-mod-hold` lo escribe en la configuración
+  como `superHoldMs` y `scripts/shell-mod-hold` lo escribe en la configuración
   del compositor y recarga. Verificado en anidado: con 600 ms, una pulsación de
   1,6 s no atenúa a los 300 ms y sí a los 900 ms; un toque de 200 ms no atenúa.
   Con 200 ms recargados en caliente, 350 ms ya atenúan.
@@ -2271,7 +2286,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 - **Ajustes.** Dos filas nuevas en el centro de control: «Tamaño de ventanas
   flotantes» (40–80 %, pasos de 5) y «Separación en cascada» (Auto o 8–96 px,
   pasos de 8). Se guardan como `floatingSizePercent` y `floatingCascade` en
-  `settings.conf`; `scripts/alba-floating-defaults` escribe la configuración
+  `settings.conf`; `scripts/shell-floating-defaults` escribe la configuración
   de Umbriel y recarga. `umbriel config validate` acepta los valores y recorta
   los fuera de rango (0,05 → 0,1; 500 → 200).
 - **Prueba.** 0,6 en una salida de 946×496 da 568×298 y centra la ventana;
@@ -2297,14 +2312,25 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   796/456; desde el hueco (810) a 600 deja 586/666; master de 703 a 900 deja
   886/366; el arrastre central sigue intercambiando ventanas. Cuatro ventanas
   dwindle vuelven idénticas tras pasar por stacking, y master también.
-- **Configuración restaurada.** `alba-mod-hold` y `alba-floating-defaults`
-  compartían el temporal `$cfg.alba-tmp`; dos ejecuciones simultáneas podían
+- **Configuración restaurada.** `shell-mod-hold` y `shell-floating-defaults`
+  compartían el temporal `$cfg.shell-tmp`; dos ejecuciones simultáneas podían
   mover un archivo a medio escribir y dejar `config.toml` en 13 líneas. Se
   restauró la copia completa, hay respaldo en
-  `Documents/Alba/umbriel-config-backup.toml` y ambos scripts usan ahora
-  `flock` sobre `config.toml.alba-lock` y un `mktemp` único. Binario
+  `Shell/umbriel-config-backup.toml` y ambos scripts usan ahora
+  `flock` sobre `config.toml.shell-lock` y un `mktemp` único. Binario
   `8d1317f9205c` instalado en `/usr/bin/umbriel`; la sesión en marcha sigue con
   `69fe1a58a28d`.
+- **Recaída y cierre del problema (2026-11-06).** El archivo volvió a quedar en
+  18 líneas y perdió `[general] autostart`; Umbriel arrancaba pero el shell no,
+  y el escritorio quedaba negro. Faltaban por proteger
+  `shell-window-chrome`, `shell-display-filter`, `shell-keyboard-layout` y
+  `shell-umbriel-theme`, que escribían en el sitio o con el temporal compartido.
+  Los cuatro usan ahora `flock` sobre `config.toml.shell-lock` y escritura
+  atómica con `mktemp`; se probó con seis procesos concurrentes y el archivo
+  conserva sus 188 líneas, todas las secciones y `autostart`. La configuración
+  se restauró desde `install/config/umbriel-config.toml` y se validó con
+  `umbriel config validate`. El archivo truncado queda en
+  `~/.config/umbriel/config.toml.truncado-20261106`.
 
 ### 2026-11-05 · Barra con Super y hueco por ventana
 
@@ -2430,7 +2456,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
 - **C4 · Fondo por color.** `SettingsState.wallpaperColor` guarda `#RRGGBB` en
   `settings.conf` como `wallpaperColor=`. Elegir color quita la imagen; quitar
   la imagen vuelve al color. Ajustes añade seis muestras y un campo propio.
-  `alba-system-theme` se verificó con GTK 3/4 (`gtk.css`) y KDE
+  `shell-system-theme` se verificó con GTK 3/4 (`gtk.css`) y KDE
   (`kdeglobals`, `BreezeDark`, mismo acento).
 - **D3 · Vista general.** `Mod+Tab` pasa a `overview-toggle` y los controles de
   ALBA a `Mod+Shift+Tab`. `UmbrielBackend` se suscribe al evento `overview` y
@@ -2451,12 +2477,12 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   anidado con dwindle: Flotante→Integrado→Flotante mantiene el mosaico.
   Binario `d3f5effaad771b37…` instalado; falta cerrar sesión.
 - **D1 · Soltar archivos en el escritorio.** `DesktopIcons.qml` gana un
-  `DropArea` que llama a `scripts/alba-desktop-drop`. El script mueve los
+  `DropArea` que llama a `scripts/shell-desktop-drop`. El script mueve los
   archivos de la misma unidad y copia los de otra, con sufijo « (1)» para no
   sobrescribir. Probado con un HOME temporal; el arrastre real desde Dolphin
   queda pendiente.
 - **C2 · VPN completa.** `VpnView` gana importación de `.ovpn` mediante
-  `scripts/alba-vpn-pick` y `nmcli connection import`, y un editor por perfil
+  `scripts/shell-vpn-pick` y `nmcli connection import`, y un editor por perfil
   (nombre y arranque automático) con borrado en dos pasos. `VpnState` refresca
   la lista cada 5 s y expone IPC (`vpn list/importFile/save/remove`). El
   complemento `network-manager-openvpn` es obligatorio; no venía instalado.
@@ -2464,7 +2490,7 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   Ajustes pinta las fichas Rendimiento/Equilibrado/Ahorro; el IPC del menú de
   energía gana `profile` y `status`. Verificado en real.
 - **C5 · Clima manual y alarmas fuera del shell.** `SettingsState.weatherPlace`
-  decide la URL de wttr.in; `scripts/alba-alarms` corre como servicio de
+  decide la URL de wttr.in; `scripts/shell-alarms` corre como servicio de
   usuario, evita duplicar avisos mientras `qs` vive y usa KDialog/Zenity si no
   hay servidor de notificaciones. El temporizador guarda su `deadline` en
   `timer.conf`, lo termina el demonio con el shell cerrado y el panel lo
@@ -2584,10 +2610,10 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   instala con `mv` atómico. Valida el hash y detecta si el binario ya es el
   fork.
 - **Rutas de usuario.** Se quitaron las rutas `/home/username` de los comandos
-  de `alba-idle`, `alba-keyboard-layout` y `alba-umbriel-theme`; ahora usan
+  de `shell-idle`, `shell-keyboard-layout` y `shell-umbriel-theme`; ahora usan
   `Quickshell.env("HOME")`, así que el shell funciona con cualquier usuario.
 - **Modo ligero.** Se quitó `plasma-workspace` y `kde-cli-tools` de la lista de
-  paquetes. `alba-system-theme` ahora escribe `ColorScheme` e `Icons` con
+  paquetes. `shell-system-theme` ahora escribe `ColorScheme` e `Icons` con
   `kwriteconfig6` y solo usa `plasma-apply-colorscheme` si existe. Probado con
   un HOME temporal y sin `plasma-apply-colorscheme`: las apps KDE quedan en
   BreezeDark/Breeze y GTK sigue recibiendo el acento. Queda pendiente una
@@ -2599,3 +2625,44 @@ qs ipc -c alba call windows moveWindow 0xDIRECCION 400 300
   (`umbriel 0.1.0 (b6c4b7ddfb03-dirty)`). También se probó `install.sh
   --dry-run`. Falta la instalación completa en una VM o disco aparte y la
   prueba de reversión E4.
+
+### 2026-11-06 · Red de seguridad de config.toml
+
+- **El escritorio negro no era del compositor.** `~/.config/umbriel/config.toml`
+  quedó en 18 líneas y perdió `[general] autostart`; Umbriel arrancaba, pero
+  Quickshell no. El archivo roto se conservó en
+  `~/.config/umbriel/config.toml.truncado-20261106`.
+- **Causa.** Seis scripts independientes escribían el mismo archivo al iniciar
+  sesión. Faltaban por proteger `shell-window-chrome`, `shell-display-filter`,
+  `shell-keyboard-layout` y `shell-umbriel-theme`; los dos primeros usaban un
+  temporal compartido y los otros escribían en el sitio. Ahora los seis scripts
+  calculan el valor y llaman a `shell-config-set`, el escritor único que
+  centraliza `flock` sobre `config.toml.shell-lock`, la validación y el
+  `os.replace` atómico.
+- **`config validate` no bastaba.** Un TOML de 18 líneas puede validar aunque
+  no tenga lo necesario para lanzar el shell. Por eso el guardián comprueba
+  además la clave `autostart` y la pérdida masiva de secciones.
+- **Guardián.** `install/bin/umbriel-config-guard` (`ensure`, `save`, `status`)
+  restaura desde `config.toml.good` o `config.toml.template`, guarda una copia
+  `config.toml.broken-*` y registra en
+  `~/.local/state/shell/config-guard.log`. Se ejecuta antes de Umbriel con el
+  drop-in `~/.config/systemd/user/umbriel.service.d/50-config-guard.conf`
+  (`ExecStartPre=-%h/.local/bin/umbriel-config-guard ensure`). `shell-start` lo
+  llama otra vez como segunda capa y guarda una copia buena 15 segundos después
+  del arranque.
+- **Pruebas del guardián.** Ocho escenarios (válido, truncado real, ausente,
+  `autostart = []`, TOML inválido, sin copia buena, sin copias y plantilla sin
+  renderizar) en `scripts/test-config-guard.sh`, y concurrencia de seis
+  procesos × tres rondas. La configuración conserva sus 188 líneas, todas las
+  secciones y `autostart`.
+- **Escritor único (hecho).** `install/bin/shell-config-set` es el único
+  programa que sustituye `config.toml`. Aplica parches por sección, conserva
+  comentarios y claves desconocidas, escribe en un temporal, valida con
+  `tomllib` y `umbriel config validate`, y solo entonces hace `os.replace`
+  atómico; si algo falla, deja el original intacto. Los seis scripts
+  (`shell-mod-hold`, `shell-floating-defaults`, `shell-window-chrome`,
+  `shell-display-filter`, `shell-keyboard-layout` y `shell-umbriel-theme`) ya no
+  abren el archivo para escribir. Pruebas: `scripts/test-config-set.sh`
+  (36 comprobaciones), `scripts/test-config-writers.sh` (39), 8 escritores
+  concurrentes × 5 rondas y una prueba de estrés con 40 escritores, 13 de
+  ellos terminados con `kill -9`. Detalle en `CONFIGURACION-UMBRIEL.md`.

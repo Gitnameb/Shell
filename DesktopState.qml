@@ -127,7 +127,7 @@ Singleton {
     // Archivos soltados sobre el escritorio: se mueven desde la misma unidad y
     // se copian desde otra, como en Windows. Los nombres repetidos no se pisan.
     readonly property string dropScript: (Quickshell.shellDir || "")
-        + "/scripts/alba-desktop-drop"
+        + "/scripts/shell-desktop-drop"
 
     function dropUrls(urls): void {
         if (!urls || urls.length === 0)

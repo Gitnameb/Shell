@@ -10,10 +10,10 @@ import QtQuick
 Singleton {
     id: root
 
-    readonly property string connectionName: "ALBA-Hotspot"
+    readonly property string connectionName: "shell-hotspot"
     // Por defecto, el nombre que verán otros equipos es el de esta máquina.
     property string ssid: HostInfo.displayName
-    property string password: "alba12345"
+    property string password: "shell12345"
     // Banda en la que emite el punto de acceso: "2.4" o "5".
     property string band: "2.4"
     // Red oculta: no aparece en la lista de redes de los demás equipos.
@@ -34,7 +34,7 @@ Singleton {
         return count;
     }
 
-    readonly property string qrPath: Quickshell.cacheDir + "/alba-hotspot-qr.png"
+    readonly property string qrPath: Quickshell.cacheDir + "/shell-hotspot-qr.png"
     property string qrVersion: ""
 
     readonly property var wifiDevice: {
@@ -305,7 +305,7 @@ Singleton {
         id: clientsProc
 
         command: ["sh", "-c", "ip neigh show dev \"$1\" 2>/dev/null || true",
-            "alba", root.ifname]
+            "shell", root.ifname]
 
         stdout: StdioCollector {
             id: clientsOut

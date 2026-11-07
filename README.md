@@ -1,4 +1,4 @@
-# ALBA
+# Shell
 
 Shell de escritorio personal para [Umbriel](https://noctalia.dev/umbriel/)
 (Wayland), escrito en QML con [Quickshell](https://quickshell.org/).
@@ -52,10 +52,10 @@ La lista completa, por capas, está en `install/packages.txt`.
 ### Modo ligero
 
 El instalador **no instala `plasma-workspace` ni el escritorio Plasma**. Solo
-instala las librerías y herramientas de KDE que ALBA necesita (`plasma-integration`,
+instala las librerías y herramientas de KDE que el shell necesita (`plasma-integration`,
 Breeze, `kdialog`, `kwriteconfig6` y SDDM). Las apps KDE seguirán usando Breeze
-claro/oscuro, pero no heredarán el acento personalizado de ALBA; eso queda como
-mejora pendiente. ALBA, Umbriel y las apps GTK no dependen de Plasma.
+claro/oscuro, pero no heredarán el acento personalizado del shell; eso queda como
+mejora pendiente. El shell, Umbriel y las apps GTK no dependen de Plasma.
 
 ## Instalación
 
@@ -136,7 +136,7 @@ La guía manual, con el detalle de cada paso, sigue estando en
 ## Fork de Umbriel
 
 `umbriel-fork.patch` se aplica sobre Umbriel `b6c4b7d` y añade la barra de
-ventanas ampliada. El resto de ALBA funciona con el Umbriel estándar, pero sin
+ventanas ampliada. El resto del shell funciona con el Umbriel estándar, pero sin
 esa barra nativa.
 
 Si actualizas Umbriel con `apt`, el binario del fork puede quedar reemplazado.
@@ -145,7 +145,7 @@ En ese caso hay que recompilarlo o restaurar la copia. Los detalles están en
 
 ## Licencia
 
-ALBA se distribuye bajo **GNU GPL v3.0** (ver [`LICENSE`](LICENSE)). Si
+El shell se distribuye bajo **GNU GPL v3.0** (ver [`LICENSE`](LICENSE)). Si
 distribuyes una versión modificada, tiene que seguir siendo GPL-3.0 y con el
 código disponible.
 

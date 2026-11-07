@@ -30,20 +30,42 @@ PanelWindow {
     visible: TrayState.open && root.count > 0
     screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
 
+    // Altura del panel cuando la barra está en un lateral: se centra con el
+    // botón de la bandeja.
+    readonly property real verticalTop: {
+        const screenHeight = root.screen ? root.screen.height : 800;
+        const anchor = TrayState.anchorY;
+        const desired = anchor > 0
+            ? anchor + Theme.edge - root.implicitHeight / 2
+            : (screenHeight - root.implicitHeight) / 2;
+        return Math.max(Theme.edge + 8, Math.min(
+            screenHeight - root.implicitHeight - Theme.edge - 8, desired));
+    }
+
     anchors {
-        top: SettingsState.barAtTop
-        bottom: !SettingsState.barAtTop
-        left: true
+        top: SettingsState.barVertical || SettingsState.barAtTop
+        bottom: !SettingsState.barVertical && !SettingsState.barAtTop
+        left: !SettingsState.barVertical || SettingsState.barAtLeft
+        right: SettingsState.barVertical && SettingsState.barAtRight
     }
     margins {
-        top: SettingsState.barAtTop ? Theme.edge + Theme.barHeight + 8 : 0
-        bottom: SettingsState.barAtTop ? 0 : Theme.edge + Theme.barHeight + 8
-        // Centrado sobre el botón; si no hay ancla, cae a la derecha.
-        left: Math.max(Theme.edge, Math.min(
-            (screen ? screen.width : 1280) - root.implicitWidth - Theme.edge,
-            (TrayState.anchorX > 0
-                ? TrayState.anchorX
-                : (screen ? screen.width - 180 : 1000)) - root.implicitWidth / 2))
+        top: SettingsState.barVertical ? root.verticalTop
+            : (SettingsState.barAtTop ? Theme.edge + Theme.barHeight + 8 : 0)
+        bottom: !SettingsState.barVertical && !SettingsState.barAtTop
+            ? Theme.edge + Theme.barHeight + 8 : 0
+        // En horizontal se centra sobre el botón; en vertical se pega al lado
+        // de la barra.
+        left: SettingsState.barVertical
+            ? (SettingsState.barAtLeft
+                ? Theme.edge + Theme.barHeight + 8 : 0)
+            : Math.max(Theme.edge, Math.min(
+                (screen ? screen.width : 1280) - root.implicitWidth - Theme.edge,
+                (TrayState.anchorX > 0
+                    ? TrayState.anchorX
+                    : (screen ? screen.width - 180 : 1000))
+                    - root.implicitWidth / 2))
+        right: SettingsState.barVertical && SettingsState.barAtRight
+            ? Theme.edge + Theme.barHeight + 8 : 0
     }
     implicitWidth: Math.max(176, root.gridWidth + 20)
     implicitHeight: content.implicitHeight + 20
@@ -52,7 +74,7 @@ PanelWindow {
     focusable: true
 
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.namespace: "alba-tray"
+    WlrLayershell.namespace: "shell-tray"
     WlrLayershell.keyboardFocus: TrayState.open && focusGate.ready
         ? WlrKeyboardFocus.OnDemand
         : WlrKeyboardFocus.None

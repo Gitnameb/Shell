@@ -1,23 +1,23 @@
-# ALBA · configuración de Umbriel
+# Shell · configuración de Umbriel
 #
 # Umbriel aporta la decoración nativa: la barra de título forma parte de la
 # ventana y reserva su altura, así que el contenido nunca queda debajo.
-# ALBA sigue siendo el shell (barra, paneles, centro de control, OSD).
+# Quickshell sigue siendo el shell (barra, paneles, centro de control, OSD).
 #
 # Validar después de editar:
 #   umbriel config validate -c ~/.config/umbriel/config.toml
 
 [general]
-# Arranca ALBA dentro de la sesión de Umbriel. El script exporta el tema de
+# Arranca el shell dentro de la sesión de Umbriel. El script exporta el tema de
 # Qt y el tema de iconos antes de lanzar Quickshell.
-autostart = ["/home/USUARIO/.local/bin/alba-start"]
+autostart = ["/home/USUARIO/.local/bin/shell-start"]
 xwayland = true
 # El escritorio imita el mockup, sin una hoja de atajos encima al arrancar.
 # Se puede abrir a demanda con Mod+F1.
 show_cheatsheet = false
 
 [layout]
-# «Flotante / Como Windows» por defecto. ALBA cambia a dwindle en los
+# «Flotante / Como Windows» por defecto. El shell cambia a dwindle en los
 # escritorios que el usuario marque como Mosaico.
 mode = "stacking"
 gap = 8
@@ -47,7 +47,7 @@ height = 36
 font = "sans 11"
 button_position = "right"
 # Del título hacia fuera: flotar, fijar, mover (abre la vista general),
-# minimizar, maximizar y cerrar. Los tres primeros son del fork de ALBA.
+# minimizar, maximizar y cerrar. Los tres primeros son del fork del shell.
 buttons = ["float", "pin", "move", "minimize", "maximize", "close"]
 button_corner_radius = 6
 button_glyph = "always"
@@ -93,25 +93,25 @@ minimize_glyph_hover = "#141519FF"
 
 # ---------------------------------------------------------------------------
 # Atajos. Definir esta tabla sustituye los atajos del ejemplo empaquetado, así
-# que aquí están todos los que ALBA necesita.
+# que aquí están todos los que el shell necesita.
 # ---------------------------------------------------------------------------
 [keybinds]
 
 # Shell
-# ALBA decide con el evento `modifiers` si el gesto fue un toque limpio. Este
+# El shell decide con el evento `modifiers` si el gesto fue un toque limpio. Este
 # bind sigue como respaldo para compositores antiguos; con el evento activo,
 # `superTap` no hace nada y evita abrir el lanzador dos veces.
-"Mod" = { action = "spawn qs ipc -c alba call windows superTap", repeat = false }
-"Mod+Space" = { action = "spawn qs ipc -c alba call launcher toggle", repeat = false }
-"Mod+N" = { action = "spawn qs ipc -c alba call notifications toggle", repeat = false }
-"Mod+Shift+N" = { action = "spawn qs ipc -c alba call notifications dnd", repeat = false }
-"Mod+C" = { action = "spawn qs ipc -c alba call calendar toggle", repeat = false }
-"Mod+V" = { action = "spawn qs ipc -c alba call notifications clipboard", repeat = false }
-"Mod+Shift+W" = { action = "spawn qs ipc -c alba call windows toggleFocused", repeat = false }
+"Mod" = { action = "spawn qs ipc -c shell call windows superTap", repeat = false }
+"Mod+Space" = { action = "spawn qs ipc -c shell call launcher toggle", repeat = false }
+"Mod+N" = { action = "spawn qs ipc -c shell call notifications toggle", repeat = false }
+"Mod+Shift+N" = { action = "spawn qs ipc -c shell call notifications dnd", repeat = false }
+"Mod+C" = { action = "spawn qs ipc -c shell call calendar toggle", repeat = false }
+"Mod+V" = { action = "spawn qs ipc -c shell call notifications clipboard", repeat = false }
+"Mod+Shift+W" = { action = "spawn qs ipc -c shell call windows toggleFocused", repeat = false }
 "Mod+Tab" = "overview-toggle"
-"Mod+Shift+Tab" = { action = "spawn qs ipc -c alba call windows pinned", repeat = false }
+"Mod+Shift+Tab" = { action = "spawn qs ipc -c shell call windows pinned", repeat = false }
 "Mod+F1" = "cheatsheet-toggle"
-"Mod+Shift+M" = { action = "spawn qs ipc -c alba call notifications micToggle", repeat = false }
+"Mod+Shift+M" = { action = "spawn qs ipc -c shell call notifications micToggle", repeat = false }
 "Mod+Escape" = "session-quit"
 "Mod+Shift+L" = { action = "spawn hyprlock", repeat = false }
 
@@ -159,13 +159,13 @@ minimize_glyph_hover = "#141519FF"
 "XF86AudioRaiseVolume" = { action = "spawn wpctl set-volume @DEFAULT_AUDIO_SINK@ 2%+", allow_when_locked = true }
 "XF86AudioLowerVolume" = { action = "spawn wpctl set-volume @DEFAULT_AUDIO_SINK@ 2%-", allow_when_locked = true }
 "XF86AudioMute" = { action = "spawn wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle", allow_when_locked = true, repeat = false }
-"XF86MonBrightnessUp" = { action = "spawn qs ipc -c alba call notifications brightnessUp", allow_when_locked = true }
-"XF86MonBrightnessDown" = { action = "spawn qs ipc -c alba call notifications brightnessDown", allow_when_locked = true }
+"XF86MonBrightnessUp" = { action = "spawn qs ipc -c shell call notifications brightnessUp", allow_when_locked = true }
+"XF86MonBrightnessDown" = { action = "spawn qs ipc -c shell call notifications brightnessDown", allow_when_locked = true }
 
 [input.keyboard]
 layout = "es"
 
-# Nueve escritorios fijos, como los muestra ALBA. En modo dinámico solo existían
+# Nueve escritorios fijos, como los muestra el shell. En modo dinámico solo existían
 # dos o tres, así que `workspace-switch 9` y «Mover a escritorio 9» acababan en
 # el último disponible (2 o 3). Si cambia el monitor o se instala en un portátil,
 # hay que repetir esta sección con el conector correspondiente (`eDP-1`, etc.).

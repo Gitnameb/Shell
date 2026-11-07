@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Actualiza el progreso que ALBA dibuja alrededor de apps y escritorios.
+"""Actualiza el progreso que el shell dibuja alrededor de apps y escritorios.
 
-El shell lee ~/.local/state/alba/progress. Cada línea tiene la forma
+El shell lee ~/.local/state/shell/progress. Cada línea tiene la forma
 `clave=porcentaje`, donde la clave es la clase de la app (`firefox`, `kitty`,
 `dolphin`...) o `ws:N` para un escritorio concreto.
 
 Ejemplos:
-    alba-progress set firefox 34      # anillo de Firefox al 34 %
-    alba-progress set ws:2 60         # anillo del escritorio 2 al 60 %
-    alba-progress clear firefox       # termina la tarea de Firefox
-    alba-progress clear-all
-    alba-progress list
+    shell-progress set firefox 34      # anillo de Firefox al 34 %
+    shell-progress set ws:2 60         # anillo del escritorio 2 al 60 %
+    shell-progress clear firefox       # termina la tarea de Firefox
+    shell-progress clear-all
+    shell-progress list
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ import tempfile
 from pathlib import Path
 
 STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) \
-    / "alba" / "progress"
+    / "shell" / "progress"
 LOCK = STATE.with_name("progress.lock")
 
 
@@ -93,7 +93,7 @@ def parse_percent(value: str) -> float:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Progreso de tareas para los anillos de ALBA")
+        description="Progreso de tareas para los anillos del shell")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     setter = subparsers.add_parser("set", help="fija el progreso de una clave")
@@ -136,7 +136,7 @@ def main() -> int:
             for key in sorted(entries):
                 print(f"{key}={entries[key] * 100:g}%")
     except ValueError as error:
-        print(f"alba-progress: {error}", file=sys.stderr)
+        print(f"shell-progress: {error}", file=sys.stderr)
         return 2
 
     return 0

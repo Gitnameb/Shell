@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Demonio de alarmas de ALBA.
+"""Demonio de alarmas del shell.
 
-Lee ~/.config/alba/alarms.conf (una línea «enabled|HH:MM|etiqueta» por alarma)
+Lee ~/.config/shell/alarms.conf (una línea «enabled|HH:MM|etiqueta» por alarma)
 y, cuando llega la hora, muestra un aviso y reproduce el sonido de alarma.
 
-Si el shell de ALBA está abierto, no hace nada: el propio panel del reloj ya
+Si el shell está abierto, no hace nada: el propio panel del reloj ya
 avisa y no queremos avisos duplicados. Cuando el shell está cerrado no hay
 servidor de notificaciones, así que `notify-send` falla y se usa un cuadro de
 diálogo visible (KDialog o Zenity).
@@ -32,18 +32,18 @@ def config_dir() -> Path:
     base = os.environ.get("XDG_CONFIG_HOME", "")
     if not base:
         base = str(Path.home() / ".config")
-    return Path(base) / "alba"
+    return Path(base) / "shell"
 
 
 def alarms_path() -> Path:
-    override = os.environ.get("ALBA_ALARMS_FILE", "")
+    override = os.environ.get("SHELL_ALARMS_FILE", "")
     if override:
         return Path(override)
     return config_dir() / "alarms.conf"
 
 
 def timer_path() -> Path:
-    override = os.environ.get("ALBA_TIMER_FILE", "")
+    override = os.environ.get("SHELL_TIMER_FILE", "")
     if override:
         return Path(override)
     return config_dir() / "timer.conf"
@@ -86,7 +86,7 @@ def shell_running() -> bool:
 def notify(title: str, body: str) -> None:
     try:
         result = subprocess.run(
-            ["notify-send", "-a", "ALBA", "-u", "critical",
+            ["notify-send", "-a", "Shell", "-u", "critical",
              "-i", "alarm-clock-elapsed", title, body],
             capture_output=True, text=True, timeout=6,
         )

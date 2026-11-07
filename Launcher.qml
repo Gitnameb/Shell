@@ -20,7 +20,7 @@ PanelWindow {
     focusable: true
 
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.namespace: "alba-launcher"
+    WlrLayershell.namespace: "shell-launcher"
     WlrLayershell.keyboardFocus: LauncherState.open
         ? WlrKeyboardFocus.Exclusive
         : WlrKeyboardFocus.None

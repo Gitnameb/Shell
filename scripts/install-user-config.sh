@@ -100,8 +100,8 @@ copy_static() {
 # ---------------------------------------------------------------------------
 # Enlaces y archivos del usuario
 # ---------------------------------------------------------------------------
-log "Enlazando el shell en ~/.config/quickshell/alba."
-shell_link="$TARGET_HOME/.config/quickshell/alba"
+log "Enlazando el shell en ~/.config/quickshell/shell."
+shell_link="$TARGET_HOME/.config/quickshell/shell"
 run mkdir -p "$(dirname "$shell_link")"
 if [[ -e "$shell_link" && ! -L "$shell_link" ]]; then
     warn "$shell_link existe y no es un enlace; no se toca."
@@ -113,17 +113,65 @@ fi
 
 log "Copiando los scripts auxiliares a ~/.local/bin."
 run mkdir -p "$TARGET_HOME/.local/bin"
-run install -m755 "$REPO_DIR"/install/bin/alba-* "$TARGET_HOME/.local/bin/"
+run install -m755 "$REPO_DIR"/install/bin/shell-* "$TARGET_HOME/.local/bin/"
+run install -m755 "$REPO_DIR/install/bin/umbriel-config-guard" \
+    "$TARGET_HOME/.local/bin/umbriel-config-guard"
 
 log "Copiando la configuración del shell."
-copy_template "$REPO_DIR/install/config/alba-settings.conf" \
-    "$TARGET_HOME/.config/alba/settings.conf"
-copy_template "$REPO_DIR/install/config/alba-display.conf" \
-    "$TARGET_HOME/.config/alba/display.conf"
+copy_template "$REPO_DIR/install/config/shell-settings.conf" \
+    "$TARGET_HOME/.config/shell/settings.conf"
+copy_template "$REPO_DIR/install/config/shell-display.conf" \
+    "$TARGET_HOME/.config/shell/display.conf"
 
 log "Copiando la configuración de Umbriel."
 copy_template "$REPO_DIR/install/config/umbriel-config.toml" \
     "$TARGET_HOME/.config/umbriel/config.toml"
+
+log "Preparando la red de seguridad de la configuración de Umbriel."
+config_dir="$TARGET_HOME/.config/umbriel"
+config_file="$config_dir/config.toml"
+template_file="$config_dir/config.toml.template"
+good_file="$config_dir/config.toml.good"
+run mkdir -p "$config_dir"
+
+if (( DRY_RUN )); then
+    printf '\033[2m[dry-run]\033[0m render %s -> %s\n' \
+        "$REPO_DIR/install/config/umbriel-config.toml" "$template_file"
+    printf '\033[2m[dry-run]\033[0m preparar %s desde %s\n' \
+        "$good_file" "$template_file"
+else
+    render_template "$REPO_DIR/install/config/umbriel-config.toml" \
+        >"$template_file"
+    chmod 644 "$template_file"
+
+    # Copia de referencia con la que reparar un archivo que pierda
+    # [general] autostart. Si la configuración actual parece completa y tiene
+    # autostart, se conserva tal cual, con los ajustes del usuario. La
+    # validación semántica completa se hace después de instalar el fork.
+    if [[ ! -s "$good_file" ]]; then
+        if [[ -s "$config_file" ]] \
+            && awk '
+                /^[[:space:]]*\[/ { secciones++ }
+                /^[[:space:]]*autostart[[:space:]]*=/ { auto = 1 }
+                END { exit !(auto && secciones >= 5) }
+            ' "$config_file"; then
+            cp "$config_file" "$good_file"
+        else
+            cp "$template_file" "$good_file"
+        fi
+    fi
+    chmod 644 "$good_file"
+fi
+
+log "Instalando el guardián de configuración de Umbriel."
+guard_dropin="$TARGET_HOME/.config/systemd/user/umbriel.service.d/50-config-guard.conf"
+run mkdir -p "$(dirname "$guard_dropin")"
+if [[ -e "$guard_dropin" ]] \
+    && ! cmp -s "$REPO_DIR/install/systemd/umbriel-config-guard.conf" "$guard_dropin"; then
+    backup_file "$guard_dropin"
+fi
+run install -m644 "$REPO_DIR/install/systemd/umbriel-config-guard.conf" \
+    "$guard_dropin"
 
 log "Configurando los portales."
 copy_static "$REPO_DIR/install/config/portals.conf" \
@@ -137,7 +185,7 @@ copy_static "$REPO_DIR/install/config/xwaylandvideobridge.desktop" \
 # Alarmas
 # ---------------------------------------------------------------------------
 log "Instalando la unidad de alarmas."
-unit="$TARGET_HOME/.config/systemd/user/alba-alarms.service"
+unit="$TARGET_HOME/.config/systemd/user/shell-alarms.service"
 if [[ -e "$unit" && $FORCE_CONFIG -eq 0 ]]; then
     warn "$unit ya existe; se conserva. Usa --force-config para reemplazarlo."
 else
@@ -151,7 +199,7 @@ After=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart="$REPO_DIR/scripts/alba-alarms"
+ExecStart="$REPO_DIR/scripts/shell-alarms"
 Restart=on-failure
 RestartSec=5
 
@@ -163,27 +211,27 @@ EOF
 fi
 
 run mkdir -p "$TARGET_HOME/.config/systemd/user/default.target.wants"
-run ln -sfn ../alba-alarms.service \
-    "$TARGET_HOME/.config/systemd/user/default.target.wants/alba-alarms.service"
+run ln -sfn ../shell-alarms.service \
+    "$TARGET_HOME/.config/systemd/user/default.target.wants/shell-alarms.service"
 
 if command -v systemctl >/dev/null 2>&1 \
     && systemctl --user show-environment >/dev/null 2>&1; then
     run systemctl --user daemon-reload \
         || warn "No se pudo recargar systemd de usuario."
-    run systemctl --user enable --now alba-alarms.service \
-        || warn "No se pudo activar alba-alarms ahora; se activará al entrar."
+    run systemctl --user enable --now shell-alarms.service \
+        || warn "No se pudo activar shell-alarms ahora; se activará al entrar."
 else
     warn "No hay una sesión systemd de usuario activa; las alarmas arrancarán al entrar."
 fi
 
 log "Autorizando ddcutil sin contraseña (solo ese comando)."
 if (( DRY_RUN )); then
-    printf '\033[2m[dry-run]\033[0m instalar /etc/sudoers.d/alba-ddcutil para %s\n' "$USER_NAME"
+    printf '\033[2m[dry-run]\033[0m instalar /etc/sudoers.d/shell-ddcutil para %s\n' "$USER_NAME"
 else
     tmp=$(mktemp)
     printf '%s ALL=(ALL) NOPASSWD: /usr/bin/ddcutil\n' "$USER_NAME" >"$tmp"
     run_sudo visudo -cf "$tmp"
-    run_sudo install -m440 -o root -g root "$tmp" /etc/sudoers.d/alba-ddcutil
+    run_sudo install -m440 -o root -g root "$tmp" /etc/sudoers.d/shell-ddcutil
     rm -f "$tmp"
 fi
 

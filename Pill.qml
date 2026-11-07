@@ -43,17 +43,25 @@ Rectangle {
     }
 
     // Traduce un punto del widget a coordenadas globales de la pantalla. La
-    // barra puede estar anclada arriba o abajo, siempre con el margen del tema.
+    // barra puede estar en cualquiera de los cuatro bordes.
     function reportPointer(x, y): void {
         const point = root.mapToItem(null, x, y);
         const s = Quickshell.screens.length > 0 ? Quickshell.screens[0] : null;
         if (!s)
             return;
+        const vertical = SettingsState.barVertical;
+        const auto = SettingsState.autoHideBar;
         ControlDrag.setPointer(
-            s.x + Theme.edge + point.x,
-            s.y + (SettingsState.barAtTop
+            s.x + (vertical
+                ? (SettingsState.barAtLeft
+                    ? (auto ? 0 : Theme.edge)
+                    : s.width - Theme.edge - Theme.barHeight)
+                : Theme.edge) + point.x,
+            s.y + (vertical
                 ? Theme.edge
-                : s.height - Theme.edge - Theme.barHeight) + point.y);
+                : (SettingsState.barAtTop
+                    ? (auto ? 0 : Theme.edge)
+                    : s.height - Theme.edge - Theme.barHeight)) + point.y);
     }
 
     MouseArea {
