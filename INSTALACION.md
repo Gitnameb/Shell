@@ -201,7 +201,7 @@ está en `install/packages.txt`.
   (QR del hotspot).
 - **Energía:** `upower`, `power-profiles-daemon`, `powerprofilesctl`.
 - **Brillo:** `ddcutil` y una regla de sudoers (ver abajo).
-- **Bloqueo:** `swayidle` y `hyprlock`; el script `shell-idle` los usa.
+- **Bloqueo:** `swayidle` y `hyprlock`; `shell-idle` llama a `shell-lock`, que crea la configuración de hyprlock si falta.
 - **Teclado en pantalla:** `wvkbd` (`wvkbd-mobintl`).
 - **Notificaciones/diálogos:** `libnotify-bin`, `kdialog`; `zenity` es un
   respaldo opcional que no está instalado.
@@ -395,7 +395,7 @@ install -m755 install/bin/umbriel-config-guard ~/.local/bin/umbriel-config-guard
 - `shell-start`: exporta `QT_QPA_PLATFORMTHEME=kde` y
   `QS_ICON_THEME=breeze-dark`, y ejecuta `qs -c shell -d`. También llama al
   guardián antes de arrancar el shell.
-- `shell-idle`: bloqueo con `swayidle` + `hyprlock`.
+- `shell-idle`: bloqueo con `swayidle` + `shell-lock` (hyprlock).
 - `shell-keyboard-layout`: escribe `[input.keyboard] layout` en Umbriel.
 - `shell-umbriel-theme`: sincroniza colores y acento con la barra nativa.
 - `shell-config-set`: único programa que sustituye `config.toml`; aplica el
@@ -707,6 +707,7 @@ sigue pendiente de probar.
   `alternar-*.sh`.
 - `~/.config/shell/credenciales`: contraseña local de sudo, modo 600. No la usa
   el código actual; no incluirla en copias compartidas.
+- `~/.config/hypr/hyprlock.conf` (pantalla de bloqueo; se crea sola si falta).
 - `~/.config/umbriel/config.toml`.
 - `~/.config/xdg-desktop-portal/portals.conf`.
 - `~/.config/systemd/user/shell-alarms.service`.
@@ -801,7 +802,7 @@ Comprobar a mano:
 - Clima manual, alarmas y temporizador con el shell cerrado.
 - Portapapeles, teclado en pantalla, bandeja del sistema.
 - Brillo, atenuación extra y luz nocturna.
-- Bloqueo con `Mod+Shift+L` y `shell-idle`.
+- Bloqueo con `Mod+Shift+L`, el menú de energía y `shell-idle`.
 - Reinicio de sesión y vuelta a entrar sin perder ventanas minimizadas.
 
 ---

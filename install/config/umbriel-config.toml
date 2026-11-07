@@ -114,7 +114,7 @@ minimize_glyph_hover = "#141519FF"
 "Mod+F1" = "cheatsheet-toggle"
 "Mod+Shift+M" = { action = "spawn qs ipc -c shell call notifications micToggle", repeat = false }
 "Mod+Escape" = "session-quit"
-"Mod+Shift+L" = { action = "spawn hyprlock", repeat = false }
+"Mod+Shift+L" = { action = "spawn ~/.local/bin/shell-lock", repeat = false }
 
 # Aplicaciones y ventanas
 "Mod+Return" = { action = "spawn kitty", repeat = false }

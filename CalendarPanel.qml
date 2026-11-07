@@ -91,6 +91,12 @@ PanelWindow {
     property int timerTotal: 25 * 60
     property int timerLeft: 25 * 60
     property bool timerRunning: false
+    // Al editar los números grandes el tiempo pasa a ser manual y ningún
+    // preset debe quedar seleccionado aunque coincida con la duración.
+    property bool customTimer: false
+    // Algún editor de hora de alarma tiene el foco: Escape cancela la edición
+    // en vez de cerrar el panel.
+    property bool alarmEditing: false
     property string timerState: "Listo"
     property string timerInput: ""
     // Vencimiento en segundos desde la época. Se guarda en timer.conf para
@@ -259,6 +265,7 @@ PanelWindow {
     function setTimerFromSeconds(value): void {
         const total = Math.max(1, Math.min(359999, Math.round(value)));
         root.timerRunning = false;
+        root.customTimer = true;
         root.timerTotal = total;
         root.timerLeft = total;
         root.timerState = "Listo";
@@ -286,6 +293,7 @@ PanelWindow {
 
     function setTimerPreset(minutes): void {
         root.timerRunning = false;
+        root.customTimer = false;
         root.timerTotal = minutes * 60;
         root.timerLeft = minutes * 60;
         root.timerState = "Listo";
@@ -454,6 +462,7 @@ PanelWindow {
                 return;
             }
             const left = deadline - nowSeconds;
+            root.customTimer = true;
             root.timerTotal = Math.max(root.timerTotal, left);
             root.timerLeft = left;
             root.timerState = "En marcha";
@@ -1307,6 +1316,8 @@ PanelWindow {
                                 pixelSize: 11
                                 onEdited: (value) => root.updateAlarm(
                                     alarmRow.index, "time", value)
+                                onActiveFocusChanged:
+                                    root.alarmEditing = activeFocus
                             }
 
                             TextField {
@@ -1408,18 +1419,20 @@ PanelWindow {
                             implicitWidth: 46
                             implicitHeight: 26
                             radius: 7
-                            color: root.timerTotal === modelData * 60
+                            readonly property bool chosen:
+                                !root.customTimer
+                                && root.timerTotal === modelData * 60
+                            color: chosen
                                 ? Theme.accentSoft : Theme.surfaceAlt
                             border.width: 1
-                            border.color: root.timerTotal === modelData * 60
+                            border.color: chosen
                                 ? Theme.accentLine
                                 : Theme.border
 
                             Text {
                                 anchors.centerIn: parent
                                 text: modelData + " min"
-                                color: root.timerTotal === modelData * 60
-                                    ? Theme.accent : Theme.muted
+                                color: parent.chosen ? Theme.accent : Theme.muted
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 9
                             }
@@ -1495,6 +1508,7 @@ PanelWindow {
     Shortcut {
         sequence: "Escape"
         enabled: CalendarState.open && !timerField.editing
+            && !root.alarmEditing
         onActivated: CalendarState.hide()
     }
 }

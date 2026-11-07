@@ -1,11 +1,12 @@
 import QtQuick
 
-// Editor de duración HH:MM:SS.
+// Editor de duración.
 //
-// Al pulsar los números grandes se entra en edición. Los dos puntos están
-// siempre visibles y los dígitos se agrupan solos desde la derecha: escribir
-// 130 deja 00:01:30 y escribir 3000 deja 00:30:00. Retroceso borra el último
-// dígito; Intro o perder el foco confirman; Escape cancela.
+// Al pulsar los números se entra en edición. Mientras escribes se ven los
+// dígitos tal cual, agrupados desde la derecha y con los dos puntos puestos
+// automáticamente: 1 → 1, 123 → 1:23, 1234 → 12:34, 12345 → 1:23:45. No se
+// convierte a tiempo hasta que pulsas Intro o sales del campo. Retroceso
+// borra el último dígito; Escape cancela.
 Item {
     id: root
 
@@ -14,7 +15,6 @@ Item {
     property color editColor: Theme.accent
     property int pixelSize: 44
     property bool bold: true
-    // Edición en curso. La expone el panel para pausar la cuenta atrás.
     property bool editing: false
     property bool fresh: false
     property string digits: ""
@@ -25,23 +25,39 @@ Item {
     implicitWidth: label.implicitWidth
     implicitHeight: label.implicitHeight
 
-    readonly property int previewSeconds: root.fresh
-        ? Math.max(0, root.seconds) : root.digitSeconds()
-
     function pad(number): string {
         return number < 10 ? "0" + number : "" + number;
     }
 
-    function textFor(total): string {
-        const value = Math.max(0, Math.min(359999, Math.floor(total)));
-        return root.pad(Math.floor(value / 3600)) + ":"
-            + root.pad(Math.floor((value % 3600) / 60)) + ":"
-            + root.pad(value % 60);
+    // Formato compacto: «25:00» o «1:05:09». No rellena las horas con ceros.
+    function compact(total): string {
+        const value = Math.max(0, Math.floor(total));
+        const hours = Math.floor(value / 3600);
+        const minutes = Math.floor((value % 3600) / 60);
+        const secs = value % 60;
+        if (hours > 0)
+            return hours + ":" + root.pad(minutes) + ":" + root.pad(secs);
+        return minutes + ":" + root.pad(secs);
     }
 
-    function digitSeconds(): int {
-        return root.digits.length === 0 ? 0 : parseInt(root.digits, 10);
+    // Los dígitos escritos, agrupados de derecha a izquierda.
+    function digitsText(): string {
+        let value = root.digits.replace(/^0+/, "");
+        if (value.length === 0)
+            value = "0";
+        if (value.length <= 2)
+            return value;
+        const secs = value.slice(-2);
+        const rest = value.slice(0, -2);
+        if (rest.length <= 2)
+            return rest + ":" + secs;
+        const minutes = rest.slice(-2);
+        const hours = rest.slice(0, -2);
+        return hours + ":" + minutes + ":" + secs;
     }
+
+    readonly property string previewText: root.digits.length === 0
+        ? root.compact(root.seconds) : root.digitsText()
 
     function begin(): void {
         if (root.editing)
@@ -57,9 +73,8 @@ Item {
         if (!root.editing)
             return;
         root.editing = false;
-        if (save) {
-            const value = root.fresh ? Math.max(0, root.seconds)
-                : root.digitSeconds();
+        if (save && !root.fresh && root.digits.length > 0) {
+            const value = Math.min(359999, parseInt(root.digits, 10));
             if (value !== root.seconds)
                 root.changed(value);
         }
@@ -103,14 +118,13 @@ Item {
         id: label
 
         anchors.centerIn: parent
-        text: root.textFor(root.editing ? root.previewSeconds : root.seconds)
+        text: root.editing ? root.previewText : root.compact(root.seconds)
         color: root.editing ? root.editColor : root.textColor
         font.family: Theme.fontFamily
         font.pixelSize: root.pixelSize
         font.weight: root.bold ? Font.DemiBold : Font.Normal
     }
 
-    // Un subrayado tenue avisa de que los números se pueden editar.
     Rectangle {
         anchors {
             left: label.left

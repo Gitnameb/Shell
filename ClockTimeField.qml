@@ -2,11 +2,13 @@ import QtQuick
 
 // Editor de hora HH:MM sin escribir los dos puntos.
 //
-// La hora y los minutos son dos campos de dos dígitos: al pulsar uno se
-// selecciona entero y se puede reemplazar; al escribir el segundo dígito el
-// foco salta al siguiente tramo. Los dos puntos son decorativos y nunca se
-// editan. Al perder el foco o pulsar Intro se valida y se emite `edited`.
-Item {
+// Al pulsar la hora se selecciona y se escribe de izquierda a derecha como
+// texto normal: los dos primeros dígitos son la hora y el foco salta solo a
+// los minutos. Si la hora escrita no es válida (por ejemplo 93), se interpreta
+// como hora de un dígito y el dígito sobrante pasa a los minutos: 930 → 09:30.
+// Los dos puntos son decorativos y nunca se editan. Intro o salir del campo
+// confirman; Escape cancela.
+FocusScope {
     id: root
 
     property string value: "00:00"
@@ -25,24 +27,30 @@ Item {
         ? Math.max(0, Math.min(23, parseInt(parts[0], 10) || 0)) : 0
     readonly property int minuteValue: parts.length > 1
         ? Math.max(0, Math.min(59, parseInt(parts[1], 10) || 0)) : 0
-    readonly property int hourWidth: Math.ceil(root.pixelSize * 1.3)
+    readonly property int partWidth: Math.ceil(root.pixelSize * 1.3)
 
     function pad(number): string {
         return number < 10 ? "0" + number : "" + number;
     }
 
     function sync(): void {
-        if (!hourInput.activeFocus)
-            hourInput.text = root.pad(root.hourValue);
-        if (!minuteInput.activeFocus)
-            minuteInput.text = root.pad(root.minuteValue);
+        if (root.activeFocus)
+            return;
+        hourInput.text = root.pad(root.hourValue);
+        minuteInput.text = root.pad(root.minuteValue);
     }
 
     function commit(): void {
-        const hour = Math.max(0, Math.min(23,
-            parseInt(hourInput.text, 10) || 0));
-        const minute = Math.max(0, Math.min(59,
-            parseInt(minuteInput.text, 10) || 0));
+        let hour = hourInput.text.length === 0
+            ? root.hourValue : parseInt(hourInput.text, 10);
+        let minute = minuteInput.text.length === 0
+            ? root.minuteValue : parseInt(minuteInput.text, 10);
+        if (isNaN(hour))
+            hour = root.hourValue;
+        if (isNaN(minute))
+            minute = root.minuteValue;
+        hour = Math.max(0, Math.min(23, hour));
+        minute = Math.max(0, Math.min(59, minute));
         hourInput.text = root.pad(hour);
         minuteInput.text = root.pad(minute);
         const next = root.pad(hour) + ":" + root.pad(minute);
@@ -50,8 +58,53 @@ Item {
             root.edited(next);
     }
 
+    // La hora de dos dígitos no puede pasar de 23. Si pasa, el primer dígito
+    // es la hora y el segundo empieza los minutos: 93 → 09:3_.
+    function advanceHour(): void {
+        const text = hourInput.text;
+        if (text.length < 2)
+            return;
+        const value = parseInt(text, 10);
+        if (isNaN(value)) {
+            hourInput.text = root.pad(root.hourValue);
+            minuteInput.forceActiveFocus();
+            return;
+        }
+        if (value <= 23) {
+            hourInput.text = root.pad(value);
+            minuteInput.forceActiveFocus();
+            return;
+        }
+        const first = parseInt(text.charAt(0), 10);
+        const second = text.charAt(1);
+        hourInput.text = root.pad(isNaN(first) ? 0 : first);
+        minuteInput.text = second;
+        minuteInput.forceActiveFocus();
+        minuteInput.cursorPosition = minuteInput.text.length;
+    }
+
+    function cancel(): void {
+        hourInput.text = root.pad(root.hourValue);
+        minuteInput.text = root.pad(root.minuteValue);
+        root.focus = false;
+    }
+
     Component.onCompleted: root.sync()
     onValueChanged: root.sync()
+    onActiveFocusChanged: {
+        if (!activeFocus)
+            root.commit();
+    }
+    Keys.onEscapePressed: (event) => {
+        root.cancel();
+        event.accepted = true;
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        cursorShape: Qt.IBeamCursor
+        onClicked: hourInput.forceActiveFocus()
+    }
 
     Row {
         id: row
@@ -62,7 +115,7 @@ Item {
         TextInput {
             id: hourInput
 
-            width: root.hourWidth
+            width: root.partWidth
             horizontalAlignment: TextInput.AlignHCenter
             verticalAlignment: TextInput.AlignVCenter
             color: hourInput.activeFocus ? root.editColor : root.textColor
@@ -76,24 +129,15 @@ Item {
             selectByMouse: true
             validator: IntValidator {
                 bottom: 0
-                top: 23
+                top: 99
             }
 
             onActiveFocusChanged: {
                 if (activeFocus)
                     selectAll();
             }
-            onTextEdited: {
-                if (text.length >= 2)
-                    minuteInput.forceActiveFocus();
-            }
+            onTextEdited: root.advanceHour()
             onAccepted: minuteInput.forceActiveFocus()
-            onEditingFinished: root.commit()
-            Keys.onEscapePressed: (event) => {
-                hourInput.text = root.pad(root.hourValue);
-                hourInput.focus = false;
-                event.accepted = true;
-            }
         }
 
         Text {
@@ -109,7 +153,7 @@ Item {
         TextInput {
             id: minuteInput
 
-            width: root.hourWidth
+            width: root.partWidth
             horizontalAlignment: TextInput.AlignHCenter
             verticalAlignment: TextInput.AlignVCenter
             color: minuteInput.activeFocus ? root.editColor : root.textColor
@@ -131,12 +175,6 @@ Item {
                     selectAll();
             }
             onAccepted: root.commit()
-            onEditingFinished: root.commit()
-            Keys.onEscapePressed: (event) => {
-                minuteInput.text = root.pad(root.minuteValue);
-                minuteInput.focus = false;
-                event.accepted = true;
-            }
         }
     }
 }

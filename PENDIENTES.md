@@ -211,10 +211,15 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   fecha larga del pie, puntos en los días con notas y lista de notas del día.
   Se descartó la integración con Google/ICS porque las notas no se podían
   sincronizar. El clima usa iconos SVG con color propio. Alarmas y
-  temporizador tienen editores de hora sin escribir «:» (HH:MM fijo para la
-  alarma y HH:MM:SS editable en los números grandes del temporizador). El
-  sonido de alarma se repite hasta cerrar el aviso o pulsar el reloj de la
-  barra. Detalle: `CONFIGURACION-UMBRIEL.md` §12–14.
+  temporizador tienen editores de hora sin escribir «:»: la alarma se escribe
+  de izquierda a derecha y el temporizador muestra los dígitos tal cual
+  (`123` → `1:23`) hasta confirmar. El sonido de alarma se repite hasta cerrar
+  el aviso o pulsar el reloj de la barra. Detalle:
+  `CONFIGURACION-UMBRIEL.md` §12–14.
+- **Bloqueo de pantalla.** El botón lanzaba `hyprlock` sin configuración y
+  salía sin bloquear. `shell-lock` crea `~/.config/hypr/hyprlock.conf` desde
+  la plantilla si falta y lo usan el menú de energía, `Mod+Shift+L` y
+  `shell-idle`. Detalle: `CONFIGURACION-UMBRIEL.md` §15.
 - **D1 · El escritorio queda para el final.** El usuario prefiere no seguir con
   iconos del escritorio por ahora; la fase 2 (recolocar, renombrar, papelera,
   menú contextual) se retoma al final, después del resto de bloques.

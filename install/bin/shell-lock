@@ -1,0 +1,73 @@
+#!/bin/sh
+# Bloquea la sesión.
+#
+# Usa hyprlock con una configuración mínima si todavía no existe. Si hyprlock
+# no está instalado prueba swaylock o gtklock, que también implementan
+# ext-session-lock-v1. No necesita sudo.
+
+set -eu
+
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
+config="$config_dir/hyprlock.conf"
+
+if [ ! -f "$config" ]; then
+    mkdir -p "$config_dir"
+    cat >"$config" <<'EOF'
+background {
+    monitor =
+    color = rgb(12, 14, 18)
+}
+
+label {
+    monitor =
+    text = $TIME
+    color = rgb(240, 244, 250)
+    font_size = 56
+    position = 0, -60
+    halign = center
+    valign = center
+}
+
+label {
+    monitor =
+    text = Sesión bloqueada
+    color = rgb(150, 160, 175)
+    font_size = 16
+    position = 0, 10
+    halign = center
+    valign = center
+}
+
+input-field {
+    monitor =
+    size = 240, 44
+    outline_thickness = 2
+    dots_size = 0.22
+    dots_spacing = 0.4
+    dots_center = true
+    outer_color = rgb(138, 180, 248)
+    inner_color = rgb(22, 26, 32)
+    font_color = rgb(240, 244, 250)
+    placeholder_text = Contraseña
+    position = 0, 80
+    halign = center
+    valign = center
+}
+EOF
+fi
+
+if command -v hyprlock >/dev/null 2>&1; then
+    exec hyprlock
+fi
+if command -v swaylock >/dev/null 2>&1; then
+    exec swaylock -f -c 0c0e12
+fi
+if command -v gtklock >/dev/null 2>&1; then
+    exec gtklock
+fi
+
+if command -v notify-send >/dev/null 2>&1; then
+    notify-send -a Shell "Bloqueo" \
+        "Instala hyprlock o swaylock para bloquear la sesión." || true
+fi
+exit 1

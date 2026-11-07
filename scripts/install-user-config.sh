@@ -123,6 +123,10 @@ copy_template "$REPO_DIR/install/config/shell-settings.conf" \
 copy_template "$REPO_DIR/install/config/shell-display.conf" \
     "$TARGET_HOME/.config/shell/display.conf"
 
+log "Copiando la configuración de la pantalla de bloqueo."
+copy_template "$REPO_DIR/install/config/hyprlock.conf" \
+    "$TARGET_HOME/.config/hypr/hyprlock.conf"
+
 log "Copiando la configuración de Umbriel."
 copy_template "$REPO_DIR/install/config/umbriel-config.toml" \
     "$TARGET_HOME/.config/umbriel/config.toml"

@@ -510,7 +510,14 @@ Scope {
     function lockScreen(): bool {
         if (!root.available)
             return root.noteAction("lockScreen", false);
-        Quickshell.execDetached(["hyprlock"]);
+        // shell-lock crea la configuración de hyprlock si falta y, si no está,
+        // prueba swaylock/gtklock. Así el botón no depende de un archivo que
+        // el usuario tenga que crear a mano.
+        const repo = Quickshell.shellDir || "";
+        Quickshell.execDetached(["sh", "-c",
+            'lock="$HOME/.local/bin/shell-lock"; '
+            + '[ -x "$lock" ] || lock="' + repo + '/install/bin/shell-lock"; '
+            + '[ -x "$lock" ] || lock="hyprlock"; exec "$lock"']);
         return root.noteAction("lockScreen", true);
     }
 

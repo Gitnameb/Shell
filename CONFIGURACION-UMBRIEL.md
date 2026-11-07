@@ -509,15 +509,19 @@ y nieve.
 
 ## 14. Alarmas y temporizador
 
-- `ClockTimeField.qml` edita la hora de una alarma en dos tramos de dos
-  dígitos (HH y MM). Al pulsar un tramo se selecciona entero; al escribir el
-  segundo dígito el foco salta al siguiente. Los dos puntos son decorativos:
-  nunca hay que escribirlos.
+- `ClockTimeField.qml` edita la hora de una alarma de izquierda a derecha,
+  como texto normal: los dos primeros dígitos son la hora y el foco salta solo
+  a los minutos. Si la hora no es válida se interpreta con un dígito y el
+  sobrante pasa a los minutos (`930` → `09:30`). Los dos puntos son
+  decorativos: nunca hay que escribirlos. Intro o salir del campo confirman;
+  Escape cancela.
 - `DurationField.qml` es el reloj grande del temporizador. Al pulsarlo se
-  edita la duración en HH:MM:SS, con los dos puntos siempre visibles y los
-  dígitos agrupados desde la derecha: `130` deja `00:01:30` y `3000` deja
-  `00:30:00`. Retroceso borra el último dígito; Intro confirma; Escape cancela.
-  Editar el tiempo detiene la cuenta atrás y deja el temporizador listo.
+  edita la duración y mientras escribes se ven los dígitos tal cual, agrupados
+  desde la derecha con los dos puntos automáticos: `123` se ve como `1:23` y
+  `12345` como `1:23:45`. La conversión no se aplica hasta pulsar Intro o salir
+  del campo; retroceso borra el último dígito y Escape cancela. Editar el
+  tiempo detiene la cuenta atrás y deja el temporizador listo. Un tiempo
+  escrito a mano deselecciona los presets aunque coincida con uno de ellos.
 - `AlarmState.qml` reproduce el sonido de alarma en bucle y muestra un aviso
   crítico sin caducidad. El sonido solo para al cerrar ese aviso o al pulsar
   el reloj de la barra (que además retira el aviso). Si «No molestar» está
@@ -525,3 +529,15 @@ y nieve.
   calendario. Hay un límite de seguridad de 10 minutos.
 - Con el shell cerrado, `scripts/shell-alarms` usa `notify-send -w` (o un
   diálogo de KDialog/Zenity) y mantiene el sonido hasta que se cierra el aviso.
+
+## 15. Bloqueo de pantalla
+
+El botón «Bloquear» del menú de energía, `Mod+Shift+L` y el bloqueo
+automático de `shell-idle` llaman a `shell-lock`. Ese ayudante crea
+`~/.config/hypr/hyprlock.conf` a partir de la plantilla del repositorio si
+todavía no existe y lanza `hyprlock`. Si `hyprlock` no está instalado prueba
+`swaylock` y `gtklock`, que también implementan `ext-session-lock-v1`.
+
+Antes el botón lanzaba `hyprlock` directamente y, sin archivo de
+configuración, hyprlock salía sin bloquear. Ahora la configuración se crea
+sola y el instalador también la copia en limpieza.
