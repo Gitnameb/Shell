@@ -64,7 +64,7 @@ PanelWindow {
         if (entry.command.length > 0) {
             let command = ["env", "-u", "HL_INITIAL_WORKSPACE_TOKEN"];
             if (entry.runInTerminal)
-                command = command.concat(["kitty", "-e"]);
+                command = command.concat(["foot"]);
             Quickshell.execDetached(command.concat(entry.command));
         } else {
             entry.execute();

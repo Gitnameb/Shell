@@ -97,7 +97,7 @@ dar por hecho que los nombres serán los mismos tras una instalación limpia.
 | hyprlock | 0.9.6-1~bpo13+1 |
 | swayidle | 1.8.0 |
 | wvkbd | 0.15 |
-| fonts-inter | 4.1 |
+| fonts-inter-variable | 4.1 |
 
 El binario del fork instalado en `/usr/bin/umbriel` es
 `d3f5effaad771b37`; `umbriel --version` puede imprimir una cadena de versión
@@ -161,7 +161,7 @@ sudo apt install -t trixie-backports quickshell hyprlock
 sudo apt install -t trixie-backports umbriel xdg-desktop-portal-umbriel
 
 sudo apt install \
-  ddcutil qrencode libnotify-bin fonts-inter wvkbd swayidle kitty \
+  ddcutil qrencode libnotify-bin fonts-inter-variable wvkbd swayidle foot \
   network-manager-openvpn power-profiles-daemon \
   iputils-ping wl-clipboard \
   qml6-module-qtquick-effects \

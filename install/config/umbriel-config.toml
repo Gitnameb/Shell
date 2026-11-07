@@ -117,7 +117,7 @@ minimize_glyph_hover = "#141519FF"
 "Mod+Shift+L" = { action = "spawn ~/.local/bin/shell-lock", repeat = false }
 
 # Aplicaciones y ventanas
-"Mod+Return" = { action = "spawn kitty", repeat = false }
+"Mod+Return" = { action = "spawn foot", repeat = false }
 "Mod+Q" = { action = "window-close", repeat = false }
 "Mod+T" = { action = "window-toggle-floating", repeat = false }
 "Mod+P" = { action = "window-toggle-pinned", repeat = false }

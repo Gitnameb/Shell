@@ -594,17 +594,20 @@ Cambios que lo explican:
 - **Sonido.** `pw-play` (PipeWire) es el reproductor principal; ya no hace
   falta `pulseaudio-utils`. `paplay` sigue como respaldo si existe.
 
-### Dependencias pesadas opcionales
+### Dependencias ligeras por defecto
 
-El shell funciona con estas alternativas más ligeras, pero no se activan por
-defecto para no cambiar la apariencia ni el terminal del usuario:
+Estas sustituciones ya están aplicadas en el instalador:
 
-| Actual | Tamaño | Alternativa | Tamaño |
+| Antes | Tamaño | Ahora | Tamaño |
 | --- | --- | --- | --- |
 | `kitty` | ~23 MB | `foot` | ~0,7 MB |
 | `fonts-inter` | ~21 MB | `fonts-inter-variable` | ~1,7 MB |
-| `breeze-cursor-theme` | ~30 MB | cursor de `adwaita-icon-theme` | ~13 MB |
 
-`fonts-inter-variable` registra la familia como «Inter Variable», así que
-habría que cambiar `Theme.fontFamily`. `foot` no acepta `-e`: se invoca como
-`foot comando`, y habría que ajustar `Mod+Return` y los lanzadores.
+- `Mod+Return` y los lanzadores usan `foot`. No acepta `-e`: la forma correcta
+  es `foot comando`, y así se construyen las órdenes.
+- `Theme.fontFamily` es `Inter Variable`. Comprobado en Qt 6.8: la familia
+  existe, el peso Bold se resuelve como estilo real y no como negrita
+  sintética.
+- El cursor de la sesión ya era Adwaita (`gsettings`). `breeze-cursor-theme`
+  sigue instalado porque `plasma-integration` → `breeze` lo exige; quitarlo de
+  la lista no ahorra espacio real.

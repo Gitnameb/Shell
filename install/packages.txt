@@ -38,7 +38,7 @@ sudo apt install -t trixie-backports umbriel xdg-desktop-portal-umbriel
 #    (la mayoría ya vienen con task-kde-desktop)
 # ---------------------------------------------------------------------------
 sudo apt install \
-  ddcutil qrencode libnotify-bin fonts-inter wvkbd swayidle kitty \
+  ddcutil qrencode libnotify-bin fonts-inter-variable wvkbd swayidle foot \
   network-manager-openvpn wpasupplicant rfkill dnsmasq-base \
   power-profiles-daemon iputils-ping wl-clipboard \
   qml6-module-qtquick-effects \

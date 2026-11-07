@@ -100,7 +100,7 @@ Singleton {
         if (command.length > 0) {
             let line = ["env", "-u", "HL_INITIAL_WORKSPACE_TOKEN"];
             if (entry.runInTerminal)
-                line = line.concat(["kitty", "-e"]);
+                line = line.concat(["foot"]);
             Quickshell.execDetached(line.concat(command));
         } else {
             entry.execute();

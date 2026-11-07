@@ -17,7 +17,7 @@ Singleton {
     readonly property int itemRadius: 9
     readonly property int gap: 2
 
-    readonly property string fontFamily: "Inter"
+    readonly property string fontFamily: "Inter Variable"
 
     // ------------------------------------------------------------- modo
     readonly property bool light: SettingsState.themeMode === "light"
