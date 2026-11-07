@@ -19,6 +19,7 @@ from __future__ import annotations
 import datetime
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -94,7 +95,10 @@ def play_loop(sound: str = SOUND, event: str = "alarm-clock-elapsed") -> subproc
         "|| sleep 1; done"
     )
     try:
-        return subprocess.Popen(["sh", "-c", script, "shell", sound, event])
+        return subprocess.Popen(
+            ["sh", "-c", script, "shell", sound, event],
+            start_new_session=True,
+        )
     except OSError:
         return None
 
@@ -102,8 +106,16 @@ def play_loop(sound: str = SOUND, event: str = "alarm-clock-elapsed") -> subproc
 def stop_loop(process: subprocess.Popen | None) -> None:
     if process is None:
         return
+    # El bucle arranca en su propia sesión: matar el grupo corta también el
+    # paplay que esté sonando, sin esperar a que termine la secuencia.
     try:
-        process.terminate()
+        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+    except (OSError, ProcessLookupError):
+        try:
+            process.terminate()
+        except OSError:
+            pass
+    try:
         process.wait(timeout=2)
     except (OSError, subprocess.TimeoutExpired):
         try:

@@ -95,6 +95,9 @@ PanelWindow {
     // Algún editor de hora de alarma tiene el foco: Escape cancela la edición
     // en vez de cerrar el panel.
     property bool alarmEditing: false
+    // Editor de tiempo activo (temporizador o una alarma). Cualquier clic
+    // fuera, cambio de pestaña o cierre del panel lo confirma.
+    property var activeEditor: null
     property string timerState: "Listo"
     property string timerInput: ""
     // Vencimiento en segundos desde la época. Se guarda en timer.conf para
@@ -108,6 +111,7 @@ PanelWindow {
     }
 
     function shiftMonth(delta): void {
+        root.commitEditors();
         shownMonth = new Date(shownMonth.getFullYear(), shownMonth.getMonth() + delta, 1);
     }
 
@@ -118,6 +122,7 @@ PanelWindow {
     }
 
     function selectDay(cell): void {
+        root.commitEditors();
         root.selectedDate = cell.date;
         if (!cell.inMonth) {
             root.shownMonth = new Date(cell.date.getFullYear(),
@@ -126,6 +131,7 @@ PanelWindow {
     }
 
     function goToday(): void {
+        root.commitEditors();
         root.selectedDate = new Date();
         root.shownMonth = new Date(root.selectedDate.getFullYear(),
             root.selectedDate.getMonth(), 1);
@@ -172,6 +178,7 @@ PanelWindow {
     }
 
     function addNoteFromDraft(): void {
+        root.commitEditors();
         const text = root.noteDraft.trim();
         if (text.length === 0)
             return;
@@ -181,6 +188,13 @@ PanelWindow {
 
     function validTime(value): bool {
         return /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(value);
+    }
+
+    function commitEditors(): void {
+        const editor = root.activeEditor;
+        root.activeEditor = null;
+        if (editor && editor.editing)
+            editor.finish(true);
     }
 
     function alarmSeconds(value): int {
@@ -212,6 +226,7 @@ PanelWindow {
     }
 
     function addAlarm(): void {
+        root.commitEditors();
         const next = new Date();
         next.setHours(next.getHours() + 1, 0, 0, 0);
         const time = root.pad(next.getHours()) + ":" + root.pad(next.getMinutes());
@@ -219,6 +234,7 @@ PanelWindow {
     }
 
     function removeAlarm(index): void {
+        root.commitEditors();
         root.alarms = root.alarms.filter((alarm, position) => position !== index);
     }
 
@@ -294,6 +310,7 @@ PanelWindow {
     }
 
     function setTimerPreset(minutes): void {
+        root.commitEditors();
         root.timerRunning = false;
         root.customTimer = false;
         root.timerTotal = minutes * 60;
@@ -302,6 +319,7 @@ PanelWindow {
     }
 
     function toggleTimer(): void {
+        root.commitEditors();
         if (root.timerLeft <= 0) {
             root.timerLeft = root.timerTotal;
         }
@@ -310,6 +328,7 @@ PanelWindow {
     }
 
     function resetTimer(): void {
+        root.commitEditors();
         root.timerRunning = false;
         root.timerLeft = root.timerTotal;
         root.timerState = "Listo";
@@ -357,6 +376,8 @@ PanelWindow {
     onVisibleChanged: {
         if (visible)
             CalendarEvents.refresh(root.shownMonth);
+        else
+            root.commitEditors();
     }
 
     onShownMonthChanged: {
@@ -364,14 +385,19 @@ PanelWindow {
             CalendarEvents.refresh(root.shownMonth);
     }
 
+    onTabChanged: root.commitEditors()
+
     // Pulsar el reloj de la barra abre el calendario: eso da por atendida la
     // alarma y detiene el sonido y el aviso.
     Connections {
         target: CalendarState
 
         function onOpenChanged(): void {
-            if (CalendarState.open)
+            if (CalendarState.open) {
                 AlarmState.stop();
+            } else {
+                root.commitEditors();
+            }
         }
     }
 
@@ -507,6 +533,14 @@ PanelWindow {
         border.width: 1
         border.color: Theme.borderStrong
         clip: true
+
+        // Los clics en zonas vacías del panel cierran cualquier edición de
+        // hora; los controles con su propio MouseArea quedan por encima.
+        MouseArea {
+            anchors.fill: parent
+            z: -1
+            onClicked: root.commitEditors()
+        }
 
         ColumnLayout {
             anchors.fill: parent
@@ -844,8 +878,11 @@ PanelWindow {
                                     anchors.margins: -4
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: CalendarEvents.removeNote(
-                                        dayRow.modelData.id)
+                                    onClicked: {
+                                        root.commitEditors();
+                                        CalendarEvents.removeNote(
+                                            dayRow.modelData.id);
+                                    }
                                 }
                             }
                         }
@@ -1309,6 +1346,7 @@ PanelWindow {
                             spacing: 5
 
                             DurationField {
+                                id: alarmTimeEditor
                                 Layout.preferredWidth: 52
                                 seconds: root.alarmSeconds(
                                     alarmRow.modelData.time)
@@ -1317,11 +1355,21 @@ PanelWindow {
                                     ? Theme.text : Theme.faint
                                 editColor: Theme.accent
                                 pixelSize: 11
-                                onEditingChanged:
-                                    root.alarmEditing = editing
+                                onEditingStarted:
+                                    root.activeEditor = alarmTimeEditor
+                                onEditingChanged: {
+                                    root.alarmEditing = editing;
+                                    if (!editing
+                                            && root.activeEditor === alarmTimeEditor)
+                                        root.activeEditor = null;
+                                }
                                 onChanged: (value) => root.updateAlarm(
                                     alarmRow.index, "time",
                                     root.formatAlarm(value))
+                                Component.onDestruction: {
+                                    if (root.activeEditor === alarmTimeEditor)
+                                        root.activeEditor = null;
+                                }
                             }
 
                             TextField {
@@ -1344,9 +1392,11 @@ PanelWindow {
 
                             ShellSwitch {
                                 checked: alarmRow.modelData.enabled
-                                onToggled: root.updateAlarm(
-                                    alarmRow.index, "enabled",
-                                    !alarmRow.modelData.enabled)
+                                onToggled: {
+                                    root.commitEditors();
+                                    root.updateAlarm(alarmRow.index, "enabled",
+                                        !alarmRow.modelData.enabled);
+                                }
                             }
 
                             Text {
@@ -1392,9 +1442,14 @@ PanelWindow {
                     editColor: Theme.accent
                     pixelSize: 44
                     onEditingStarted: {
+                        root.activeEditor = timerField;
                         root.timerRunning = false;
                         root.timerState = "Listo";
                         root.writeTimer(0);
+                    }
+                    onEditingChanged: {
+                        if (!editing && root.activeEditor === timerField)
+                            root.activeEditor = null;
                     }
                     onChanged: (value) => root.setTimerFromSeconds(value)
                 }

@@ -4716,6 +4716,19 @@ ColumnLayout {
                     onToggled: KeyboardState.toggle()
                 }
             }
+
+            Text {
+                Layout.fillWidth: true
+                text: SettingsState.keyboardLayout === "ru"
+                    ? "El teclado flotante cambia a la capa cirílica."
+                    : (SettingsState.keyboardLayout === "cn"
+                        ? "El chino necesita un método de entrada (IME); el teclado flotante usa QWERTY."
+                        : "El teclado flotante usa QWERTY internacional con acentos.")
+                color: Theme.faint
+                font.family: Theme.fontFamily
+                font.pixelSize: 8
+                wrapMode: Text.Wrap
+            }
         }
 
         // --------------------------------------------------- Portapapeles
@@ -5456,60 +5469,6 @@ ColumnLayout {
                             text = "";
                             focus = false;
                         }
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Theme.border
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Distribución del teclado"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                }
-
-                Text {
-                    text: SettingsState.keyboardLayout.toUpperCase()
-                    color: Theme.accent
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                    font.weight: Font.Bold
-                }
-
-                Rectangle {
-                    implicitWidth: 68
-                    implicitHeight: 24
-                    radius: 7
-                    color: layoutButtonMouse.containsMouse
-                        ? Theme.hover : Theme.surfaceAlt
-                    border.width: 1
-                    border.color: Theme.border
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Cambiar"
-                        color: Theme.muted
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 9
-                        font.weight: Font.DemiBold
-                    }
-
-                    MouseArea {
-                        id: layoutButtonMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.setView("keyboard")
                     }
                 }
             }

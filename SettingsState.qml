@@ -107,23 +107,27 @@ Singleton {
     property int glassBlur: 12
     property bool glassBlurBehind: false
 
-    // Distribución física del teclado. Se aplica a Hyprland en caliente y se
-    // vuelve a aplicar al arrancar el shell.
+    // Distribución física del teclado. Solo se configura desde el centro de
+    // control → Teclado. La lista es deliberadamente corta: español, inglés,
+    // ruso, portugués, chino y alemán.
     property string keyboardLayout: "es"
     readonly property var keyboardLayouts: [
         { key: "es", label: "Español" },
-        { key: "latam", label: "Latinoam." },
-        { key: "us", label: "Inglés EE. UU." },
-        { key: "gb", label: "Inglés RU" },
-        { key: "fr", label: "Francés" },
-        { key: "de", label: "Alemán" },
-        { key: "it", label: "Italiano" },
-        { key: "pt", label: "Portugués" },
-        { key: "br", label: "Brasil" },
+        { key: "us", label: "Inglés" },
         { key: "ru", label: "Ruso" },
-        { key: "pl", label: "Polaco" },
-        { key: "tr", label: "Turco" }
+        { key: "pt", label: "Portugués" },
+        { key: "cn", label: "Chino" },
+        { key: "de", label: "Alemán" }
     ]
+
+    function knownLayout(value): bool {
+        const clean = String(value || "").trim().toLowerCase();
+        for (let i = 0; i < root.keyboardLayouts.length; i++) {
+            if (root.keyboardLayouts[i].key === clean)
+                return true;
+        }
+        return false;
+    }
 
     // Atajo global que silencia o reactiva el micrófono, en formato de
     // Hyprland (por ejemplo "SUPER SHIFT, M"). Vacío = sin atajo.
@@ -498,7 +502,7 @@ Singleton {
 
     function setKeyboardLayout(value: string): void {
         const clean = String(value).trim().toLowerCase();
-        if (!/^[a-z0-9_]+$/.test(clean))
+        if (!root.knownLayout(clean))
             return;
         root.keyboardLayout = clean;
     }
@@ -887,6 +891,7 @@ Singleton {
             let glassRadius = root.glassBlur;
             let glassBehind = root.glassBlurBehind;
             let layout = root.keyboardLayout;
+            let layoutChanged = false;
             let shortcut = root.micShortcut;
             let hotspotOff = root.hotspotAutoOff;
             let hotspotMin = root.hotspotMinutes;
@@ -988,8 +993,10 @@ Singleton {
                 } else if (key === "glassBlurBehind") {
                     glassBehind = value === "1" || value === "true";
                 } else if (key === "keyboardLayout") {
-                    if (/^[a-z0-9_]+$/.test(value))
+                    if (root.knownLayout(value))
                         layout = value;
+                    else
+                        layoutChanged = true;
                 } else if (key === "hotspotAutoOff") {
                     hotspotOff = value === "1" || value === "true";
                 } else if (key === "hotspotMinutes") {
@@ -1102,6 +1109,8 @@ Singleton {
             root.applyIdle();
             root.requestShellTheme();
             root.applySystemTheme();
+            if (layoutChanged)
+                root.write();
         }
     }
 

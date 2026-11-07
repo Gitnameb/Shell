@@ -516,14 +516,19 @@ y nieve.
   el último dígito y Escape cancela.
   - Temporizador (`showSeconds: true`): `123` → `1:23`, `12345` → `1:23:45`.
   - Alarma (`showSeconds: false`): `930` → `09:30`, `1230` → `12:30`.
+- La edición se confirma al pulsar Intro, al tocar cualquier otra zona del
+  panel, al cambiar de pestaña o al cerrar el panel. No hace falta apretar
+  Intro para que el valor quede guardado.
 - Editar el tiempo del temporizador detiene la cuenta atrás y lo deja listo.
   Un tiempo escrito a mano deselecciona los presets aunque coincida con uno.
 - `AlarmState.qml` reproduce el sonido de alarma o del temporizador en bucle y
   muestra un aviso crítico sin caducidad. El sonido solo para al cerrar ese
-  aviso o al pulsar el reloj de la barra (que además retira el aviso). Mientras
-  suena, el fondo del reloj se pinta de azul. Si «No molestar» está activo no
-  hay aviso registrado, así que el sonido se detiene al abrir el calendario.
-  Hay un límite de seguridad de 10 minutos.
+  aviso o al pulsar el reloj de la barra (que además retira el aviso). El
+  reproductor (`paplay` o `pw-play`) es el proceso directo, así que se corta al
+  instante: no hay un bucle de shell esperando a que acabe la secuencia.
+  Mientras suena, el fondo del reloj parpadea en azul. Si «No molestar» está
+  activo no hay aviso registrado, así que el sonido se detiene al abrir el
+  calendario. Hay un límite de seguridad de 10 minutos.
 - Con el shell cerrado, `scripts/shell-alarms` usa `notify-send -w` (o un
   diálogo de KDialog/Zenity) y mantiene el sonido hasta que se cierra el aviso.
 
@@ -539,3 +544,22 @@ No hay respaldos con otros bloqueadores ni llamadas directas a `hyprlock`.
 Antes el botón lanzaba `hyprlock` directamente y, sin archivo de
 configuración, hyprlock salía sin bloquear. Ahora la configuración se crea
 sola y el instalador también la copia en limpieza.
+
+## 16. Teclado
+
+La distribución del teclado físico se configura **solo** desde el centro de
+control → Teclado, junto al interruptor del teclado flotante. La fila
+«Distribución del teclado» que había en Ajustes se eliminó.
+
+- Idiomas disponibles: español (`es`), inglés (`us`), ruso (`ru`),
+  portugués (`pt`), chino (`cn`) y alemán (`de`). Cualquier otro valor se
+  rechaza; si el archivo guardado tiene un valor inválido (por ejemplo
+  `mosaic`), se migra a `es` al arrancar.
+- El teclado flotante usa `wvkbd-mobintl`. La lista de idiomas cambia la capa
+  de wvkbd: ruso carga la capa cirílica y el resto la QWERTY internacional con
+  acentos. Al cambiar la distribución se reinicia solo si está visible.
+- **Límite actual:** wvkbd no tiene capas nativas para español, alemán,
+  portugués ni chino. Para esos idiomas el teclado flotante es la QWERTY
+  internacional; el chino además necesita un método de entrada (IME). Si se
+  quiere un teclado flotante con teclas nativas o estilo Android habría que
+  sustituir wvkbd por un teclado propio; no se hace en este cambio.

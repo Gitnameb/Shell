@@ -12,7 +12,15 @@ Singleton {
     property bool visible: false
     property bool available: false
     property bool checked: false
+    property bool restarting: false
     property string error: ""
+
+    // wvkbd no tiene capas nativas para todos los idiomas. El ruso usa la
+    // capa cirílica; el resto, la QWERTY internacional con acentos.
+    readonly property string layerList:
+        SettingsState.keyboardLayout === "ru"
+            ? "cyrillic,special,simple,nav,emoji"
+            : "full,special,simple,nav,emoji"
 
     function toggle(): void {
         if (!root.available) {
@@ -57,6 +65,7 @@ Singleton {
 
         command: [
             "wvkbd-mobintl",
+            "-l", root.layerList,
             "-L", "290",
             "-H", "250",
             "--bg", "14171c",
@@ -67,11 +76,31 @@ Singleton {
             "--press", "2f2e3c",
             "--press-sp", "3a3550"
         ]
-        running: root.visible
+        running: root.visible && !root.restarting
 
         onExited: {
-            if (root.visible)
+            if (root.visible && !root.restarting)
                 root.visible = false;
         }
+    }
+
+    // Al cambiar la distribución física se reinicia el teclado flotante para
+    // que cargue la capa correspondiente.
+    Connections {
+        target: SettingsState
+
+        function onKeyboardLayoutChanged(): void {
+            if (!root.visible)
+                return;
+            root.restarting = true;
+            restartTimer.restart();
+        }
+    }
+
+    Timer {
+        id: restartTimer
+        interval: 350
+        repeat: false
+        onTriggered: root.restarting = false
     }
 }

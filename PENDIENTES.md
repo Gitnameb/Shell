@@ -213,9 +213,15 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   sincronizar. El clima usa iconos SVG con color propio. Alarmas y
   temporizador comparten el mismo editor de dígitos de derecha a izquierda, sin
   escribir «:»: el temporizador muestra `123` → `1:23` y la alarma `930` →
-  `09:30` hasta confirmar. El sonido de alarma y el del temporizador se
-  repiten hasta cerrar el aviso o pulsar el reloj de la barra, que se pinta de
-  azul mientras suenan. Detalle: `CONFIGURACION-UMBRIEL.md` §12–14.
+  `09:30`. La edición se confirma al tocar fuera o cerrar el panel. El sonido
+  de alarma y el del temporizador se repiten hasta cerrar el aviso o pulsar el
+  reloj de la barra, que parpadea en azul mientras suenan. Detalle:
+  `CONFIGURACION-UMBRIEL.md` §12–14.
+- **Teclado.** La distribución se configura solo en el centro de control →
+  Teclado, con seis idiomas: español, inglés, ruso, portugués, chino y alemán.
+  El valor inválido `mosaic` se migra a `es`. El teclado flotante de wvkbd
+  cambia a cirílico con ruso; el resto usa QWERTY internacional. Detalle:
+  `CONFIGURACION-UMBRIEL.md` §16.
 - **Bloqueo de pantalla.** El botón lanzaba `hyprlock` sin configuración y
   salía sin bloquear. `shell-lock` es ahora el único bloqueo: crea
   `~/.config/hypr/hyprlock.conf` desde la plantilla si falta y lo usan el menú

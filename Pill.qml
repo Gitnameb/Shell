@@ -10,6 +10,7 @@ Rectangle {
     property bool active: false
     // Fondo azul de aviso: suena una alarma o el temporizador.
     property bool alert: false
+    property bool alertOn: false
     property bool draggable: false
     // Relleno horizontal a cada lado del contenido. El tráfico de red usa
     // menos para que la píldora no quede más ancha que sus cifras.
@@ -37,13 +38,23 @@ Rectangle {
     // y solo se tiñen al pasar el ratón. El estado activo lo comunica el
     // icono, igual que el botón de energía del mockup.
     color: root.alert
-        ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.28)
+        ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b,
+            root.alertOn ? 0.42 : 0.10)
         : (root.hovered ? Theme.hover : "transparent")
     border.width: root.alert ? 1 : 0
     border.color: Theme.accentLine
 
     Behavior on color {
-        ColorAnimation { duration: 160 }
+        ColorAnimation { duration: 120 }
+    }
+
+    onAlertChanged: root.alertOn = root.alert
+
+    Timer {
+        interval: 480
+        repeat: true
+        running: root.alert
+        onTriggered: root.alertOn = !root.alertOn
     }
 
     Row {

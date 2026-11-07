@@ -19,7 +19,13 @@ Singleton {
     // solo se detiene al abrir el calendario.
     property bool dndAtFire: false
 
-    readonly property bool sounding: soundProc.running
+    // El reproductor es el proceso directo: al pararlo se corta el audio al
+    // instante, sin esperar a que termine la secuencia que estuviera sonando.
+    property bool active: false
+    property string player: "paplay"
+    property string currentSound:
+        "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"
+    readonly property bool sounding: root.active
     readonly property string alarmSound:
         "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"
     readonly property string timerSound:
@@ -30,26 +36,21 @@ Singleton {
             return;
         const body = alarms.map((alarm) =>
             String(alarm.label || "Alarma") + " · " + alarm.time).join("\n");
-        root.start("Alarma", body, root.alarmSound, "alarm-clock-elapsed");
+        root.start("Alarma", body, root.alarmSound);
     }
 
     function fireTimer(): void {
-        root.start("Temporizador", "Tiempo cumplido",
-            root.timerSound, "complete");
+        root.start("Temporizador", "Tiempo cumplido", root.timerSound);
     }
 
-    function start(title, body, sound, canberraEvent): void {
+    function start(title, body, sound): void {
         root.dismissNotification();
         root.dndAtFire = NotificationState.dnd;
+        root.currentSound = sound;
 
-        if (!soundProc.running) {
-            soundProc.command = ["sh", "-c",
-                "while :; do paplay \"$1\" 2>/dev/null "
-                    + "|| pw-play \"$1\" 2>/dev/null "
-                    + "|| canberra-gtk-play -f \"$2\" 2>/dev/null "
-                    + "|| sleep 1; done",
-                "shell", sound, canberraEvent];
-            soundProc.running = true;
+        if (!root.active) {
+            root.active = true;
+            root.playOnce();
         }
 
         notifyProc.command = ["sh", "-c",
@@ -60,7 +61,16 @@ Singleton {
         watchdog.restart();
     }
 
+    function playOnce(): void {
+        if (!root.active || root.player.length === 0)
+            return;
+        soundProc.command = [root.player, root.currentSound];
+        soundProc.running = true;
+    }
+
     function stopSound(): void {
+        root.active = false;
+        restartTimer.stop();
         soundProc.running = false;
         watchdog.stop();
     }
@@ -98,7 +108,39 @@ Singleton {
 
     Process {
         id: soundProc
+
+        onExited: {
+            if (root.active)
+                restartTimer.restart();
+        }
     }
+
+    // Repite la reproducción sin un bucle de shell: así el proceso que suena
+    // es paplay/pw-play y se puede matar directamente al detener la alarma.
+    Timer {
+        id: restartTimer
+        interval: 260
+        repeat: false
+        onTriggered: root.playOnce()
+    }
+
+    // Elige el reproductor disponible una sola vez.
+    Process {
+        id: playerCheck
+        command: ["sh", "-c", "command -v paplay || command -v pw-play"]
+
+        stdout: StdioCollector {
+            id: playerOut
+        }
+
+        onExited: {
+            const found = String(playerOut.text || "").trim();
+            if (found.length > 0)
+                root.player = found;
+        }
+    }
+
+    Component.onCompleted: playerCheck.running = true
 
     Process {
         id: notifyProc
