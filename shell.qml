@@ -137,9 +137,9 @@ ShellRoot {
         }
 
         // Cristal del shell desde la terminal:
-        //   qs ipc -c shell call appearance glass 22 12
-        // El primer valor es la transparencia (0-90) y el segundo el radio
-        // global de desenfoque de Umbriel (0-40; 0 lo apaga).
+        //   qs ipc -c shell call appearance glass 22 16
+        // El primer valor es la transparencia (0-90) y el segundo el radio de
+        // desenfoque del shell (0-40; 0 lo apaga).
         function glass(transparency: string, blurRadius: string): void {
             if (transparency !== "")
                 SettingsState.setGlassTransparency(Number(transparency));
@@ -148,25 +148,39 @@ ShellRoot {
         }
 
         // Qué desenfoca el cristal:
-        //   qs ipc -c shell call appearance glassMode wallpaper|behind
-        // «wallpaper» usa la caché del fondo (como el mockup); «behind»
-        // desenfoca las ventanas y el contenido que hay detrás.
+        //   qs ipc -c shell call appearance glassMode simple|fondo
+        // «fondo» usa la caché del fondo de pantalla; «simple» desenfoca el
+        // contenido real que hay detrás.
         function glassMode(mode: string): void {
-            if (mode === "behind" || mode === "contenido")
+            if (mode === "simple" || mode === "behind"
+                    || mode === "contenido")
                 SettingsState.setGlassBlurBehind(true);
             else if (mode === "wallpaper" || mode === "fondo")
                 SettingsState.setGlassBlurBehind(false);
         }
 
         // Transparencia y desenfoque de las ventanas:
-        //   qs ipc -c shell call appearance windows 15 1
-        // El primer valor es la transparencia (0-90; 0 las deja opacas) y el
-        // segundo, 1 o 0, activa el desenfoque de lo que hay detrás.
-        function windows(transparency: string, blur: string): void {
+        //   qs ipc -c shell call appearance windows 15 12 simple
+        // El primer valor es la transparencia (0-90; 0 las deja opacas), el
+        // segundo el radio (0-40) y el tercero el tipo (simple|fondo).
+        function windows(transparency: string, blurRadius: string,
+                mode: string): void {
             if (transparency !== "")
                 SettingsState.setWindowTransparency(Number(transparency));
-            if (blur !== "")
-                SettingsState.setWindowBlur(blur === "1" || blur === "true");
+            if (blurRadius !== "")
+                SettingsState.setWindowBlur(Number(blurRadius));
+            if (mode === "simple" || mode === "behind"
+                    || mode === "contenido")
+                SettingsState.setWindowBlurBehind(true);
+            else if (mode === "fondo" || mode === "wallpaper")
+                SettingsState.setWindowBlurBehind(false);
+        }
+
+        // Sincronizar las ventanas con los valores del shell:
+        //   qs ipc -c shell call appearance windowsSync 1
+        function windowsSync(value: string): void {
+            SettingsState.setWindowSync(
+                value === "1" || value === "true");
         }
 
         // Diagnóstico del cristal y de las ventanas.
@@ -175,8 +189,15 @@ ShellRoot {
                 + " script=" + SettingsState.glassScript
                 + " transparency=" + SettingsState.glassTransparency
                 + " blur=" + SettingsState.glassBlur
-                + " windowTransparency=" + SettingsState.windowTransparency
-                + " windowBlur=" + (SettingsState.windowBlur ? "1" : "0");
+                + " blurMode=" + (SettingsState.glassBlurBehind
+                    ? "simple" : "fondo")
+                + " windowTransparency="
+                + SettingsState.effectiveWindowTransparency
+                + " windowBlur=" + SettingsState.effectiveWindowBlur
+                + " windowBlurMode="
+                + (SettingsState.effectiveWindowBlurBehind
+                    ? "simple" : "fondo")
+                + " windowSync=" + (SettingsState.windowSync ? "1" : "0");
         }
 
         // Ciudad del clima; vacío vuelve a la detección por IP.

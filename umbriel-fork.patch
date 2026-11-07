@@ -54,6 +54,18 @@ index 4f1a7644..0f05fa0f 100644
  
  `{"cmd":"focused-window"}` answers with the focused window's listing entry: the window the window actions act on. The seat's focused window wins (for a modal dialog, the dialog itself; for a visible scratchpad window holding the keyboard, that window); while a layer surface or the overview holds the keyboard, the answer falls back to the pointer output's active workspace's remembered focus; and the reply is `{"err": "no focused window"}` while a scratchpad owns the seat with no window focused, or when nothing is focused. The entry is exactly a `windows` entry for that window; its `focused` member stays the workspace-local remembered focus and does not select which window the query answers about.
  
+diff --git a/docs/user/layer-rules.md b/docs/user/layer-rules.md
+index 072687c7..14b91eee 100644
+--- a/docs/user/layer-rules.md
++++ b/docs/user/layer-rules.md
+@@ -30,6 +30,7 @@ Selectors are optional: a rule without them matches every layer surface, and eve
+ | `blur_popups`       | bool  | Enable/disable blur for descendant XDG popups. |
+ | `blur_ignore_alpha` | float | Skip blur below an alpha threshold.            |
+ | `blur_optimized`    | bool  | Override the global optimized-blur choice.     |
++| `blur_strength`     | float | Scale the global blur radius (0.0 to 1.0).     |
+ 
+ Layer-shell blur is off by default. Every matching rule contributes its settings, and later values take precedence.
+ 
 diff --git a/docs/user/layout.md b/docs/user/layout.md
 index 29a8e7b9..e0052468 100644
 --- a/docs/user/layout.md
@@ -91,6 +103,18 @@ index 29a8e7b9..e0052468 100644
  ### Drop zones and region placement
  
  ```toml
+diff --git a/docs/user/window-rules.md b/docs/user/window-rules.md
+index cf7300d2..f3a54a59 100644
+--- a/docs/user/window-rules.md
++++ b/docs/user/window-rules.md
+@@ -186,6 +186,7 @@ Add `default_column_display = "tabbed"` to keep such a column as [tabs](layout.m
+ | `blur_popups`             | Apply blur to descendant XDG popups.                                                                                                                                                                                                                                   |
+ | `blur_ignore_alpha`       | Skip blur below an alpha threshold.                                                                                                                                                                                                                                    |
+ | `blur_optimized`          | Override the global optimized-blur choice.                                                                                                                                                                                                                             |
++| `blur_strength`           | Scale the global blur radius for this window from 0.0 (no blur) to 1.0 (full radius).                                                                                                                                                                                  |
+ | `confine_pointer`         | Keep the pointer inside this window while it has keyboard focus (default `false`).                                                                                                                                                                                     |
+ | `allow_shortcuts_inhibit` | Allow client-requested keyboard shortcut inhibition (default `true`). Set `false` to keep compositor shortcuts available. See [Keyboard shortcuts inhibition](#keyboard-shortcuts-inhibition).                                                                         |
+ | `block_capture`           | Omit this window from screenshots and recordings (default `false`). See [Capture protection](#capture-protection).                                                                                                                                                     |
 diff --git a/docs/user/workspaces.md b/docs/user/workspaces.md
 index d35aded7..e3ad17d8 100644
 --- a/docs/user/workspaces.md
@@ -302,7 +326,7 @@ index 6e01dda1..f9f704b8 100644
            scratchpadTable(),
            hotCornersTable(),
 diff --git a/src/config/config.h b/src/config/config.h
-index 86a6825c..dbd98b1a 100644
+index 86a6825c..e8d20d1f 100644
 --- a/src/config/config.h
 +++ b/src/config/config.h
 @@ -119,6 +119,9 @@ namespace umbriel {
@@ -325,7 +349,58 @@ index 86a6825c..dbd98b1a 100644
        bool operator==(const Stacking&) const = default;
      } stacking;
      struct Tabs {
-@@ -730,6 +736,8 @@ namespace umbriel {
+@@ -475,6 +481,8 @@ namespace umbriel {
+     std::optional<bool> blurPopups;
+     std::optional<double> blurIgnoreAlpha;
+     std::optional<bool> blurOptimized;
++    // Scales the global blur radius for this rule, from 0 (no blur) to 1 (the full global radius).
++    std::optional<double> blurStrength;
+     std::optional<TitleBarMode> titleBar;
+     // Overrides [appearance.title_bar] buttons, read from the title outward.
+     std::optional<std::vector<TitleBarButton>> titleBarButtons;
+@@ -541,6 +549,7 @@ namespace umbriel {
+           && blurPopups == other.blurPopups
+           && blurIgnoreAlpha == other.blurIgnoreAlpha
+           && blurOptimized == other.blurOptimized
++          && blurStrength == other.blurStrength
+           && titleBar == other.titleBar
+           && titleBarButtons == other.titleBarButtons
+           && borderColorFocused == other.borderColorFocused
+@@ -590,6 +599,7 @@ namespace umbriel {
+     std::optional<bool> blurPopups;
+     std::optional<double> blurIgnoreAlpha;
+     std::optional<bool> blurOptimized;
++    std::optional<double> blurStrength;
+     std::optional<TitleBarMode> titleBar;
+     std::optional<std::vector<TitleBarButton>> titleBarButtons;
+     std::optional<std::array<float, 4>> borderColorFocused;
+@@ -620,6 +630,7 @@ namespace umbriel {
+     std::optional<bool> blurPopups;
+     std::optional<double> ignoreAlpha;
+     std::optional<bool> optimized;
++    std::optional<double> strength;
+ 
+     // See WindowRule: the regexes are derived from the patterns.
+     bool operator==(const LayerRule& other) const {
+@@ -629,7 +640,8 @@ namespace umbriel {
+           && blur == other.blur
+           && blurPopups == other.blurPopups
+           && ignoreAlpha == other.ignoreAlpha
+-          && optimized == other.optimized;
++          && optimized == other.optimized
++          && strength == other.strength;
+     }
+   };
+ 
+@@ -638,6 +650,7 @@ namespace umbriel {
+     std::optional<bool> blurPopups;
+     std::optional<double> ignoreAlpha;
+     std::optional<bool> optimized;
++    std::optional<double> strength;
+     bool operator==(const ResolvedLayerRule&) const = default;
+   };
+ 
+@@ -730,6 +743,8 @@ namespace umbriel {
      struct Appearance {
        struct TitleBar {
          TitleBarMode mode = TitleBarMode::Off;
@@ -334,7 +409,7 @@ index 86a6825c..dbd98b1a 100644
          int height = 28;
          std::string font = "sans 10";
          TitleBarButtonSide buttonPosition = TitleBarButtonSide::Right;
-@@ -969,6 +977,16 @@ namespace umbriel {
+@@ -969,6 +984,16 @@ namespace umbriel {
        bool operator==(const Animation&) const = default;
      } animation;
      Effects effects;
@@ -351,7 +426,7 @@ index 86a6825c..dbd98b1a 100644
  
      struct Overview {
        // Workspace scale when fully zoomed out.
-@@ -1034,6 +1052,15 @@ namespace umbriel {
+@@ -1034,6 +1059,15 @@ namespace umbriel {
        } master;
        struct Stacking {
          bool dropZones = true;
@@ -367,7 +442,7 @@ index 86a6825c..dbd98b1a 100644
          bool operator==(const Stacking&) const = default;
        } stacking;
        struct Tabs {
-@@ -1116,6 +1143,10 @@ namespace umbriel {
+@@ -1116,6 +1150,10 @@ namespace umbriel {
      } events;
  
      struct Input {
@@ -468,8 +543,28 @@ index 30ecb31d..8494797b 100644
        };
        static const Fields<Tabs> tabs{
            choice("default_display", &Tabs::defaultDisplay, columnDisplays()),
+diff --git a/src/config/fields_rules.cpp b/src/config/fields_rules.cpp
+index 61dc5cf7..a2f1496e 100644
+--- a/src/config/fields_rules.cpp
++++ b/src/config/fields_rules.cpp
+@@ -208,6 +208,7 @@ namespace umbriel {
+           boolean("blur", &W::blur),
+           boolean("blur_popups", &W::blurPopups),
+           boolean("blur_optimized", &W::blurOptimized),
++          real("blur_strength", 0.0, 1.0, &W::blurStrength),
+           real("opacity", 0.0, 1.0, &W::opacity),
+           real("blur_ignore_alpha", 0.0, 1.0, &W::blurIgnoreAlpha),
+           color("border_color_focused", &W::borderColorFocused),
+@@ -345,6 +346,7 @@ namespace umbriel {
+           registry::boolean("blur_popups", &L::blurPopups),
+           registry::real("blur_ignore_alpha", 0.0, 1.0, &L::ignoreAlpha),
+           registry::boolean("blur_optimized", &L::optimized),
++          registry::real("blur_strength", 0.0, 1.0, &L::strength),
+       };
+       return fields;
+     }
 diff --git a/src/config/resolve.cpp b/src/config/resolve.cpp
-index 16a64d47..1742b43c 100644
+index 16a64d47..08cfa6a7 100644
 --- a/src/config/resolve.cpp
 +++ b/src/config/resolve.cpp
 @@ -135,6 +135,15 @@ namespace umbriel {
@@ -488,7 +583,27 @@ index 16a64d47..1742b43c 100644
        if (overrides.extentPresets) {
          resolved.extentPresets = *overrides.extentPresets;
        }
-@@ -492,6 +501,9 @@ namespace umbriel {
+@@ -379,6 +388,9 @@ namespace umbriel {
+       if (rule.blurOptimized) {
+         resolved.blurOptimized = rule.blurOptimized;
+       }
++      if (rule.blurStrength) {
++        resolved.blurStrength = rule.blurStrength;
++      }
+       if (rule.titleBar) {
+         resolved.titleBar = rule.titleBar;
+       }
+@@ -442,6 +454,9 @@ namespace umbriel {
+       if (rule.optimized) {
+         resolved.optimized = rule.optimized;
+       }
++      if (rule.strength) {
++        resolved.strength = rule.strength;
++      }
+     }
+     return resolved;
+   }
+@@ -492,6 +507,9 @@ namespace umbriel {
      resolved.master.newBecomesMaster = config.layout.master.newBecomesMaster;
      resolved.master.position = config.layout.master.position;
      resolved.stacking.dropZones = config.layout.stacking.dropZones;
@@ -1261,6 +1376,26 @@ index 95473013..7a868429 100644
    }
  
    void Keyboard::armRepeat(const Keybind& bind, uint32_t keycode) {
+diff --git a/src/layer/layer_surface.cpp b/src/layer/layer_surface.cpp
+index c972f1ab..fc027679 100644
+--- a/src/layer/layer_surface.cpp
++++ b/src/layer/layer_surface.cpp
+@@ -361,6 +361,7 @@ namespace umbriel {
+         .ignoreAlpha = static_cast<float>(m_rule.ignoreAlpha.value_or(0.0)),
+         .enabled = m_rule.blur.value_or(false),
+         .optimized = m_rule.optimized,
++        .strength = static_cast<float>(m_rule.strength.value_or(1.0)),
+     };
+   }
+ 
+@@ -369,6 +370,7 @@ namespace umbriel {
+         .ignoreAlpha = static_cast<float>(m_rule.ignoreAlpha.value_or(0.0)),
+         .enabled = m_rule.blurPopups.value_or(false),
+         .optimized = m_rule.optimized,
++        .strength = static_cast<float>(m_rule.strength.value_or(1.0)),
+     };
+   }
+ 
 diff --git a/src/output/output.cpp b/src/output/output.cpp
 index 12b377cc..b98498ef 100644
 --- a/src/output/output.cpp
@@ -1462,7 +1597,7 @@ index 9b42b181..130c9c2f 100644
      bool m_deformationCompiled = false;
      bool m_persistentReferenced = false;
 diff --git a/src/scene/ssd_frame.cpp b/src/scene/ssd_frame.cpp
-index 213d2361..62b31a5d 100644
+index 213d2361..da413f28 100644
 --- a/src/scene/ssd_frame.cpp
 +++ b/src/scene/ssd_frame.cpp
 @@ -1,6 +1,7 @@
@@ -1587,7 +1722,7 @@ index 213d2361..62b31a5d 100644
    void SsdFrame::setHovered(SsdFramePart part) {
      if (m_hovered == part)
        return;
-@@ -125,28 +192,32 @@ namespace umbriel {
+@@ -125,28 +192,35 @@ namespace umbriel {
          && m_blurOptions.enabled.value_or(false)
          && backgroundAlpha * m_alpha < 1.0F
          && backgroundAlpha >= m_blurOptions.ignoreAlpha;
@@ -1634,6 +1769,9 @@ index 213d2361..62b31a5d 100644
 +      wlr_scene_blur_set_should_only_blur_bottom_layer(
 +          blur, m_blurOptions.optimized.value_or(cfg.optimized) && !m_blurLive
 +      );
++      if (blur->strength != m_blurOptions.strength) {
++        wlr_scene_blur_set_strength(blur, m_blurOptions.strength);
++      }
 +      wlr_scene_blur_set_alpha(blur, m_blurAlpha);
 +    };
 +    sync(m_blur, m_background, true);
@@ -1641,7 +1779,7 @@ index 213d2361..62b31a5d 100644
    }
  
    int SsdFrame::zoomed(int value) const { return static_cast<int>(std::lround(value * m_geometry.zoom)); }
-@@ -161,14 +232,16 @@ namespace umbriel {
+@@ -161,14 +235,16 @@ namespace umbriel {
    void SsdFrame::updateButtonIcon(TitleBarButton button, const std::array<float, 4>& color, float alpha, bool visible) {
      const auto index = static_cast<size_t>(button);
      auto*& icon = m_icons[index];
@@ -1660,7 +1798,7 @@ index 213d2361..62b31a5d 100644
      const float scale = std::max(1.0F, m_geometry.scale);
      // At integer scales the symbol maps 1:1 onto the button. At fractional scales the button's physical size depends
      // on its position, and the renderer copies a buffer within one pixel of that size texel for texel, leaving the
-@@ -207,52 +280,88 @@ namespace umbriel {
+@@ -207,52 +283,88 @@ namespace umbriel {
      const auto& background = m_focused ? colors.background : colors.backgroundUnfocused;
      premultiplied(color, background, m_alpha);
      wlr_scene_rect_set_color(m_background, color);
@@ -1767,7 +1905,7 @@ index 213d2361..62b31a5d 100644
      wlr_scene_node_set_enabled(&m_tree->node, shown);
      wlr_scene_node_set_enabled(&m_gripTree->node, available && m_resizable && !m_preview);
      if (!available) {
-@@ -270,11 +379,13 @@ namespace umbriel {
+@@ -270,11 +382,13 @@ namespace umbriel {
        rect->accepts_input = !m_preview;
      };
      const int band = g.borderInset + kSsdResizeBand;
@@ -1784,7 +1922,7 @@ index 213d2361..62b31a5d 100644
      }};
      for (size_t i = 0; i < m_grips.size(); ++i) {
        place(m_grips[i], grips[i]);
-@@ -284,18 +395,53 @@ namespace umbriel {
+@@ -284,18 +398,53 @@ namespace umbriel {
        updateBlur();
        return;
      }
@@ -1843,7 +1981,7 @@ index 213d2361..62b31a5d 100644
        place(button, box);
        const int buttonRadius = style.buttonCornerRadius >= 0 ? style.buttonCornerRadius : g.cornerRadius;
        wlr_scene_rect_set_corner_radius(button, std::min(zoomed(box.width) / 2, zoomed(buttonRadius)));
-@@ -304,14 +450,95 @@ namespace umbriel {
+@@ -304,14 +453,95 @@ namespace umbriel {
      drawButton(m_close, parts.button(TitleBarButton::Close));
      drawButton(m_maximize, parts.button(TitleBarButton::Maximize));
      drawButton(m_minimize, parts.button(TitleBarButton::Minimize));
@@ -1942,7 +2080,7 @@ index 213d2361..62b31a5d 100644
      if (label == nullptr) {
        if (m_label != nullptr) {
          wlr_scene_node_destroy(&m_label->node);
-@@ -326,7 +553,46 @@ namespace umbriel {
+@@ -326,7 +556,46 @@ namespace umbriel {
          wlr_scene_buffer_set_buffer(m_label, label->buffer);
        }
        wlr_scene_buffer_set_dest_size(m_label, std::max(1, zoomed(label->width)), std::max(1, zoomed(label->height)));
@@ -1990,7 +2128,7 @@ index 213d2361..62b31a5d 100644
      }
      updateColors();
    }
-@@ -342,9 +608,17 @@ namespace umbriel {
+@@ -342,9 +611,17 @@ namespace umbriel {
    SsdFramePoint SsdFrame::pointAt(double x, double y) const {
      if (m_preview || m_geometry.suppressed || (!m_tree->node.enabled && !m_gripTree->node.enabled))
        return {};
@@ -2009,7 +2147,7 @@ index 213d2361..62b31a5d 100644
      );
    }
  
-@@ -362,7 +636,20 @@ namespace umbriel {
+@@ -362,7 +639,20 @@ namespace umbriel {
          wlr_scene_node_set_position(&copy->node, m_blur->node.x, m_blur->node.y);
        }
      }
@@ -2031,7 +2169,7 @@ index 213d2361..62b31a5d 100644
        if (!source->node.enabled)
          continue;
        auto* copy = wlr_scene_rect_create(tree, source->width, source->height, source->color);
-@@ -380,6 +667,8 @@ namespace umbriel {
+@@ -380,6 +670,8 @@ namespace umbriel {
        wlr_scene_node_set_position(&copy->node, m_tree->node.x + source->node.x, m_tree->node.y + source->node.y);
      };
      copyBuffer(m_label);
@@ -2040,7 +2178,7 @@ index 213d2361..62b31a5d 100644
      for (const auto* icon : m_icons)
        copyBuffer(icon);
    }
-@@ -392,10 +681,13 @@ namespace umbriel {
+@@ -392,10 +684,13 @@ namespace umbriel {
    void SsdFrame::syncPreview(ViewChromeAttachment& preview) const {
      if (auto* frame = dynamic_cast<SsdFrame*>(&preview)) {
        frame->setTitle(m_title);
@@ -2287,11 +2425,38 @@ index e42e5f84..0e33335d 100644
    );
    wlr_box contentBoxInTile(const wlr_box& tile, int titleBarHeight);
  } // namespace umbriel
+diff --git a/src/scene/surface_blur.cpp b/src/scene/surface_blur.cpp
+index fbbc9833..226696d3 100644
+--- a/src/scene/surface_blur.cpp
++++ b/src/scene/surface_blur.cpp
+@@ -103,6 +103,9 @@ namespace umbriel {
+ 
+     m_optimized = options.optimized.value_or(cfg.optimized);
+     wlr_scene_blur_set_should_only_blur_bottom_layer(m_node, m_optimized && !m_live);
++    if (m_node->strength != options.strength) {
++      wlr_scene_blur_set_strength(m_node, options.strength);
++    }
+ 
+     wlr_scene_node_set_enabled(&m_node->node, true);
+     wlr_scene_node_set_position(&m_node->node, drawBox.x, drawBox.y);
+diff --git a/src/scene/surface_blur.h b/src/scene/surface_blur.h
+index d9059207..9f6ee24f 100644
+--- a/src/scene/surface_blur.h
++++ b/src/scene/surface_blur.h
+@@ -15,6 +15,8 @@ namespace umbriel {
+     float ignoreAlpha = 0.0F;
+     std::optional<bool> enabled;
+     std::optional<bool> optimized;
++    // Scales the global blur radius for this surface. 1 uses the configured radius, 0 disables the effect.
++    float strength = 1.0F;
+   };
+ 
+   // True when the surface's opaque region does not cover surfaceBox, given in surface-local coordinates.
 diff --git a/src/scene/title_bar_icon.cpp b/src/scene/title_bar_icon.cpp
-index 80a6fd98..eb2f7fdd 100644
+index 80a6fd98..5eb6a5fe 100644
 --- a/src/scene/title_bar_icon.cpp
 +++ b/src/scene/title_bar_icon.cpp
-@@ -3,33 +3,136 @@
+@@ -3,33 +3,137 @@
  #include "scene/cairo_buffer.h"
  
  #include <algorithm>
@@ -2349,24 +2514,25 @@ index 80a6fd98..eb2f7fdd 100644
        break;
      case TitleBarButton::Maximize:
 -      cairo_rectangle(cr, 0.25, 0.25, 0.5, 0.5);
-+      // Marco redondeado con cuatro esquinas interiores, como la referencia
-+      // de Descargas. Sin la línea de barra de título.
-+      roundedRect(cr, 4, 5, 16, 14, 2.5);
++      // Marco cuadrado y más grande que el antiguo, con cuatro esquinas
++      // interiores como la referencia de Descargas. Sin línea de barra de
++      // título.
++      roundedRect(cr, 3, 3, 18, 18, 3);
 +      cairo_stroke(cr);
 +      cairo_new_path(cr);
-+      cairo_set_line_width(cr, 1.4);
-+      cairo_move_to(cr, 8, 11);
-+      cairo_line_to(cr, 8, 8);
-+      cairo_line_to(cr, 11, 8);
-+      cairo_move_to(cr, 16, 11);
-+      cairo_line_to(cr, 16, 8);
-+      cairo_line_to(cr, 13, 8);
-+      cairo_move_to(cr, 8, 13);
-+      cairo_line_to(cr, 8, 16);
-+      cairo_line_to(cr, 11, 16);
-+      cairo_move_to(cr, 16, 13);
-+      cairo_line_to(cr, 16, 16);
-+      cairo_line_to(cr, 13, 16);
++      cairo_set_line_width(cr, 2.0);
++      cairo_move_to(cr, 7.5, 11);
++      cairo_line_to(cr, 7.5, 7.5);
++      cairo_line_to(cr, 11, 7.5);
++      cairo_move_to(cr, 16.5, 11);
++      cairo_line_to(cr, 16.5, 7.5);
++      cairo_line_to(cr, 13, 7.5);
++      cairo_move_to(cr, 7.5, 13);
++      cairo_line_to(cr, 7.5, 16.5);
++      cairo_line_to(cr, 11, 16.5);
++      cairo_move_to(cr, 16.5, 13);
++      cairo_line_to(cr, 16.5, 16.5);
++      cairo_line_to(cr, 13, 16.5);
        break;
      case TitleBarButton::Minimize:
 -      cairo_move_to(cr, 0.25, 0.7);
@@ -2996,6 +3162,24 @@ index dc29dff7..8a0e9d2f 100644
      // Scale of the output presenting the view, for chrome that renders text.
      float scale = 1.0F;
      // Set while the view draws nothing around its content: unmapped, fullscreen, or maximized to the edges.
+diff --git a/src/view/decoration.cpp b/src/view/decoration.cpp
+index 54d56c06..212772b8 100644
+--- a/src/view/decoration.cpp
++++ b/src/view/decoration.cpp
+@@ -118,11 +118,13 @@ namespace umbriel {
+         .ignoreAlpha = static_cast<float>(rule.blurIgnoreAlpha.value_or(0.0)),
+         .enabled = rule.blur.value_or(false),
+         .optimized = rule.blurOptimized,
++        .strength = static_cast<float>(rule.blurStrength.value_or(1.0)),
+     };
+     m_popupBlurOptions = SurfaceBlurOptions{
+         .ignoreAlpha = static_cast<float>(rule.blurIgnoreAlpha.value_or(0.0)),
+         .enabled = rule.blurPopups.value_or(false),
+         .optimized = rule.blurOptimized,
++        .strength = static_cast<float>(rule.blurStrength.value_or(1.0)),
+     };
+     const auto& appearance = config().appearance;
+     const int borderWidth = rule.borderWidth.value_or(appearance.borderWidth);
 diff --git a/src/view/effects.cpp b/src/view/effects.cpp
 index e997214f..6e2fd1ad 100644
 --- a/src/view/effects.cpp

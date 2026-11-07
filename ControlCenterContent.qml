@@ -5067,7 +5067,7 @@ ColumnLayout {
 
                 Text {
                     Layout.fillWidth: true
-                    text: "Cristal"
+                    text: "Shell"
                     color: Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
@@ -5076,20 +5076,21 @@ ColumnLayout {
 
                 Text {
                     text: "Restablecer"
-                    color: glassResetMouse.containsMouse
+                    color: shellResetMouse.containsMouse
                         ? Theme.accent : Theme.faint
                     font.family: Theme.fontFamily
                     font.pixelSize: 8
 
                     MouseArea {
-                        id: glassResetMouse
+                        id: shellResetMouse
                         anchors.fill: parent
                         anchors.margins: -4
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             SettingsState.setGlassTransparency(22);
-                            SettingsState.setGlassBlur(12);
+                            SettingsState.setGlassBlur(16);
+                            SettingsState.setGlassBlurBehind(false);
                         }
                     }
                 }
@@ -5175,54 +5176,45 @@ ColumnLayout {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: 6
 
-                ColumnLayout {
+                Text {
                     Layout.fillWidth: true
-                    spacing: 1
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Desenfocar el contenido"
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 10
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: SettingsState.glassBlurBehind
-                            ? "Se ve el contenido que hay detrás, como un "
-                                + "desenfoque normal."
-                            : "Solo se desenfoca el fondo de pantalla, como "
-                                + "en el mockup."
-                        color: Theme.faint
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 8
-                        wrapMode: Text.WordWrap
-                    }
+                    text: "Tipo de desenfoque"
+                    color: Theme.muted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
                 }
 
-                ShellSwitch {
-                    checked: SettingsState.glassBlurBehind
-                    onToggled: SettingsState.setGlassBlurBehind(
-                        !SettingsState.glassBlurBehind)
+                BlurModeChoice {
+                    behind: SettingsState.glassBlurBehind
+                    onSelected: (behind) =>
+                        SettingsState.setGlassBlurBehind(behind)
                 }
             }
 
             Text {
                 Layout.fillWidth: true
-                text: "El desenfoque es global: también afecta a las ventanas."
+                text: SettingsState.glassBlurBehind
+                    ? "Se ve el contenido que hay detrás, con un desenfoque "
+                        + "simple."
+                    : "Solo se ve el fondo de pantalla desenfocado; el "
+                        + "contenido de detrás queda oculto."
                 color: Theme.faint
                 font.family: Theme.fontFamily
                 font.pixelSize: 8
                 wrapMode: Text.WordWrap
             }
 
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: Theme.border
+            }
+
             // ------------------------------------------------------ ventanas
             RowLayout {
                 Layout.fillWidth: true
-                Layout.topMargin: 4
                 spacing: 6
 
                 Text {
@@ -5249,9 +5241,45 @@ ColumnLayout {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             SettingsState.setWindowTransparency(0);
-                            SettingsState.setWindowBlur(true);
+                            SettingsState.setWindowBlur(12);
+                            SettingsState.setWindowBlurBehind(false);
+                            SettingsState.setWindowSync(false);
                         }
                     }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 1
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Sincronizar con el shell"
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Usa la misma transparencia y el mismo tipo de "
+                            + "desenfoque que el shell."
+                        color: Theme.faint
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 8
+                        wrapMode: Text.WordWrap
+                    }
+                }
+
+                ShellSwitch {
+                    checked: SettingsState.windowSync
+                    onToggled: SettingsState.setWindowSync(
+                        !SettingsState.windowSync)
                 }
             }
 
@@ -5268,7 +5296,7 @@ ColumnLayout {
                 }
 
                 Text {
-                    text: SettingsState.windowTransparency + " %"
+                    text: SettingsState.effectiveWindowTransparency + " %"
                     color: Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: 9
@@ -5280,53 +5308,95 @@ ColumnLayout {
                 id: windowTransparencySlider
 
                 Layout.fillWidth: true
+                enabled: !SettingsState.windowSync
                 from: 0
                 to: 90
                 stepSize: 2
-                value: SettingsState.windowTransparency
+                value: SettingsState.effectiveWindowTransparency
                 onMoved: SettingsState.setWindowTransparency(value)
             }
 
             Binding {
                 target: windowTransparencySlider
                 property: "value"
-                value: SettingsState.windowTransparency
+                value: SettingsState.effectiveWindowTransparency
                 when: !windowTransparencySlider.pressed
             }
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: 6
 
-                ColumnLayout {
+                Text {
                     Layout.fillWidth: true
-                    spacing: 1
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Desenfocar lo que hay detrás"
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 10
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Las ventanas transparentes desenfocan el "
-                            + "contenido que queda detrás, no su propio "
-                            + "contenido."
-                        color: Theme.faint
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 8
-                        wrapMode: Text.WordWrap
-                    }
+                    text: "Desenfoque"
+                    color: Theme.muted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
                 }
 
-                ShellSwitch {
-                    checked: SettingsState.windowBlur
-                    onToggled: SettingsState.setWindowBlur(
-                        !SettingsState.windowBlur)
+                Text {
+                    text: SettingsState.effectiveWindowBlur + " px"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
                 }
+            }
+
+            ShellSlider {
+                id: windowBlurSlider
+
+                Layout.fillWidth: true
+                enabled: !SettingsState.windowSync
+                from: 0
+                to: 40
+                stepSize: 2
+                value: SettingsState.effectiveWindowBlur
+                onMoved: SettingsState.setWindowBlur(value)
+            }
+
+            Binding {
+                target: windowBlurSlider
+                property: "value"
+                value: SettingsState.effectiveWindowBlur
+                when: !windowBlurSlider.pressed
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Tipo de desenfoque"
+                    color: Theme.muted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                }
+
+                BlurModeChoice {
+                    interactive: !SettingsState.windowSync
+                    behind: SettingsState.effectiveWindowBlurBehind
+                    onSelected: (behind) =>
+                        SettingsState.setWindowBlurBehind(behind)
+                }
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: SettingsState.windowSync
+                    ? "Los valores vienen del shell mientras la "
+                        + "sincronización esté activa."
+                    : (SettingsState.windowBlurBehind
+                        ? "Las ventanas transparentes desenfocan el contenido "
+                            + "real que hay detrás."
+                        : "Las ventanas transparentes muestran solo el fondo "
+                            + "de pantalla desenfocado.")
+                color: Theme.faint
+                font.family: Theme.fontFamily
+                font.pixelSize: 8
+                wrapMode: Text.WordWrap
             }
 
             Text {
@@ -5348,12 +5418,27 @@ ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 8
 
-                Text {
+                ColumnLayout {
                     Layout.fillWidth: true
-                    text: "Tema en las apps"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
+                    spacing: 1
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Tema en las apps"
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Aplica el modo y el acento a GTK y a las apps "
+                            + "de KDE."
+                        color: Theme.faint
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 8
+                        wrapMode: Text.WordWrap
+                    }
                 }
 
                 ShellSwitch {
@@ -6080,77 +6165,6 @@ ColumnLayout {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: SettingsState.setBarIconSize(
                             SettingsState.barIconSize + 1)
-                    }
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Escritorios"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                }
-
-                Rectangle {
-                    implicitWidth: 22
-                    implicitHeight: 22
-                    radius: 6
-                    color: settingsLess.containsMouse ? Theme.hover : Theme.surface
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "−"
-                        color: Theme.muted
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 12
-                    }
-
-                    MouseArea {
-                        id: settingsLess
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: SettingsState.setMaxWorkspaces(
-                            SettingsState.maxWorkspaces - 1)
-                    }
-                }
-
-                Text {
-                    text: SettingsState.maxWorkspaces
-                    color: Theme.accent
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                    font.weight: Font.Bold
-                    horizontalAlignment: Text.AlignHCenter
-                    width: 20
-                }
-
-                Rectangle {
-                    implicitWidth: 22
-                    implicitHeight: 22
-                    radius: 6
-                    color: settingsMore.containsMouse ? Theme.hover : Theme.surface
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "+"
-                        color: Theme.muted
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 12
-                    }
-
-                    MouseArea {
-                        id: settingsMore
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: SettingsState.setMaxWorkspaces(
-                            SettingsState.maxWorkspaces + 1)
                     }
                 }
             }

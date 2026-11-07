@@ -1,17 +1,20 @@
 #!/bin/sh
-# Cristal del shell: reglas de desenfoque por capa y radio global.
+# Cristal del shell: reglas de desenfoque por capa y ventanas.
 #
 # Uso:
-#   shell-glass ensure               añade o actualiza las layer_rule
-#   shell-glass mode wallpaper       desenfoca solo el fondo de pantalla
-#   shell-glass mode behind          desenfoca el contenido que hay detrás
-#   shell-glass blur <0-100>         cambia el radio global de Umbriel
+#   shell-glass apply <radio-shell> <simple|fondo> <pct-ventanas> <radio-ventanas> <simple|fondo>
+#   shell-glass ensure               añade o actualiza las reglas
+#   shell-glass mode simple|fondo    cambia el tipo de desenfoque del shell
+#   shell-glass blur <0-40>          cambia el radio del desenfoque del shell
+#   shell-glass windows <pct> <radio> <simple|fondo>
+#   shell-glass tone dark|light
 #   shell-glass status               muestra el estado actual
 #
 # El shell dibuja superficies transparentes; Umbriel solo las desenfoca si una
-# [[layer_rule]] coincide con su namespace. El radio es global: se aplica
-# también al blur de las ventanas. Todas las escrituras pasan por
-# shell-config-set, el escritor único de config.toml.
+# [[layer_rule]] coincide con su namespace. Umbriel tiene un radio global, así
+# que el radio mayor se escribe en [appearance.blur] y cada regla lleva un
+# blur_strength (0-1) para conseguir su radio propio. Todas las escrituras
+# pasan por shell-config-set, el escritor único de config.toml.
 set -eu
 
 cfg="${UMBRIEL_CONFIG:-$HOME/.config/umbriel/config.toml}"
@@ -39,17 +42,19 @@ usage() {
 Configura el cristal del shell en Umbriel.
 
 Uso:
+  shell-glass apply <radio-shell> <simple|fondo> <pct> <radio-ventanas> <simple|fondo>
   shell-glass ensure
-  shell-glass mode wallpaper|behind
-  shell-glass blur <0-100>
-  shell-glass windows <0-90> <0|1>
+  shell-glass mode simple|fondo
+  shell-glass blur <0-40>
+  shell-glass windows <pct> <radio> <simple|fondo>
   shell-glass tone dark|light
   shell-glass status
 
-  wallpaper  desenfoca solo el fondo de pantalla (como el mockup)
-  behind     desenfoca las ventanas y el contenido que hay detrás
-  windows    transparencia de las ventanas y desenfoque de lo que hay
-             detrás; 0 las deja opacas
+  apply      escribe de una vez el desenfoque del shell y el de las ventanas
+  simple     desenfoca el contenido real que hay detrás
+  fondo      usa solo el fondo de pantalla desenfocado
+  windows    transparencia de las ventanas (0-90) y su radio de desenfoque;
+             0 % las deja opacas
   tone       aplica el brillo, contraste y saturación del modo oscuro o
              claro desde ~/.config/shell/glass-blur.conf
 EOF
@@ -112,10 +117,93 @@ clamp_int() {
     }'
 }
 
+round_int() {
+    awk -v v="$1" 'BEGIN { printf "%d", int(v + 0.5) }'
+}
+
+# Devuelve el valor de una clave dentro del bloque administrado.
+block_value() {
+    [ -f "$cfg" ] || return 0
+    sed -n "/^$1\$/,/^$2\$/p" "$cfg" \
+        | sed -n "s/^[[:space:]]*$3[[:space:]]*=[[:space:]]*//p" \
+        | head -n 1
+}
+
+current_global_radius() {
+    [ -f "$cfg" ] || { printf '0\n'; return 0; }
+    value=$(awk '
+        /^[[:space:]]*\[appearance\.blur\][[:space:]]*$/ { on = 1; next }
+        /^[[:space:]]*\[/ { on = 0 }
+        on && /^[[:space:]]*radius[[:space:]]*=/ {
+            sub(/^[^=]*=[[:space:]]*/, "")
+            print
+            exit
+        }
+    ' "$cfg")
+    case "$value" in
+        ''|*[!0-9]*) printf '0\n' ;;
+        *) printf '%s\n' "$value" ;;
+    esac
+}
+
+current_layer_strength() {
+    value=$(block_value "$start_marker" "$end_marker" blur_strength)
+    case "$value" in
+        ''|*[!0-9.]*) printf '1\n' ;;
+        *) printf '%s\n' "$value" ;;
+    esac
+}
+
+current_window_strength() {
+    value=$(block_value "$wstart_marker" "$wend_marker" blur_strength)
+    case "$value" in
+        ''|*[!0-9.]*) printf '1\n' ;;
+        *) printf '%s\n' "$value" ;;
+    esac
+}
+
+# 1 = contenido real (simple), 0 = solo fondo de pantalla.
+current_layer_behind() {
+    block=$(block_value "$start_marker" "$end_marker" blur_optimized)
+    [ "$block" = false ] && printf '1\n' || printf '0\n'
+}
+
+current_window_behind() {
+    block=$(block_value "$wstart_marker" "$wend_marker" blur_optimized)
+    [ "$block" = false ] && printf '1\n' || printf '0\n'
+}
+
+current_window_pct() {
+    opacity=$(block_value "$wstart_marker" "$wend_marker" opacity)
+    case "$opacity" in
+        ''|*[!0-9.]*) printf '0\n'; return 0 ;;
+    esac
+    awk -v o="$opacity" 'BEGIN {
+        p = (1 - o) * 100;
+        if (p < 0) p = 0;
+        if (p > 100) p = 100;
+        printf "%d", int(p + 0.5)
+    }'
+}
+
+effective_radius() {
+    round_int "$(awk -v g="$1" -v s="$2" 'BEGIN { printf "%.6f", g * s }')"
+}
+
+current_shell_radius() {
+    effective_radius "$(current_global_radius)" "$(current_layer_strength)"
+}
+
+current_window_radius() {
+    [ -n "$(current_window_block)" ] || { printf '0\n'; return 0; }
+    effective_radius "$(current_global_radius)" "$(current_window_strength)"
+}
+
 # El bloque se genera entero para poder sustituirlo sin tocar el resto del
-# archivo. El primer argumento es true (solo fondo) o false (contenido real).
+# archivo. optimized: true (solo fondo) o false (contenido real).
 layer_block() {
     optimized=${1:-true}
+    strength=${2:-1.0000}
     cat <<EOF
 # shell-glass: inicio
 # Cristal del shell. Umbriel desenfoca las superficies transparentes. Con
@@ -123,12 +211,14 @@ layer_block() {
 # nunca desenfocan las ventanas; con false desenfoca el contenido real.
 # blur_ignore_alpha descarta los píxeles transparentes de las esquinas
 # redondeadas para que el desenfoque no asome fuera de la superficie.
+# blur_strength escala el radio global para que el shell tenga el suyo.
 [[layer_rule]]
 match.namespace = "^shell-(bar|side-panel|launcher|calendar|battery|tray|power|app-menu|osd|move-menu|welcome-mode|window-mode)\$"
 blur = true
 blur_popups = true
 blur_ignore_alpha = $ignore_alpha
 blur_optimized = $optimized
+blur_strength = $strength
 
 # Superficies transparentes a pantalla completa o que no son cristal: no
 # deben crear una región de desenfoque.
@@ -144,114 +234,24 @@ current_block() {
     sed -n "/^$start_marker\$/,/^$end_marker\$/p" "$cfg"
 }
 
-# Modo actual del bloque. Sin bloque, o sin la clave, se asume el valor global
-# por defecto (solo fondo de pantalla).
-current_optimized() {
-    block=$(current_block)
-    case "$block" in
-        *'blur_optimized = false'*) printf 'false\n' ;;
-        *) printf 'true\n' ;;
-    esac
-}
-
-replace_block() {
-    optimized=$1
-    config_set=$(find_config_set) \
-        || { echo "falta shell-config-set" >&2; exit 1; }
-
-    tmp=$(mktemp "${TMPDIR:-/tmp}/shell-glass.XXXXXX")
-    trap 'rm -f "$tmp"' EXIT
-    layer_block "$optimized" >"$tmp"
-
-    if [ -n "$(current_block)" ]; then
-        status=$("$config_set" --drop-block "$start_marker" "$end_marker" \
-            --append-block "$tmp") || exit $?
-    else
-        status=$("$config_set" --append-block "$tmp") || exit $?
-    fi
-    if [ "$status" = changed ]; then
-        reload
-    fi
-    printf '%s\n' "$status"
-}
-
-ensure() {
-    [ -f "$cfg" ] || exit 0
-    optimized=$(current_optimized)
-    if [ -n "$(current_block)" ] \
-        && [ "$(current_block)" = "$(layer_block "$optimized")" ]; then
-        printf 'unchanged\n'
-        return 0
-    fi
-    replace_block "$optimized"
-}
-
-mode() {
-    value=${1:-}
-    case "$value" in
-        wallpaper|fondo) optimized=true ;;
-        behind|content|contenido) optimized=false ;;
-        *)
-            echo "uso: shell-glass mode wallpaper|behind" >&2
-            exit 2
-            ;;
-    esac
-
-    [ -f "$cfg" ] || exit 0
-    if [ "$(current_block)" = "$(layer_block "$optimized")" ]; then
-        printf 'unchanged\n'
-        return 0
-    fi
-    replace_block "$optimized"
-}
-
-blur() {
-    value=${1:-}
-    case "$value" in
-        ''|*[!0-9]*)
-            echo "uso: shell-glass blur <0-100>" >&2
-            exit 2
-            ;;
-    esac
-    value=$(printf '%s\n' "$value" | sed 's/^0*//')
-    [ -n "$value" ] || value=0
-    if [ "$value" -gt 100 ]; then
-        echo "el radio debe estar entre 0 y 100" >&2
-        exit 2
-    fi
-
-    [ -f "$cfg" ] || exit 0
-    config_set=$(find_config_set) \
-        || { echo "falta shell-config-set" >&2; exit 1; }
-    if [ "$value" -eq 0 ]; then
-        status=$("$config_set" --section appearance.blur \
-            enabled=false radius=0) || exit $?
-    else
-        status=$("$config_set" --section appearance.blur \
-            enabled=true "radius=$value") || exit $?
-    fi
-    if [ "$status" = changed ]; then
-        reload
-    fi
-    printf '%s\n' "$status"
-}
-
 # Bloque de ventanas transparentes. Umbriel aplica `opacity` a la ventana y
 # `blur` al contenido que queda detrás; no desenfoca el contenido propio de la
-# app. `blur_optimized = false` usa el contenido real, como el modo «behind» de
-# las capas del shell.
+# app. blur_optimized elige entre contenido real (false) y fondo (true), y
+# blur_strength ajusta su radio respecto al global.
 window_block() {
     opacity=$1
     blur=$2
+    optimized=$3
+    strength=$4
     cat <<EOF
 $wstart_marker
 # Ventanas transparentes del shell. La opacidad se calcula desde el
-# porcentaje del centro de control y el desenfoque usa el contenido real
-# que hay detrás. Al poner 0 % el bloque se elimina.
+# porcentaje del centro de control. Al poner 0 % el bloque se elimina.
 [[window_rule]]
 opacity = $opacity
 blur = $blur
-blur_optimized = false
+blur_optimized = $optimized
+blur_strength = $strength
 $wend_marker
 EOF
 }
@@ -261,63 +261,183 @@ current_window_block() {
     sed -n "/^$wstart_marker\$/,/^$wend_marker\$/p" "$cfg"
 }
 
-windows() {
-    value=${1:-}
-    blur=${2:-}
-    case "$value" in
-        ''|*[!0-9]*)
-            echo "uso: shell-glass windows <0-90> <0|1>" >&2
-            exit 2
-            ;;
-    esac
-    value=$(printf '%s\n' "$value" | sed 's/^0*//')
-    [ -n "$value" ] || value=0
-    if [ "$value" -gt 90 ]; then
-        echo "la transparencia debe estar entre 0 y 90" >&2
-        exit 2
+# Escribe el bloque del shell, el de ventanas y el radio global en una sola
+# operación atómica. shell_behind/win_behind: 1 = contenido real, 0 = fondo.
+apply_state() {
+    shell_radius=$1
+    shell_behind=$2
+    win_pct=$3
+    win_radius=$4
+    win_behind=$5
+
+    # Las ventanas opacas no necesitan radio: no se vería.
+    if [ "$win_pct" -eq 0 ]; then
+        win_radius=0
     fi
-    case "$blur" in
-        0|1) ;;
-        *)
-            echo "uso: shell-glass windows <0-90> <0|1>" >&2
-            exit 2
-            ;;
-    esac
+
+    if [ "$shell_radius" -ge "$win_radius" ]; then
+        global=$shell_radius
+    else
+        global=$win_radius
+    fi
+
+    if [ "$global" -gt 0 ]; then
+        shell_strength=$(awk -v r="$shell_radius" -v g="$global" \
+            'BEGIN { printf "%.4f", r / g }')
+        win_strength=$(awk -v r="$win_radius" -v g="$global" \
+            'BEGIN { printf "%.4f", r / g }')
+        enabled=true
+    else
+        shell_strength=1.0000
+        win_strength=1.0000
+        enabled=false
+    fi
+
+    if [ "$shell_behind" -eq 1 ]; then
+        shell_optimized=false
+    else
+        shell_optimized=true
+    fi
+    if [ "$win_behind" -eq 1 ]; then
+        win_optimized=false
+    else
+        win_optimized=true
+    fi
 
     [ -f "$cfg" ] || exit 0
     config_set=$(find_config_set) \
         || { echo "falta shell-config-set" >&2; exit 1; }
 
-    tmp=$(mktemp "${TMPDIR:-/tmp}/shell-windows.XXXXXX")
-    trap 'rm -f "$tmp"' EXIT
+    tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/shell-glass.XXXXXX")
+    trap 'rm -rf "$tmpdir"' EXIT
+    layer_file="$tmpdir/layer.toml"
+    window_file="$tmpdir/window.toml"
+    layer_block "$shell_optimized" "$shell_strength" >"$layer_file"
 
-    if [ "$value" -eq 0 ]; then
-        if [ -z "$(current_window_block)" ]; then
-            printf 'unchanged\n'
-            return 0
-        fi
-        : >"$tmp"
-        status=$("$config_set" --drop-block "$wstart_marker" "$wend_marker") \
-            || exit $?
-    else
-        opacity=$(awk -v pct="$value" 'BEGIN { printf "%.3f", (100 - pct) / 100 }')
-        if [ "$blur" = 1 ]; then
+    set -- "$config_set" --section appearance.blur \
+        "enabled=$enabled" "radius=$global" \
+        --drop-block "$start_marker" "$end_marker" \
+        --append-block "$layer_file"
+
+    if [ "$win_pct" -gt 0 ]; then
+        opacity=$(awk -v pct="$win_pct" 'BEGIN { printf "%.3f", (100 - pct) / 100 }')
+        if [ "$win_radius" -gt 0 ]; then
             blur_value=true
         else
             blur_value=false
         fi
-        window_block "$opacity" "$blur_value" >"$tmp"
-        if [ -n "$(current_window_block)" ]; then
-            status=$("$config_set" --drop-block "$wstart_marker" "$wend_marker" \
-                --append-block "$tmp") || exit $?
-        else
-            status=$("$config_set" --append-block "$tmp") || exit $?
-        fi
+        window_block "$opacity" "$blur_value" "$win_optimized" "$win_strength" \
+            >"$window_file"
+        set -- "$@" --drop-block "$wstart_marker" "$wend_marker" \
+            --append-block "$window_file"
+    elif [ -n "$(current_window_block)" ]; then
+        set -- "$@" --drop-block "$wstart_marker" "$wend_marker"
     fi
+
+    status=$("$@") || exit $?
     if [ "$status" = changed ]; then
         reload
     fi
     printf '%s\n' "$status"
+}
+
+validate_pct() {
+    value=$(printf '%s\n' "$1" | sed 's/^0*//')
+    [ -n "$value" ] || value=0
+    case "$value" in
+        *[!0-9]*)
+            echo "uso: shell-glass windows <0-90> <0-40> <simple|fondo>" >&2
+            exit 2
+            ;;
+    esac
+    if [ "$value" -gt 90 ]; then
+        echo "la transparencia debe estar entre 0 y 90" >&2
+        exit 2
+    fi
+    printf '%s\n' "$value"
+}
+
+validate_radius() {
+    value=$(printf '%s\n' "$1" | sed 's/^0*//')
+    [ -n "$value" ] || value=0
+    case "$value" in
+        *[!0-9]*)
+            echo "el radio debe ser un número entre 0 y 40" >&2
+            exit 2
+            ;;
+    esac
+    if [ "$value" -gt 40 ]; then
+        echo "el radio debe estar entre 0 y 40" >&2
+        exit 2
+    fi
+    printf '%s\n' "$value"
+}
+
+# Acepta simple/behind/contenido (1) y fondo/wallpaper (0).
+validate_mode() {
+    case "$1" in
+        simple|behind|contenido|1) printf '1\n' ;;
+        fondo|wallpaper|0) printf '0\n' ;;
+        *)
+            echo "tipo inválido: $1 (usa simple o fondo)" >&2
+            exit 2
+            ;;
+    esac
+}
+
+apply() {
+    shell_radius=$(validate_radius "${1:-}")
+    shell_behind=$(validate_mode "${2:-}")
+    win_pct=$(validate_pct "${3:-}")
+    win_radius=$(validate_radius "${4:-}")
+    win_behind=$(validate_mode "${5:-}")
+    apply_state "$shell_radius" "$shell_behind" "$win_pct" "$win_radius" "$win_behind"
+}
+
+ensure() {
+    apply_state "$(current_shell_radius)" "$(current_layer_behind)" \
+        "$(current_window_pct)" "$(current_window_radius)" \
+        "$(current_window_behind)"
+}
+
+mode() {
+    behind=$(validate_mode "${1:-}")
+    apply_state "$(current_shell_radius)" "$behind" \
+        "$(current_window_pct)" "$(current_window_radius)" \
+        "$(current_window_behind)"
+}
+
+blur() {
+    radius=$(validate_radius "${1:-}")
+    apply_state "$radius" "$(current_layer_behind)" \
+        "$(current_window_pct)" "$(current_window_radius)" \
+        "$(current_window_behind)"
+}
+
+windows() {
+    pct=$(validate_pct "${1:-}")
+    if [ $# -ge 3 ]; then
+        radius=$(validate_radius "$2")
+        behind=$(validate_mode "$3")
+    else
+        # Compatibilidad con la forma antigua: windows <pct> <0|1>.
+        case "${2:-}" in
+            0)
+                radius=0
+                behind=1
+                ;;
+            1)
+                radius=$(current_shell_radius)
+                behind=1
+                ;;
+            *)
+                echo "uso: shell-glass windows <0-90> <0-40> <simple|fondo>" >&2
+                exit 2
+                ;;
+        esac
+    fi
+    apply_state "$(current_shell_radius)" "$(current_layer_behind)" \
+        "$pct" "$radius" "$behind"
 }
 
 tone() {
@@ -356,7 +476,7 @@ status() {
     block=$(current_block)
     if [ -n "$block" ]; then
         printf 'reglas: presentes\n'
-        if [ "$(current_optimized)" = false ]; then
+        if [ "$(current_layer_behind)" = 1 ]; then
             printf 'desenfoque: contenido detrás\n'
         else
             printf 'desenfoque: fondo de pantalla\n'
@@ -367,12 +487,14 @@ status() {
             *)
                 printf 'esquinas: sin recortar\n' ;;
         esac
+        printf 'shell: %s px\n' "$(current_shell_radius)"
     else
         printf 'reglas: ausentes\n'
     fi
 
     if [ -n "$(current_window_block)" ]; then
         printf 'ventanas: transparentes\n'
+        printf 'ventanas: %s px\n' "$(current_window_radius)"
         current_window_block | awk '
             /^opacity[[:space:]]*=/ { gsub(/[[:space:]]/, "", $0); printf "ventanas %s ", $0 }
             /^blur[[:space:]]*=/ { gsub(/[[:space:]]/, "", $0); printf "%s\n", $0 }
@@ -395,10 +517,11 @@ status() {
 }
 
 case "${1:-}" in
+    apply) shift; apply "$@" ;;
     ensure) ensure ;;
     mode) shift; mode "${1:-}" ;;
     blur) shift; blur "${1:-}" ;;
-    windows) shift; windows "${1:-}" "${2:-}" ;;
+    windows) shift; windows "$@" ;;
     tone) shift; tone "${1:-}" ;;
     status) status ;;
     -h | --help) usage ;;

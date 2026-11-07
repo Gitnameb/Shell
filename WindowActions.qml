@@ -72,6 +72,20 @@ Singleton {
             });
         }
 
+        if (CompositorState.supports("fullscreen")) {
+            out.push({
+                key: "fullscreen",
+                label: fullscreen
+                    ? "Salir de pantalla completa" : "Pantalla completa",
+                icon: fullscreen ? "view-restore" : "",
+                source: fullscreen ? "" : ShellIcons.src("window-fullscreen"),
+                glyph: fullscreen ? "❐" : "⛶",
+                shortcut: "Super+F",
+                active: fullscreen,
+                danger: false
+            });
+        }
+
         if (CompositorState.supports("moveToWorkspace")) {
             out.push({
                 key: "move",
@@ -107,20 +121,6 @@ Singleton {
                 glyph: maximized ? "❐" : "▣",
                 shortcut: "Super+M",
                 active: maximized,
-                danger: false
-            });
-        }
-
-        if (CompositorState.supports("fullscreen")) {
-            out.push({
-                key: "fullscreen",
-                label: fullscreen
-                    ? "Salir de pantalla completa" : "Pantalla completa",
-                icon: fullscreen ? "view-restore" : "",
-                source: fullscreen ? "" : ShellIcons.src("window-fullscreen"),
-                glyph: fullscreen ? "❐" : "⛶",
-                shortcut: "Super+F",
-                active: fullscreen,
                 danger: false
             });
         }

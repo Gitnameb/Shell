@@ -424,15 +424,20 @@ una regla de capa coincide con su namespace. Las reglas viven en
 `config.toml` y las administra `scripts/shell-glass`:
 
 ```sh
-./scripts/shell-glass ensure           # añade o actualiza las reglas
-./scripts/shell-glass mode wallpaper   # solo fondo de pantalla (por defecto)
-./scripts/shell-glass mode behind      # contenido real que hay detrás
-./scripts/shell-glass blur 16          # radio global; 0 apaga el blur
-./scripts/shell-glass windows 20 1     # ventanas: 20 % transparentes y blur
-./scripts/shell-glass tone dark        # brillo/contraste del modo oscuro
-./scripts/shell-glass tone light       # brillo/contraste del modo claro
+./scripts/shell-glass ensure                 # añade o actualiza las reglas
+./scripts/shell-glass apply 16 simple 20 12 fondo
+./scripts/shell-glass mode simple            # contenido real que hay detrás
+./scripts/shell-glass mode fondo             # solo fondo de pantalla
+./scripts/shell-glass blur 16                # radio del shell; 0 lo apaga
+./scripts/shell-glass windows 20 12 simple   # ventanas: 20 %, 12 px, simple
+./scripts/shell-glass tone dark              # brillo/contraste del modo oscuro
+./scripts/shell-glass tone light             # brillo/contraste del modo claro
 ./scripts/shell-glass status
 ```
+
+`apply` es el comando que usa el centro de control: recibe el radio y el tipo
+del shell y el porcentaje, radio y tipo de las ventanas, y escribe los dos
+bloques y el radio global en una sola operación atómica.
 
 Bloque que se añade (idempotente, marcado con `# shell-glass: inicio`):
 
@@ -443,6 +448,7 @@ blur = true
 blur_popups = true
 blur_ignore_alpha = 0.04
 blur_optimized = true
+blur_strength = 1.0000
 
 [[layer_rule]]
 match.namespace = "^shell-(wallpaper|desktop-icons|outside-close|filter)$"
@@ -450,10 +456,11 @@ blur = false
 ```
 
 - `blur_optimized = true` muestrea la caché del fondo de pantalla, así que el
-  cristal nunca desenfoca las ventanas que haya detrás: es el modo del mockup.
-  Con `blur_optimized = false` Umbriel desenfoca el contenido real. Se cambia
-  con `shell-glass mode behind` o con el interruptor «Desenfocar el contenido»
-  de Ajustes; el valor se guarda como `glassBlurBehind`.
+  cristal nunca desenfoca las ventanas que haya detrás: es el modo «Fondo» del
+  centro de control. Con `blur_optimized = false` Umbriel desenfoca el
+  contenido real: es el modo «Simple». El valor se guarda como
+  `glassBlurBehind` y se elige con el selector segmentado, con el mismo estilo
+  que el de tema.
 - `blur_ignore_alpha = 0.04` usa el alpha de la propia superficie como
   máscara: descarta los píxeles transparentes de las esquinas redondeadas y
   evita que el desenfoque asome fuera del panel. Debe quedar por debajo del
@@ -463,9 +470,11 @@ blur = false
 - `shell-wallpaper`, `shell-desktop-icons`, `shell-outside-close` y
   `shell-filter` se excluyen: son superficies transparentes a pantalla
   completa (o el velo de luz nocturna) y no deben crear una región de blur.
-- El radio es **global** en Umbriel. El deslizador «Desenfoque» del shell
-  escribe `[appearance.blur] radius` y también afecta al blur de las ventanas.
-  Por defecto son 16 px y 3 pasadas.
+- Umbriel solo tiene un radio **global** en `[appearance.blur] radius`. Para
+  que el shell y las ventanas tengan radios distintos, `shell-glass` escribe
+  el mayor de los dos en el radio global y reparte un `blur_strength` (0–1)
+  por regla: así cada bloque conserva su propio radio efectivo. Por defecto
+  son 16 px para el shell, 12 px para las ventanas y 3 pasadas.
 - La transparencia (`glassTransparency`, 0–90) solo cambia el alpha del shell:
   `alpha = (100 - transparencia) / 100`. Por defecto 22 → 0.78.
 - **Tono del desenfoque.** Umbriel aplica `brightness`, `contrast` y
@@ -473,13 +482,19 @@ blur = false
   `~/.config/shell/glass-blur.conf` al cambiar de modo; en oscuro baja el
   brillo y en claro lo sube. Se puede afinar ese archivo y ejecutar
   `shell-glass tone dark|light` sin recompilar nada.
-- **Ventanas transparentes.** La sección «Ventanas» del centro de control
-  aplica un `[[window_rule]]` global con `opacity` (desde
-  `windowTransparency`, 0–90) y `blur = true` con `blur_optimized = false`.
-  Desenfoca el contenido real que queda detrás de la ventana, no el contenido
+- **Shell y ventanas por separado.** El centro de control divide el cristal
+  en «Shell» y «Ventanas». Cada bloque tiene su transparencia, su radio y su
+  selector «Simple / Fondo». «Sincronizar con el shell», dentro de Ventanas,
+  copia en vivo la transparencia y el tipo del shell; mientras está activo,
+  los controles de ventanas quedan bloqueados. Los valores propios se
+  conservan y vuelven al desactivar la sincronización.
+- **Ventanas transparentes.** Se aplica un `[[window_rule]]` global con
+  `opacity` (desde `windowTransparency`, 0–90), `blur` y `blur_optimized`.
+  Desenfoca el contenido que queda detrás de la ventana, no el contenido
   propio de la app. Con 0 % el bloque `# shell-windows` se elimina y las
   ventanas vuelven a ser opacas. El comando es
-  `qs ipc -c shell call appearance windows 20 1` (porcentaje y 0/1).
+  `qs ipc -c shell call appearance windows 20 12 simple` (porcentaje, radio y
+  tipo).
 - Pruebas: `./scripts/test-glass-rules.sh` y
   `./scripts/test-config-writers.sh`.
 
@@ -696,15 +711,16 @@ La barra que dibuja Umbriel comparte la misma lista de acciones. En
 `[appearance.title_bar] buttons` se añadió `"fullscreen"`:
 
 ```toml
-buttons = ["float", "pin", "move", "minimize", "maximize", "fullscreen", "close"]
+buttons = ["float", "pin", "fullscreen", "move", "minimize", "maximize", "close"]
 ```
 
-- El botón de pantalla completa usa el icono de cuatro esquinas
-  (`comple.webp` de la referencia); maximizar usa el marco con esquinas
-  interiores (`maxi.webp`) y flotar, dos ventanas superpuestas sin la línea
-  interior que parecía una barra de título (`ventana.webp`). Los iconos se
-  dibujan en `src/scene/title_bar_icon.cpp`; en el shell hay SVG equivalentes
-  en `icons/window-*.svg`.
+- El botón de pantalla completa va después de fijar y antes de mover, igual
+  que en el menú del clic derecho. Usa el icono de cuatro esquinas
+  (`comple.webp` de la referencia); maximizar usa un marco cuadrado más grande
+  con esquinas interiores (`maxi.webp`) y flotar, dos ventanas superpuestas sin
+  la línea interior que parecía una barra de título (`ventana.webp`). Los
+  iconos se dibujan en `src/scene/title_bar_icon.cpp`; en el shell hay SVG
+  equivalentes en `icons/window-*.svg`.
 - Se eliminó el subtítulo de la derecha («app · escritorio»). El nombre de la
   app ya está a la izquierda y el escritorio se deduce por la barra y las
   fichas.

@@ -99,19 +99,25 @@ Singleton {
     property bool systemTheme: true
     // Cristal del shell. «glassTransparency» es el porcentaje que se ve a
     // través de la barra y los paneles: 0 es opaco y 90, casi transparente.
-    // «glassBlur» es el radio de desenfoque global de Umbriel, en la misma
-    // escala que el mockup (0 lo apaga). Afecta también a las ventanas.
+    // «glassBlur» es el radio de desenfoque del shell (0 lo apaga).
     // «glassBlurBehind» elige qué se desenfoca: false usa la caché del fondo
     // de pantalla (como el mockup) y true, el contenido real que hay detrás.
     property int glassTransparency: 22
     property int glassBlur: 16
     property bool glassBlurBehind: false
-    // Ventanas. «windowTransparency» aplica la misma idea que el cristal a
-    // todas las ventanas: 0 las deja opacas y 90 casi transparentes. El
-    // desenfoque de «windowBlur» desenfoca lo que hay detrás del contenido, no
-    // el contenido de la propia app.
+    // Ventanas. Cada bloque tiene su propia transparencia y su propio radio.
+    // «windowBlurBehind» repite la elección simple/fondo y «windowSync» copia
+    // los valores del shell mientras esté activo.
     property int windowTransparency: 0
-    property bool windowBlur: true
+    property int windowBlur: 12
+    property bool windowBlurBehind: false
+    property bool windowSync: false
+    readonly property int effectiveWindowTransparency: root.windowSync
+        ? root.glassTransparency : root.windowTransparency
+    readonly property int effectiveWindowBlur: root.windowSync
+        ? root.glassBlur : root.windowBlur
+    readonly property bool effectiveWindowBlurBehind: root.windowSync
+        ? root.glassBlurBehind : root.windowBlurBehind
 
     // Distribución física del teclado. Solo se configura desde el centro de
     // control → Teclado. La lista es deliberadamente corta: español, inglés,
@@ -168,8 +174,6 @@ Singleton {
     property bool holdApplyPending: false
     property bool floatingApplyPending: false
     property bool glassApplyPending: false
-    property bool glassModeApplyPending: false
-    property bool windowGlassApplyPending: false
 
     readonly property string path: (Quickshell.env("HOME") || "/home/username")
         + "/.config/shell/settings.conf"
@@ -481,29 +485,23 @@ Singleton {
             Math.round(value)));
     }
 
-    function setWindowBlur(value: bool): void {
-        root.windowBlur = value;
+    function setWindowBlur(value: int): void {
+        root.windowBlur = Math.max(0, Math.min(40, Math.round(value)));
     }
 
-    // Regla global de ventanas: opacidad + desenfoque real de lo que hay
-    // detrás. El bloque lo administra shell-glass y se retira al volver a 0.
-    function applyWindowGlass(): void {
-        if (!root.ready)
-            return;
-        if (windowGlassProc.running) {
-            root.windowGlassApplyPending = true;
-            return;
-        }
-        root.windowGlassApplyPending = false;
-        windowGlassProc.command = [
-            "sh", root.glassScript, "windows",
-            String(root.windowTransparency),
-            root.windowBlur ? "1" : "0"
-        ];
-        windowGlassProc.running = true;
+    function setWindowBlurBehind(value: bool): void {
+        root.windowBlurBehind = value;
     }
 
-    function applyGlassBlur(): void {
+    function setWindowSync(value: bool): void {
+        root.windowSync = value;
+    }
+
+    // Escribe de una vez el radio y el tipo del shell y los de las ventanas.
+    // Umbriel solo tiene un radio global, así que shell-glass calcula el mayor
+    // y reparte un blur_strength por regla para que cada bloque conserve el
+    // suyo. El bloque de ventanas se retira al volver a 0 % de transparencia.
+    function applyGlassAll(): void {
         if (!root.ready)
             return;
         if (glassProc.running) {
@@ -512,26 +510,14 @@ Singleton {
         }
         root.glassApplyPending = false;
         glassProc.command = [
-            "sh", root.glassScript, "blur", String(root.glassBlur)
+            "sh", root.glassScript, "apply",
+            String(root.glassBlur),
+            root.glassBlurBehind ? "simple" : "fondo",
+            String(root.effectiveWindowTransparency),
+            String(root.effectiveWindowBlur),
+            root.effectiveWindowBlurBehind ? "simple" : "fondo"
         ];
         glassProc.running = true;
-    }
-
-    // Umbriel guarda el modo en la misma regla de capa, así que cambiarlo
-    // reescribe el bloque administrado por shell-glass.
-    function applyGlassMode(): void {
-        if (!root.ready)
-            return;
-        if (glassModeProc.running) {
-            root.glassModeApplyPending = true;
-            return;
-        }
-        root.glassModeApplyPending = false;
-        glassModeProc.command = [
-            "sh", root.glassScript, "mode",
-            root.glassBlurBehind ? "behind" : "wallpaper"
-        ];
-        glassModeProc.running = true;
     }
 
     function setKeyboardLayout(value: string): void {
@@ -662,7 +648,9 @@ Singleton {
             + "glassBlur=%s\\n"
             + "glassBlurBehind=%s\\n"
             + "windowTransparency=%s\\n"
-            + "windowBlur=%s\\n"
+            + "windowBlurRadius=%s\\n"
+            + "windowBlurBehind=%s\\n"
+            + "windowSync=%s\\n"
             + "keyboardLayout=%s\\n"
             + "workspaceModeDefault=%s\\n"
             + "workspaceModes=%s\\n"
@@ -711,7 +699,9 @@ Singleton {
             root.glassBlur,
             root.glassBlurBehind ? "1" : "0",
             root.windowTransparency,
-            root.windowBlur ? "1" : "0",
+            root.windowBlur,
+            root.windowBlurBehind ? "1" : "0",
+            root.windowSync ? "1" : "0",
             root.keyboardLayout,
             root.workspaceModeDefault,
             root.workspaceModes,
@@ -791,7 +781,11 @@ Singleton {
         if (root.systemTheme)
             root.requestSystemTheme();
     }
-    onGlassTransparencyChanged: saveTimer.restart()
+    onGlassTransparencyChanged: {
+        saveTimer.restart();
+        if (root.ready && root.windowSync)
+            glassApplyTimer.restart();
+    }
     onGlassBlurChanged: {
         saveTimer.restart();
         if (root.ready)
@@ -800,17 +794,27 @@ Singleton {
     onGlassBlurBehindChanged: {
         saveTimer.restart();
         if (root.ready)
-            glassModeApplyTimer.restart();
+            glassApplyTimer.restart();
     }
     onWindowTransparencyChanged: {
         saveTimer.restart();
         if (root.ready)
-            windowGlassApplyTimer.restart();
+            glassApplyTimer.restart();
     }
     onWindowBlurChanged: {
         saveTimer.restart();
         if (root.ready)
-            windowGlassApplyTimer.restart();
+            glassApplyTimer.restart();
+    }
+    onWindowBlurBehindChanged: {
+        saveTimer.restart();
+        if (root.ready)
+            glassApplyTimer.restart();
+    }
+    onWindowSyncChanged: {
+        saveTimer.restart();
+        if (root.ready)
+            glassApplyTimer.restart();
     }
     onKeyboardLayoutChanged: {
         saveTimer.restart();
@@ -852,23 +856,9 @@ Singleton {
 
     Timer {
         id: glassApplyTimer
-        interval: 260
-        repeat: false
-        onTriggered: root.applyGlassBlur()
-    }
-
-    Timer {
-        id: glassModeApplyTimer
-        interval: 180
-        repeat: false
-        onTriggered: root.applyGlassMode()
-    }
-
-    Timer {
-        id: windowGlassApplyTimer
         interval: 220
         repeat: false
-        onTriggered: root.applyWindowGlass()
+        onTriggered: root.applyGlassAll()
     }
 
     Timer {
@@ -895,29 +885,7 @@ Singleton {
         onExited: {
             if (root.glassApplyPending) {
                 root.glassApplyPending = false;
-                root.applyGlassBlur();
-            }
-        }
-    }
-
-    Process {
-        id: glassModeProc
-
-        onExited: {
-            if (root.glassModeApplyPending) {
-                root.glassModeApplyPending = false;
-                root.applyGlassMode();
-            }
-        }
-    }
-
-    Process {
-        id: windowGlassProc
-
-        onExited: {
-            if (root.windowGlassApplyPending) {
-                root.windowGlassApplyPending = false;
-                root.applyWindowGlass();
+                root.applyGlassAll();
             }
         }
     }
@@ -957,7 +925,11 @@ Singleton {
             let glassRadius = root.glassBlur;
             let glassBehind = root.glassBlurBehind;
             let windowPct = root.windowTransparency;
-            let windowBlurOn = root.windowBlur;
+            let windowRadius = root.windowBlur;
+            let windowBehind = root.windowBlurBehind;
+            let windowSyncOn = root.windowSync;
+            let legacyWindowBlur = "";
+            let windowRadiusSeen = false;
             let layout = root.keyboardLayout;
             let layoutChanged = false;
             let shortcut = root.micShortcut;
@@ -1064,8 +1036,18 @@ Singleton {
                     const parsed = parseInt(value, 10);
                     if (!isNaN(parsed))
                         windowPct = Math.max(0, Math.min(90, parsed));
+                } else if (key === "windowBlurRadius") {
+                    const parsed = parseInt(value, 10);
+                    if (!isNaN(parsed)) {
+                        windowRadius = Math.max(0, Math.min(40, parsed));
+                        windowRadiusSeen = true;
+                    }
                 } else if (key === "windowBlur") {
-                    windowBlurOn = value === "1" || value === "true";
+                    legacyWindowBlur = value;
+                } else if (key === "windowBlurBehind") {
+                    windowBehind = value === "1" || value === "true";
+                } else if (key === "windowSync") {
+                    windowSyncOn = value === "1" || value === "true";
                 } else if (key === "keyboardLayout") {
                     if (root.knownLayout(value))
                         layout = value;
@@ -1127,6 +1109,12 @@ Singleton {
                     centerOrderText = value;
                 }
             }
+            // Migración desde la clave antigua booleana windowBlur.
+            if (!windowRadiusSeen && legacyWindowBlur !== "") {
+                const on = legacyWindowBlur === "1"
+                    || legacyWindowBlur === "true";
+                windowRadius = on ? 12 : 0;
+            }
             root.maxWorkspaces = max;
             root.centerRows = rows;
             root.centerIconSize = iconSize;
@@ -1151,7 +1139,9 @@ Singleton {
             root.glassBlur = glassRadius;
             root.glassBlurBehind = glassBehind;
             root.windowTransparency = windowPct;
-            root.windowBlur = windowBlurOn;
+            root.windowBlur = windowRadius;
+            root.windowBlurBehind = windowBehind;
+            root.windowSync = windowSyncOn;
             root.keyboardLayout = layout;
             root.hotspotAutoOff = hotspotOff;
             root.hotspotMinutes = hotspotMin;
@@ -1178,9 +1168,7 @@ Singleton {
             root.applyWindowChrome();
             root.applySuperHoldDelay();
             root.applyFloatingDefaults();
-            root.applyGlassBlur();
-            root.applyGlassMode();
-            root.applyWindowGlass();
+            root.applyGlassAll();
             root.applyMicShortcut();
             root.applyKeyboardLayout();
             root.applyIdle();

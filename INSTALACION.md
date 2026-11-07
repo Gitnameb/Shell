@@ -433,18 +433,24 @@ Revisar `wallpaperPath` (la plantilla lo deja vacío y usa un color de fondo) y
 salvo que se sepa que hace falta: es un secreto local y el código actual no lo
 usa.
 
-`glassTransparency` (0–90, por defecto 22) y `glassBlur` (0–40, por defecto 16)
-controlan el cristal. El segundo es el radio global de Umbriel y también
-desenfoca las ventanas; `0` lo apaga. `glassBlurBehind` (0/1, por defecto 0)
-elige entre desenfocar solo el fondo de pantalla (como el mockup) o el
-contenido real que hay detrás; también está en Ajustes → Cristal.
+`glassTransparency` (0–90, por defecto 22), `glassBlur` (0–40, por defecto 16)
+y `glassBlurBehind` (0/1, por defecto 0) controlan el cristal del shell:
+transparencia, radio y tipo de desenfoque. En el centro de control la sección
+«Shell» usa un selector «Simple / Fondo»: «Simple» desenfoca el contenido real
+y «Fondo» muestra solo el fondo de pantalla desenfocado.
 
-`windowTransparency` (0–90, por defecto 0) y `windowBlur` (0/1, por defecto 1)
-hacen transparentes las ventanas y desenfocan el contenido que queda detrás. Se
-administra desde Ajustes → Cristal → Ventanas o con
-`qs ipc -c shell call appearance windows 20 1`. `glass-blur.conf` guarda el
-brillo, contraste y saturación del desenfoque para cada modo; se puede editar y
-aplicar con `shell-glass tone dark|light`, sin recompilar.
+`windowTransparency` (0–90, por defecto 0), `windowBlurRadius` (0–40, por
+defecto 12), `windowBlurBehind` (0/1, por defecto 0) y `windowSync` (0/1, por
+defecto 0) hacen lo mismo con las ventanas, con valores independientes.
+«Sincronizar con el shell» copia en vivo la transparencia y el tipo del shell.
+Se administra desde Ajustes → Cristal → Ventanas o con
+`qs ipc -c shell call appearance windows 20 12 simple`. `glass-blur.conf`
+guarda el brillo, contraste y saturación del desenfoque para cada modo; se
+puede editar y aplicar con `shell-glass tone dark|light`, sin recompilar.
+
+`maxWorkspaces` (9 por defecto) ya no tiene control en el centro de control:
+se cambia editando `~/.config/shell/settings.conf`. El resto de ajustes siguen
+funcionando igual.
 
 ---
 
@@ -454,9 +460,10 @@ Copiar `install/config/umbriel-config.toml` a
 `~/.config/umbriel/config.toml` y revisar:
 
 - `[general] autostart` con la ruta correcta.
-- `[appearance.title_bar] buttons = ["float", "pin", "move", "minimize",
-  "maximize", "fullscreen", "close"]`. La barra nativa incluye pantalla
-  completa; el subtítulo «app · escritorio» ya no se dibuja.
+- `[appearance.title_bar] buttons = ["float", "pin", "fullscreen", "move",
+  "minimize", "maximize", "close"]`. Pantalla completa va después de fijar y
+  antes de mover, tanto en la barra nativa como en el menú del clic derecho; el
+  subtítulo «app · escritorio» ya no se dibuja.
 - `[input.keyboard] layout = "es"`.
 - `[output."HDMI-A-1"] workspaces = 9`.
 - `[layout] mode = "stacking"` y `[layout.stacking]` con el tamaño/cascada

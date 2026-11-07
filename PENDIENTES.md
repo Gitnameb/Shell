@@ -30,19 +30,26 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   sustituye el archivo de forma atómica. Detalle y recuperación:
   `CONFIGURACION-UMBRIEL.md`.
 - **Cristal y desenfoque.** La barra, los paneles y los menús son ahora
-  translúcidos y Umbriel los desenfoca con `[[layer_rule]]` (blur nativo). Por
-  defecto `blur_optimized = true` muestrea solo el fondo de pantalla; Ajustes →
-  Cristal permite cambiar a contenido real con «Desenfocar el contenido»
-  (`glassBlurBehind`). `blur_ignore_alpha = 0.04` recorta las esquinas
-  redondeadas para que el blur no asome. `scripts/shell-glass` administra el
-  bloque y el radio global; el shell expone transparencia (0–90, por defecto
-  22) y desenfoque (0–40, por defecto 16, 3 pasadas). El radio es global y
-  también afecta a las ventanas. El tono (brillo, contraste y saturación) se
-  elige por modo desde `~/.config/shell/glass-blur.conf`, sin recompilar. La
-  sección «Ventanas» añade transparencia y blur de lo que hay detrás a todas
-  las ventanas con un `[[window_rule]]` global; con 0 % el bloque se elimina.
-  Pruebas: `scripts/test-glass-rules.sh`. Detalle:
-  `CONFIGURACION-UMBRIEL.md` §11.
+  translúcidos y Umbriel los desenfoca con `[[layer_rule]]` (blur nativo). El
+  centro de control separa «Shell» y «Ventanas»: cada bloque tiene su
+  transparencia, su radio y un selector «Simple / Fondo» con el estilo del
+  selector de tema. «Simple» desenfoca el contenido real y «Fondo» usa solo el
+  fondo de pantalla; se guarda en `glassBlurBehind` y `windowBlurBehind`.
+  Umbriel solo tiene un radio global, así que `scripts/shell-glass` escribe el
+  mayor y reparte un `blur_strength` por regla para conservar los radios
+  propios (16 px shell y 12 px ventanas por defecto, 3 pasadas).
+  «Sincronizar con el shell» copia en vivo la transparencia y el tipo del
+  shell; los valores propios se conservan al desactivarla. El tono (brillo,
+  contraste y saturación) se elige por modo desde
+  `~/.config/shell/glass-blur.conf`, sin recompilar. La sección «Ventanas»
+  añade transparencia y blur de lo que hay detrás a todas las ventanas con un
+  `[[window_rule]]` global; con 0 % el bloque se elimina. Pruebas:
+  `scripts/test-glass-rules.sh`. Detalle: `CONFIGURACION-UMBRIEL.md` §11.
+- **Menos controles en Ajustes.** Se quitó el selector de número de
+  escritorios: `maxWorkspaces` se configura editando
+  `~/.config/shell/settings.conf` y sigue valiendo 9 por defecto. «Tema en las
+  apps» ahora explica que propaga el modo y el acento a GTK y a las apps de
+  KDE.
 - **Desenfoque y foco al mantener Super.** Umbriel desenfoca ahora solo el
   contenido de la ventana bajo el puntero mientras se mantiene Mod, como el
   mockup: shader de ventana con blur de 1.4 px y desaturación suave, más un
@@ -241,17 +248,18 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   (`view-private` para incógnito, `window-new`, `tab-new`, `go-home`,
   `user-trash`…). Detalle: `CONFIGURACION-UMBRIEL.md` §18.
 - **Acciones de ventana sincronizadas.** `WindowActions.qml` alimenta la barra
-  de título y el clic derecho con la misma lista: flotar, fijar, mover,
-  minimizar, maximizar, pantalla completa y cerrar. Flotar desaparece en
+  de título y el clic derecho con la misma lista: flotar, fijar, pantalla
+  completa, mover, minimizar, maximizar y cerrar. Flotar desaparece en
   escritorios flotantes (Umbriel lo rechaza) y su icono/etiqueta cambia entre
   «Hacer flotante» y «Volver al mosaico». Cada fila lleva un icono de teclado
   cuyo tooltip muestra el atajo; los escritorios de «Mover» abren plegados. Se
-  añadió `Mod+Shift+H` para minimizar. La barra nativa de Umbriel incorpora ya
-  «fullscreen» y comparte los iconos nuevos: dos ventanas sin línea de título
-  para flotar, marco con esquinas para maximizar y cuatro esquinas para
-  pantalla completa. Se quitó el subtítulo «app · escritorio» de la derecha.
-  Un clic en el fondo de la barra, en una ficha o fuera del panel cierra el
-  panel abierto. Detalle: `CONFIGURACION-UMBRIEL.md` §18.
+  añadió `Mod+Shift+H` para minimizar. La barra nativa de Umbriel incorpora
+  «fullscreen» después de fijar y comparte los iconos nuevos: dos ventanas sin
+  línea de título para flotar, marco cuadrado grande con esquinas interiores
+  para maximizar y cuatro esquinas para pantalla completa. Se quitó el
+  subtítulo «app · escritorio» de la derecha. Un clic en el fondo de la barra,
+  en una ficha o fuera del panel cierra el panel abierto. Detalle:
+  `CONFIGURACION-UMBRIEL.md` §18.
 - **Orden de las fichas.** La barra ya no hereda el orden de apilado del
   compositor: `CompositorState` numera cada ventana la primera vez que la ve y
   conserva ese orden al enfocar, minimizar o cambiar de escritorio. Detalle:
@@ -729,8 +737,9 @@ umbriel move-menu <id>                                 # selector Mover desde CL
 qs ipc -c shell call windows status                      # diagnóstico del contrato
 qs ipc -c shell call windows mode <n> <floating|mosaic>  # layout por escritorio
 qs ipc -c shell call appearance chrome floating           # barra flotante/integrada
-qs ipc -c shell call appearance windows 20 1              # ventanas 20 %, blur detrás
-qs ipc -c shell call appearance glassStatus               # diagnóstico del cristal
+qs ipc -c shell call appearance windows 20 12 simple   # ventanas 20 %, 12 px, contenido detrás
+qs ipc -c shell call appearance windowsSync 1           # sincronizar con el shell
+qs ipc -c shell call appearance glassStatus            # diagnóstico del cristal
 qs ipc -c shell call appearance wallpaper <ruta>          # fondo de pantalla
 qs ipc -c shell call notifications settings               # abrir Ajustes
 qs ipc -c shell call notifications scroll -700            # desplazar el panel

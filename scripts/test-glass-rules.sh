@@ -231,6 +231,41 @@ check "saturación oscura" $(grep -q '^saturation = 1.050$' "$UMBRIEL_CONFIG"; e
 check "conserva el radio" $(grep -q '^radius = 16$' "$UMBRIEL_CONFIG"; echo $?)
 check "valida" $(validate; echo $?)
 
+echo "== 14. radios independientes del shell y de las ventanas =="
+fresh
+status=$("$GLASS" apply 16 simple 20 12 fondo)
+check "apply cambia" $([ "$status" = changed ]; echo $?)
+check "radio global 16" $(grep -q '^radius = 16$' "$UMBRIEL_CONFIG"; echo $?)
+check "shell al máximo" $(grep -q '^blur_strength = 1.0000$' "$UMBRIEL_CONFIG"; echo $?)
+check "ventanas al 75 %" $(grep -q '^blur_strength = 0.7500$' "$UMBRIEL_CONFIG"; echo $?)
+check "shell simple" $(grep -q '^blur_optimized = false$' "$UMBRIEL_CONFIG"; echo $?)
+check "ventanas fondo" $([ "$(grep -c '^blur_optimized = true$' "$UMBRIEL_CONFIG")" = 1 ]; echo $?)
+check "valida" $(validate; echo $?)
+out=$("$GLASS" status)
+check "estado shell 16" $(printf '%s\n' "$out" | grep -q '^shell: 16 px$'; echo $?)
+check "estado ventanas 12" $(printf '%s\n' "$out" | grep -q '^ventanas: 12 px$'; echo $?)
+status=$("$GLASS" apply 8 fondo 20 12 simple)
+check "shell menor cambia" $([ "$status" = changed ]; echo $?)
+check "radio global 12" $(grep -q '^radius = 12$' "$UMBRIEL_CONFIG"; echo $?)
+check "shell al 66 %" $(grep -q '^blur_strength = 0.6667$' "$UMBRIEL_CONFIG"; echo $?)
+check "ventanas al máximo" $(grep -q '^blur_strength = 1.0000$' "$UMBRIEL_CONFIG"; echo $?)
+out=$("$GLASS" status)
+check "estado shell 8" $(printf '%s\n' "$out" | grep -q '^shell: 8 px$'; echo $?)
+check "estado ventanas 12 otra vez" $(printf '%s\n' "$out" | grep -q '^ventanas: 12 px$'; echo $?)
+status=$("$GLASS" apply 0 fondo 20 0 fondo)
+check "todo apagado" $([ "$status" = changed ]; echo $?)
+check "blur desactivado" $(grep -q '^enabled = false$' "$UMBRIEL_CONFIG"; echo $?)
+check "radio 0" $(grep -q '^radius = 0$' "$UMBRIEL_CONFIG"; echo $?)
+check "ventana opaca" $(grep -q '^opacity = 0.800$' "$UMBRIEL_CONFIG"; echo $?)
+check "sin blur de ventana" $(grep -q '^blur = false$' "$UMBRIEL_CONFIG"; echo $?)
+check "valida apagado" $(validate; echo $?)
+before=$(sha256sum "$UMBRIEL_CONFIG" | cut -d' ' -f1)
+"$GLASS" apply 41 fondo 10 10 fondo >/dev/null 2>&1
+check "rechaza radio 41" $([ $? != 0 ]; echo $?)
+"$GLASS" apply 10 ruido 10 10 fondo >/dev/null 2>&1
+check "rechaza tipo" $([ $? != 0 ]; echo $?)
+check "archivo intacto tras errores" $([ "$(sha256sum "$UMBRIEL_CONFIG" | cut -d' ' -f1)" = "$before" ]; echo $?)
+
 echo
 printf 'resultado: %d OK, %d fallos\n' "$pass" "$fail"
 [ "$fail" = 0 ]
