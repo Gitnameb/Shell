@@ -1,20 +1,14 @@
 #!/usr/bin/env python3
-"""Calendario del shell: notas locales y calendarios en formato iCalendar.
+"""Calendario simple del shell: notas locales por día.
 
 Uso:
   shell-calendar list --from 2026-11-01 --to 2026-12-31
   shell-calendar note add --date 2026-11-06 --text "Cita con el dentista"
   shell-calendar note remove --id 1a2b3c4d
-  shell-calendar source add --name Google --url https://.../basic.ics
-  shell-calendar source remove --id 1a2b3c
-  shell-calendar source toggle --id 1a2b3c
-  shell-calendar sources
-  shell-calendar refresh
 
-La salida es siempre JSON de una línea. `list` incluye las notas locales y
-los eventos de los calendarios activos. Los calendarios remotos se descargan
-a una caché; si la descarga falla se usa la última copia buena y el error se
-devuelve en `errors`. Solo se usan la biblioteca estándar y python3.
+La salida es siempre JSON de una línea. Las notas se guardan en
+~/.config/shell/calendar-notes.conf, una por línea con el formato
+«id|AAAA-MM-DD|texto». Solo se usa la biblioteca estándar.
 """
 
 from __future__ import annotations
@@ -27,58 +21,16 @@ import re
 import secrets
 import sys
 import tempfile
-import urllib.request
 from pathlib import Path
-from zoneinfo import ZoneInfo
-
-def local_zone():
-    """Zona local con cambios de horario, no un desfase fijo."""
-    name = os.environ.get("TZ", "")
-    if name:
-        try:
-            return ZoneInfo(name)
-        except Exception:
-            pass
-    try:
-        target = os.path.realpath("/etc/localtime")
-        marker = "/zoneinfo/"
-        if marker in target:
-            return ZoneInfo(target.split(marker, 1)[1])
-    except Exception:
-        pass
-    return dt.datetime.now().astimezone().tzinfo or dt.timezone.utc
 
 
-LOCAL_TZ = local_zone()
-REFRESH_MINUTES = 20
-HTTP_TIMEOUT = 8
-PALETTE = ("#8ab4f8", "#f5a97f", "#a6da95", "#c6a0f6", "#eed49f", "#ed8796")
-WEEKDAYS = {"MO": 0, "TU": 1, "WE": 2, "TH": 3, "FR": 4, "SA": 5, "SU": 6}
-
-
-# ---------------------------------------------------------------------------
-# Rutas
-# ---------------------------------------------------------------------------
 def config_dir() -> Path:
     base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
     return Path(base) / "shell"
 
 
-def state_dir() -> Path:
-    base = os.environ.get("XDG_STATE_HOME") or str(Path.home() / ".local" / "state")
-    return Path(base) / "shell"
-
-
-def sources_path() -> Path:
-    return config_dir() / "calendar-sources.conf"
-
-
 def notes_path() -> Path:
     return config_dir() / "calendar-notes.conf"
-
-
-def cache_dir() -> Path:
-    return state_dir() / "calendars"
 
 
 def atomic_write(path: Path, text: str) -> None:
@@ -98,14 +50,6 @@ def atomic_write(path: Path, text: str) -> None:
         raise
 
 
-def clean_field(value: str, fallback: str = "") -> str:
-    text = " ".join(str(value).replace("|", " ").split())
-    return text or fallback
-
-
-# ---------------------------------------------------------------------------
-# Notas locales
-# ---------------------------------------------------------------------------
 def load_notes() -> list[dict]:
     notes: list[dict] = []
     try:
@@ -155,485 +99,8 @@ def note_remove(note_id: str) -> dict:
     return {"ok": True}
 
 
-# ---------------------------------------------------------------------------
-# Calendarios ICS
-# ---------------------------------------------------------------------------
-def load_sources() -> list[dict]:
-    sources: list[dict] = []
-    try:
-        lines = sources_path().read_text(encoding="utf-8", errors="replace").splitlines()
-    except OSError:
-        return sources
-    for line in lines:
-        parts = line.split("|", 5)
-        if len(parts) != 6:
-            continue
-        source_id, enabled, name, color, url, kind = parts
-        name = name.strip()
-        url = url.strip()
-        if not name or not url:
-            continue
-        sources.append(
-            {
-                "id": source_id.strip(),
-                "enabled": enabled.strip() == "1",
-                "name": name,
-                "color": color.strip() or PALETTE[0],
-                "url": url,
-                "kind": kind.strip() or "ics",
-            }
-        )
-    return sources
-
-
-def save_sources(sources: list[dict]) -> None:
-    text = "".join(
-        f"{s['id']}|{1 if s['enabled'] else 0}|{s['name']}|{s['color']}|{s['url']}|{s['kind']}\n"
-        for s in sources
-    )
-    atomic_write(sources_path(), text)
-
-
-def public_source(source: dict) -> dict:
-    return {
-        "id": source["id"],
-        "name": source["name"],
-        "color": source["color"],
-        "enabled": source["enabled"],
-        "url": source["url"],
-    }
-
-
-def source_add(name: str, url: str, color: str) -> dict:
-    name = clean_field(name)
-    url = str(url).strip()
-    if not name:
-        return {"ok": False, "error": "falta el nombre"}
-    if not re.match(r"^(https?://|file://|/)", url):
-        return {"ok": False, "error": "la dirección debe empezar por http, file o /"}
-    sources = load_sources()
-    chosen = color.strip() or PALETTE[len(sources) % len(PALETTE)]
-    source = {
-        "id": secrets.token_hex(3),
-        "enabled": True,
-        "name": name,
-        "color": chosen,
-        "url": url,
-        "kind": "ics",
-    }
-    sources.append(source)
-    save_sources(sources)
-    return {"ok": True, "id": source["id"]}
-
-
-def source_remove(source_id: str) -> dict:
-    sources = load_sources()
-    kept = [s for s in sources if s["id"] != source_id]
-    if len(kept) == len(sources):
-        return {"ok": False, "error": "no existe ese calendario"}
-    save_sources(kept)
-    try:
-        (cache_dir() / f"{source_id}.ics").unlink()
-    except OSError:
-        pass
-    return {"ok": True}
-
-
-def source_toggle(source_id: str) -> dict:
-    sources = load_sources()
-    for source in sources:
-        if source["id"] == source_id:
-            source["enabled"] = not source["enabled"]
-            save_sources(sources)
-            return {"ok": True, "enabled": source["enabled"]}
-    return {"ok": False, "error": "no existe ese calendario"}
-
-
-def read_remote(url: str, timeout: int) -> bytes:
-    request = urllib.request.Request(url, headers={"User-Agent": "shell-calendar/1.0"})
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        return response.read()
-
-
-def local_path(url: str) -> Path | None:
-    if url.startswith("file://"):
-        return Path(url[len("file://") :])
-    if url.startswith("/"):
-        return Path(url)
-    return None
-
-
-def source_text(source: dict, force: bool) -> tuple[str | None, str | None]:
-    """Devuelve (texto, error). Usa la caché si la descarga falla."""
-    url = source["url"]
-    cache = cache_dir() / f"{source['id']}.ics"
-    cached: str | None = None
-    if cache.exists():
-        try:
-            cached = cache.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            cached = None
-
-    minutes = REFRESH_MINUTES
-    try:
-        minutes = max(0, int(os.environ.get("SHELL_CALENDAR_REFRESH_MINUTES", minutes)))
-    except ValueError:
-        pass
-    age_ok = False
-    if cache.exists() and not force:
-        try:
-            age = dt.datetime.now().timestamp() - cache.stat().st_mtime
-            age_ok = age < minutes * 60
-        except OSError:
-            age_ok = False
-    if age_ok and cached is not None:
-        return cached, None
-
-    path = local_path(url)
-    if path is not None:
-        try:
-            return path.read_text(encoding="utf-8", errors="replace"), None
-        except OSError as error:
-            return cached, f"{source['name']}: {error.strerror or error}"
-    if url.startswith(("http://", "https://")):
-        try:
-            payload = read_remote(url, HTTP_TIMEOUT)
-            text = payload.decode("utf-8", errors="replace")
-            atomic_write(cache, text)
-            return text, None
-        except Exception as error:  # red, DNS, TLS, tiempo de espera
-            detail = getattr(error, "reason", None) or error
-            if cached is not None:
-                return cached, f"{source['name']}: no se pudo actualizar ({detail})"
-            return None, f"{source['name']}: {detail}"
-    return cached, f"{source['name']}: dirección no compatible"
-
-
-PROPERTY = re.compile(r"^([A-Za-z0-9-]+)((?:;[^:]*)?):(.*)$")
-
-
-def parse_property(line: str) -> tuple[str, dict[str, str], str] | None:
-    match = PROPERTY.match(line)
-    if match is None:
-        return None
-    name, raw_params, value = match.groups()
-    params: dict[str, str] = {}
-    if raw_params:
-        for item in raw_params.split(";"):
-            if not item or "=" not in item:
-                continue
-            key, _, val = item.partition("=")
-            params[key.strip().upper()] = val.strip().strip('"')
-    return name.strip().upper(), params, value
-
-
-def unescape_text(value: str) -> str:
-    out: list[str] = []
-    index = 0
-    while index < len(value):
-        char = value[index]
-        if char == "\\" and index + 1 < len(value):
-            nxt = value[index + 1]
-            if nxt in ("n", "N"):
-                out.append("\n")
-            elif nxt in (",", ";", "\\"):
-                out.append(nxt)
-            else:
-                out.append(nxt)
-            index += 2
-            continue
-        out.append(char)
-        index += 1
-    return "".join(out)
-
-
-def parse_datetime(value: str, params: dict[str, str]) -> tuple[dt.datetime, bool]:
-    value = value.strip()
-    all_day = params.get("VALUE", "").upper() == "DATE"
-    if all_day or re.fullmatch(r"\d{8}", value):
-        return dt.datetime.strptime(value[:8], "%Y%m%d"), True
-    if value.endswith("Z"):
-        moment = dt.datetime.strptime(value[:-1], "%Y%m%dT%H%M%S").replace(tzinfo=dt.timezone.utc)
-        return moment.astimezone(LOCAL_TZ).replace(tzinfo=None), False
-    moment = dt.datetime.strptime(value, "%Y%m%dT%H%M%S")
-    zone_name = params.get("TZID", "")
-    if zone_name:
-        try:
-            moment = moment.replace(tzinfo=ZoneInfo(zone_name)).astimezone(LOCAL_TZ).replace(tzinfo=None)
-        except Exception:
-            pass
-    return moment, False
-
-
-def unfold(text: str) -> list[str]:
-    lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
-    merged: list[str] = []
-    for line in lines:
-        if line[:1] in (" ", "\t") and merged:
-            merged[-1] += line[1:]
-        else:
-            merged.append(line)
-    return merged
-
-
-def parse_rrule(value: str) -> dict:
-    rule: dict = {"freq": "", "interval": 1, "count": 0, "until": None, "byday": [], "bymonthday": [], "bymonth": []}
-    for item in value.split(";"):
-        key, _, raw = item.partition("=")
-        key = key.strip().upper()
-        raw = raw.strip()
-        if key == "FREQ":
-            rule["freq"] = raw.upper()
-        elif key == "INTERVAL":
-            try:
-                rule["interval"] = max(1, int(raw))
-            except ValueError:
-                pass
-        elif key == "COUNT":
-            try:
-                rule["count"] = max(0, int(raw))
-            except ValueError:
-                pass
-        elif key == "UNTIL":
-            try:
-                rule["until"], _ = parse_datetime(raw, {})
-            except ValueError:
-                rule["until"] = None
-        elif key == "BYDAY":
-            for token in raw.split(","):
-                token = token.strip().upper()
-                match = re.fullmatch(r"([+-]?\d+)?([A-Z]{2})", token)
-                if match and match.group(2) in WEEKDAYS:
-                    order = int(match.group(1)) if match.group(1) else 0
-                    rule["byday"].append((order, WEEKDAYS[match.group(2)]))
-        elif key == "BYMONTHDAY":
-            for token in raw.split(","):
-                try:
-                    rule["bymonthday"].append(int(token))
-                except ValueError:
-                    pass
-        elif key == "BYMONTH":
-            for token in raw.split(","):
-                try:
-                    rule["bymonth"].append(int(token))
-                except ValueError:
-                    pass
-    return rule
-
-
-def parse_ics(text: str) -> list[dict]:
-    events: list[dict] = []
-    current: dict | None = None
-    for line in unfold(text):
-        upper = line.upper()
-        if upper == "BEGIN:VEVENT":
-            current = {"exdates": []}
-            continue
-        if upper == "END:VEVENT":
-            if current is not None and current.get("start") is not None:
-                events.append(current)
-            current = None
-            continue
-        if current is None:
-            continue
-        parsed = parse_property(line)
-        if parsed is None:
-            continue
-        name, params, value = parsed
-        if name == "DTSTART":
-            try:
-                current["start"], current["all_day"] = parse_datetime(value, params)
-            except ValueError:
-                current["start"] = None
-        elif name == "DTEND":
-            try:
-                current["end"], _ = parse_datetime(value, params)
-            except ValueError:
-                current["end"] = None
-        elif name == "SUMMARY":
-            current["summary"] = unescape_text(value).strip()
-        elif name == "UID":
-            current["uid"] = value.strip()
-        elif name == "STATUS":
-            current["status"] = value.strip().upper()
-        elif name == "RECURRENCE-ID":
-            try:
-                current["recurrence_id"], _ = parse_datetime(value, params)
-            except ValueError:
-                current["recurrence_id"] = None
-        elif name == "RRULE":
-            current["rrule"] = parse_rrule(value)
-        elif name == "EXDATE":
-            for chunk in value.split(","):
-                try:
-                    moment, _ = parse_datetime(chunk, params)
-                except ValueError:
-                    continue
-                if moment not in current["exdates"]:
-                    current["exdates"].append(moment)
-    return events
-
-
-def advance_months(moment: dt.datetime, months: int) -> dt.datetime | None:
-    total = moment.year * 12 + (moment.month - 1) + months
-    year, month = divmod(total, 12)
-    month += 1
-    try:
-        return moment.replace(year=year, month=month)
-    except ValueError:
-        return None
-
-
-def nth_weekday(year: int, month: int, weekday: int, order: int) -> dt.date | None:
-    if order == 0:
-        return None
-    if order > 0:
-        first = dt.date(year, month, 1)
-        offset = (weekday - first.weekday()) % 7
-        day = 1 + offset + (order - 1) * 7
-    else:
-        last = dt.date(year, month + 1, 1) - dt.timedelta(days=1) if month < 12 else dt.date(year, 12, 31)
-        offset = (last.weekday() - weekday) % 7
-        day = last.day - offset - (abs(order) - 1) * 7
-    try:
-        return dt.date(year, month, day)
-    except ValueError:
-        return None
-
-
-def occurrences(event: dict, range_start: dt.date, range_end: dt.date):
-    start: dt.datetime = event["start"]
-    rule = event.get("rrule")
-    if not rule or not rule.get("freq"):
-        yield start
-        return
-    freq = rule["freq"]
-    interval = rule["interval"]
-    limit = 20000
-    produced = 0
-    stop = dt.datetime.combine(range_end, dt.time.max)
-    until = rule.get("until")
-
-    def emit(candidate: dt.datetime):
-        return candidate <= stop and (until is None or candidate <= until)
-
-    if freq == "DAILY":
-        candidate = start
-        while limit > 0 and emit(candidate):
-            yield candidate
-            produced += 1
-            if rule["count"] and produced >= rule["count"]:
-                return
-            candidate += dt.timedelta(days=interval)
-            limit -= 1
-        return
-
-    if freq == "WEEKLY":
-        days = [day for _, day in rule["byday"]] or [start.weekday()]
-        week = dt.date(start.year, start.month, start.day) - dt.timedelta(days=start.weekday())
-        while limit > 0:
-            progressed = False
-            for weekday in sorted(set(days)):
-                day = week + dt.timedelta(days=weekday)
-                candidate = dt.datetime.combine(day, start.time())
-                if candidate < start:
-                    continue
-                if candidate > stop or (until is not None and candidate > until):
-                    return
-                yield candidate
-                progressed = True
-                produced += 1
-                if rule["count"] and produced >= rule["count"]:
-                    return
-            if not progressed and week > range_end:
-                return
-            week += dt.timedelta(weeks=interval)
-            limit -= 1
-        return
-
-    if freq == "MONTHLY":
-        month = dt.date(start.year, start.month, 1)
-        byday = rule["byday"]
-        bymonthday = rule["bymonthday"] or [start.day]
-        while limit > 0 and month <= range_end:
-            day_list: list[dt.date] = []
-            if byday:
-                for order, weekday in byday:
-                    if order == 0:
-                        day = nth_weekday(month.year, month.month, weekday, 1)
-                    else:
-                        day = nth_weekday(month.year, month.month, weekday, order)
-                    if day is not None:
-                        day_list.append(day)
-            else:
-                for number in bymonthday:
-                    try:
-                        if number > 0:
-                            day_list.append(dt.date(month.year, month.month, number))
-                            continue
-                        if month.month == 12:
-                            following = dt.date(month.year + 1, 1, 1)
-                        else:
-                            following = dt.date(month.year, month.month + 1, 1)
-                        last = following - dt.timedelta(days=1)
-                        day_list.append(last + dt.timedelta(days=number + 1))
-                    except ValueError:
-                        continue
-            for day in sorted(set(day_list)):
-                candidate = dt.datetime.combine(day, start.time())
-                if candidate < start:
-                    continue
-                if candidate > stop or (until is not None and candidate > until):
-                    return
-                yield candidate
-                produced += 1
-                if rule["count"] and produced >= rule["count"]:
-                    return
-            month = advance_months(dt.datetime.combine(month, dt.time()), interval).date()
-            limit -= 1
-        return
-
-    if freq == "YEARLY":
-        year = start.year
-        months = rule["bymonth"] or [start.month]
-        days = rule["bymonthday"] or [start.day]
-        while limit > 0 and year <= range_end.year:
-            for month in months:
-                for number in days:
-                    try:
-                        day = dt.date(year, month, number)
-                    except ValueError:
-                        continue
-                    candidate = dt.datetime.combine(day, start.time())
-                    if candidate < start:
-                        continue
-                    if candidate > stop or (until is not None and candidate > until):
-                        return
-                    yield candidate
-                    produced += 1
-                    if rule["count"] and produced >= rule["count"]:
-                        return
-            year += interval
-            limit -= 1
-
-
-def event_days(start: dt.datetime, end: dt.datetime | None, all_day: bool) -> tuple[dt.date, dt.date]:
-    first = start.date()
-    if end is None or end <= start:
-        last = first
-    elif all_day:
-        last = (end - dt.timedelta(days=1)).date()
-    else:
-        last = (end - dt.timedelta(microseconds=1)).date()
-    if last < first:
-        last = first
-    return first, last
-
-
-def collect_events(sources: list[dict], start_day: dt.date, end_day: dt.date, force: bool) -> tuple[list[dict], list[str]]:
-    events: list[dict] = []
-    errors: list[str] = []
-
+def collect_notes(start_day: dt.date, end_day: dt.date) -> list[dict]:
+    events = []
     for note in load_notes():
         if start_day.isoformat() <= note["date"] <= end_day.isoformat():
             events.append(
@@ -649,77 +116,8 @@ def collect_events(sources: list[dict], start_day: dt.date, end_day: dt.date, fo
                     "note": True,
                 }
             )
-
-    for source in sources:
-        if not source["enabled"]:
-            continue
-        text, error = source_text(source, force)
-        if error:
-            errors.append(error)
-        if text is None:
-            continue
-        try:
-            parsed = parse_ics(text)
-        except Exception as exception:
-            errors.append(f"{source['name']}: formato iCalendar no válido ({exception})")
-            continue
-        # Una instancia modificada o cancelada de un evento repetido llega
-        # como un VEVENT aparte con RECURRENCE-ID: hay que quitar la original
-        # para no mostrar dos veces el mismo día.
-        overrides: dict[str, set] = {}
-        for event in parsed:
-            uid = event.get("uid")
-            moment = event.get("recurrence_id")
-            if uid and moment is not None:
-                overrides.setdefault(uid, set()).add(moment)
-        for event in parsed:
-            uid = event.get("uid") or ""
-            if event.get("status") == "CANCELLED":
-                continue
-            all_day = bool(event.get("all_day"))
-            exdates = set(event.get("exdates", []))
-            skip = overrides.get(uid, set())
-            for moment in occurrences(event, start_day, end_day):
-                if moment in exdates or moment in skip:
-                    continue
-                end = event.get("end")
-                if end is not None:
-                    end = moment + (end - event["start"])
-                first, last = event_days(moment, end, all_day)
-                first = max(first, start_day)
-                last = min(last, end_day)
-                if first > last:
-                    continue
-                title = event.get("summary") or "(sin título)"
-                uid = event.get("uid") or title
-                cursor = first
-                while cursor <= last:
-                    events.append(
-                        {
-                            "id": f"ics:{source['id']}:{uid}:{cursor.isoformat()}",
-                            "date": cursor.isoformat(),
-                            "time": "" if all_day else moment.strftime("%H:%M"),
-                            "end_time": ""
-                            if all_day or end is None or end.date() != moment.date()
-                            else end.strftime("%H:%M"),
-                            "all_day": all_day,
-                            "title": title,
-                            "source": source["name"],
-                            "color": source["color"],
-                            "note": False,
-                        }
-                    )
-                    cursor += dt.timedelta(days=1)
-
-    events.sort(key=lambda item: (item["date"], item["time"] or "00:00", item["title"].lower()))
-    return events, errors
-
-
-# ---------------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------------
-def parse_day(value: str) -> dt.date:
-    return dt.date.fromisoformat(value)
+    events.sort(key=lambda item: (item["date"], item["title"].lower()))
+    return events
 
 
 def main(argv: list[str]) -> int:
@@ -729,7 +127,6 @@ def main(argv: list[str]) -> int:
     listing = sub.add_parser("list")
     listing.add_argument("--from", dest="start", required=True)
     listing.add_argument("--to", dest="end", required=True)
-    listing.add_argument("--force", action="store_true")
 
     note = sub.add_parser("note")
     note_sub = note.add_subparsers(dest="action", required=True)
@@ -739,39 +136,21 @@ def main(argv: list[str]) -> int:
     note_remove_cmd = note_sub.add_parser("remove")
     note_remove_cmd.add_argument("--id", required=True)
 
-    source = sub.add_parser("source")
-    source_sub = source.add_subparsers(dest="action", required=True)
-    source_add_cmd = source_sub.add_parser("add")
-    source_add_cmd.add_argument("--name", required=True)
-    source_add_cmd.add_argument("--url", required=True)
-    source_add_cmd.add_argument("--color", default="")
-    source_remove_cmd = source_sub.add_parser("remove")
-    source_remove_cmd.add_argument("--id", required=True)
-    source_toggle_cmd = source_sub.add_parser("toggle")
-    source_toggle_cmd.add_argument("--id", required=True)
-
-    sub.add_parser("sources")
-    sub.add_parser("refresh")
-
     args = parser.parse_args(argv)
 
     try:
         if args.command == "list":
-            start_day = parse_day(args.start)
-            end_day = parse_day(args.end)
+            start_day = dt.date.fromisoformat(args.start)
+            end_day = dt.date.fromisoformat(args.end)
             if end_day < start_day:
                 start_day, end_day = end_day, start_day
-            sources = load_sources()
-            events, errors = collect_events(sources, start_day, end_day, args.force)
             print(
                 json.dumps(
                     {
                         "ok": True,
                         "from": start_day.isoformat(),
                         "to": end_day.isoformat(),
-                        "events": events,
-                        "sources": [public_source(s) for s in sources],
-                        "errors": errors,
+                        "events": collect_notes(start_day, end_day),
                     },
                     ensure_ascii=False,
                 )
@@ -784,29 +163,6 @@ def main(argv: list[str]) -> int:
                 result = note_remove(args.id)
             print(json.dumps(result, ensure_ascii=False))
             return 0 if result.get("ok") else 1
-        if args.command == "source":
-            if args.action == "add":
-                result = source_add(args.name, args.url, args.color)
-            elif args.action == "toggle":
-                result = source_toggle(args.id)
-            else:
-                result = source_remove(args.id)
-            print(json.dumps(result, ensure_ascii=False))
-            return 0 if result.get("ok") else 1
-        if args.command == "sources":
-            print(json.dumps({"ok": True, "sources": [public_source(s) for s in load_sources()]}, ensure_ascii=False))
-            return 0
-        if args.command == "refresh":
-            sources = load_sources()
-            errors = []
-            for source in sources:
-                if not source["enabled"]:
-                    continue
-                _, error = source_text(source, True)
-                if error:
-                    errors.append(error)
-            print(json.dumps({"ok": not errors, "errors": errors}, ensure_ascii=False))
-            return 0
     except Exception as exception:
         print(json.dumps({"ok": False, "error": str(exception)}, ensure_ascii=False))
         return 1

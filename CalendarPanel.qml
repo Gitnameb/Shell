@@ -36,7 +36,7 @@ PanelWindow {
             ? Theme.edge + Theme.barHeight + 10 : 0
     }
     implicitWidth: 344
-    implicitHeight: root.tab === "calendar" || root.tab === "agenda" ? 492
+    implicitHeight: root.tab === "calendar" ? 492
         : (root.tab === "weather" ? (root.editingPlace ? 384 : 350)
             : 330)
     color: "transparent"
@@ -62,11 +62,8 @@ PanelWindow {
     property bool editingPlace: false
     property string placeDraft: ""
 
-    // Borradores de la pestaña Agenda para dar de alta un calendario ICS.
-    property string sourceNameDraft: ""
-    property string sourceUrlDraft: ""
+    // Borrador del campo de notas del día.
     property string noteDraft: ""
-    property bool showCalendarHelp: false
 
     function applyWeatherPlace(): void {
         SettingsState.setWeatherPlace(root.placeDraft);
@@ -87,8 +84,6 @@ PanelWindow {
 
     readonly property string alarmsPath: (Quickshell.env("HOME")
         || "/home/username") + "/.config/shell/alarms.conf"
-    readonly property string alarmSound:
-        "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"
     readonly property string doneSound:
         "/usr/share/sounds/freedesktop/stereo/complete.oga"
 
@@ -162,14 +157,6 @@ PanelWindow {
         return CalendarEvents.eventsFor(root.selectedDate);
     }
 
-    function hasEvents(date): bool {
-        return CalendarEvents.dayInfo(date).count > 0;
-    }
-
-    function eventCount(date): int {
-        return Math.min(3, CalendarEvents.dayInfo(date).count);
-    }
-
     function dayDots(date): var {
         const list = CalendarEvents.eventsFor(date);
         const dots = [];
@@ -186,24 +173,6 @@ PanelWindow {
             return;
         CalendarEvents.addNote(root.selectedDate, text);
         root.noteDraft = "";
-    }
-
-    function addSourceFromDraft(): void {
-        if (root.sourceNameDraft.trim().length === 0
-                || root.sourceUrlDraft.trim().length === 0)
-            return;
-        CalendarEvents.addSource(root.sourceNameDraft, root.sourceUrlDraft);
-        root.sourceNameDraft = "";
-        root.sourceUrlDraft = "";
-    }
-
-    function agendaDateLabel(value): string {
-        const parts = String(value).split("-");
-        if (parts.length !== 3)
-            return value;
-        const date = new Date(Number(parts[0]), Number(parts[1]) - 1,
-            Number(parts[2]));
-        return Fechas.weekdayNameShort(date) + " " + date.getDate();
     }
 
     function notify(title, body): void {
@@ -269,6 +238,7 @@ PanelWindow {
             root.alarmMinute = stamp;
             root.firedAlarms = ({});
         }
+        const due = [];
         for (let i = 0; i < root.alarms.length; i++) {
             const alarm = root.alarms[i];
             if (!alarm.enabled || alarm.time !== stamp)
@@ -279,15 +249,20 @@ PanelWindow {
             let fired = Object.assign({}, root.firedAlarms);
             fired[key] = true;
             root.firedAlarms = fired;
-            root.playSound(root.alarmSound);
-            root.notify("Alarma", alarm.label + " · " + alarm.time);
+            due.push(alarm);
         }
+        if (due.length > 0)
+            AlarmState.fire(due);
     }
 
-    function formatSeconds(value): string {
-        const minutes = Math.floor(value / 60);
-        const seconds = value % 60;
-        return root.pad(minutes) + ":" + root.pad(seconds);
+    // Aplica una duración exacta (en segundos) editada en los números grandes.
+    function setTimerFromSeconds(value): void {
+        const total = Math.max(1, Math.min(359999, Math.round(value)));
+        root.timerRunning = false;
+        root.timerTotal = total;
+        root.timerLeft = total;
+        root.timerState = "Listo";
+        root.writeTimer(0);
     }
 
     // Escribe (o borra) el vencimiento del temporizador. Con 0 se elimina el
@@ -368,7 +343,7 @@ PanelWindow {
 
     onAlarmsChanged: alarmSaveTimer.restart()
 
-    // Al abrir el panel o cambiar de mes se recarga la agenda. Con el panel
+    // Al abrir el panel o cambiar de mes se recargan las notas. Con el panel
     // cerrado no se consulta nada; los calendarios remotos viven en caché.
     onVisibleChanged: {
         if (visible)
@@ -378,6 +353,17 @@ PanelWindow {
     onShownMonthChanged: {
         if (visible)
             CalendarEvents.refresh(root.shownMonth);
+    }
+
+    // Pulsar el reloj de la barra abre el calendario: eso da por atendida la
+    // alarma y detiene el sonido y el aviso.
+    Connections {
+        target: CalendarState
+
+        function onOpenChanged(): void {
+            if (CalendarState.open)
+                AlarmState.stop();
+        }
     }
 
     // Al empezar, pausar o terminar se reescribe el vencimiento; el aviso de
@@ -491,9 +477,6 @@ PanelWindow {
             showTab("calendar");
         }
 
-        function agenda(): void {
-            showTab("agenda");
-        }
 
         function weather(): void {
             showTab("weather");
@@ -535,17 +518,6 @@ PanelWindow {
                     fallback: "▦"
                     selected: root.tab === "calendar"
                     onActivated: root.tab = "calendar"
-                }
-
-                ClockTab {
-                    Layout.fillWidth: true
-                    tabKey: "agenda"
-                    label: "Agenda"
-                    iconName: "x-office-calendar"
-                    iconSource: ShellIcons.src("agenda")
-                    fallback: "☰"
-                    selected: root.tab === "agenda"
-                    onActivated: root.tab = "agenda"
                 }
 
                 ClockTab {
@@ -785,7 +757,7 @@ PanelWindow {
                 }
 
                 // Eventos y notas del día elegido. La fecha larga que había
-                // aquí se sustituyó por la agenda real del día.
+                // aquí se sustituyó por las notas reales del día.
                 ListView {
                     id: dayList
 
@@ -937,364 +909,6 @@ PanelWindow {
                 }
             }
 
-            // ------------------------------------------------------------ agenda
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                visible: root.tab === "agenda"
-                spacing: 6
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 6
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: "PRÓXIMOS EVENTOS"
-                        color: Theme.faint
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 8
-                        font.weight: Font.DemiBold
-                        font.letterSpacing: 0.9
-                    }
-
-                    Text {
-                        text: CalendarEvents.loading ? "…" : "Actualizar"
-                        color: refreshAgendaMouse.containsMouse
-                            ? Theme.accent : Theme.muted
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 8
-                        font.weight: Font.DemiBold
-
-                        MouseArea {
-                            id: refreshAgendaMouse
-                            anchors.fill: parent
-                            anchors.margins: -4
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: CalendarEvents.refreshNow(root.shownMonth)
-                        }
-                    }
-                }
-
-                ListView {
-                    id: agendaList
-
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 132
-                    visible: CalendarEvents.upcoming(62).length > 0
-                    clip: true
-                    spacing: 1
-                    model: CalendarEvents.upcoming(62)
-                    boundsBehavior: Flickable.StopAtBounds
-
-                    delegate: Rectangle {
-                        id: agendaRow
-
-                        required property var modelData
-
-                        width: agendaList.width
-                        height: 26
-                        radius: 6
-                        color: agendaMouse.containsMouse ? Theme.hover : "transparent"
-
-                        RowLayout {
-                            anchors {
-                                fill: parent
-                                leftMargin: 6
-                                rightMargin: 6
-                            }
-                            spacing: 5
-
-                            Text {
-                                Layout.preferredWidth: 32
-                                text: root.agendaDateLabel(agendaRow.modelData.date)
-                                color: Theme.faint
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 8
-                                elide: Text.ElideRight
-                            }
-
-                            Text {
-                                Layout.preferredWidth: 32
-                                text: agendaRow.modelData.all_day
-                                    ? "Día" : agendaRow.modelData.time
-                                color: Theme.muted
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 8
-                            }
-
-                            Rectangle {
-                                width: 5
-                                height: 5
-                                radius: 2.5
-                                color: agendaRow.modelData.note
-                                    ? Theme.accent
-                                    : (agendaRow.modelData.color || Theme.accent)
-                            }
-
-                            Text {
-                                Layout.fillWidth: true
-                                text: agendaRow.modelData.title
-                                color: Theme.text
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 9
-                                elide: Text.ElideRight
-                            }
-                        }
-
-                        MouseArea {
-                            id: agendaMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                const parts = String(agendaRow.modelData.date)
-                                    .split("-");
-                                if (parts.length !== 3)
-                                    return;
-                                const date = new Date(Number(parts[0]),
-                                    Number(parts[1]) - 1, Number(parts[2]));
-                                root.selectedDate = date;
-                                root.shownMonth = new Date(date.getFullYear(),
-                                    date.getMonth(), 1);
-                                root.tab = "calendar";
-                            }
-                        }
-                    }
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    visible: CalendarEvents.upcoming(62).length === 0
-                    text: "No hay eventos próximos."
-                    color: Theme.faint
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 8
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    Layout.topMargin: 2
-                    text: "CALENDARIOS"
-                    color: Theme.faint
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 8
-                    font.weight: Font.DemiBold
-                    font.letterSpacing: 0.9
-                }
-
-                // Las notas locales siempre están activas y no se pueden borrar.
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 6
-
-                    Rectangle {
-                        width: 5
-                        height: 5
-                        radius: 2.5
-                        color: Theme.accent
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Notas locales"
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 9
-                    }
-
-                    Text {
-                        text: "Siempre"
-                        color: Theme.faint
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 8
-                    }
-                }
-
-                Repeater {
-                    model: CalendarEvents.sources
-
-                    RowLayout {
-                        id: sourceRow
-
-                        required property var modelData
-
-                        Layout.fillWidth: true
-                        spacing: 6
-
-                        Rectangle {
-                            width: 5
-                            height: 5
-                            radius: 2.5
-                            color: sourceRow.modelData.color || Theme.accent
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            text: sourceRow.modelData.name
-                            color: sourceRow.modelData.enabled
-                                ? Theme.text : Theme.faint
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 9
-                            elide: Text.ElideRight
-                        }
-
-                        ShellSwitch {
-                            checked: sourceRow.modelData.enabled
-                            onToggled: CalendarEvents.toggleSource(
-                                sourceRow.modelData.id)
-                        }
-
-                        Text {
-                            text: "×"
-                            color: removeSourceMouse.containsMouse
-                                ? Theme.danger : Theme.faint
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 12
-
-                            MouseArea {
-                                id: removeSourceMouse
-                                anchors.fill: parent
-                                anchors.margins: -4
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: CalendarEvents.removeSource(
-                                    sourceRow.modelData.id)
-                            }
-                        }
-                    }
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 4
-
-                    TextField {
-                        id: sourceNameField
-
-                        Layout.preferredWidth: 82
-                        implicitHeight: 24
-                        text: root.sourceNameDraft
-                        placeholderText: "Nombre"
-                        placeholderTextColor: Theme.faint
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 8
-                        selectByMouse: true
-                        onTextEdited: root.sourceNameDraft = text
-                        onAccepted: root.addSourceFromDraft()
-                        background: Rectangle {
-                            radius: 6
-                            color: Theme.surfaceAlt
-                            border.width: 1
-                            border.color: sourceNameField.activeFocus
-                                ? Theme.accent : Theme.border
-                        }
-                    }
-
-                    TextField {
-                        id: sourceUrlField
-
-                        Layout.fillWidth: true
-                        implicitHeight: 24
-                        text: root.sourceUrlDraft
-                        placeholderText: "URL iCal o archivo .ics"
-                        placeholderTextColor: Theme.faint
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 8
-                        selectByMouse: true
-                        onTextEdited: root.sourceUrlDraft = text
-                        onAccepted: root.addSourceFromDraft()
-                        background: Rectangle {
-                            radius: 6
-                            color: Theme.surfaceAlt
-                            border.width: 1
-                            border.color: sourceUrlField.activeFocus
-                                ? Theme.accent : Theme.border
-                        }
-                    }
-
-                    Rectangle {
-                        implicitWidth: 24
-                        implicitHeight: 24
-                        radius: 6
-                        color: addSourceMouse.containsMouse
-                            ? Theme.accent : Theme.accentSoft
-                        border.width: 1
-                        border.color: Theme.accentLine
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "+"
-                            color: addSourceMouse.containsMouse
-                                ? Theme.accentInk : Theme.accent
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 13
-                            font.weight: Font.DemiBold
-                        }
-
-                        MouseArea {
-                            id: addSourceMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.addSourceFromDraft()
-                        }
-                    }
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    text: root.showCalendarHelp
-                        ? "Ocultar ayuda" : "¿Cómo enlazo Google Calendar?"
-                    color: helpToggleMouse.containsMouse
-                        ? Theme.accent : Theme.muted
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 8
-                    font.weight: Font.DemiBold
-
-                    MouseArea {
-                        id: helpToggleMouse
-                        anchors.fill: parent
-                        anchors.margins: -4
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.showCalendarHelp = !root.showCalendarHelp
-                    }
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    visible: root.showCalendarHelp
-                    text: "1. Abre calendar.google.com en el ordenador (la app del móvil no lo muestra).\n"
-                        + "2. Arriba a la derecha: Ajustes → Configuración de mis calendarios → elige el calendario.\n"
-                        + "3. Baja hasta «Integrar el calendario» y copia «Dirección secreta en formato iCal».\n"
-                        + "4. Pega esa dirección en el campo de arriba, ponle un nombre y pulsa +.\n"
-                        + "Es privada y de solo lectura: no la compartas. Las tareas y recordatorios de Google no salen en el iCal."
-                    color: Theme.faint
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 8
-                    lineHeight: 1.25
-                    wrapMode: Text.Wrap
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    visible: CalendarEvents.errors.length > 0
-                    text: CalendarEvents.errors.join(" · ")
-                    color: Theme.danger
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 8
-                    wrapMode: Text.Wrap
-                }
-
-                Item {
-                    Layout.fillHeight: true
-                }
-            }
-
             // ------------------------------------------------------------ clima
             ColumnLayout {
                 Layout.fillWidth: true
@@ -1422,9 +1036,10 @@ PanelWindow {
 
                     ShellIcon {
                         Layout.alignment: Qt.AlignVCenter
-                        name: WeatherState.currentIcon
+                        source: ShellIcons.src(WeatherState.currentIcon)
+                        tint: false
                         color: Theme.accent
-                        size: 38
+                        size: 40
                         fallback: "◌"
                     }
 
@@ -1510,9 +1125,10 @@ PanelWindow {
 
                                 ShellIcon {
                                     Layout.alignment: Qt.AlignHCenter
-                                    name: modelData.icon
+                                    source: ShellIcons.src(modelData.icon)
+                                    tint: false
                                     color: Theme.muted
-                                    size: 14
+                                    size: 17
                                     fallback: "◌"
                                 }
 
@@ -1558,9 +1174,10 @@ PanelWindow {
                         }
 
                         ShellIcon {
-                            name: modelData.icon
+                            source: ShellIcons.src(modelData.icon)
+                            tint: false
                             color: Theme.faint
-                            size: 14
+                            size: 17
                             fallback: "◌"
                         }
 
@@ -1682,30 +1299,14 @@ PanelWindow {
                             }
                             spacing: 5
 
-                            TextField {
-                                id: alarmTime
-
+                            ClockTimeField {
                                 Layout.preferredWidth: 52
-                                text: alarmRow.modelData.time
-                                color: alarmRow.modelData.enabled
-                                    ? Theme.text
-                                    : Theme.faint
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
-                                font.weight: Font.DemiBold
-                                horizontalAlignment: TextInput.AlignHCenter
-                                selectByMouse: true
-                                validator: RegularExpressionValidator {
-                                    regularExpression: /^([01][0-9]|2[0-3]):[0-5][0-9]$/
-                                }
-                                onEditingFinished: root.updateAlarm(
-                                    alarmRow.index, "time", text)
-                                background: Rectangle {
-                                    radius: 6
-                                    color: Theme.surfaceAlt
-                                    border.width: 1
-                                    border.color: Theme.border
-                                }
+                                value: alarmRow.modelData.time
+                                textColor: alarmRow.modelData.enabled
+                                    ? Theme.text : Theme.faint
+                                pixelSize: 11
+                                onEdited: (value) => root.updateAlarm(
+                                    alarmRow.index, "time", value)
                             }
 
                             TextField {
@@ -1766,15 +1367,21 @@ PanelWindow {
                     Layout.fillHeight: true
                 }
 
-                Text {
-                    Layout.fillWidth: true
-                    text: root.formatSeconds(root.timerLeft)
-                    color: root.timerState === "Terminado"
+                DurationField {
+                    id: timerField
+
+                    Layout.alignment: Qt.AlignHCenter
+                    seconds: root.timerLeft
+                    textColor: root.timerState === "Terminado"
                         ? Theme.danger : Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 44
-                    font.weight: Font.DemiBold
-                    horizontalAlignment: Text.AlignHCenter
+                    editColor: Theme.accent
+                    pixelSize: 44
+                    onEditingStarted: {
+                        root.timerRunning = false;
+                        root.timerState = "Listo";
+                        root.writeTimer(0);
+                    }
+                    onChanged: (value) => root.setTimerFromSeconds(value)
                 }
 
                 Text {
@@ -1821,43 +1428,6 @@ PanelWindow {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: root.setTimerPreset(modelData)
-                            }
-                        }
-                    }
-
-                    // Minutos a medida: se aplican al pulsar Enter o al salir
-                    // del campo.
-                    TextField {
-                        id: timerMinutes
-
-                        implicitWidth: 56
-                        implicitHeight: 26
-                        padding: 0
-                        horizontalAlignment: TextInput.AlignHCenter
-                        verticalAlignment: TextInput.AlignVCenter
-                        placeholderText: "Otro"
-                        placeholderTextColor: Theme.faint
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 9
-                        selectByMouse: true
-                        validator: IntValidator {
-                            bottom: 1
-                            top: 600
-                        }
-                        background: Rectangle {
-                            radius: 7
-                            color: Theme.surfaceAlt
-                            border.width: 1
-                            border.color: Theme.border
-                        }
-                        onEditingFinished: {
-                            const value = parseInt(text, 10);
-                            if (!isNaN(value) && value >= 1 && value <= 600) {
-                                root.setTimerPreset(value);
-                                text = "";
-                            } else {
-                                text = "";
                             }
                         }
                     }
@@ -1924,7 +1494,7 @@ PanelWindow {
 
     Shortcut {
         sequence: "Escape"
-        enabled: CalendarState.open
+        enabled: CalendarState.open && !timerField.editing
         onActivated: CalendarState.hide()
     }
 }

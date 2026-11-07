@@ -54,11 +54,12 @@ Singleton {
             return "weather-snow";
         if (code === 176 || code === 263 || code === 266
             || code === 281 || code === 284 || code === 293
-            || code === 296 || code === 299 || code === 302
-            || code === 305 || code === 308 || code === 311
-            || code === 314 || code === 353 || code === 356
-            || code === 359 || code === 362 || code === 365)
+            || code === 296 || code === 299 || code === 353)
             return "weather-showers";
+        if (code === 302 || code === 305 || code === 308
+            || code === 311 || code === 314 || code === 356
+            || code === 359 || code === 362 || code === 365)
+            return "weather-rain";
         return "weather-none-available";
     }
 

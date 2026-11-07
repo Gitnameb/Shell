@@ -83,29 +83,68 @@ def shell_running() -> bool:
     return bool(result.stdout.strip())
 
 
-def notify(title: str, body: str) -> None:
+def play_loop() -> subprocess.Popen | None:
+    """Repite el sonido hasta que se pare el proceso."""
+    if not (shutil.which("paplay") or shutil.which("canberra-gtk-play")):
+        return None
+    script = (
+        'while :; do paplay "$1" 2>/dev/null '
+        "|| canberra-gtk-play -f alarm-clock-elapsed 2>/dev/null "
+        "|| sleep 1; done"
+    )
     try:
-        result = subprocess.run(
-            ["notify-send", "-a", "Shell", "-u", "critical",
-             "-i", "alarm-clock-elapsed", title, body],
-            capture_output=True, text=True, timeout=6,
-        )
-        if result.returncode == 0:
-            return
-    except (OSError, subprocess.TimeoutExpired):
-        pass
+        return subprocess.Popen(["sh", "-c", script, "shell", SOUND])
+    except OSError:
+        return None
 
-    # Sin servidor de notificaciones: un diálogo que no se puede ignorar.
+
+def stop_loop(process: subprocess.Popen | None) -> None:
+    if process is None:
+        return
+    try:
+        process.terminate()
+        process.wait(timeout=2)
+    except (OSError, subprocess.TimeoutExpired):
+        try:
+            process.kill()
+        except OSError:
+            pass
+
+
+def run_with_sound(command: list[str], timeout: int = 900) -> bool:
+    sound = play_loop()
+    try:
+        subprocess.run(command, timeout=timeout)
+        return True
+    except subprocess.TimeoutExpired:
+        # Quince minutos de aviso son suficientes aunque nadie lo cierre.
+        return True
+    except OSError:
+        return False
+    finally:
+        stop_loop(sound)
+
+
+def notify(title: str, body: str) -> None:
+    # `notify-send -w` espera a que se cierre el aviso, así que el sonido
+    # sigue sonando hasta que el usuario lo elimina.
+    if shutil.which("notify-send"):
+        if run_with_sound([
+            "notify-send", "-a", "Shell", "-u", "critical", "-t", "0",
+            "-i", "alarm-clock-elapsed", "-w", title, body,
+        ]):
+            return
+
+    # Sin servidor de notificaciones: un diálogo que hay que cerrar.
     for command in (
         ["kdialog", "--title", title, "--msgbox", body],
         ["zenity", "--info", "--title", title, "--text", body],
     ):
         if shutil.which(command[0]):
-            try:
-                subprocess.Popen(command)
-            except OSError:
-                continue
-            return
+            if run_with_sound(command):
+                return
+
+    play_sound()
 
 
 def play_sound() -> None:
@@ -149,7 +188,6 @@ def fire_timer(path: Path) -> None:
     except OSError:
         return
     notify("Temporizador", "Tiempo cumplido")
-    play_sound()
     try:
         claimed.unlink()
     except OSError:
@@ -170,7 +208,6 @@ def run(once: bool, force: bool) -> int:
                     continue
                 fired.add(key)
                 notify("Alarma", f"{label} · {at}")
-                play_sound()
 
             deadline = timer_deadline(timer_path())
             if deadline > 0 and deadline <= int(time.time()):

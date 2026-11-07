@@ -467,6 +467,7 @@ Variants {
                     onClicked: {
                         NotificationState.hidePanel();
                         LauncherState.hide();
+                        AlarmState.stop();
                         CalendarState.toggle();
                     }
 

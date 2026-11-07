@@ -481,60 +481,47 @@ efecto vuelve al preset configurado para esa ventana, si lo había. El parche
 `umbriel-fork.patch` incluye el shader; para verlo hay que instalar el binario
 nuevo y reiniciar la sesión.
 
-## 12. Calendario y agenda
+## 12. Calendario simple
 
-El panel del reloj tiene cinco pestañas: **Calendario**, **Agenda**, Clima,
-Alarmas y Temporizador. La pestaña Calendario pinta el mes, marca con puntos
-los días que tienen algo (hasta tres, con el color de su calendario) y debajo
-muestra los eventos y notas del día elegido. La fecha larga que antes aparecía
-al pie («viernes, 6 de noviembre de 2026») se eliminó: ese espacio lo ocupa
-ahora la agenda real del día.
-
-Los datos los administra `scripts/shell-calendar`, un ayudante en Python que
-solo usa la biblioteca estándar. El shell lo llama desde `CalendarEvents.qml`
-y nunca escribe esos archivos directamente.
-
-### 12.1 Notas locales
+El panel del reloj mantiene cuatro pestañas: **Calendario**, Clima, Alarmas y
+Temporizador. La pestaña Calendario pinta el mes, marca con puntos los días
+que tienen notas y debajo lista las notas del día elegido. La fecha larga que
+antes aparecía al pie («viernes, 6 de noviembre de 2026») se eliminó.
 
 - Archivo: `~/.config/shell/calendar-notes.conf`, una línea por nota con el
   formato `id|AAAA-MM-DD|texto`.
-- Se añaden desde el campo «Añadir nota a este día…» y se borran con la × de
-  la lista. Las notas aparecen como eventos de día completo y siempre están
-  activas; no dependen de ningún calendario externo.
-- También salen en la pestaña Agenda dentro de los próximos 62 días.
+- Se añaden desde «Añadir nota a este día…» y se borran con la × de la lista.
+- `scripts/shell-calendar` administra el archivo (`list`, `note add`,
+  `note remove`) y solo usa la biblioteca estándar. `CalendarEvents.qml` le
+  pide el mes visible al abrir el panel o cambiar de mes.
+- Las notas son **locales**. No se sincronizan con Google ni con otros
+  dispositivos: no hay integración iCal, cuentas ni claves externas.
+- Pruebas: `./scripts/test-calendar.sh` (20 comprobaciones).
 
-### 12.2 Calendarios iCalendar (Google Calendar)
+## 13. Clima
 
-- Archivo: `~/.config/shell/calendar-sources.conf`, una línea por calendario
-  con el formato `id|activo|nombre|color|url|ics`.
-- Se admiten direcciones `https://`, `file://` y rutas absolutas a un `.ics`.
-- **Google Calendar** se enlaza con la dirección secreta en formato iCal, sin
-  OAuth ni tokens. En el ordenador (la app del móvil no muestra esa opción):
-  Google Calendar → Ajustes → Configuración de mis calendarios → elegir el
-  calendario → bajar a «Integrar el calendario» → copiar «Dirección secreta en
-  formato iCal». Se pega en Agenda → campo de URL, se le pone un nombre y se
-  pulsa «+». Es una suscripción de solo lectura: los cambios se hacen en
-  Google y el shell los recoge al refrescar. La dirección es privada (cualquiera
-  que la tenga puede leer ese calendario), así que no se comparte. Las tareas y
-  recordatorios de Google no forman parte del iCal; solo los eventos. En el
-  propio panel, «¿Cómo enlazo Google Calendar?» despliega estos pasos.
-- Caché: `~/.local/state/shell/calendars/<id>.ics`. Los remotos se descargan
-  como mucho cada 20 minutos (`SHELL_CALENDAR_REFRESH_MINUTES` lo cambia). Si
-  la descarga falla se conserva la última copia buena y el error se muestra en
-  la pestaña Agenda; nunca se borra la caché por un fallo de red.
-- El parser entiende `DTSTART`/`DTEND` con `VALUE=DATE`, `TZID` y `Z`,
-  `SUMMARY` con escapes, `EXDATE` y `RRULE` con `FREQ=DAILY|WEEKLY|MONTHLY|
-  YEARLY`, `INTERVAL`, `COUNT`, `UNTIL`, `BYDAY` (incluidos `1MO`/`-1FR`),
-  `BYMONTHDAY` y `BYMONTH`. Las horas se convierten a la zona local.
-- Los eventos de varios días se repiten en cada día del rango para que el mes
-  y la agenda los muestren donde toca.
+Los iconos del clima son SVG propios en `icons/weather-*.svg` y llevan el
+color incorporado: sol amarillo, nubes grises, lluvia azul, nieve celeste y
+rayo amarillo sobre nube oscura. Se pintan con `ShellIcon` y `tint: false`
+para no teñirlos de un solo color. `WeatherState.iconFor` reparte los códigos
+de wttr.in entre claro, pocas nubes, nubes, niebla, chubascos, lluvia, tormenta
+y nieve.
 
-### 12.3 Refresco y límites
+## 14. Alarmas y temporizador
 
-- Al abrir el panel o cambiar de mes se consulta el rango visible más 62 días.
-  Con el panel abierto hay un refresco cada 10 minutos.
-- El rango mínimo siempre incluye hoy, así que la pestaña Agenda funciona
-  aunque se esté mirando un mes pasado.
-- No hay dependencias nuevas: `python3` ya es necesario para las alarmas y los
-  ayudantes de red.
-- Pruebas: `./scripts/test-calendar.sh` (29 comprobaciones).
+- `ClockTimeField.qml` edita la hora de una alarma en dos tramos de dos
+  dígitos (HH y MM). Al pulsar un tramo se selecciona entero; al escribir el
+  segundo dígito el foco salta al siguiente. Los dos puntos son decorativos:
+  nunca hay que escribirlos.
+- `DurationField.qml` es el reloj grande del temporizador. Al pulsarlo se
+  edita la duración en HH:MM:SS, con los dos puntos siempre visibles y los
+  dígitos agrupados desde la derecha: `130` deja `00:01:30` y `3000` deja
+  `00:30:00`. Retroceso borra el último dígito; Intro confirma; Escape cancela.
+  Editar el tiempo detiene la cuenta atrás y deja el temporizador listo.
+- `AlarmState.qml` reproduce el sonido de alarma en bucle y muestra un aviso
+  crítico sin caducidad. El sonido solo para al cerrar ese aviso o al pulsar
+  el reloj de la barra (que además retira el aviso). Si «No molestar» está
+  activo no hay aviso registrado, así que el sonido se detiene al abrir el
+  calendario. Hay un límite de seguridad de 10 minutos.
+- Con el shell cerrado, `scripts/shell-alarms` usa `notify-send -w` (o un
+  diálogo de KDialog/Zenity) y mantiene el sonido hasta que se cierra el aviso.
