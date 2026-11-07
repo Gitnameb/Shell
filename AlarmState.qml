@@ -22,7 +22,7 @@ Singleton {
     // El reproductor es el proceso directo: al pararlo se corta el audio al
     // instante, sin esperar a que termine la secuencia que estuviera sonando.
     property bool active: false
-    property string player: "paplay"
+    property string player: "pw-play"
     property string currentSound:
         "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"
     readonly property bool sounding: root.active
@@ -116,7 +116,7 @@ Singleton {
     }
 
     // Repite la reproducción sin un bucle de shell: así el proceso que suena
-    // es paplay/pw-play y se puede matar directamente al detener la alarma.
+    // es pw-play/paplay y se puede matar directamente al detener la alarma.
     Timer {
         id: restartTimer
         interval: 260
@@ -127,7 +127,7 @@ Singleton {
     // Elige el reproductor disponible una sola vez.
     Process {
         id: playerCheck
-        command: ["sh", "-c", "command -v paplay || command -v pw-play"]
+        command: ["sh", "-c", "command -v pw-play || command -v paplay"]
 
         stdout: StdioCollector {
             id: playerOut

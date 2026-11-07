@@ -136,13 +136,13 @@ PanelWindow {
         DependencyState.revealed = false;
         DependencyState.expanded = false;
         NotificationState.panelView = "";
-        if (typeof ccContent !== "undefined") {
+        if (ccLoader.item) {
             // Al cerrar el panel se corta también el escaneo de Wi-Fi, para
             // que la radio no siga buscando redes en segundo plano.
-            ccContent.stopNetworkScan();
-            ccContent.pendingNetworkName = "";
-            ccContent.wifiListFrozen = false;
-            ccContent.syncWifiNetworks();
+            ccLoader.item.stopNetworkScan();
+            ccLoader.item.pendingNetworkName = "";
+            ccLoader.item.wifiListFrozen = false;
+            ccLoader.item.syncWifiNetworks();
         }
         if (typeof notifList !== "undefined") {
             notifList.openGroup = "";
@@ -960,7 +960,8 @@ PanelWindow {
                             visible: root.showControl
                             Layout.preferredHeight: root.quickMode
                                 ? Math.min(root.quickHeightLimit,
-                                    Math.max(80, ccContent.implicitHeight))
+                                    Math.max(80, ccLoader.item
+                                        ? ccLoader.item.implicitHeight : 0))
                                 : 26 + 8
                                     + SettingsState.centerRows * 38
                                     + (SettingsState.centerRows - 1) * 5
@@ -978,18 +979,35 @@ PanelWindow {
 
                                 anchors.fill: parent
                                 contentWidth: width
-                                contentHeight: ccContent.implicitHeight
+                                contentHeight: ccLoader.item
+                                    ? ccLoader.item.implicitHeight : 0
                                 boundsBehavior: Flickable.StopAtBounds
                                 interactive: false
 
-                                ControlCenterContent {
-                                    id: ccContent
+                                // El centro de control son más de 7000 líneas
+                                // de QML. Se crea la primera vez que se abre y
+                                // se conserva: antes se construía al arrancar
+                                // aunque el panel estuviera cerrado.
+                                Loader {
+                                    id: ccLoader
 
                                     width: ccFlick.width
                                     active: root.showControl
-                                    standalone: root.quickMode
-                                    viewOverride: root.quickMode
-                                        ? QuickPanelState.key : ""
+                                        || ccLoader.item !== null
+                                    asynchronous: false
+                                    sourceComponent: ccComponent
+                                }
+
+                                Component {
+                                    id: ccComponent
+
+                                    ControlCenterContent {
+                                        width: ccFlick.width
+                                        active: root.showControl
+                                        standalone: root.quickMode
+                                        viewOverride: root.quickMode
+                                            ? QuickPanelState.key : ""
+                                    }
                                 }
                             }
 

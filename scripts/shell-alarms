@@ -87,10 +87,14 @@ def shell_running() -> bool:
 
 def play_loop(sound: str = SOUND, event: str = "alarm-clock-elapsed") -> subprocess.Popen | None:
     """Repite el sonido hasta que se pare el proceso."""
-    if not (shutil.which("paplay") or shutil.which("canberra-gtk-play")):
+    # pw-play viene con PipeWire, que el shell ya necesita. paplay solo queda
+    # como respaldo para instalaciones antiguas con PulseAudio.
+    if not (shutil.which("pw-play") or shutil.which("paplay")
+            or shutil.which("canberra-gtk-play")):
         return None
     script = (
-        'while :; do paplay "$1" 2>/dev/null '
+        'while :; do pw-play "$1" 2>/dev/null '
+        '|| paplay "$1" 2>/dev/null '
         '|| canberra-gtk-play -f "$2" 2>/dev/null '
         "|| sleep 1; done"
     )
@@ -107,7 +111,7 @@ def stop_loop(process: subprocess.Popen | None) -> None:
     if process is None:
         return
     # El bucle arranca en su propia sesión: matar el grupo corta también el
-    # paplay que esté sonando, sin esperar a que termine la secuencia.
+    # reproductor que esté sonando, sin esperar a que termine la secuencia.
     try:
         os.killpg(os.getpgid(process.pid), signal.SIGTERM)
     except (OSError, ProcessLookupError):
@@ -176,6 +180,7 @@ def notify(
 
 def play_sound(sound: str = SOUND, event: str = "alarm-clock-elapsed") -> None:
     for command in (
+        ["pw-play", sound],
         ["paplay", sound],
         ["canberra-gtk-play", "-f", event],
     ):

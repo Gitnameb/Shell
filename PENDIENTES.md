@@ -222,6 +222,12 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   El valor inválido `mosaic` se migra a `es`. El teclado flotante de wvkbd
   cambia a cirílico con ruso; el resto usa QWERTY internacional. Detalle:
   `CONFIGURACION-UMBRIEL.md` §16.
+- **Rendimiento.** La barra reserva solo su altura (el margen ya lo suma el
+  compositor), la animación de la batería solo corre al cargar de verdad, el
+  Wi-Fi tiene límite de 12 s, las ventanas llegan por `umbriel subscribe`, el
+  centro de control se carga con `Loader` y los iconos usan `MultiEffect`.
+  Medido: `qs` en reposo 7,4 % → 0,6 %; panel abierto 12,4 % → 1,0 %. Detalle:
+  `CONFIGURACION-UMBRIEL.md` §17.
 - **Bloqueo de pantalla.** El botón lanzaba `hyprlock` sin configuración y
   salía sin bloquear. `shell-lock` es ahora el único bloqueo: crea
   `~/.config/hypr/hyprlock.conf` desde la plantilla si falta y lo usan el menú

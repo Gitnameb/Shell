@@ -222,9 +222,10 @@ Variants {
             ? (bar.screen ? bar.screen.height - Theme.edge * 2 : 800)
             : (bar.autoHide ? Theme.barHeight + Theme.edge : Theme.barHeight)
         color: "transparent"
-        // Reserva espacio para que las ventanas no queden bajo la barra. Con
-        // ocultación automática no reserva nada: la barra aparece por encima.
-        exclusiveZone: bar.autoHide ? 0 : Theme.barHeight + Theme.edge
+        // Reserva solo la altura de la barra. El compositor ya suma el margen
+        // superior de la superficie (Theme.edge), así que añadirlo aquí dejaba
+        // 17 px entre la barra y la ventana en vez de los 8-9 del resto.
+        exclusiveZone: bar.autoHide ? 0 : Theme.barHeight
 
         // ------------------------------------------------- barra automática
         property bool autoHide: SettingsState.autoHideBar

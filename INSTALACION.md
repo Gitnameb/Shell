@@ -162,10 +162,9 @@ sudo apt install -t trixie-backports umbriel xdg-desktop-portal-umbriel
 
 sudo apt install \
   ddcutil qrencode libnotify-bin fonts-inter wvkbd swayidle kitty \
-  network-manager-openvpn power-profiles-daemon pulseaudio-utils \
+  network-manager-openvpn power-profiles-daemon \
   iputils-ping wl-clipboard \
   qml6-module-qtquick-effects \
-  qml6-module-qt5compat-graphicaleffects \
   qml6-module-qt-labs-folderlistmodel \
   xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-kde \
   xwayland
@@ -176,9 +175,9 @@ está en `install/packages.txt`.
 
 ### Dependencias que usa el shell
 
-- **Qt/Quickshell:** `quickshell`, `qml6-module-qtquick-effects`,
-  `qml6-module-qt5compat-graphicaleffects` (portada redondeada y tintado de
-  iconos), `qml6-module-qt-labs-folderlistmodel` (iconos del escritorio).
+- **Qt/Quickshell:** `quickshell`, `qml6-module-qtquick-effects`
+  (tintado de iconos con `MultiEffect`) y `qml6-module-qt-labs-folderlistmodel`
+  (iconos del escritorio).
 - **KDE/Qt:** `plasma-integration`, `libkf6config-bin`, `kdialog`, `breeze`,
   `breeze-icon-theme`, `breeze-gtk-theme`, `breeze-cursor-theme`,
   `qt6-wayland`, `qt6-qpa-plugins`, `qt6-svg-plugins`.
@@ -187,7 +186,7 @@ está en `install/packages.txt`.
 - **Audio:** `pipewire`, `pipewire-bin`, `pipewire-pulse`, `wireplumber`,
   `libpipewire-0.3-0t64`, `libpipewire-0.3-modules` y `libspa-0.2-modules`,
   **todos de `trixie-backports` y en el mismo bloque**; `wpctl` para los atajos
-  y `paplay` (`pulseaudio-utils`) para las alarmas. Para audio Bluetooth hace
+  y `pw-play` (`pipewire-bin`) para las alarmas. Para audio Bluetooth hace
   falta `libspa-0.2-bluetooth`, también de backports; sin él los auriculares se
   emparejan pero no aparecen como salida ni micrófono, y la conexión puede
   fallar con `br-connection-profile-unavailable`.

@@ -121,9 +121,9 @@ MESA_BACKPORTS_PKGS=(
 
 RUNTIME_PKGS=(
     ddcutil libnotify-bin fonts-inter wvkbd swayidle kitty
-    power-profiles-daemon pulseaudio-utils
+    power-profiles-daemon
     iputils-ping wl-clipboard python3 curl
-    qml6-module-qtquick-effects qml6-module-qt5compat-graphicaleffects
+    qml6-module-qtquick-effects
     qml6-module-qt-labs-folderlistmodel
     xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-kde
     xwayland

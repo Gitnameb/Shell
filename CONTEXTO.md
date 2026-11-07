@@ -2666,3 +2666,12 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   (36 comprobaciones), `scripts/test-config-writers.sh` (39), 8 escritores
   concurrentes × 5 rondas y una prueba de estrés con 40 escritores, 13 de
   ellos terminados con `kill -9`. Detalle en `CONFIGURACION-UMBRIEL.md`.
+- **Consumo en reposo (hecho).** El `qs` en reposo bajó de 7,4 % a 0,6 % de
+  CPU y con el centro de control abierto de 12,4 % a 1,0 %. Las causas eran el
+  barrido infinito del icono de batería en equipos sin batería (`mains`),
+  los dos giros de «buscando redes» atascados cuando `scanning`/`hasScanned` no
+  se resolvían, y la consulta de ventanas/escritorios cada 600 ms. Ahora la
+  batería solo barre al cargar, el Wi-Fi tiene vigilante de 12 s y `nmcli`
+  timeout, y `UmbrielBackend` usa `umbriel subscribe`. El centro de control se
+  carga con `Loader` la primera vez y los iconos usan `MultiEffect` en vez de
+  `ColorOverlay`. Detalle: `CONFIGURACION-UMBRIEL.md` §17.

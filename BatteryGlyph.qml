@@ -30,10 +30,12 @@ Item {
         root.tone.g, root.tone.b, 0.58)
     readonly property color trackColor: Theme.light
         ? Qt.rgba(0, 0, 0, 0.10) : Qt.rgba(1, 1, 1, 0.09)
+    // El rayo indica corriente aunque no haya batería; el barrido del
+    // contorno solo se anima mientras se carga de verdad. En un equipo de
+    // sobremesa `mains` siempre es verdadero y la animación infinita mantenía
+    // la barra repintándose a 60 fps sin parar.
     readonly property bool showBolt: root.charging || root.mains
-    // En un equipo de sobremesa no hay batería, pero el barrido del contorno
-    // sigue indicando que hay corriente, igual que el cargador del mockup.
-    readonly property bool chargeLook: root.charging || root.mains
+    readonly property bool chargeLook: root.charging
 
     implicitWidth: root.bodyWidth + root.tipWidth
     implicitHeight: root.bodyHeight

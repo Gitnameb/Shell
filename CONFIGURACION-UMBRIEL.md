@@ -524,7 +524,7 @@ y nieve.
 - `AlarmState.qml` reproduce el sonido de alarma o del temporizador en bucle y
   muestra un aviso crítico sin caducidad. El sonido solo para al cerrar ese
   aviso o al pulsar el reloj de la barra (que además retira el aviso). El
-  reproductor (`paplay` o `pw-play`) es el proceso directo, así que se corta al
+  reproductor (`pw-play` o `paplay`) es el proceso directo, así que se corta al
   instante: no hay un bucle de shell esperando a que acabe la secuencia.
   Mientras suena, el fondo del reloj parpadea en azul. Si «No molestar» está
   activo no hay aviso registrado, así que el sonido se detiene al abrir el
@@ -563,3 +563,48 @@ control → Teclado, junto al interruptor del teclado flotante. La fila
   internacional; el chino además necesita un método de entrada (IME). Si se
   quiere un teclado flotante con teclas nativas o estilo Android habría que
   sustituir wvkbd por un teclado propio; no se hace en este cambio.
+
+## 17. Rendimiento
+
+El consumo en reposo se midió con el shell dentro de Umbriel anidado, sin
+paneles abiertos: **7,4 % → 0,6 % de CPU** de `qs`. Con el centro de control
+abierto bajó de **12,4 % → 1,0 %**. El RSS pasó de unos 355 MB a 324 MB.
+
+Cambios que lo explican:
+
+- **Batería.** En un equipo de sobremesa `mains` es siempre verdadero. El
+  barrido del contorno estaba atado a `charging || mains`, así que era una
+  animación infinita a 60 fps permanente. Ahora el barrido solo corre con
+  `charging`; el rayo sigue visible como indicador de corriente.
+- **Wi-Fi.** Los dos indicadores de «buscando redes» giraban también cuando
+  `hasScanned` era falso o `scanning` se quedaba atascado. Ahora solo giran
+  con `scanning`, hay un vigilante de 12 s que corta la consulta y `nmcli`
+  lleva `timeout=8`/`--wait` para no colgarse para siempre.
+- **Ventanas y escritorios.** `UmbrielBackend` usaba dos procesos
+  (`umbriel windows --json` y `umbriel workspaces --json`) cada 600 ms e
+  invalidaba todas las fichas de la barra aunque nada cambiara. Ahora usa
+  `umbriel subscribe workspaces,windows`; los procesos manuales solo quedan
+  para el diagnóstico.
+- **Centro de control.** Sus más de 7000 líneas de QML se cargan con un
+  `Loader` la primera vez que se abre el panel, no al arrancar. Después se
+  conserva para que abrir y cerrar sea instantáneo.
+- **Iconos.** `ShellIcon` usa `MultiEffect` en lugar de `ColorOverlay` y ya no
+  carga dos veces el mismo SVG. Esto elimina la dependencia
+  `qml6-module-qt5compat-graphicaleffects`.
+- **Sonido.** `pw-play` (PipeWire) es el reproductor principal; ya no hace
+  falta `pulseaudio-utils`. `paplay` sigue como respaldo si existe.
+
+### Dependencias pesadas opcionales
+
+El shell funciona con estas alternativas más ligeras, pero no se activan por
+defecto para no cambiar la apariencia ni el terminal del usuario:
+
+| Actual | Tamaño | Alternativa | Tamaño |
+| --- | --- | --- | --- |
+| `kitty` | ~23 MB | `foot` | ~0,7 MB |
+| `fonts-inter` | ~21 MB | `fonts-inter-variable` | ~1,7 MB |
+| `breeze-cursor-theme` | ~30 MB | cursor de `adwaita-icon-theme` | ~13 MB |
+
+`fonts-inter-variable` registra la familia como «Inter Variable», así que
+habría que cambiar `Theme.fontFamily`. `foot` no acepta `-e`: se invoca como
+`foot comando`, y habría que ajustar `Mod+Return` y los lanzadores.

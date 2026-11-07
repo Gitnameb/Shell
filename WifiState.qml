@@ -249,8 +249,8 @@ Singleton {
         "raw = subprocess.run(['nmcli','-t','-f',\n" +
         "    'IN-USE,SSID,BSSID,CHAN,FREQ,SIGNAL,SECURITY',\n" +
         "    'device','wifi','list','--rescan','no'],\n" +
-        "    capture_output=True, text=True).stdout\n" +
-        "status = subprocess.run(['nmcli','-t','-f','DEVICE,TYPE,STATE',\n" +
+        "    capture_output=True, text=True, timeout=8).stdout\n" +
+        "status = subprocess.run(['nmcli','--wait','8','-t','-f','DEVICE,TYPE,STATE',\n" +
         "    'device','status'], capture_output=True, text=True).stdout\n" +
         "wifi_state = ''\n" +
         "wifi_dev = ''\n" +
@@ -262,7 +262,7 @@ Singleton {
         "        break\n" +
         "active_connection = ''\n" +
         "if wifi_dev:\n" +
-        "    active_connection = subprocess.run(['nmcli','-g',\n" +
+        "    active_connection = subprocess.run(['nmcli','--wait','8','-g',\n" +
         "        'GENERAL.CONNECTION','device','show', wifi_dev],\n" +
         "        capture_output=True, text=True).stdout.strip()\n" +
         "    if active_connection == '--':\n" +
@@ -351,6 +351,21 @@ Singleton {
         repeat: true
         running: true
         onTriggered: root.syncActive()
+    }
+
+    // Si nmcli o Python se atascan, la consulta se corta y el indicador deja
+    // de girar. Sin esto, `scanning` se quedaba en true para siempre.
+    Timer {
+        interval: 12000
+        running: root.scanning
+        repeat: false
+        onTriggered: {
+            if (scanProc.running)
+                scanProc.running = false;
+            root.scanning = false;
+            root.hasScanned = true;
+            root.lastError = "La búsqueda de redes tardó demasiado.";
+        }
     }
 
     Process {
@@ -483,7 +498,7 @@ Singleton {
     Process {
         id: rescanProc
 
-        command: ["nmcli", "device", "wifi", "rescan"]
+        command: ["nmcli", "--wait", "10", "device", "wifi", "rescan"]
 
         onExited: root.refresh()
     }

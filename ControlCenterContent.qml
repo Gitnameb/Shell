@@ -1598,7 +1598,7 @@ ColumnLayout {
                         anchors.fill: parent
                         name: "view-refresh-symbolic"
                         fallbackName: "view-refresh"
-                        color: (WifiState.scanning || !WifiState.hasScanned)
+                        color: WifiState.scanning
                             ? Theme.accent : Theme.muted
                         size: 15
                         fallback: "⟳"
@@ -1610,7 +1610,7 @@ ColumnLayout {
                         to: 360
                         duration: 1100
                         loops: Animation.Infinite
-                        running: WifiState.scanning || !WifiState.hasScanned
+                        running: WifiState.scanning
                     }
                 }
 
@@ -1889,7 +1889,6 @@ ColumnLayout {
                     id: wifiSpin
 
                     readonly property bool busy: WifiState.scanning
-                        || !WifiState.hasScanned
 
                     visible: busy
                     Layout.preferredWidth: 15

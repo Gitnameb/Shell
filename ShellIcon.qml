@@ -1,9 +1,9 @@
 import Quickshell
-import Qt5Compat.GraphicalEffects
 import QtQuick
+import QtQuick.Effects
 
 // Icono de widget con color de estado. Usa un icono real del tema (Breeze) y
-// lo tiñe con ColorOverlay, de modo que el color comunica el estado sin
+// lo tiñe con MultiEffect, de modo que el color comunica el estado sin
 // depender de emojis. Para iconos de apps o de la bandeja, usar Image normal.
 Item {
     id: root
@@ -46,21 +46,26 @@ Item {
         visible: false
     }
 
-    ColorOverlay {
+    // MultiEffect sustituye a ColorOverlay (Qt5Compat). Es el efecto nativo de
+    // Qt 6, no rasteriza en CPU y evita depender de
+    // qml6-module-qt5compat-graphicaleffects.
+    MultiEffect {
         anchors.fill: parent
         source: iconImage
-        color: root.color
-        cached: false
+        colorization: 1.0
+        colorizationColor: root.color
         visible: root.tint && root.ready
     }
 
     Image {
         anchors.fill: parent
-        source: root.resolvedSource
+        // Con tinte, el icono ya lo dibuja MultiEffect: no se carga dos veces.
+        source: root.tint ? "" : root.resolvedSource
         sourceSize.width: Math.ceil(root.size * root.renderScale)
         sourceSize.height: Math.ceil(root.size * root.renderScale)
         fillMode: Image.PreserveAspectFit
         smooth: true
+        asynchronous: true
         visible: !root.tint && root.ready
     }
 

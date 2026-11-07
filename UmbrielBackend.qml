@@ -508,6 +508,24 @@ Scope {
     }
 
     // ------------------------------------------------------------- relectura
+    function applyWindows(reply): void {
+        const list = Array.isArray(reply) ? reply
+            : (reply && Array.isArray(reply.ok) ? reply.ok : []);
+        root.windowsJson = list;
+        root.dataRevision++;
+        root.windowDataReady = true;
+    }
+
+    function applyWorkspaces(reply): void {
+        const list = Array.isArray(reply) ? reply
+            : (reply && Array.isArray(reply.ok) ? reply.ok : []);
+        root.workspacesJson = list;
+        root.rebuildWorkspaceCache();
+        root.dataRevision++;
+    }
+
+    // Lectura manual para el diagnóstico. El uso normal no llega aquí: el
+    // flujo `subscribe` de abajo avisa solo cuando algo cambia.
     function refresh(): void {
         root.revision++;
         if (!root.available)
@@ -529,14 +547,7 @@ Scope {
 
         onExited: {
             try {
-                const reply = JSON.parse(windowsOut.text || "[]");
-                // Umbriel devuelve un array directo; algunas versiones lo
-                // envuelven en { "ok": [...] }. Se aceptan las dos formas.
-                const list = Array.isArray(reply) ? reply
-                    : (reply && Array.isArray(reply.ok) ? reply.ok : []);
-                root.windowsJson = list;
-                root.dataRevision++;
-                root.windowDataReady = true;
+                root.applyWindows(JSON.parse(windowsOut.text || "[]"));
             } catch (error) {
             }
         }
@@ -553,22 +564,51 @@ Scope {
 
         onExited: {
             try {
-                const reply = JSON.parse(workspacesOut.text || "[]");
-                const list = Array.isArray(reply) ? reply
-                    : (reply && Array.isArray(reply.ok) ? reply.ok : []);
-                root.workspacesJson = list;
-                root.rebuildWorkspaceCache();
-                root.dataRevision++;
+                root.applyWorkspaces(JSON.parse(workspacesOut.text || "[]"));
             } catch (error) {
             }
         }
     }
 
-    Timer {
-        interval: 600
-        repeat: true
+    // Umbriel entrega un snapshot completo cuando cambian las ventanas o los
+    // escritorios. Antes se lanzaban dos procesos cada 600 ms e invalidaban
+    // todas las fichas de la barra aunque nada hubiera cambiado; eso era una de
+    // las causas del consumo en reposo.
+    Process {
+        id: eventsProc
+
+        command: ["umbriel", "subscribe", "workspaces,windows"]
         running: root.available
-        onTriggered: root.refresh()
+
+        stdout: SplitParser {
+            onRead: (line) => {
+                try {
+                    const message = JSON.parse(line);
+                    if (!message || !message.data)
+                        return;
+                    if (message.event === "windows")
+                        root.applyWindows(message.data);
+                    else if (message.event === "workspaces")
+                        root.applyWorkspaces(message.data);
+                } catch (error) {
+                }
+            }
+        }
+
+        onExited: {
+            if (root.available)
+                eventsRestart.restart();
+        }
+    }
+
+    Timer {
+        id: eventsRestart
+        interval: 1000
+        repeat: false
+        onTriggered: {
+            if (root.available && !eventsProc.running)
+                eventsProc.running = true;
+        }
     }
 
     // ------------------------------------------------------- tecla Mod

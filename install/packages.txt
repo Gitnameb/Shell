@@ -40,9 +40,8 @@ sudo apt install -t trixie-backports umbriel xdg-desktop-portal-umbriel
 sudo apt install \
   ddcutil qrencode libnotify-bin fonts-inter wvkbd swayidle kitty \
   network-manager-openvpn wpasupplicant rfkill dnsmasq-base \
-  power-profiles-daemon pulseaudio-utils iputils-ping wl-clipboard \
+  power-profiles-daemon iputils-ping wl-clipboard \
   qml6-module-qtquick-effects \
-  qml6-module-qt5compat-graphicaleffects \
   qml6-module-qt-labs-folderlistmodel \
   xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-kde \
   xwayland
@@ -126,4 +125,4 @@ sudo apt install \
 # sistema; los binarios de scripts/bin/ solo quedan como respaldo local y no
 # se publican en el repositorio.
 #
-# zenity y canberra-gtk-play no están instalados; el shell usa kdialog y paplay.
+# zenity y canberra-gtk-play no están instalados; el shell usa kdialog y pw-play.
