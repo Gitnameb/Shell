@@ -39,13 +39,51 @@ fi
 [ -n "$config_set" ] && [ -x "$config_set" ] \
     || { echo "falta shell-config-set" >&2; exit 1; }
 
-status=$(python3 - "$config_set" "$mode" "$accent" <<'PY'
+blur_conf="${SHELL_GLASS_BLUR_CONF:-$HOME/.config/shell/glass-blur.conf}"
+
+status=$(python3 - "$config_set" "$mode" "$accent" "$blur_conf" <<'PY'
 import json
 import subprocess
 import sys
 
-writer, mode, accent = sys.argv[1], sys.argv[2], sys.argv[3]
+writer, mode, accent, blur_conf = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 light = mode == "light"
+
+
+def read_blur_conf(path):
+    values = {
+        "DARK_BRIGHTNESS": 0.72,
+        "DARK_CONTRAST": 0.92,
+        "DARK_SATURATION": 1.06,
+        "LIGHT_BRIGHTNESS": 1.08,
+        "LIGHT_CONTRAST": 0.95,
+        "LIGHT_SATURATION": 1.02,
+        "BLUR_PASSES": 3,
+    }
+    try:
+        with open(path, encoding="utf-8") as handle:
+            for raw in handle:
+                line = raw.split("#", 1)[0].strip()
+                if "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                if key not in values:
+                    continue
+                try:
+                    values[key] = float(value.strip())
+                except ValueError:
+                    continue
+    except OSError:
+        pass
+    for key in ("DARK_BRIGHTNESS", "DARK_CONTRAST", "DARK_SATURATION",
+                "LIGHT_BRIGHTNESS", "LIGHT_CONTRAST", "LIGHT_SATURATION"):
+        values[key] = min(2.0, max(0.0, values[key]))
+    values["BLUR_PASSES"] = min(8, max(0, int(values["BLUR_PASSES"])))
+    return values
+
+
+blur_settings = read_blur_conf(blur_conf)
 
 
 def rgb(value):
@@ -124,15 +162,34 @@ else:
         "minimize_glyph_hover": "#141519",
     }
 
+if light:
+    blur = {
+        "brightness": f"{blur_settings['LIGHT_BRIGHTNESS']:.3f}",
+        "contrast": f"{blur_settings['LIGHT_CONTRAST']:.3f}",
+        "saturation": f"{blur_settings['LIGHT_SATURATION']:.3f}",
+        "passes": str(blur_settings["BLUR_PASSES"]),
+    }
+else:
+    blur = {
+        "brightness": f"{blur_settings['DARK_BRIGHTNESS']:.3f}",
+        "contrast": f"{blur_settings['DARK_CONTRAST']:.3f}",
+        "saturation": f"{blur_settings['DARK_SATURATION']:.3f}",
+        "passes": str(blur_settings["BLUR_PASSES"]),
+    }
+
 args = [writer]
 for section, values in (
     ("colors", colors),
     ("colors.border", border),
     ("colors.title_bar", title),
+    ("appearance.blur", blur),
 ):
     args += ["--section", section]
     for key, value in values.items():
-        args.append(f"{key}={json.dumps(value + 'FF')}")
+        if section == "appearance.blur":
+            args.append(f"{key}={value}")
+        else:
+            args.append(f"{key}={json.dumps(value + 'FF')}")
 
 result = subprocess.run(
     args,

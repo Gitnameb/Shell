@@ -21,6 +21,18 @@ end_marker='# shell-glass: fin'
 # 90 %) y por encima de 0, para que la máscara descarte las esquinas
 # transparentes sin apagar el desenfoque del panel.
 ignore_alpha=0.04
+wstart_marker='# shell-windows: inicio'
+wend_marker='# shell-windows: fin'
+# Tono del desenfoque. Se puede afinar sin recompilar en este archivo:
+#   ~/.config/shell/glass-blur.conf
+blur_conf="${SHELL_GLASS_BLUR_CONF:-$HOME/.config/shell/glass-blur.conf}"
+DARK_BRIGHTNESS=0.72
+DARK_CONTRAST=0.92
+DARK_SATURATION=1.06
+LIGHT_BRIGHTNESS=1.08
+LIGHT_CONTRAST=0.95
+LIGHT_SATURATION=1.02
+BLUR_PASSES=3
 
 usage() {
     cat <<'EOF'
@@ -30,10 +42,16 @@ Uso:
   shell-glass ensure
   shell-glass mode wallpaper|behind
   shell-glass blur <0-100>
+  shell-glass windows <0-90> <0|1>
+  shell-glass tone dark|light
   shell-glass status
 
   wallpaper  desenfoca solo el fondo de pantalla (como el mockup)
   behind     desenfoca las ventanas y el contenido que hay detrás
+  windows    transparencia de las ventanas y desenfoque de lo que hay
+             detrás; 0 las deja opacas
+  tone       aplica el brillo, contraste y saturación del modo oscuro o
+             claro desde ~/.config/shell/glass-blur.conf
 EOF
 }
 
@@ -59,6 +77,39 @@ find_config_set() {
 
 reload() {
     umbriel msg config-reload >/dev/null 2>&1 || true
+}
+
+# Lee solo las claves conocidas de glass-blur.conf, sin ejecutar el archivo.
+load_blur_conf() {
+    [ -f "$blur_conf" ] || return 0
+    while IFS='=' read -r key value; do
+        value=$(printf '%s' "$value" | sed 's/[[:space:]]*#.*//; s/^[[:space:]]*//; s/[[:space:]]*$//')
+        case "$key" in
+            DARK_BRIGHTNESS|DARK_CONTRAST|DARK_SATURATION|LIGHT_BRIGHTNESS|LIGHT_CONTRAST|LIGHT_SATURATION|BLUR_PASSES) ;;
+            *) continue ;;
+        esac
+        case "$value" in
+            ''|*[!0-9.]*) continue ;;
+        esac
+        eval "$key=\$value"
+    done <"$blur_conf"
+}
+
+clamp_real() {
+    awk -v v="$1" -v lo="$2" -v hi="$3" 'BEGIN {
+        if (v + 0 < lo) v = lo;
+        if (v + 0 > hi) v = hi;
+        printf "%.3f", v
+    }'
+}
+
+clamp_int() {
+    awk -v v="$1" -v lo="$2" -v hi="$3" 'BEGIN {
+        v = int(v + 0);
+        if (v < lo) v = lo;
+        if (v > hi) v = hi;
+        printf "%d", v
+    }'
 }
 
 # El bloque se genera entero para poder sustituirlo sin tocar el resto del
@@ -185,6 +236,122 @@ blur() {
     printf '%s\n' "$status"
 }
 
+# Bloque de ventanas transparentes. Umbriel aplica `opacity` a la ventana y
+# `blur` al contenido que queda detrás; no desenfoca el contenido propio de la
+# app. `blur_optimized = false` usa el contenido real, como el modo «behind» de
+# las capas del shell.
+window_block() {
+    opacity=$1
+    blur=$2
+    cat <<EOF
+$wstart_marker
+# Ventanas transparentes del shell. La opacidad se calcula desde el
+# porcentaje del centro de control y el desenfoque usa el contenido real
+# que hay detrás. Al poner 0 % el bloque se elimina.
+[[window_rule]]
+opacity = $opacity
+blur = $blur
+blur_optimized = false
+$wend_marker
+EOF
+}
+
+current_window_block() {
+    [ -f "$cfg" ] || return 0
+    sed -n "/^$wstart_marker\$/,/^$wend_marker\$/p" "$cfg"
+}
+
+windows() {
+    value=${1:-}
+    blur=${2:-}
+    case "$value" in
+        ''|*[!0-9]*)
+            echo "uso: shell-glass windows <0-90> <0|1>" >&2
+            exit 2
+            ;;
+    esac
+    value=$(printf '%s\n' "$value" | sed 's/^0*//')
+    [ -n "$value" ] || value=0
+    if [ "$value" -gt 90 ]; then
+        echo "la transparencia debe estar entre 0 y 90" >&2
+        exit 2
+    fi
+    case "$blur" in
+        0|1) ;;
+        *)
+            echo "uso: shell-glass windows <0-90> <0|1>" >&2
+            exit 2
+            ;;
+    esac
+
+    [ -f "$cfg" ] || exit 0
+    config_set=$(find_config_set) \
+        || { echo "falta shell-config-set" >&2; exit 1; }
+
+    tmp=$(mktemp "${TMPDIR:-/tmp}/shell-windows.XXXXXX")
+    trap 'rm -f "$tmp"' EXIT
+
+    if [ "$value" -eq 0 ]; then
+        if [ -z "$(current_window_block)" ]; then
+            printf 'unchanged\n'
+            return 0
+        fi
+        : >"$tmp"
+        status=$("$config_set" --drop-block "$wstart_marker" "$wend_marker") \
+            || exit $?
+    else
+        opacity=$(awk -v pct="$value" 'BEGIN { printf "%.3f", (100 - pct) / 100 }')
+        if [ "$blur" = 1 ]; then
+            blur_value=true
+        else
+            blur_value=false
+        fi
+        window_block "$opacity" "$blur_value" >"$tmp"
+        if [ -n "$(current_window_block)" ]; then
+            status=$("$config_set" --drop-block "$wstart_marker" "$wend_marker" \
+                --append-block "$tmp") || exit $?
+        else
+            status=$("$config_set" --append-block "$tmp") || exit $?
+        fi
+    fi
+    if [ "$status" = changed ]; then
+        reload
+    fi
+    printf '%s\n' "$status"
+}
+
+tone() {
+    mode=${1:-}
+    case "$mode" in
+        dark|light) ;;
+        *)
+            echo "uso: shell-glass tone dark|light" >&2
+            exit 2
+            ;;
+    esac
+    [ -f "$cfg" ] || exit 0
+    config_set=$(find_config_set) \
+        || { echo "falta shell-config-set" >&2; exit 1; }
+    load_blur_conf
+    if [ "$mode" = dark ]; then
+        brightness=$(clamp_real "$DARK_BRIGHTNESS" 0 2)
+        contrast=$(clamp_real "$DARK_CONTRAST" 0 2)
+        saturation=$(clamp_real "$DARK_SATURATION" 0 2)
+    else
+        brightness=$(clamp_real "$LIGHT_BRIGHTNESS" 0 2)
+        contrast=$(clamp_real "$LIGHT_CONTRAST" 0 2)
+        saturation=$(clamp_real "$LIGHT_SATURATION" 0 2)
+    fi
+    passes=$(clamp_int "$BLUR_PASSES" 0 8)
+    status=$("$config_set" --section appearance.blur \
+        "brightness=$brightness" "contrast=$contrast" \
+        "saturation=$saturation" "passes=$passes") || exit $?
+    if [ "$status" = changed ]; then
+        reload
+    fi
+    printf '%s\n' "$status"
+}
+
 status() {
     block=$(current_block)
     if [ -n "$block" ]; then
@@ -204,6 +371,16 @@ status() {
         printf 'reglas: ausentes\n'
     fi
 
+    if [ -n "$(current_window_block)" ]; then
+        printf 'ventanas: transparentes\n'
+        current_window_block | awk '
+            /^opacity[[:space:]]*=/ { gsub(/[[:space:]]/, "", $0); printf "ventanas %s ", $0 }
+            /^blur[[:space:]]*=/ { gsub(/[[:space:]]/, "", $0); printf "%s\n", $0 }
+        '
+    else
+        printf 'ventanas: opacas\n'
+    fi
+
     if [ -f "$cfg" ]; then
         awk '
             /^[[:space:]]*\[appearance\.blur\][[:space:]]*$/ { on = 1; next }
@@ -221,6 +398,8 @@ case "${1:-}" in
     ensure) ensure ;;
     mode) shift; mode "${1:-}" ;;
     blur) shift; blur "${1:-}" ;;
+    windows) shift; windows "${1:-}" "${2:-}" ;;
+    tone) shift; tone "${1:-}" ;;
     status) status ;;
     -h | --help) usage ;;
     *) usage >&2; exit 2 ;;

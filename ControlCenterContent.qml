@@ -5219,6 +5219,125 @@ ColumnLayout {
                 wrapMode: Text.WordWrap
             }
 
+            // ------------------------------------------------------ ventanas
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 4
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Ventanas"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                    font.weight: Font.DemiBold
+                }
+
+                Text {
+                    text: "Restablecer"
+                    color: windowResetMouse.containsMouse
+                        ? Theme.accent : Theme.faint
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+
+                    MouseArea {
+                        id: windowResetMouse
+                        anchors.fill: parent
+                        anchors.margins: -4
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            SettingsState.setWindowTransparency(0);
+                            SettingsState.setWindowBlur(true);
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Transparencia"
+                    color: Theme.muted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                }
+
+                Text {
+                    text: SettingsState.windowTransparency + " %"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                }
+            }
+
+            ShellSlider {
+                id: windowTransparencySlider
+
+                Layout.fillWidth: true
+                from: 0
+                to: 90
+                stepSize: 2
+                value: SettingsState.windowTransparency
+                onMoved: SettingsState.setWindowTransparency(value)
+            }
+
+            Binding {
+                target: windowTransparencySlider
+                property: "value"
+                value: SettingsState.windowTransparency
+                when: !windowTransparencySlider.pressed
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 1
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Desenfocar lo que hay detrás"
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Las ventanas transparentes desenfocan el "
+                            + "contenido que queda detrás, no su propio "
+                            + "contenido."
+                        color: Theme.faint
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 8
+                        wrapMode: Text.WordWrap
+                    }
+                }
+
+                ShellSwitch {
+                    checked: SettingsState.windowBlur
+                    onToggled: SettingsState.setWindowBlur(
+                        !SettingsState.windowBlur)
+                }
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: "Con transparencia 0 las ventanas vuelven a ser opacas."
+                color: Theme.faint
+                font.family: Theme.fontFamily
+                font.pixelSize: 8
+                wrapMode: Text.WordWrap
+            }
+
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 1

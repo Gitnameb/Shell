@@ -15,6 +15,9 @@ Rectangle {
 
     // El menú contextual vive en Bar.qml; la ficha solo le pasa el icono y la app.
     signal appMenuRequested(var anchorItem, var app)
+    // Cualquier clic en la ficha (app, número o modo) avisa a la barra para
+    // cerrar el panel que hubiera abierto.
+    signal interacted()
 
     readonly property var ws: {
         const list = CompositorState.workspaces || [];
@@ -330,6 +333,7 @@ Rectangle {
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
                     cursorShape: Qt.PointingHandCursor
                     onClicked: (mouse) => {
+                        root.interacted();
                         if (mouse.button === Qt.RightButton) {
                             root.appMenuRequested(miniApp, miniApp.modelData);
                             return;
@@ -411,7 +415,10 @@ Rectangle {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.toggleMode()
+            onClicked: {
+                root.interacted();
+                root.toggleMode();
+            }
         }
     }
 
@@ -436,6 +443,7 @@ Rectangle {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: {
+            root.interacted();
             if (root.modeSwitch) {
                 root.toggleMode();
                 return;

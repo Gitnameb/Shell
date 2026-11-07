@@ -47,8 +47,9 @@ height = 36
 font = "sans 11"
 button_position = "right"
 # Del título hacia fuera: flotar, fijar, mover (abre la vista general),
-# minimizar, maximizar y cerrar. Los tres primeros son del fork del shell.
-buttons = ["float", "pin", "move", "minimize", "maximize", "close"]
+# minimizar, maximizar, pantalla completa y cerrar. Los tres primeros son
+# del fork del shell.
+buttons = ["float", "pin", "move", "minimize", "maximize", "fullscreen", "close"]
 button_corner_radius = 6
 button_glyph = "always"
 button_background = true
@@ -56,8 +57,11 @@ button_background = true
 [appearance.blur]
 enabled = true
 optimized = true
-radius = 12
-passes = 2
+radius = 16
+passes = 3
+brightness = 0.720
+contrast = 0.920
+saturation = 1.060
 
 [appearance.shadow]
 enabled = true

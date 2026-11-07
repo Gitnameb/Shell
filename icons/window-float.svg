@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+     stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"
+     stroke-linejoin="round">
+  <defs>
+    <mask id="front">
+      <rect width="24" height="24" fill="#ffffff"/>
+      <rect x="3" y="9" width="12" height="12" rx="2" fill="#000000"/>
+    </mask>
+  </defs>
+  <g mask="url(#front)">
+    <rect x="9" y="3" width="12" height="12" rx="2"/>
+  </g>
+  <rect x="3" y="9" width="12" height="12" rx="2"/>
+</svg>

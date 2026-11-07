@@ -306,7 +306,10 @@ PanelWindow {
                             ? actionBlock.modelData.label
                                 + (root.showWorkspaces ? "  ▴" : "  ▾")
                             : actionBlock.modelData.label
-                        iconName: actionBlock.modelData.icon
+                        iconName: actionBlock.modelData.source
+                            && String(actionBlock.modelData.source).length > 0
+                            ? "" : actionBlock.modelData.icon
+                        iconSource: actionBlock.modelData.source || ""
                         glyph: actionBlock.modelData.glyph
                         shortcut: actionBlock.modelData.shortcut
                         active: actionBlock.modelData.active === true

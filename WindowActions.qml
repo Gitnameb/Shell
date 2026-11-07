@@ -50,7 +50,8 @@ Singleton {
             out.push({
                 key: "float",
                 label: floating ? "Volver al mosaico" : "Hacer flotante",
-                icon: floating ? "view-grid" : "window-duplicate",
+                icon: floating ? "view-grid" : "",
+                source: floating ? "" : ShellIcons.src("window-float"),
                 glyph: floating ? "▦" : "❐",
                 shortcut: "Super+T",
                 active: floating,
@@ -101,7 +102,8 @@ Singleton {
             out.push({
                 key: "maximize",
                 label: maximized ? "Restaurar tamaño" : "Maximizar",
-                icon: maximized ? "window-restore" : "window-maximize",
+                icon: maximized ? "window-restore" : "",
+                source: maximized ? "" : ShellIcons.src("window-maximize"),
                 glyph: maximized ? "❐" : "▣",
                 shortcut: "Super+M",
                 active: maximized,
@@ -114,7 +116,8 @@ Singleton {
                 key: "fullscreen",
                 label: fullscreen
                     ? "Salir de pantalla completa" : "Pantalla completa",
-                icon: fullscreen ? "view-restore" : "view-fullscreen",
+                icon: fullscreen ? "view-restore" : "",
+                source: fullscreen ? "" : ShellIcons.src("window-fullscreen"),
                 glyph: fullscreen ? "❐" : "⛶",
                 shortcut: "Super+F",
                 active: fullscreen,

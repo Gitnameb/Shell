@@ -425,6 +425,7 @@ los modos por escritorio:
 mkdir -p ~/.config/shell
 cp install/config/shell-settings.conf ~/.config/shell/settings.conf
 cp install/config/shell-display.conf ~/.config/shell/display.conf
+cp install/config/glass-blur.conf ~/.config/shell/glass-blur.conf
 ```
 
 Revisar `wallpaperPath` (la plantilla lo deja vacío y usa un color de fondo) y
@@ -432,11 +433,18 @@ Revisar `wallpaperPath` (la plantilla lo deja vacío y usa un color de fondo) y
 salvo que se sepa que hace falta: es un secreto local y el código actual no lo
 usa.
 
-`glassTransparency` (0–90, por defecto 22) y `glassBlur` (0–40, por defecto 12)
+`glassTransparency` (0–90, por defecto 22) y `glassBlur` (0–40, por defecto 16)
 controlan el cristal. El segundo es el radio global de Umbriel y también
 desenfoca las ventanas; `0` lo apaga. `glassBlurBehind` (0/1, por defecto 0)
 elige entre desenfocar solo el fondo de pantalla (como el mockup) o el
 contenido real que hay detrás; también está en Ajustes → Cristal.
+
+`windowTransparency` (0–90, por defecto 0) y `windowBlur` (0/1, por defecto 1)
+hacen transparentes las ventanas y desenfocan el contenido que queda detrás. Se
+administra desde Ajustes → Cristal → Ventanas o con
+`qs ipc -c shell call appearance windows 20 1`. `glass-blur.conf` guarda el
+brillo, contraste y saturación del desenfoque para cada modo; se puede editar y
+aplicar con `shell-glass tone dark|light`, sin recompilar.
 
 ---
 
@@ -447,7 +455,8 @@ Copiar `install/config/umbriel-config.toml` a
 
 - `[general] autostart` con la ruta correcta.
 - `[appearance.title_bar] buttons = ["float", "pin", "move", "minimize",
-  "maximize", "close"]`.
+  "maximize", "fullscreen", "close"]`. La barra nativa incluye pantalla
+  completa; el subtítulo «app · escritorio» ya no se dibuja.
 - `[input.keyboard] layout = "es"`.
 - `[output."HDMI-A-1"] workspaces = 9`.
 - `[layout] mode = "stacking"` y `[layout.stacking]` con el tamaño/cascada

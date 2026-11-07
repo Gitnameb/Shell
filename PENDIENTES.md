@@ -36,13 +36,19 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   (`glassBlurBehind`). `blur_ignore_alpha = 0.04` recorta las esquinas
   redondeadas para que el blur no asome. `scripts/shell-glass` administra el
   bloque y el radio global; el shell expone transparencia (0–90, por defecto
-  22) y desenfoque (0–40, por defecto 12). El radio es global y también afecta
-  a las ventanas. Pruebas: `scripts/test-glass-rules.sh`. Detalle:
+  22) y desenfoque (0–40, por defecto 16, 3 pasadas). El radio es global y
+  también afecta a las ventanas. El tono (brillo, contraste y saturación) se
+  elige por modo desde `~/.config/shell/glass-blur.conf`, sin recompilar. La
+  sección «Ventanas» añade transparencia y blur de lo que hay detrás a todas
+  las ventanas con un `[[window_rule]]` global; con 0 % el bloque se elimina.
+  Pruebas: `scripts/test-glass-rules.sh`. Detalle:
   `CONFIGURACION-UMBRIEL.md` §11.
-- **Desenfoque al mantener Super.** Umbriel desenfoca ahora solo el contenido
-  de la ventana bajo el puntero mientras se mantiene Mod, como el mockup:
-  shader de ventana con blur de 1.4 px y desaturación suave, más un velo del
-  10 %. La barra nativa y los botones quedan nítidos porque el shader se aplica
+- **Desenfoque y foco al mantener Super.** Umbriel desenfoca ahora solo el
+  contenido de la ventana bajo el puntero mientras se mantiene Mod, como el
+  mockup: shader de ventana con blur de 1.4 px y desaturación suave, más un
+  velo del 10 %. Al mantener Mod también se enfoca esa ventana, así los atajos
+  actúan sobre la que se señala y no sobre la última enfocada. La barra nativa
+  y los botones quedan nítidos porque el shader se aplica
   al nodo del cliente, no al marco. Sustituye el velo del 28 % que se aplicaba
   a todas las ventanas. El parche del fork está regenerado; falta instalar el
   binario nuevo (cerrar sesión) y probarlo con ratón real.
@@ -240,8 +246,12 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   escritorios flotantes (Umbriel lo rechaza) y su icono/etiqueta cambia entre
   «Hacer flotante» y «Volver al mosaico». Cada fila lleva un icono de teclado
   cuyo tooltip muestra el atajo; los escritorios de «Mover» abren plegados. Se
-  añadió `Mod+Shift+H` para minimizar. Detalle:
-  `CONFIGURACION-UMBRIEL.md` §18.
+  añadió `Mod+Shift+H` para minimizar. La barra nativa de Umbriel incorpora ya
+  «fullscreen» y comparte los iconos nuevos: dos ventanas sin línea de título
+  para flotar, marco con esquinas para maximizar y cuatro esquinas para
+  pantalla completa. Se quitó el subtítulo «app · escritorio» de la derecha.
+  Un clic en el fondo de la barra, en una ficha o fuera del panel cierra el
+  panel abierto. Detalle: `CONFIGURACION-UMBRIEL.md` §18.
 - **Orden de las fichas.** La barra ya no hereda el orden de apilado del
   compositor: `CompositorState` numera cada ventana la primera vez que la ve y
   conserva ese orden al enfocar, minimizar o cambiar de escritorio. Detalle:
@@ -719,6 +729,8 @@ umbriel move-menu <id>                                 # selector Mover desde CL
 qs ipc -c shell call windows status                      # diagnóstico del contrato
 qs ipc -c shell call windows mode <n> <floating|mosaic>  # layout por escritorio
 qs ipc -c shell call appearance chrome floating           # barra flotante/integrada
+qs ipc -c shell call appearance windows 20 1              # ventanas 20 %, blur detrás
+qs ipc -c shell call appearance glassStatus               # diagnóstico del cristal
 qs ipc -c shell call appearance wallpaper <ruta>          # fondo de pantalla
 qs ipc -c shell call notifications settings               # abrir Ajustes
 qs ipc -c shell call notifications scroll -700            # desplazar el panel

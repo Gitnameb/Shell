@@ -17,6 +17,17 @@ trap 'rm -rf "$BASE"' EXIT
 export XDG_STATE_HOME="$BASE/state"
 export SHELL_CONFIG_SET="$WRITER"
 mkdir -p "$XDG_STATE_HOME"
+# El tono se prueba con valores conocidos, sin depender del archivo del usuario.
+export SHELL_GLASS_BLUR_CONF="$BASE/glass-blur.conf"
+cat >"$SHELL_GLASS_BLUR_CONF" <<'EOF'
+DARK_BRIGHTNESS=0.700
+DARK_CONTRAST=0.900
+DARK_SATURATION=1.050
+LIGHT_BRIGHTNESS=1.100
+LIGHT_CONTRAST=0.960
+LIGHT_SATURATION=1.030
+BLUR_PASSES=4
+EOF
 
 template="$BASE/template.toml"
 sed "s|/home/USUARIO|$HOME|g" "$REPO_DIR/install/config/umbriel-config.toml" \
@@ -97,7 +108,7 @@ echo "== 5. estado =="
 fresh
 out=$("$GLASS" status)
 check "reglas presentes" $(printf '%s\n' "$out" | grep -q 'reglas: presentes'; echo $?)
-check "radio visible" $(printf '%s\n' "$out" | grep -q 'radius=12'; echo $?)
+check "radio visible" $(printf '%s\n' "$out" | grep -q 'radius=16'; echo $?)
 check "modo fondo" $(printf '%s\n' "$out" | grep -q 'desenfoque: fondo de pantalla'; echo $?)
 check "esquinas recortadas" $(printf '%s\n' "$out" | grep -q 'esquinas: recortadas'; echo $?)
 
@@ -179,6 +190,45 @@ status=$("$GLASS" ensure)
 check "dice changed" $([ "$status" = changed ]; echo $?)
 check "sigue en detrás" $(grep -q '^blur_optimized = false$' "$UMBRIEL_CONFIG"; echo $?)
 check "añade la máscara" $(grep -q '^blur_ignore_alpha = 0.04$' "$UMBRIEL_CONFIG"; echo $?)
+check "valida" $(validate; echo $?)
+
+echo "== 12. ventanas transparentes =="
+fresh
+status=$("$GLASS" windows 20 1)
+check "dice changed" $([ "$status" = changed ]; echo $?)
+check "opacidad" $(grep -q '^opacity = 0.800$' "$UMBRIEL_CONFIG"; echo $?)
+check "desenfoque" $(grep -q '^blur = true$' "$UMBRIEL_CONFIG"; echo $?)
+check "detrás" $(grep -q '^blur_optimized = false$' "$UMBRIEL_CONFIG"; echo $?)
+check "valida" $(validate; echo $?)
+out=$("$GLASS" status)
+check "estado transparente" $(printf '%s\n' "$out" | grep -q 'ventanas: transparentes'; echo $?)
+before=$(sha256sum "$UMBRIEL_CONFIG" | cut -d' ' -f1)
+status=$("$GLASS" windows 20 1)
+check "repetir unchanged" $([ "$status" = unchanged ]; echo $?)
+check "mismo contenido" $([ "$(sha256sum "$UMBRIEL_CONFIG" | cut -d' ' -f1)" = "$before" ]; echo $?)
+status=$("$GLASS" windows 0 1)
+check "quitar dice changed" $([ "$status" = changed ]; echo $?)
+check "sin bloque" $(! grep -q 'shell-windows' "$UMBRIEL_CONFIG"; echo $?)
+check "valida tras quitar" $(validate; echo $?)
+before=$(sha256sum "$UMBRIEL_CONFIG" | cut -d' ' -f1)
+"$GLASS" windows 91 1 >/dev/null 2>&1
+check "rechaza 91" $([ $? != 0 ]; echo $?)
+"$GLASS" windows 20 2 >/dev/null 2>&1
+check "rechaza blur 2" $([ $? != 0 ]; echo $?)
+check "archivo intacto" $([ "$(sha256sum "$UMBRIEL_CONFIG" | cut -d' ' -f1)" = "$before" ]; echo $?)
+
+echo "== 13. tono del desenfoque =="
+fresh
+status=$("$GLASS" tone light)
+check "claro cambia" $([ "$status" = changed ]; echo $?)
+check "brillo claro" $(grep -q '^brightness = 1.100$' "$UMBRIEL_CONFIG"; echo $?)
+check "contraste claro" $(grep -q '^contrast = 0.960$' "$UMBRIEL_CONFIG"; echo $?)
+check "pasadas" $(grep -q '^passes = 4$' "$UMBRIEL_CONFIG"; echo $?)
+status=$("$GLASS" tone dark)
+check "oscuro cambia" $([ "$status" = changed ]; echo $?)
+check "brillo oscuro" $(grep -q '^brightness = 0.700$' "$UMBRIEL_CONFIG"; echo $?)
+check "saturación oscura" $(grep -q '^saturation = 1.050$' "$UMBRIEL_CONFIG"; echo $?)
+check "conserva el radio" $(grep -q '^radius = 16$' "$UMBRIEL_CONFIG"; echo $?)
 check "valida" $(validate; echo $?)
 
 echo

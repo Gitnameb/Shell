@@ -131,6 +131,20 @@ Variants {
             clearMenuTimer.stop();
         }
 
+        // Cierra todo lo que se despliega desde la barra. Se usa al pulsar el
+        // fondo de la propia barra y en la capa que captura clics fuera.
+        function closePanels(): void {
+            closeAppMenu();
+            LauncherState.hide();
+            NotificationState.hidePanel();
+            QuickPanelState.hide();
+            CalendarState.hide();
+            PowerState.hide();
+            BatteryState.hide();
+            MoveMenuState.hide();
+            TrayState.hide();
+        }
+
         Timer {
             id: clearMenuTimer
             interval: 250
@@ -368,6 +382,16 @@ Variants {
                 }
             }
 
+            // Un clic en el fondo de la barra (fuera de sus controles) cierra
+            // cualquier panel abierto. Los controles quedan por encima y
+            // siguen abriendo o cambiando su propio panel.
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.AllButtons
+                z: -1
+                onClicked: bar.closePanels()
+            }
+
             Rectangle {
                 anchors.fill: parent
                 radius: Theme.barRadius
@@ -454,6 +478,7 @@ Variants {
                             onAppMenuRequested: (anchorItem, app) => {
                                 bar.openAppMenu(anchorItem, app);
                             }
+                            onInteracted: bar.closePanels()
                         }
                     }
                     }
@@ -1066,16 +1091,7 @@ Variants {
             MouseArea {
                 anchors.fill: parent
                 acceptedButtons: Qt.AllButtons
-                onClicked: {
-                    bar.closeAppMenu();
-                    NotificationState.hidePanel();
-                    QuickPanelState.hide();
-                    CalendarState.hide();
-                    PowerState.hide();
-                    BatteryState.hide();
-                    MoveMenuState.hide();
-                    TrayState.hide();
-                }
+                onClicked: bar.closePanels()
             }
         }
 

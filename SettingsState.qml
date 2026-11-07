@@ -104,8 +104,14 @@ Singleton {
     // «glassBlurBehind» elige qué se desenfoca: false usa la caché del fondo
     // de pantalla (como el mockup) y true, el contenido real que hay detrás.
     property int glassTransparency: 22
-    property int glassBlur: 12
+    property int glassBlur: 16
     property bool glassBlurBehind: false
+    // Ventanas. «windowTransparency» aplica la misma idea que el cristal a
+    // todas las ventanas: 0 las deja opacas y 90 casi transparentes. El
+    // desenfoque de «windowBlur» desenfoca lo que hay detrás del contenido, no
+    // el contenido de la propia app.
+    property int windowTransparency: 0
+    property bool windowBlur: true
 
     // Distribución física del teclado. Solo se configura desde el centro de
     // control → Teclado. La lista es deliberadamente corta: español, inglés,
@@ -163,6 +169,7 @@ Singleton {
     property bool floatingApplyPending: false
     property bool glassApplyPending: false
     property bool glassModeApplyPending: false
+    property bool windowGlassApplyPending: false
 
     readonly property string path: (Quickshell.env("HOME") || "/home/username")
         + "/.config/shell/settings.conf"
@@ -469,6 +476,33 @@ Singleton {
         root.glassBlurBehind = value;
     }
 
+    function setWindowTransparency(value: int): void {
+        root.windowTransparency = Math.max(0, Math.min(90,
+            Math.round(value)));
+    }
+
+    function setWindowBlur(value: bool): void {
+        root.windowBlur = value;
+    }
+
+    // Regla global de ventanas: opacidad + desenfoque real de lo que hay
+    // detrás. El bloque lo administra shell-glass y se retira al volver a 0.
+    function applyWindowGlass(): void {
+        if (!root.ready)
+            return;
+        if (windowGlassProc.running) {
+            root.windowGlassApplyPending = true;
+            return;
+        }
+        root.windowGlassApplyPending = false;
+        windowGlassProc.command = [
+            "sh", root.glassScript, "windows",
+            String(root.windowTransparency),
+            root.windowBlur ? "1" : "0"
+        ];
+        windowGlassProc.running = true;
+    }
+
     function applyGlassBlur(): void {
         if (!root.ready)
             return;
@@ -627,6 +661,8 @@ Singleton {
             + "glassTransparency=%s\\n"
             + "glassBlur=%s\\n"
             + "glassBlurBehind=%s\\n"
+            + "windowTransparency=%s\\n"
+            + "windowBlur=%s\\n"
             + "keyboardLayout=%s\\n"
             + "workspaceModeDefault=%s\\n"
             + "workspaceModes=%s\\n"
@@ -674,6 +710,8 @@ Singleton {
             root.glassTransparency,
             root.glassBlur,
             root.glassBlurBehind ? "1" : "0",
+            root.windowTransparency,
+            root.windowBlur ? "1" : "0",
             root.keyboardLayout,
             root.workspaceModeDefault,
             root.workspaceModes,
@@ -764,6 +802,16 @@ Singleton {
         if (root.ready)
             glassModeApplyTimer.restart();
     }
+    onWindowTransparencyChanged: {
+        saveTimer.restart();
+        if (root.ready)
+            windowGlassApplyTimer.restart();
+    }
+    onWindowBlurChanged: {
+        saveTimer.restart();
+        if (root.ready)
+            windowGlassApplyTimer.restart();
+    }
     onKeyboardLayoutChanged: {
         saveTimer.restart();
         root.applyKeyboardLayout();
@@ -817,6 +865,13 @@ Singleton {
     }
 
     Timer {
+        id: windowGlassApplyTimer
+        interval: 220
+        repeat: false
+        onTriggered: root.applyWindowGlass()
+    }
+
+    Timer {
         id: themeTimer
         interval: 220
         repeat: false
@@ -857,6 +912,17 @@ Singleton {
     }
 
     Process {
+        id: windowGlassProc
+
+        onExited: {
+            if (root.windowGlassApplyPending) {
+                root.windowGlassApplyPending = false;
+                root.applyWindowGlass();
+            }
+        }
+    }
+
+    Process {
         id: loadProc
 
         command: ["sh", "-c", "cat \"$1\" 2>/dev/null || true", "shell", root.path]
@@ -890,6 +956,8 @@ Singleton {
             let glassPct = root.glassTransparency;
             let glassRadius = root.glassBlur;
             let glassBehind = root.glassBlurBehind;
+            let windowPct = root.windowTransparency;
+            let windowBlurOn = root.windowBlur;
             let layout = root.keyboardLayout;
             let layoutChanged = false;
             let shortcut = root.micShortcut;
@@ -992,6 +1060,12 @@ Singleton {
                         glassRadius = Math.max(0, Math.min(40, parsed));
                 } else if (key === "glassBlurBehind") {
                     glassBehind = value === "1" || value === "true";
+                } else if (key === "windowTransparency") {
+                    const parsed = parseInt(value, 10);
+                    if (!isNaN(parsed))
+                        windowPct = Math.max(0, Math.min(90, parsed));
+                } else if (key === "windowBlur") {
+                    windowBlurOn = value === "1" || value === "true";
                 } else if (key === "keyboardLayout") {
                     if (root.knownLayout(value))
                         layout = value;
@@ -1076,6 +1150,8 @@ Singleton {
             root.glassTransparency = glassPct;
             root.glassBlur = glassRadius;
             root.glassBlurBehind = glassBehind;
+            root.windowTransparency = windowPct;
+            root.windowBlur = windowBlurOn;
             root.keyboardLayout = layout;
             root.hotspotAutoOff = hotspotOff;
             root.hotspotMinutes = hotspotMin;
@@ -1104,6 +1180,7 @@ Singleton {
             root.applyFloatingDefaults();
             root.applyGlassBlur();
             root.applyGlassMode();
+            root.applyWindowGlass();
             root.applyMicShortcut();
             root.applyKeyboardLayout();
             root.applyIdle();

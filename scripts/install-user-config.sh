@@ -122,6 +122,8 @@ copy_template "$REPO_DIR/install/config/shell-settings.conf" \
     "$TARGET_HOME/.config/shell/settings.conf"
 copy_template "$REPO_DIR/install/config/shell-display.conf" \
     "$TARGET_HOME/.config/shell/display.conf"
+copy_template "$REPO_DIR/install/config/glass-blur.conf" \
+    "$TARGET_HOME/.config/shell/glass-blur.conf"
 
 log "Copiando la configuración de la pantalla de bloqueo."
 copy_template "$REPO_DIR/install/config/hyprlock.conf" \

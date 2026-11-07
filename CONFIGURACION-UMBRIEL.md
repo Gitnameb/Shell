@@ -38,9 +38,9 @@ archivo por su cuenta: todos llaman a `shell-config-set`, el escritor único.
 | `scripts/shell-floating-defaults` | `[layout.stacking]` | `shell-config-set` |
 | `scripts/shell-window-chrome` | `[appearance.title_bar] overlay` | `shell-config-set` |
 | `scripts/shell-display-filter` | `[display]` | `shell-config-set` |
-| `scripts/shell-glass` | `[[layer_rule]]` y `[appearance.blur]` | `shell-config-set` |
+| `scripts/shell-glass` | `[[layer_rule]]`, `[[window_rule]]` y `[appearance.blur]` | `shell-config-set` |
 | `install/bin/shell-keyboard-layout` | `[input.keyboard] layout` | `shell-config-set` |
-| `install/bin/shell-umbriel-theme` | `[colors]`, `[colors.border]` y `[colors.title_bar]` | `shell-config-set` |
+| `install/bin/shell-umbriel-theme` | `[colors]`, `[colors.border]`, `[colors.title_bar]` y el tono de `[appearance.blur]` | `shell-config-set` |
 | `install/bin/shell-config-set` | Cualquier clave de esas secciones | Python, `flock` + `tomllib` + validación + `os.replace` |
 | `install/config/umbriel-config.toml` | Plantilla completa | Copia del instalador |
 
@@ -368,8 +368,8 @@ visible.
 | `shell-window-chrome` | `[appearance.title_bar] overlay` |
 | `shell-display-filter` | `[display]` |
 | `shell-keyboard-layout` | `[input.keyboard] layout` |
-| `shell-umbriel-theme` | `[colors]`, `[colors.border]`, `[colors.title_bar]` |
-| `shell-glass` | `[[layer_rule]]` y `[appearance.blur]` |
+| `shell-umbriel-theme` | `[colors]`, `[colors.border]`, `[colors.title_bar]`, tono de `[appearance.blur]` |
+| `shell-glass` | `[[layer_rule]]`, `[[window_rule]]` y `[appearance.blur]` |
 
 Las llamadas desde QML no cambiaron. Los scripts conservan su interfaz y sus
 validaciones de argumentos; lo único que cambió es que ya no abren el archivo
@@ -427,7 +427,10 @@ una regla de capa coincide con su namespace. Las reglas viven en
 ./scripts/shell-glass ensure           # añade o actualiza las reglas
 ./scripts/shell-glass mode wallpaper   # solo fondo de pantalla (por defecto)
 ./scripts/shell-glass mode behind      # contenido real que hay detrás
-./scripts/shell-glass blur 12          # radio global; 0 apaga el blur
+./scripts/shell-glass blur 16          # radio global; 0 apaga el blur
+./scripts/shell-glass windows 20 1     # ventanas: 20 % transparentes y blur
+./scripts/shell-glass tone dark        # brillo/contraste del modo oscuro
+./scripts/shell-glass tone light       # brillo/contraste del modo claro
 ./scripts/shell-glass status
 ```
 
@@ -462,8 +465,21 @@ blur = false
   completa (o el velo de luz nocturna) y no deben crear una región de blur.
 - El radio es **global** en Umbriel. El deslizador «Desenfoque» del shell
   escribe `[appearance.blur] radius` y también afecta al blur de las ventanas.
+  Por defecto son 16 px y 3 pasadas.
 - La transparencia (`glassTransparency`, 0–90) solo cambia el alpha del shell:
   `alpha = (100 - transparencia) / 100`. Por defecto 22 → 0.78.
+- **Tono del desenfoque.** Umbriel aplica `brightness`, `contrast` y
+  `saturation` de `[appearance.blur]`. El shell los escribe desde
+  `~/.config/shell/glass-blur.conf` al cambiar de modo; en oscuro baja el
+  brillo y en claro lo sube. Se puede afinar ese archivo y ejecutar
+  `shell-glass tone dark|light` sin recompilar nada.
+- **Ventanas transparentes.** La sección «Ventanas» del centro de control
+  aplica un `[[window_rule]]` global con `opacity` (desde
+  `windowTransparency`, 0–90) y `blur = true` con `blur_optimized = false`.
+  Desenfoca el contenido real que queda detrás de la ventana, no el contenido
+  propio de la app. Con 0 % el bloque `# shell-windows` se elimina y las
+  ventanas vuelven a ser opacas. El comando es
+  `qs ipc -c shell call appearance windows 20 1` (porcentaje y 0/1).
 - Pruebas: `./scripts/test-glass-rules.sh` y
   `./scripts/test-config-writers.sh`.
 
@@ -480,6 +496,12 @@ El estado vive en el compositor (`View::setModHover` y
 efecto vuelve al preset configurado para esa ventana, si lo había. El parche
 `umbriel-fork.patch` incluye el shader; para verlo hay que instalar el binario
 nuevo y reiniciar la sesión.
+
+Además, mantener Mod es un modo de **enfoque**: la ventana bajo el puntero
+pasa a ser la que recibe el teclado, aunque antes tuviera el foco otra. Así
+`Super+Q`, `Super+M` o `Super+Shift+H` actúan sobre la ventana que se está
+señalando y no sobre la última enfocada. Al mover el puntero con Mod pulsado,
+el foco cambia con él.
 
 ## 12. Calendario simple
 
@@ -667,6 +689,35 @@ completa antes de cerrar.
   escribir y recargar la configuración de Umbriel, con más riesgo que
   beneficio. El atajo de minimizar se añadió a `[keybinds]` como
   `"Mod+Shift+H" = "window-minimize"`.
+
+### Barra de título nativa
+
+La barra que dibuja Umbriel comparte la misma lista de acciones. En
+`[appearance.title_bar] buttons` se añadió `"fullscreen"`:
+
+```toml
+buttons = ["float", "pin", "move", "minimize", "maximize", "fullscreen", "close"]
+```
+
+- El botón de pantalla completa usa el icono de cuatro esquinas
+  (`comple.webp` de la referencia); maximizar usa el marco con esquinas
+  interiores (`maxi.webp`) y flotar, dos ventanas superpuestas sin la línea
+  interior que parecía una barra de título (`ventana.webp`). Los iconos se
+  dibujan en `src/scene/title_bar_icon.cpp`; en el shell hay SVG equivalentes
+  en `icons/window-*.svg`.
+- Se eliminó el subtítulo de la derecha («app · escritorio»). El nombre de la
+  app ya está a la izquierda y el escritorio se deduce por la barra y las
+  fichas.
+- El botón de flotar se sigue ocultando en escritorios flotantes y el de
+  fijar en ventanas en mosaico. Pantalla completa se muestra siempre.
+
+### Cierre de paneles
+
+`Bar.qml` tiene una capa transparente a pantalla completa que cierra paneles,
+calendario, energía, batería, bandeja y el menú de apps al pulsar fuera. La
+franja de la barra queda libre para que sus controles sigan funcionando, pero
+un clic en el fondo de la barra, en una ficha de escritorio o en una app
+también cierra el panel abierto. Pulsar el mismo control lo alterna.
 
 ## 19. Orden de las fichas de la barra
 

@@ -158,6 +158,27 @@ ShellRoot {
                 SettingsState.setGlassBlurBehind(false);
         }
 
+        // Transparencia y desenfoque de las ventanas:
+        //   qs ipc -c shell call appearance windows 15 1
+        // El primer valor es la transparencia (0-90; 0 las deja opacas) y el
+        // segundo, 1 o 0, activa el desenfoque de lo que hay detrás.
+        function windows(transparency: string, blur: string): void {
+            if (transparency !== "")
+                SettingsState.setWindowTransparency(Number(transparency));
+            if (blur !== "")
+                SettingsState.setWindowBlur(blur === "1" || blur === "true");
+        }
+
+        // Diagnóstico del cristal y de las ventanas.
+        function glassStatus(): string {
+            return "ready=" + (SettingsState.ready ? "1" : "0")
+                + " script=" + SettingsState.glassScript
+                + " transparency=" + SettingsState.glassTransparency
+                + " blur=" + SettingsState.glassBlur
+                + " windowTransparency=" + SettingsState.windowTransparency
+                + " windowBlur=" + (SettingsState.windowBlur ? "1" : "0");
+        }
+
         // Ciudad del clima; vacío vuelve a la detección por IP.
         //   qs ipc -c shell call appearance weatherPlace Madrid
         function weatherPlace(value: string): void {

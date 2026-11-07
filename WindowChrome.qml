@@ -261,16 +261,6 @@ Variants {
                         font.weight: Font.DemiBold
                         elide: Text.ElideRight
                     }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: WindowLook.nameFor(chrome.appId) + " · "
-                            + WindowLook.workspaceLabel(chrome.win)
-                        color: Theme.faint
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 8
-                        elide: Text.ElideRight
-                    }
                 }
 
                 RowLayout {
@@ -282,7 +272,10 @@ Variants {
                         delegate: ChromeButton {
                             required property var modelData
 
-                            iconName: modelData.icon
+                            iconName: modelData.source
+                                && String(modelData.source).length > 0
+                                ? "" : modelData.icon
+                            source: modelData.source || ""
                             glyph: modelData.glyph
                             tint: modelData.active === true
                                 ? Theme.accent : Theme.muted
