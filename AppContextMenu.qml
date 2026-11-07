@@ -29,6 +29,10 @@ PanelWindow {
         return DesktopActions.actionsFor(String(root.app.cls
             || root.app.appId || ""));
     }
+    // Misma lista que dibuja la barra de título: orden, iconos, etiquetas y
+    // atajos salen de WindowActions para que no puedan desincronizarse.
+    readonly property var windowActions: WindowActions.itemsFor(root.app)
+    property bool showWorkspaces: true
 
     // La tarjeta se centra sobre el icono y se abre hacia dentro de la
     // pantalla (hacia arriba con la barra abajo y hacia abajo con la barra
@@ -122,6 +126,8 @@ PanelWindow {
 
     function dismiss() {
         root.visible = false;
+        // El selector de escritorios vuelve a estar abierto la próxima vez.
+        root.showWorkspaces = true;
     }
 
     // Las acciones de ventana pasan por el contrato común. Así el menú de la
@@ -130,38 +136,14 @@ PanelWindow {
         return String(root.app ? root.app.address || "" : "");
     }
 
-    function focusWindow() {
+    function runWindowAction(key) {
         root.dismiss();
-        CompositorState.focusWindow(root.targetAddress());
-    }
-
-    function toggleMaximized() {
-        root.dismiss();
-        CompositorState.toggleMaximized(root.targetAddress());
-    }
-
-    function toggleFloating() {
-        root.dismiss();
-        CompositorState.toggleFloating(root.targetAddress());
-    }
-
-    function minimizeWindow() {
-        const address = root.targetAddress();
-        root.dismiss();
-        if (root.app && root.app.minimized)
-            CompositorState.restoreWindow(address);
-        else
-            CompositorState.minimizeWindow(address);
+        WindowActions.run(key, root.app);
     }
 
     function moveToWorkspace(workspace) {
         root.dismiss();
         CompositorState.moveToWorkspace(root.targetAddress(), workspace);
-    }
-
-    function closeWindow() {
-        root.dismiss();
-        CompositorState.closeWindow(root.targetAddress());
     }
 
     function runAppAction(action) {
@@ -307,127 +289,91 @@ PanelWindow {
                 color: Theme.border
             }
 
-            AppMenuItem {
-                Layout.fillWidth: true
-                label: root.app && root.app.activated
-                    ? "Ventana activa" : "Enfocar ventana"
-                iconName: "window"
-                glyph: "◎"
-                hint: root.app && root.app.activated ? "activa" : ""
-                enabled: !(root.app && root.app.activated)
-                onClicked: root.focusWindow()
-            }
+            Repeater {
+                model: root.windowActions
 
-            AppMenuItem {
-                Layout.fillWidth: true
-                label: root.app && root.app.maximized
-                    ? "Restaurar tamaño" : "Maximizar"
-                iconName: root.app && root.app.maximized
-                    ? "view-restore" : "view-fullscreen"
-                glyph: "⛶"
-                onClicked: root.toggleMaximized()
-            }
+                delegate: ColumnLayout {
+                    id: actionBlock
 
-            AppMenuItem {
-                Layout.fillWidth: true
-                label: root.app && root.app.minimized
-                    ? "Restaurar ventana" : "Minimizar"
-                iconName: root.app && root.app.minimized
-                    ? "view-restore" : "go-down"
-                glyph: "—"
-                onClicked: root.minimizeWindow()
-            }
+                    required property var modelData
 
-            AppMenuItem {
-                Layout.fillWidth: true
-                label: "Flotante / mosaico"
-                iconName: "window-duplicate-symbolic"
-                glyph: "❐"
-                onClicked: root.toggleFloating()
-            }
+                    Layout.fillWidth: true
+                    spacing: 2
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                Layout.topMargin: 4
-                Layout.bottomMargin: 4
-                color: Theme.border
-            }
-
-            Text {
-                Layout.fillWidth: true
-                text: "MOVER AL ESCRITORIO"
-                color: Theme.faint
-                font.family: Theme.fontFamily
-                font.pixelSize: 8
-                font.weight: Font.DemiBold
-                font.letterSpacing: 0.8
-            }
-
-            Flow {
-                Layout.fillWidth: true
-                spacing: 3
-
-                Repeater {
-                    model: SettingsState.workspaceIds
-
-                    delegate: Rectangle {
-                        required property int modelData
-
-                        readonly property bool current: root.app
-                            && root.app.workspace === modelData
-
-                        width: 20
-                        height: 20
-                        radius: 6
-                        color: current
-                            ? Theme.accentSoft
-                            : (workspaceMouse.containsMouse
-                                ? Theme.hover : Theme.surfaceAlt)
-                        border.width: current ? 1 : 0
-                        border.color: current
-                            ? Theme.accentLine
-                            : "transparent"
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: modelData
-                            color: current ? Theme.accent : Theme.muted
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 8
-                            font.weight: current
-                                ? Font.DemiBold : Font.Normal
+                    AppMenuItem {
+                        Layout.fillWidth: true
+                        label: actionBlock.modelData.label
+                        iconName: actionBlock.modelData.icon
+                        glyph: actionBlock.modelData.glyph
+                        shortcut: actionBlock.modelData.shortcut
+                        active: actionBlock.modelData.active === true
+                        danger: actionBlock.modelData.danger === true
+                        onClicked: {
+                            if (actionBlock.modelData.key === "move") {
+                                root.showWorkspaces = !root.showWorkspaces;
+                                return;
+                            }
+                            root.runWindowAction(actionBlock.modelData.key);
                         }
+                    }
 
-                        MouseArea {
-                            id: workspaceMouse
+                    // Selector de escritorio de «Mover a escritorio». La barra
+                    // de título abre el mismo selector bajo su botón «#».
+                    Flow {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 2
+                        Layout.bottomMargin: 2
+                        spacing: 3
+                        visible: actionBlock.modelData.key === "move"
+                            && root.showWorkspaces
 
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            enabled: !current
-                            cursorShape: current
-                                ? Qt.ArrowCursor : Qt.PointingHandCursor
-                            onClicked: root.moveToWorkspace(modelData)
+                        Repeater {
+                            model: SettingsState.workspaceIds
+
+                            delegate: Rectangle {
+                                required property int modelData
+
+                                readonly property bool current: root.app
+                                    && root.app.workspace === modelData
+
+                                width: 20
+                                height: 20
+                                radius: 6
+                                color: current
+                                    ? Theme.accentSoft
+                                    : (workspaceMouse.containsMouse
+                                        ? Theme.hover : Theme.surfaceAlt)
+                                border.width: current ? 1 : 0
+                                border.color: current
+                                    ? Theme.accentLine
+                                    : "transparent"
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: modelData
+                                    color: current
+                                        ? Theme.accent : Theme.muted
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 8
+                                    font.weight: current
+                                        ? Font.DemiBold : Font.Normal
+                                }
+
+                                MouseArea {
+                                    id: workspaceMouse
+
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    enabled: !current
+                                    cursorShape: current
+                                        ? Qt.ArrowCursor
+                                        : Qt.PointingHandCursor
+                                    onClicked: root.moveToWorkspace(modelData)
+                                }
+                            }
                         }
                     }
                 }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                Layout.topMargin: 4
-                Layout.bottomMargin: 4
-                color: Theme.border
-            }
-
-            AppMenuItem {
-                Layout.fillWidth: true
-                label: "Cerrar ventana"
-                iconName: "window-close-symbolic"
-                glyph: "✕"
-                danger: true
-                onClicked: root.closeWindow()
             }
         }
     }

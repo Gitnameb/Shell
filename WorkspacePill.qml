@@ -76,6 +76,8 @@ Rectangle {
                 minimized: win.minimized === true,
                 maximized: win.maximized === true,
                 fullscreen: win.fullscreen === true,
+                floating: win.floating === true,
+                pinned: win.pinned === true,
                 activated: win.focused === true
             });
         }

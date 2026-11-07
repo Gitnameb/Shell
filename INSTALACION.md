@@ -453,7 +453,9 @@ Copiar `install/config/umbriel-config.toml` a
 - `[layout] mode = "stacking"` y `[layout.stacking]` con el tamaño/cascada
   elegidos.
 - `[display]` con brillo, atenuación y luz nocturna.
-- Los atajos `Mod+1..9`, `Mod+Shift+1..9`, `Mod+Tab`, etc.
+- Los atajos `Mod+1..9`, `Mod+Shift+1..9`, `Mod+Tab`, etc. En las ventanas:
+  `Mod+T` flotar, `Mod+P` fijar, `Mod+M` maximizar, `Mod+Shift+H`
+  minimizar y `Mod+Q` cerrar.
 
 Validar siempre:
 

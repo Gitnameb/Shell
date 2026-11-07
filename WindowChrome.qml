@@ -276,75 +276,28 @@ Variants {
                 RowLayout {
                     spacing: 1
 
-                    ChromeButton {
-                        iconName: "pin"
-                        glyph: "◆"
-                        tint: chrome.win && chrome.win.pinned
-                            ? Theme.accent : Theme.muted
-                        active: chrome.win && chrome.win.pinned
-                        tip: "Siempre encima"
-                        onClicked: {
-                            if (chrome.win)
-                                CompositorState.togglePinned(chrome.win.address);
-                        }
-                    }
+                    Repeater {
+                        model: WindowActions.itemsFor(chrome.win)
 
-                    ChromeButton {
-                        iconName: "window-duplicate-symbolic"
-                        glyph: "❐"
-                        tint: chrome.win && chrome.win.floating
-                            ? Theme.accent : Theme.muted
-                        active: chrome.win && chrome.win.floating
-                        tip: "Flotante / mosaico"
-                        onClicked: {
-                            if (chrome.win)
-                                CompositorState.toggleFloating(chrome.win.address);
-                        }
-                    }
+                        delegate: ChromeButton {
+                            required property var modelData
 
-                    ChromeButton {
-                        glyph: "#"
-                        tint: Theme.muted
-                        active: chrome.moveMenu
-                        tip: "Mover a otro escritorio"
-                        onClicked: chrome.moveMenu = !chrome.moveMenu
-                    }
-
-                    ChromeButton {
-                        iconName: chrome.win && chrome.win.maximized
-                            ? "view-restore" : "view-fullscreen"
-                        glyph: chrome.win && chrome.win.maximized ? "❐" : "▣"
-                        tint: chrome.win && chrome.win.maximized
-                            ? Theme.accent : Theme.muted
-                        active: chrome.win && chrome.win.maximized
-                        tip: "Maximizar / restaurar"
-                        onClicked: {
-                            if (chrome.win)
-                                CompositorState.toggleMaximized(chrome.win.address);
-                        }
-                    }
-
-                    ChromeButton {
-                        iconName: "go-down"
-                        glyph: "—"
-                        tint: Theme.muted
-                        tip: "Minimizar"
-                        onClicked: {
-                            chrome.moveMenu = false;
-                            if (chrome.win)
-                                CompositorState.minimizeWindow(chrome.win.address);
-                        }
-                    }
-
-                    ChromeButton {
-                        iconName: "window-close"
-                        glyph: "×"
-                        tint: Theme.muted
-                        danger: true
-                        tip: "Cerrar"
-                        onClicked: {
-                            if (chrome.win)
-                                CompositorState.closeWindow(chrome.win.address);
+                            iconName: modelData.icon
+                            glyph: modelData.glyph
+                            tint: modelData.active === true
+                                ? Theme.accent : Theme.muted
+                            active: modelData.active === true
+                            danger: modelData.danger === true
+                            tip: modelData.label + " · " + modelData.shortcut
+                            onClicked: {
+                                if (!chrome.win)
+                                    return;
+                                if (modelData.key === "move") {
+                                    chrome.moveMenu = !chrome.moveMenu;
+                                    return;
+                                }
+                                WindowActions.run(modelData.key, chrome.win);
+                            }
                         }
                     }
                 }

@@ -234,6 +234,13 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   avisa cuando termina. Si la acción no trae `Icon=`, se deduce del id
   (`view-private` para incógnito, `window-new`, `tab-new`, `go-home`,
   `user-trash`…). Detalle: `CONFIGURACION-UMBRIEL.md` §18.
+- **Acciones de ventana sincronizadas.** `WindowActions.qml` alimenta la barra
+  de título y el clic derecho con la misma lista: flotar, fijar, mover,
+  minimizar, maximizar y cerrar. Flotar desaparece en escritorios flotantes
+  (Umbriel lo rechaza) y su icono/etiqueta cambia entre «Hacer flotante» y
+  «Volver al mosaico». Cada fila muestra su atajo en un botón compacto; se
+  añadió `Mod+Shift+H` para minimizar. Detalle:
+  `CONFIGURACION-UMBRIEL.md` §18.
 - **Orden de las fichas.** La barra ya no hereda el orden de apilado del
   compositor: `CompositorState` numera cada ventana la primera vez que la ve y
   conserva ese orden al enfocar, minimizar o cambiar de escritorio. Detalle:
@@ -789,6 +796,8 @@ L=$(ls -t /run/user/1000/quickshell/by-id/*/log.qslog | head -1); tail -50 "$L"
   `extra_dim` y `warm`.
 - `~/Shell/WindowChrome.qml` — barra de título del shell (solo si el
   usuario desactiva la nativa).
+- `~/Shell/WindowActions.qml` — lista única de acciones de ventana para la
+  barra de título y el clic derecho.
 - `~/umbriel-fork/src/workspace/scratchpad.cpp` — ocultar/mostrar/restaurar.
 - `~/umbriel-fork/src/view/view_chrome.cpp` y `src/scene/ssd_frame.cpp` — barra
   nativa flotante o integrada; al alternar se recoloca el espacio de trabajo.

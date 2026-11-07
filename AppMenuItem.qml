@@ -11,13 +11,16 @@ Rectangle {
     property string iconSource: ""
     property bool iconTint: true
     property string glyph: ""
-    property string hint: ""
+    property string shortcut: ""
+    property bool active: false
     property bool danger: false
     signal clicked()
 
     implicitHeight: 30
     radius: 7
-    color: mouse.containsMouse && root.enabled ? Theme.hover : "transparent"
+    color: mouse.containsMouse && root.enabled
+        ? Theme.hover
+        : (root.active ? Theme.accentSoft : "transparent")
     opacity: root.enabled ? 1 : 0.45
 
     RowLayout {
@@ -34,7 +37,8 @@ Rectangle {
             name: root.iconName
             source: root.iconSource
             tint: root.iconTint
-            color: root.danger ? Theme.danger : Theme.muted
+            color: root.danger ? Theme.danger
+                : (root.active ? Theme.accent : Theme.muted)
             size: 15
             fallback: root.glyph
         }
@@ -48,12 +52,9 @@ Rectangle {
             elide: Text.ElideRight
         }
 
-        Text {
-            visible: root.hint.length > 0
-            text: root.hint
-            color: Theme.faint
-            font.family: Theme.fontFamily
-            font.pixelSize: 8
+        ShortcutKey {
+            Layout.preferredHeight: 16
+            label: root.shortcut
         }
     }
 

@@ -624,9 +624,9 @@ Thunar aporta «Home», «Computer» y «Trash».
 - El escaneo de entradas es asíncrono. `DesktopActions.qml` lo arranca al
   inicio del shell, guarda un contador de revisión y vuelve a resolver las
   acciones cuando termina.
-- `AppContextMenu.qml` dibuja esas acciones antes de las de ventana (enfocar,
-  maximizar, mover al escritorio, cerrar). `AppMenuItem.qml` acepta iconos de
-  tema o rutas completas.
+- `AppContextMenu.qml` dibuja esas acciones antes de las de ventana, que
+  salen de `WindowActions.qml`. `AppMenuItem.qml` acepta iconos de tema, rutas
+  completas y un atajo compacto a la derecha.
 - Si una app no declara `Actions=`, no aparece la sección. Eso depende del
   `.desktop` de la app, no del shell.
 - Iconos de las acciones: primero se usa el `Icon=` que declare el bloque
@@ -637,6 +637,31 @@ Thunar aporta «Home», «Computer» y «Trash».
   tema no tiene ninguno, queda el glifo `▸`.
 - Las acciones con icono de archivo (`Icon=/ruta/icono.svg`) se dibujan a color;
   las del tema se tiñen como el resto del menú.
+
+### Acciones de ventana del clic derecho
+
+Las opciones de ventana del menú y las de la barra de título salen de la misma
+lista, `WindowActions.qml`. Así no pueden desincronizarse: mismo orden, mismas
+etiquetas, mismos iconos y mismos atajos. El orden imita los botones nativos:
+flotar, fijar, mover, minimizar, maximizar y cerrar.
+
+- Se eliminó «Enfocar ventana»; para eso ya sirve pulsar la ficha de la app.
+- La opción de flotar solo aparece cuando puede hacer algo. En un escritorio
+  en modo flotante Umbriel rechaza `window-toggle-floating`, así que se oculta.
+  En mosaico la etiqueta y el icono cambian: «Hacer flotante»
+  (`window-duplicate`) o «Volver al mosaico» (`view-grid`).
+- Maximizar cambia entre «Maximizar» y «Restaurar tamaño»; minimizar entre
+  «Minimizar» y «Restaurar ventana». En pantalla completa se ocultan flotar y
+  maximizar. Cada opción comprueba además la capacidad del backend.
+- «Fijar siempre encima» viene de la barra de título y cambia a «Dejar de
+  fijar» cuando la ventana ya está fijada.
+- «Mover a escritorio» muestra los nueve botones en el mismo menú; se puede
+  plegar pulsando la fila.
+- Cada opción lleva un botón pequeño a la derecha con su atajo
+  (`ShortcutKey.qml`): `Super+T` flotar, `Super+P` fijar, `Super+Shift+1…9`
+  mover, `Super+Shift+H` minimizar, `Super+M` maximizar y `Super+Q` cerrar.
+  El atajo de minimizar se añadió a `[keybinds]` como
+  `"Mod+Shift+H" = "window-minimize"`.
 
 ## 19. Orden de las fichas de la barra
 

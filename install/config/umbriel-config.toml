@@ -122,6 +122,7 @@ minimize_glyph_hover = "#141519FF"
 "Mod+T" = { action = "window-toggle-floating", repeat = false }
 "Mod+P" = { action = "window-toggle-pinned", repeat = false }
 "Mod+M" = { action = "window-toggle-maximize", repeat = false }
+"Mod+Shift+H" = { action = "window-minimize", repeat = false }
 "Mod+F" = { action = "window-toggle-fullscreen", repeat = false }
 
 # Escritorios
