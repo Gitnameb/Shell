@@ -118,7 +118,7 @@ PanelWindow {
     Rectangle {
         anchors.fill: parent
         radius: 13
-        color: Theme.surface
+        color: Theme.glassMenu
         border.width: 1
         border.color: Theme.borderStrong
 

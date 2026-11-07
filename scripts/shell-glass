@@ -1,0 +1,150 @@
+#!/bin/sh
+# Cristal del shell: reglas de desenfoque por capa y radio global.
+#
+# Uso:
+#   shell-glass ensure          añade las layer_rule si faltan (idempotente)
+#   shell-glass blur <0-100>    cambia el radio global de Umbriel
+#   shell-glass status          muestra el estado actual
+#
+# El shell dibuja superficies transparentes; Umbriel solo las desenfoca si una
+# [[layer_rule]] coincide con su namespace. El radio es global: se aplica
+# también al blur de las ventanas. Todas las escrituras pasan por
+# shell-config-set, el escritor único de config.toml.
+set -eu
+
+cfg="${UMBRIEL_CONFIG:-$HOME/.config/umbriel/config.toml}"
+marker='# shell-glass: inicio'
+
+usage() {
+    cat <<'EOF'
+Configura el cristal del shell en Umbriel.
+
+Uso:
+  shell-glass ensure
+  shell-glass blur <0-100>
+  shell-glass status
+EOF
+}
+
+find_config_set() {
+    if [ -n "${SHELL_CONFIG_SET:-}" ] && [ -x "$SHELL_CONFIG_SET" ]; then
+        printf '%s\n' "$SHELL_CONFIG_SET"
+        return 0
+    fi
+    if command -v shell-config-set >/dev/null 2>&1; then
+        command -v shell-config-set
+        return 0
+    fi
+    here=$(cd "$(dirname "$0")" && pwd)
+    for candidate in "$here/shell-config-set" \
+            "$here/../install/bin/shell-config-set"; do
+        if [ -x "$candidate" ]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+reload() {
+    umbriel msg config-reload >/dev/null 2>&1 || true
+}
+
+layer_block() {
+    cat <<'EOF'
+
+# shell-glass: inicio
+# Cristal del shell. Umbriel desenfoca solo las superficies transparentes y,
+# con blur_optimized (por defecto), muestrea el fondo de pantalla en caché:
+# los paneles nunca desenfocan las ventanas que tengan detrás.
+[[layer_rule]]
+match.namespace = "^shell-(bar|side-panel|launcher|calendar|battery|tray|power|app-menu|osd|move-menu|welcome-mode|window-mode)$"
+blur = true
+blur_popups = true
+
+# Superficies transparentes a pantalla completa o que no son cristal: no
+# deben crear una región de desenfoque.
+[[layer_rule]]
+match.namespace = "^shell-(wallpaper|desktop-icons|outside-close|filter)$"
+blur = false
+# shell-glass: fin
+EOF
+}
+
+ensure() {
+    [ -f "$cfg" ] || exit 0
+    if grep -qF "$marker" "$cfg"; then
+        printf 'unchanged\n'
+        return 0
+    fi
+
+    config_set=$(find_config_set) \
+        || { echo "falta shell-config-set" >&2; exit 1; }
+    tmp=$(mktemp "${TMPDIR:-/tmp}/shell-glass.XXXXXX")
+    trap 'rm -f "$tmp"' EXIT
+    layer_block >"$tmp"
+    status=$("$config_set" --append-block "$tmp") || exit $?
+    if [ "$status" = changed ]; then
+        reload
+    fi
+    printf '%s\n' "$status"
+}
+
+blur() {
+    value=${1:-}
+    case "$value" in
+        ''|*[!0-9]*)
+            echo "uso: shell-glass blur <0-100>" >&2
+            exit 2
+            ;;
+    esac
+    value=$(printf '%s\n' "$value" | sed 's/^0*//')
+    [ -n "$value" ] || value=0
+    if [ "$value" -gt 100 ]; then
+        echo "el radio debe estar entre 0 y 100" >&2
+        exit 2
+    fi
+
+    [ -f "$cfg" ] || exit 0
+    config_set=$(find_config_set) \
+        || { echo "falta shell-config-set" >&2; exit 1; }
+    if [ "$value" -eq 0 ]; then
+        status=$("$config_set" --section appearance.blur \
+            enabled=false radius=0) || exit $?
+    else
+        status=$("$config_set" --section appearance.blur \
+            enabled=true "radius=$value") || exit $?
+    fi
+    if [ "$status" = changed ]; then
+        reload
+    fi
+    printf '%s\n' "$status"
+}
+
+status() {
+    if [ -f "$cfg" ] && grep -qF "$marker" "$cfg"; then
+        printf 'reglas: presentes\n'
+    else
+        printf 'reglas: ausentes\n'
+    fi
+
+    if [ -f "$cfg" ]; then
+        awk '
+            /^[[:space:]]*\[appearance\.blur\][[:space:]]*$/ { on = 1; next }
+            /^[[:space:]]*\[/ { on = 0 }
+            on && /^[[:space:]]*(enabled|radius|passes)[[:space:]]*=/ {
+                gsub(/[[:space:]]/, "", $0)
+                printf "%s ", $0
+            }
+        ' "$cfg"
+        printf '\n'
+    fi
+}
+
+case "${1:-}" in
+    ensure) ensure ;;
+    blur) shift; blur "${1:-}" ;;
+    status) status ;;
+    -h | --help) usage ;;
+    *) usage >&2; exit 2 ;;
+esac

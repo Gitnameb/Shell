@@ -80,9 +80,31 @@ Singleton {
     readonly property color muted: root.light ? "#565d67" : "#9aa1ab"
     readonly property color faint: root.light ? "#7c838d" : "#6b7280"
 
-    readonly property color glass: root.light
-        ? Qt.rgba(252 / 255, 252 / 255, 250 / 255, 0.90)
-        : Qt.rgba(17 / 255, 19 / 255, 22 / 255, 0.92)
+    // Cristal: Umbriel desenfoca estas superficies con la caché del fondo de
+    // pantalla, así que nunca se transparentan las ventanas de detrás. El
+    // porcentaje se convierte en alpha (0 opaco, 90 casi transparente) y los
+    // niveles copian los tintes del mockup: barra, tarjeta, menú y emergente.
+    readonly property real glassAlpha: Math.max(0.10, Math.min(1,
+        (100 - SettingsState.glassTransparency) / 100))
+    readonly property color glassBase: root.light ? "#fcfbf7" : "#12151a"
+
+    function glassAt(offset: real): color {
+        const base = root.glassBase;
+        return Qt.rgba(base.r, base.g, base.b,
+            Math.min(1, root.glassAlpha + offset));
+    }
+
+    readonly property color glass: root.glassAt(0)
+    readonly property color glassRaised: root.glassAt(0.06)
+    readonly property color glassCard: root.glassAt(0.10)
+    readonly property color glassMenu: root.glassAt(0.12)
+    readonly property color glassPopover: root.glassAt(0.14)
+    // Rellenos interiores sobre cristal: no son superficies opacas, solo un
+    // velo para separar fichas y campos sin tapar el desenfoque.
+    readonly property color glassInset: root.light
+        ? Qt.rgba(0, 0, 0, 0.045) : Qt.rgba(1, 1, 1, 0.035)
+    readonly property color glassInsetStrong: root.light
+        ? Qt.rgba(0, 0, 0, 0.07) : Qt.rgba(1, 1, 1, 0.06)
 
     readonly property color border: root.light
         ? Qt.rgba(0, 0, 0, 0.10) : Qt.rgba(1, 1, 1, 0.08)

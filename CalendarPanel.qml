@@ -441,7 +441,7 @@ PanelWindow {
     Rectangle {
         anchors.fill: parent
         radius: 16
-        color: Theme.surface
+        color: Theme.glassCard
         border.width: 1
         border.color: Theme.borderStrong
         clip: true

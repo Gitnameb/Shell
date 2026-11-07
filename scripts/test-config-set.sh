@@ -160,7 +160,7 @@ for n in 1 2 3 4 5 6 7 8; do
 done
 wait
 check "valida" $(umbriel config validate -c "$UMBRIEL_CONFIG" >/dev/null 2>&1; echo $?)
-check "188 líneas" $([ "$(wc -l <"$UMBRIEL_CONFIG")" = 188 ]; echo $?)
+check "mismas líneas" $([ "$(wc -l <"$UMBRIEL_CONFIG")" = "$(wc -l <"$template")" ]; echo $?)
 check "autostart intacto" $(grep -q '^autostart = \[' "$UMBRIEL_CONFIG"; echo $?)
 check "sin temporales" $(! ls "$UMBRIEL_CONFIG".shell-?????? >/dev/null 2>&1; echo $?)
 check "registro con cambios" $([ -s "$XDG_STATE_HOME/shell/config-writer.log" ]; echo $?)
@@ -171,6 +171,52 @@ touch "$UMBRIEL_CONFIG.shell-orphan"
 "$WRITER" --section input mod_hold_delay_ms=340 >/dev/null
 check "borra el huérfano" $([ ! -e "$UMBRIEL_CONFIG.shell-orphan" ]; echo $?)
 check "conserva el cerrojo" $([ -e "$UMBRIEL_CONFIG.shell-lock" ]; echo $?)
+
+echo "== 11. añade un bloque de tablas al final =="
+fresh
+cat >"$BASE/block.toml" <<'EOF'
+
+# shell-glass: inicio
+[[layer_rule]]
+match.namespace = "^shell-bar$"
+blur = true
+# shell-glass: fin
+EOF
+status=$("$WRITER" --append-block "$BASE/block.toml")
+check "sale 0" $?
+check "dice changed" $([ "$status" = changed ]; echo $?)
+check "añade la regla" $(grep -q '^\[\[layer_rule\]\]$' "$UMBRIEL_CONFIG"; echo $?)
+check "valida" $(umbriel config validate -c "$UMBRIEL_CONFIG" >/dev/null 2>&1; echo $?)
+before=$(head_sum "$UMBRIEL_CONFIG")
+status=$("$WRITER" --append-block "$BASE/block.toml")
+check "segunda vez unchanged" $([ "$status" = unchanged ]; echo $?)
+check "no duplica" $([ "$(grep -c '^match.namespace = "\^shell-bar\$"$' "$UMBRIEL_CONFIG")" = 1 ]; echo $?)
+check "mismo contenido" $([ "$(head_sum "$UMBRIEL_CONFIG")" = "$before" ]; echo $?)
+
+echo "== 12. una sección nueva no cae dentro de la regla =="
+fresh
+"$WRITER" --append-block "$BASE/block.toml" >/dev/null
+remove_section "$UMBRIEL_CONFIG" display
+"$WRITER" --section display brightness=0.800 >/dev/null
+check "crea display" $(grep -q '^\[display\]$' "$UMBRIEL_CONFIG"; echo $?)
+python3 - "$UMBRIEL_CONFIG" <<'PY2'
+import sys
+lines = open(sys.argv[1], encoding="utf-8").read().splitlines()
+display = lines.index("[display]")
+rule = lines.index("[[layer_rule]]")
+raise SystemExit(0 if display < rule else 1)
+PY2
+check "display antes de layer_rule" $?
+check "valida" $(umbriel config validate -c "$UMBRIEL_CONFIG" >/dev/null 2>&1; echo $?)
+
+echo "== 13. bloque inválido no toca el archivo =="
+fresh
+printf '\n[[layer_rule]]\nblur = sin comillas\n' >"$BASE/bad.toml"
+before=$(head_sum "$UMBRIEL_CONFIG")
+"$WRITER" --append-block "$BASE/bad.toml" >/dev/null 2>&1
+rc=$?
+check "devuelve error" $([ "$rc" != 0 ]; echo $?)
+check "archivo intacto" $([ "$(head_sum "$UMBRIEL_CONFIG")" = "$before" ]; echo $?)
 
 echo
 printf 'resultado: %d OK, %d fallos\n' "$pass" "$fail"

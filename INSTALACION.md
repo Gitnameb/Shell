@@ -401,6 +401,10 @@ install -m755 install/bin/umbriel-config-guard ~/.local/bin/umbriel-config-guard
 - `umbriel-config-guard`: repara `config.toml` antes de Umbriel y guarda copias
   buenas y rotas.
 
+`scripts/shell-glass` no se copia a `~/.local/bin`: el instalador lo ejecuta
+para añadir las reglas de capa del cristal y el shell lo llama para cambiar el
+radio de desenfoque. El escritor único sigue siendo `shell-config-set`.
+
 ### 5.3 Arranque automático
 
 En `~/.config/umbriel/config.toml`:
@@ -427,6 +431,10 @@ Revisar `wallpaperPath` (la plantilla lo deja vacío y usa un color de fondo) y
 `weatherPlace` (vacío significa que se deduce por IP). No copiar `credenciales`
 salvo que se sepa que hace falta: es un secreto local y el código actual no lo
 usa.
+
+`glassTransparency` (0–90, por defecto 22) y `glassBlur` (0–40, por defecto 12)
+controlan el cristal. El segundo es el radio global de Umbriel y también
+desenfoca las ventanas; `0` lo apaga.
 
 Los antiguos `alternar-autoocultar.sh`, `alternar-no-molestar.sh` y
 `alternar-posicion.sh` están en `install/config/` por si se quieren conservar;

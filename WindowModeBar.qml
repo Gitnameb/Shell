@@ -62,7 +62,7 @@ PanelWindow {
         implicitWidth: content.implicitWidth + 18
         implicitHeight: 42
         radius: 11
-        color: Theme.glass
+        color: Theme.glassRaised
         border.width: 1
         border.color: Theme.borderStrong
 

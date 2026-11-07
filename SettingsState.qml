@@ -97,6 +97,12 @@ Singleton {
     property string accentColor: "#b8bec7"
     // Propaga el modo y el acento a GTK y a las apps de KDE.
     property bool systemTheme: true
+    // Cristal del shell. «glassTransparency» es el porcentaje que se ve a
+    // través de la barra y los paneles: 0 es opaco y 90, casi transparente.
+    // «glassBlur» es el radio de desenfoque global de Umbriel, en la misma
+    // escala que el mockup (0 lo apaga). Afecta también a las ventanas.
+    property int glassTransparency: 22
+    property int glassBlur: 12
 
     // Distribución física del teclado. Se aplica a Hyprland en caliente y se
     // vuelve a aplicar al arrancar el shell.
@@ -148,6 +154,7 @@ Singleton {
     property bool chromeApplyPending: false
     property bool holdApplyPending: false
     property bool floatingApplyPending: false
+    property bool glassApplyPending: false
 
     readonly property string path: (Quickshell.env("HOME") || "/home/username")
         + "/.config/shell/settings.conf"
@@ -159,6 +166,8 @@ Singleton {
         + "/scripts/shell-mod-hold"
     readonly property string floatingScript: (Quickshell.shellDir || "")
         + "/scripts/shell-floating-defaults"
+    readonly property string glassScript: (Quickshell.shellDir || "")
+        + "/scripts/shell-glass"
     readonly property string wallpaperPickScript: (Quickshell.shellDir || "")
         + "/scripts/shell-wallpaper-pick"
 
@@ -436,6 +445,32 @@ Singleton {
         root.systemTheme = value;
     }
 
+    // El cristal se limita para que el texto siga siendo legible. Umbriel
+    // solo desenfoca donde hay transparencia, así que ambos valores se
+    // aplican juntos: el porcentaje en vivo y el radio con un pequeño
+    // retardo para no lanzar un proceso por cada paso del deslizador.
+    function setGlassTransparency(value: int): void {
+        root.glassTransparency = Math.max(0, Math.min(90, Math.round(value)));
+    }
+
+    function setGlassBlur(value: int): void {
+        root.glassBlur = Math.max(0, Math.min(40, Math.round(value)));
+    }
+
+    function applyGlassBlur(): void {
+        if (!root.ready)
+            return;
+        if (glassProc.running) {
+            root.glassApplyPending = true;
+            return;
+        }
+        root.glassApplyPending = false;
+        glassProc.command = [
+            "sh", root.glassScript, "blur", String(root.glassBlur)
+        ];
+        glassProc.running = true;
+    }
+
     function setKeyboardLayout(value: string): void {
         const clean = String(value).trim().toLowerCase();
         if (!/^[a-z0-9_]+$/.test(clean))
@@ -560,6 +595,8 @@ Singleton {
             + "themeMode=%s\\n"
             + "accentColor=%s\\n"
             + "systemTheme=%s\\n"
+            + "glassTransparency=%s\\n"
+            + "glassBlur=%s\\n"
             + "keyboardLayout=%s\\n"
             + "workspaceModeDefault=%s\\n"
             + "workspaceModes=%s\\n"
@@ -604,6 +641,8 @@ Singleton {
             root.themeMode,
             root.accentColor,
             root.systemTheme ? "1" : "0",
+            root.glassTransparency,
+            root.glassBlur,
             root.keyboardLayout,
             root.workspaceModeDefault,
             root.workspaceModes,
@@ -683,6 +722,12 @@ Singleton {
         if (root.systemTheme)
             root.requestSystemTheme();
     }
+    onGlassTransparencyChanged: saveTimer.restart()
+    onGlassBlurChanged: {
+        saveTimer.restart();
+        if (root.ready)
+            glassApplyTimer.restart();
+    }
     onKeyboardLayoutChanged: {
         saveTimer.restart();
         root.applyKeyboardLayout();
@@ -722,6 +767,13 @@ Singleton {
     }
 
     Timer {
+        id: glassApplyTimer
+        interval: 260
+        repeat: false
+        onTriggered: root.applyGlassBlur()
+    }
+
+    Timer {
         id: themeTimer
         interval: 220
         repeat: false
@@ -735,6 +787,17 @@ Singleton {
             if (root.themeApplyPending) {
                 root.themeApplyPending = false;
                 root.applySystemTheme();
+            }
+        }
+    }
+
+    Process {
+        id: glassProc
+
+        onExited: {
+            if (root.glassApplyPending) {
+                root.glassApplyPending = false;
+                root.applyGlassBlur();
             }
         }
     }
@@ -770,6 +833,8 @@ Singleton {
             let mode = root.themeMode;
             let accent = root.accentColor;
             let sysTheme = root.systemTheme;
+            let glassPct = root.glassTransparency;
+            let glassRadius = root.glassBlur;
             let layout = root.keyboardLayout;
             let shortcut = root.micShortcut;
             let hotspotOff = root.hotspotAutoOff;
@@ -861,6 +926,14 @@ Singleton {
                         accent = value.toLowerCase();
                 } else if (key === "systemTheme") {
                     sysTheme = value === "1" || value === "true";
+                } else if (key === "glassTransparency") {
+                    const parsed = parseInt(value, 10);
+                    if (!isNaN(parsed))
+                        glassPct = Math.max(0, Math.min(90, parsed));
+                } else if (key === "glassBlur") {
+                    const parsed = parseInt(value, 10);
+                    if (!isNaN(parsed))
+                        glassRadius = Math.max(0, Math.min(40, parsed));
                 } else if (key === "keyboardLayout") {
                     if (/^[a-z0-9_]+$/.test(value))
                         layout = value;
@@ -940,6 +1013,8 @@ Singleton {
             root.themeMode = mode;
             root.accentColor = accent;
             root.systemTheme = sysTheme;
+            root.glassTransparency = glassPct;
+            root.glassBlur = glassRadius;
             root.keyboardLayout = layout;
             root.hotspotAutoOff = hotspotOff;
             root.hotspotMinutes = hotspotMin;
@@ -966,6 +1041,7 @@ Singleton {
             root.applyWindowChrome();
             root.applySuperHoldDelay();
             root.applyFloatingDefaults();
+            root.applyGlassBlur();
             root.applyMicShortcut();
             root.applyKeyboardLayout();
             root.applyIdle();

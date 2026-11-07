@@ -96,7 +96,7 @@ Rectangle {
     radius: 9
     color: root.centerDragSelf
         ? Theme.accentGhost
-        : (active ? Theme.accentSoft : Theme.surfaceAlt)
+        : (active ? Theme.accentSoft : Theme.glassInset)
     border.width: root.centerDragSelf ? 2 : 1
     border.color: root.centerDragSelf
         ? Theme.accent
@@ -118,7 +118,7 @@ Rectangle {
             Layout.preferredWidth: root.iconBox
             Layout.preferredHeight: root.iconBox
             radius: 8
-            color: root.active ? Theme.accentSoft : Theme.surface
+            color: root.active ? Theme.accentSoft : Theme.glassInsetStrong
 
             Row {
                 anchors.centerIn: parent

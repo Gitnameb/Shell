@@ -163,6 +163,19 @@ else
     chmod 644 "$good_file"
 fi
 
+# Las reglas de capa del cristal se añaden también a configuraciones que ya
+# existían: el cristal no funciona sin ellas, y la plantilla sola no basta.
+log "Añadiendo las reglas de cristal del shell a Umbriel."
+if (( DRY_RUN )); then
+    printf '\033[2m[dry-run]\033[0m %s ensure\n' \
+        "$REPO_DIR/scripts/shell-glass"
+else
+    SHELL_CONFIG_SET="$TARGET_HOME/.local/bin/shell-config-set" \
+        UMBRIEL_CONFIG="$config_file" \
+        "$REPO_DIR/scripts/shell-glass" ensure \
+        || warn "No se pudieron añadir las reglas de cristal; revisa config.toml."
+fi
+
 log "Instalando el guardián de configuración de Umbriel."
 guard_dropin="$TARGET_HOME/.config/systemd/user/umbriel.service.d/50-config-guard.conf"
 run mkdir -p "$(dirname "$guard_dropin")"

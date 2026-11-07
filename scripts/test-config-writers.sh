@@ -27,6 +27,7 @@ CFG="$BASE/config.toml"
 sed "s|/home/USUARIO|$HOME|g" "$REPO_DIR/install/config/umbriel-config.toml" \
     >"$CFG"
 chmod 600 "$CFG"
+BASE_LINES=$(wc -l <"$CFG")
 
 # El compositor falso registra las recargas, pero delega la validación al
 # binario real para que las pruebas no dependan de una sesión gráfica.
@@ -128,8 +129,22 @@ check "fondo claro" $(grep -q '^background = "#f4f3f0FF"$' "$CFG"; echo $?)
 check "recarga" $([ "$(reloads)" = 7 ]; echo $?)
 check "valida" $(validate; echo $?)
 
-echo "== 8. integridad =="
-check "188 líneas" $([ "$(wc -l <"$CFG")" = 188 ]; echo $?)
+echo "== 8. cristal =="
+"$REPO_DIR/scripts/shell-glass" blur 18 >/dev/null 2>&1
+check "sale 0" $?
+check "radius 18" $(grep -q '^radius = 18$' "$CFG"; echo $?)
+check "enabled true" $(grep -q '^enabled = true$' "$CFG"; echo $?)
+check "recarga" $([ "$(reloads)" = 8 ]; echo $?)
+check "valida" $(validate; echo $?)
+"$REPO_DIR/scripts/shell-glass" blur 18 >/dev/null 2>&1
+check "segunda vez no recarga" $([ "$(reloads)" = 8 ]; echo $?)
+"$REPO_DIR/scripts/shell-glass" blur 0 >/dev/null 2>&1
+check "cero apaga" $(grep -q '^enabled = false$' "$CFG"; echo $?)
+check "cero deja radio 0" $(grep -q '^radius = 0$' "$CFG"; echo $?)
+check "valida tras apagar" $(validate; echo $?)
+
+echo "== 9. integridad =="
+check "mismas líneas" $([ "$(wc -l <"$CFG")" = "$BASE_LINES" ]; echo $?)
 check "comentario preservado" $(grep -q '# Superpuesta: no reserva espacio' "$CFG"; echo $?)
 check "autostart intacto" $(grep -q '^autostart = \[' "$CFG"; echo $?)
 check "modo 600" $([ "$(stat -c '%a' "$CFG")" = 600 ]; echo $?)

@@ -136,6 +136,17 @@ ShellRoot {
             SettingsState.setWindowChrome(style);
         }
 
+        // Cristal del shell desde la terminal:
+        //   qs ipc -c shell call appearance glass 22 12
+        // El primer valor es la transparencia (0-90) y el segundo el radio
+        // global de desenfoque de Umbriel (0-40; 0 lo apaga).
+        function glass(transparency: string, blurRadius: string): void {
+            if (transparency !== "")
+                SettingsState.setGlassTransparency(Number(transparency));
+            if (blurRadius !== "")
+                SettingsState.setGlassBlur(Number(blurRadius));
+        }
+
         // Ciudad del clima; vacío vuelve a la detección por IP.
         //   qs ipc -c shell call appearance weatherPlace Madrid
         function weatherPlace(value: string): void {

@@ -113,7 +113,7 @@ PanelWindow {
         height: Math.min(560, root.height - 96)
         anchors.centerIn: parent
         radius: 18
-        color: Theme.surface
+        color: Theme.glassCard
         border.width: 1
         border.color: Theme.borderStrong
 

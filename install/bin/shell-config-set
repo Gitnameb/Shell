@@ -9,9 +9,12 @@ Uso:
     shell-config-set --section display brightness=0.900 extra_dim=0.000
     shell-config-set --section input.keyboard layout='"es"'
     shell-config-set --section colors --section colors.border ...
+    shell-config-set --append-block reglas.toml
 
 Los valores son TOML en crudo: números sin comillas, cadenas entre comillas y
-booleanos true/false. La salida es `changed` o `unchanged`.
+booleanos true/false. `--append-block` añade un bloque literal al final (por
+ejemplo, una o varias tablas `[[layer_rule]]`). La salida es `changed` o
+`unchanged`.
 
 Variables:
     UMBRIEL_CONFIG   ruta alternativa de config.toml
@@ -33,6 +36,7 @@ from pathlib import Path
 from typing import NoReturn
 
 SECTION_RE = re.compile(r"^[ \t]*\[([^\[\]]+)\][ \t]*(?:#.*)?$")
+ARRAY_RE = re.compile(r"^[ \t]*\[\[([^\[\]]+)\]\][ \t]*(?:#.*)?$")
 KEY_RE = re.compile(r"^([ \t]*)([A-Za-z0-9_-]+)([ \t]*=[ \t]*)(.*)$")
 SECTION_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 KEY_NAME_RE = re.compile(r"^[A-Za-z0-9_-]+$")
@@ -43,8 +47,11 @@ def die(message: str) -> NoReturn:
     raise SystemExit(1)
 
 
-def parse_args(argv: list[str]) -> list[tuple[str, list[tuple[str, str]]]]:
+def parse_args(
+    argv: list[str],
+) -> tuple[list[tuple[str, list[tuple[str, str]]]], list[str]]:
     patches: list[tuple[str, list[tuple[str, str]]]] = []
+    blocks: list[str] = []
     current: tuple[str, list[tuple[str, str]]] | None = None
     i = 0
 
@@ -62,6 +69,14 @@ def parse_args(argv: list[str]) -> list[tuple[str, list[tuple[str, str]]]]:
                 die(f"sección inválida: {section}")
             current = (section, [])
             patches.append(current)
+        elif arg == "--append-block":
+            i += 1
+            if i >= len(argv):
+                die("falta la ruta del bloque después de --append-block")
+            try:
+                blocks.append(Path(argv[i]).read_text(encoding="utf-8"))
+            except OSError as exc:
+                die(f"no se pudo leer el bloque {argv[i]}: {exc}")
         elif arg.startswith("--"):
             die(f"opción desconocida: {arg}")
         else:
@@ -81,9 +96,9 @@ def parse_args(argv: list[str]) -> list[tuple[str, list[tuple[str, str]]]]:
             current[1].append((key, value))
         i += 1
 
-    if not patches or all(not items for _, items in patches):
+    if not blocks and not any(items for _, items in patches):
         die("no hay cambios que aplicar")
-    return patches
+    return patches, blocks
 
 
 def find_section(lines: list[str], section: str) -> int | None:
@@ -95,7 +110,9 @@ def find_section(lines: list[str], section: str) -> int | None:
 
 
 def apply_patch(
-    text: str, patches: list[tuple[str, list[tuple[str, str]]]]
+    text: str,
+    patches: list[tuple[str, list[tuple[str, str]]]],
+    blocks: list[str] | None = None,
 ) -> tuple[str, bool]:
     body = text.rstrip("\n")
     lines = body.split("\n") if body else []
@@ -106,16 +123,27 @@ def apply_patch(
 
         header = find_section(lines, section)
         if header is None:
-            if lines and lines[-1].strip():
-                lines.append("")
-            lines.append(f"[{section}]")
+            # Las tablas de arrays ([[layer_rule]]) van al final para que un
+            # `[seccion]` nuevo no quede dentro de la última regla.
+            insert_at = len(lines)
+            for index, line in enumerate(lines):
+                if ARRAY_RE.match(line):
+                    insert_at = index
+                    break
+            new_lines: list[str] = []
+            if insert_at > 0 and lines[insert_at - 1].strip():
+                new_lines.append("")
+            new_lines.append(f"[{section}]")
             for key, value in items:
-                lines.append(f"{key} = {value}")
+                new_lines.append(f"{key} = {value}")
+            if insert_at < len(lines):
+                new_lines.append("")
+            lines[insert_at:insert_at] = new_lines
             continue
 
         end = len(lines)
         for index in range(header + 1, len(lines)):
-            if SECTION_RE.match(lines[index]):
+            if SECTION_RE.match(lines[index]) or ARRAY_RE.match(lines[index]):
                 end = index
                 break
 
@@ -143,6 +171,16 @@ def apply_patch(
             for key, value in missing:
                 lines.insert(insert_at, f"{key} = {value}")
                 insert_at += 1
+
+    for block in blocks or []:
+        block_body = block.strip("\n")
+        if not block_body:
+            continue
+        if block_body in "\n".join(lines):
+            continue
+        if lines and lines[-1].strip():
+            lines.append("")
+        lines.extend(block_body.split("\n"))
 
     new_text = "\n".join(lines) + "\n"
     return new_text, new_text != text
@@ -174,7 +212,8 @@ def validate_with_umbriel(path: Path) -> None:
 
 
 def log_change(path: Path,
-               patches: list[tuple[str, list[tuple[str, str]]]]) -> None:
+               patches: list[tuple[str, list[tuple[str, str]]]],
+               blocks: list[str] | None = None) -> None:
     state = Path(os.environ.get("XDG_STATE_HOME", "")
                  or (Path.home() / ".local" / "state"))
     log_dir = state / "shell"
@@ -182,6 +221,8 @@ def log_change(path: Path,
     keys = ", ".join(
         f"[{section}] {key}" for section, items in patches for key, _ in items
     )
+    if blocks:
+        keys = (keys + ", " if keys else "") + "bloque añadido"
     try:
         log_dir.mkdir(parents=True, exist_ok=True)
         with open(log_dir / "config-writer.log", "a", encoding="utf-8") as handle:
@@ -206,7 +247,7 @@ def cleanup_temps(config: Path) -> None:
 
 
 def main() -> int:
-    patches = parse_args(sys.argv[1:])
+    patches, blocks = parse_args(sys.argv[1:])
 
     config = Path(
         os.environ.get("UMBRIEL_CONFIG", "")
@@ -221,7 +262,7 @@ def main() -> int:
         try:
             cleanup_temps(config)
             original = config.read_text(encoding="utf-8")
-            new_text, changed = apply_patch(original, patches)
+            new_text, changed = apply_patch(original, patches, blocks)
             if not changed:
                 print("unchanged")
                 return 0
@@ -247,7 +288,7 @@ def main() -> int:
         finally:
             fcntl.flock(lock, fcntl.LOCK_UN)
 
-    log_change(config, patches)
+    log_change(config, patches, blocks)
     print("changed")
     return 0
 

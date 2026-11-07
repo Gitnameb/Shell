@@ -5048,6 +5048,135 @@ ColumnLayout {
                 color: Theme.border
             }
 
+            // ------------------------------------------------------- cristal
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Cristal"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                    font.weight: Font.DemiBold
+                }
+
+                Text {
+                    text: "Restablecer"
+                    color: glassResetMouse.containsMouse
+                        ? Theme.accent : Theme.faint
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+
+                    MouseArea {
+                        id: glassResetMouse
+                        anchors.fill: parent
+                        anchors.margins: -4
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            SettingsState.setGlassTransparency(22);
+                            SettingsState.setGlassBlur(12);
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Transparencia"
+                    color: Theme.muted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                }
+
+                Text {
+                    text: SettingsState.glassTransparency + " %"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                }
+            }
+
+            ShellSlider {
+                id: glassTransparencySlider
+
+                Layout.fillWidth: true
+                from: 0
+                to: 90
+                stepSize: 2
+                value: SettingsState.glassTransparency
+                onMoved: SettingsState.setGlassTransparency(value)
+            }
+
+            Binding {
+                target: glassTransparencySlider
+                property: "value"
+                value: SettingsState.glassTransparency
+                when: !glassTransparencySlider.pressed
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Desenfoque"
+                    color: Theme.muted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                }
+
+                Text {
+                    text: SettingsState.glassBlur + " px"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                }
+            }
+
+            ShellSlider {
+                id: glassBlurSlider
+
+                Layout.fillWidth: true
+                from: 0
+                to: 40
+                stepSize: 2
+                value: SettingsState.glassBlur
+                onMoved: SettingsState.setGlassBlur(value)
+            }
+
+            Binding {
+                target: glassBlurSlider
+                property: "value"
+                value: SettingsState.glassBlur
+                when: !glassBlurSlider.pressed
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: "El desenfoque es global: también afecta a las ventanas. "
+                    + "El cristal muestra solo el fondo de pantalla."
+                color: Theme.faint
+                font.family: Theme.fontFamily
+                font.pixelSize: 8
+                wrapMode: Text.WordWrap
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: Theme.border
+            }
+
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8

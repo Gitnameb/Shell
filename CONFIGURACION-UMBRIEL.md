@@ -38,6 +38,7 @@ archivo por su cuenta: todos llaman a `shell-config-set`, el escritor único.
 | `scripts/shell-floating-defaults` | `[layout.stacking]` | `shell-config-set` |
 | `scripts/shell-window-chrome` | `[appearance.title_bar] overlay` | `shell-config-set` |
 | `scripts/shell-display-filter` | `[display]` | `shell-config-set` |
+| `scripts/shell-glass` | `[[layer_rule]]` y `[appearance.blur]` | `shell-config-set` |
 | `install/bin/shell-keyboard-layout` | `[input.keyboard] layout` | `shell-config-set` |
 | `install/bin/shell-umbriel-theme` | `[colors]`, `[colors.border]` y `[colors.title_bar]` | `shell-config-set` |
 | `install/bin/shell-config-set` | Cualquier clave de esas secciones | Python, `flock` + `tomllib` + validación + `os.replace` |
@@ -256,25 +257,26 @@ systemctl --user show umbriel.service -p ExecStartPre
 
 ### Concurrencia
 
-Se probaron ocho procesos concurrentes, cinco rondas, ejecutando los seis
-scripts y el guardián. El archivo conservó sus 188 líneas, todas las secciones
-y `autostart`, y siguió validando. El escritor solo hizo 22 sustituciones
+Se probaron ocho procesos concurrentes, cinco rondas, ejecutando los siete
+scripts y el guardián. El archivo conservó todas sus líneas, todas las
+secciones y `autostart`, y siguió validando. El escritor solo hizo 22 sustituciones
 reales; el resto fueron `unchanged` y no tocaron el archivo.
 
 ### Escritor único
 
 ```sh
-./scripts/test-config-set.sh       # 36 comprobaciones
-./scripts/test-config-writers.sh   # 39 comprobaciones
+./scripts/test-config-set.sh       # 48 comprobaciones
+./scripts/test-config-writers.sh   # 48 comprobaciones
+./scripts/test-glass-rules.sh      # 21 comprobaciones
 ```
 
 `test-config-set.sh` cubre actualización de claves, idempotencia, varias
 secciones en una llamada, valores TOML inválidos, claves desconocidas, claves y
-secciones que faltan, conservación del modo y concurrencia.
+secciones que faltan, bloques de tablas, conservación del modo y concurrencia.
 
-`test-config-writers.sh` ejecuta los seis scripts migrados contra una copia
+`test-config-writers.sh` ejecuta los siete scripts migrados contra una copia
 temporal y comprueba que escriben lo esperado, que solo piden recarga cuando
-hay cambios y que el archivo conserva comentarios, `autostart` y sus 188
+hay cambios y que el archivo conserva comentarios, `autostart` y todas sus
 líneas.
 
 ### Guardián
@@ -371,9 +373,10 @@ para escribir.
 Verificados:
 
 - Ocho escritores concurrentes durante cinco rondas: el archivo siempre valida
-  y conserva todas las secciones, `autostart` y sus 188 líneas.
+  y conserva todas las secciones y `autostart`.
 - Prueba de estrés: 40 escritores, 13 de ellos terminados con `kill -9`; el
-  archivo quedó válido, con 188 líneas, `autostart` y sin temporales huérfanos.
+  archivo quedó válido, con todas sus líneas, `autostart` y sin temporales
+  huérfanos.
 - Un valor TOML inválido no modifica el archivo.
 - Una clave que Umbriel no conoce no modifica el archivo.
 - Una clave conocida que faltaba se añade y valida.
@@ -401,7 +404,49 @@ Verificados:
   `[general] autostart`.
 - No guardar como `.good` una configuración sin autostart activo.
 - No cambiar el nombre del lock sin cambiar todos los escritores.
-- Probar con `./scripts/test-config-set.sh` y
-  `./scripts/test-config-writers.sh` antes de dar un cambio por terminado.
+- Probar con `./scripts/test-config-set.sh`,
+  `./scripts/test-config-writers.sh` y `./scripts/test-glass-rules.sh` antes de
+  dar un cambio por terminado.
 - Si se toca el instalador, ejecutar `./scripts/install-user-config.sh
   --dry-run` antes de probar en limpio.
+
+## 11. Cristal y desenfoque
+
+El shell dibuja superficies transparentes, pero Umbriel solo las desenfoca si
+una regla de capa coincide con su namespace. Las reglas viven en
+`config.toml` y las administra `scripts/shell-glass`:
+
+```sh
+./scripts/shell-glass ensure        # añade las reglas si faltan
+./scripts/shell-glass blur 12       # radio global; 0 apaga el blur
+./scripts/shell-glass status
+```
+
+Bloque que se añade (idempotente, marcado con `# shell-glass: inicio`):
+
+```toml
+[[layer_rule]]
+match.namespace = "^shell-(bar|side-panel|launcher|calendar|battery|tray|power|app-menu|osd|move-menu|welcome-mode|window-mode)$"
+blur = true
+blur_popups = true
+
+[[layer_rule]]
+match.namespace = "^shell-(wallpaper|desktop-icons|outside-close|filter)$"
+blur = false
+```
+
+- `blur_optimized` queda en su valor por defecto (`true`): Umbriel muestrea la
+  caché del fondo de pantalla, así que el cristal nunca desenfoca las ventanas
+  que haya detrás. Es el mismo criterio que el mockup.
+- `shell-wallpaper`, `shell-desktop-icons`, `shell-outside-close` y
+  `shell-filter` se excluyen: son superficies transparentes a pantalla
+  completa (o el velo de luz nocturna) y no deben crear una región de blur.
+- El radio es **global** en Umbriel. El deslizador «Desenfoque» del shell
+  escribe `[appearance.blur] radius` y también afecta al blur de las ventanas.
+- La transparencia (`glassTransparency`, 0–90) solo cambia el alpha del shell:
+  `alpha = (100 - transparencia) / 100`. Por defecto 22 → 0.78.
+- No definir `blur_ignore_alpha` alto: con transparencias fuertes el alpha de
+  la superficie baja y Umbriel podría saltarse el blur. El valor por defecto
+  es 0.0 y se deja así.
+- Pruebas: `./scripts/test-glass-rules.sh` y
+  `./scripts/test-config-writers.sh`.

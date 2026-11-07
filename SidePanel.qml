@@ -402,7 +402,7 @@ PanelWindow {
         // En modo rápido el fondo y el borde pertenecen a la ventana. En modo
         // completo cada sección dibuja su propia tarjeta y aquí no hay nada.
         color: dragOver ? Theme.accentGhost
-            : (root.quickMode ? Theme.surface : "transparent")
+            : (root.quickMode ? Theme.glassCard : "transparent")
         border.width: dragOver ? 2 : (root.quickMode ? 1 : 0)
         border.color: dragOver ? Theme.accent : Theme.borderStrong
 
@@ -465,7 +465,7 @@ PanelWindow {
                     visible: root.showNotifications
                     Layout.preferredHeight: notifContent.implicitHeight
                     radius: root.quickMode ? 0 : 16
-                    color: root.quickMode ? "transparent" : Theme.surface
+                    color: root.quickMode ? "transparent" : Theme.glassCard
                     border.width: root.quickMode ? 0 : 1
                     border.color: Theme.borderStrong
 
@@ -926,7 +926,7 @@ PanelWindow {
                     Layout.preferredHeight: ccCardContent.implicitHeight
                         + (root.quickMode ? 0 : 24)
                     radius: root.quickMode ? 0 : 16
-                    color: root.quickMode ? "transparent" : Theme.surface
+                    color: root.quickMode ? "transparent" : Theme.glassCard
                     border.width: root.quickMode ? 0 : 1
                     border.color: Theme.borderStrong
 

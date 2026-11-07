@@ -90,7 +90,7 @@ PanelWindow {
         width: 300
         height: 46
         radius: 13
-        color: Theme.surface
+        color: Theme.glassRaised
         border.width: 1
         border.color: Theme.borderStrong
 

@@ -43,7 +43,7 @@ PanelWindow {
             width: Math.min(660, parent.width - 48)
             implicitHeight: cardColumn.implicitHeight + 44
             radius: 18
-            color: Theme.surface
+            color: Theme.glassCard
             border.width: 1
             border.color: Theme.borderStrong
 
