@@ -227,11 +227,11 @@ PanelWindow {
 
         // Diagnóstico de las tarjetas emergentes.
         function popups(): string {
-            const list = NotificationState.banners || [];
+            const list = NotificationState.bannerModel;
             const parts = [];
-            for (let i = 0; i < list.length; i++)
-                parts.push(list[i].summary);
-            return "count=" + list.length + " items=" + parts.join("|");
+            for (let i = 0; i < list.count; i++)
+                parts.push(list.get(i).summary);
+            return "count=" + list.count + " items=" + parts.join("|");
         }
 
         function unified(value: bool): void {

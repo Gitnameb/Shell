@@ -258,21 +258,36 @@ Variants {
         }
 
         // ------------------------------------------------- líneas de mosaico
+        // Una banda ancha y suave marca la zona sensible (16 px por lado de
+        // cada borde); la línea fina del centro es la guía del mockup.
         Repeater {
             model: handleScreen.dividers
 
-            delegate: Rectangle {
+            delegate: Item {
                 required property var modelData
 
-                x: modelData.vertical
-                    ? modelData.position - 1 : modelData.start
-                y: modelData.vertical
-                    ? modelData.start : modelData.position - 1
-                width: modelData.vertical ? 2 : modelData.end - modelData.start
-                height: modelData.vertical ? modelData.end - modelData.start : 2
-                radius: 1
-                color: Theme.accent
-                opacity: 0.38
+                readonly property bool vertical: modelData.vertical === true
+
+                x: vertical ? modelData.position - 7 : modelData.start
+                y: vertical ? modelData.start : modelData.position - 7
+                width: vertical ? 14 : modelData.end - modelData.start
+                height: vertical ? modelData.end - modelData.start : 14
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 7
+                    color: Theme.accent
+                    opacity: 0.10
+                }
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: parent.vertical ? 2 : parent.width
+                    height: parent.vertical ? parent.height : 2
+                    radius: 1
+                    color: Theme.accent
+                    opacity: 0.42
+                }
             }
         }
 
@@ -283,7 +298,7 @@ Variants {
             delegate: Rectangle {
                 required property var modelData
 
-                readonly property int size: 7
+                readonly property int size: 8
 
                 x: modelData.x - width / 2
                 y: modelData.y - height / 2
@@ -291,9 +306,9 @@ Variants {
                 height: size
                 radius: size / 2
                 color: Theme.accent
-                opacity: modelData.focused ? 0.85 : 0.5
+                opacity: modelData.focused ? 0.9 : 0.55
                 border.width: 1
-                border.color: Qt.rgba(0, 0, 0, 0.28)
+                border.color: Qt.rgba(0, 0, 0, 0.30)
             }
         }
     }

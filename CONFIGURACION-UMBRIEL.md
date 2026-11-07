@@ -704,23 +704,38 @@ etiquetas, mismos iconos y mismos atajos. El orden imita los botones nativos
   beneficio. El atajo de minimizar se añadió a `[keybinds]` como
   `"Mod+Shift+H" = "window-minimize"`.
 
-### Redimensionar ventanas
+### Redimensionar e intercambiar ventanas
 
 Con Super mantenido (o con el modo ventanas fijado), `WindowHandles.qml` dibuja
 una capa transparente encima de las ventanas:
 
-- una línea de 2 px centrada en el hueco entre cada par de mosaicos vecinos,
-  con un margen del 7 % en los extremos como en el mockup;
+- una banda de 14 px centrada en el hueco entre cada par de mosaicos vecinos,
+  con una línea de 2 px en el centro y un margen del 7 % en los extremos como
+  en el mockup;
 - cuatro puntos en las esquinas de la ventana flotante **enfocada**, unos
   píxeles hacia dentro para que queden sobre el borde redondeado.
 
 La capa usa `mask: Region {}`: no captura clics. La manipulación la sigue
-haciendo Umbriel. En el fork, un arrastre con Mod que empieza a menos de 12 px
-del borde de una ventana flotante redimensiona en vez de mover, y el cursor
-cambia en esa misma franja. El resto de la ventana sigue moviendo. Si una
-ventana flotante tapa un divisor, la línea correspondiente se oculta para no
-dibujarse sobre su contenido. Probado con un puntero virtual en una sesión
-anidada: el borde derecho cambió el ancho y el centro movió la ventana.
+haciendo Umbriel. En el fork:
+
+- La franja de redimensionado de mosaicos es de 16 px a cada lado del borde,
+  así que la zona útil queda centrada en el hueco y funciona igual desde
+  cualquiera de las dos ventanas. Antes era de 10 px y costaba acertar.
+- La franja de una ventana flotante es de 20 px alrededor de sus bordes y
+  esquinas; el resto de la ventana sigue moviendo.
+- Un arrastre con Mod y botón izquierdo sobre el contenido de un mosaico
+  **intercambia** esa ventana con la que quede debajo: la origen se atenúa, la
+  destino se resalta y al soltar cambian de sitio. Un clic sin arrastrar solo
+  enfoca.
+- El movimiento nativo de mosaicos pasa al botón derecho. Si el clic derecho
+  empieza sobre un borde compartido, redimensiona ese reparto; si empieza en el
+  contenido, mueve la ventana como antes.
+- En una ventana flotante, el botón derecho sigue redimensionando.
+
+Si una ventana flotante tapa un divisor, la línea correspondiente se oculta
+para no dibujarse sobre su contenido. Probado con un puntero virtual en una
+sesión anidada: el borde compartido redimensionó desde ambos lados, el centro
+izquierdo intercambió las dos ventanas y el derecho las reubicó.
 
 ### Barra de título nativa
 
@@ -794,6 +809,12 @@ las notificaciones siguen guardándose en el historial hasta que se cierran.
   `expireTimeout` de la notificación (en milisegundos) y 5 s cuando la app
   deja que el servidor decida (`-1`). Un `-t 0` o una urgencia crítica se
   quedan hasta que se cierran.
+- Comparten el margen de 8 px de la barra y el ancho de 360 px del panel
+  lateral, y quedan 10 px por debajo de la barra, para que no parezcan
+  descolgadas del resto del shell.
+- El modelo es un `ListModel`: al llegar un aviso se inserta una tarjeta nueva
+  sin reconstruir las anteriores, así que solo la nueva hace la animación de
+  entrada y las viejas no parpadean.
 - Al pasar el ratón, el temporizador se pausa. Un clic en la tarjeta abre el
   panel de notificaciones; la «×» descarta el aviso del historial (y con una
   alarma, `AlarmState` deja de sonar).

@@ -50,25 +50,32 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   `~/.config/shell/settings.conf` y sigue valiendo 9 por defecto. «Tema en las
   apps» ahora explica que propaga el modo y el acento a GTK y a las apps de
   KDE.
-- **Redimensionar ventanas en modo Super (2026-11-07).** Con Super mantenido
-  aparece una línea en cada borde compartido entre mosaicos y cuatro puntos en
-  las esquinas de la ventana flotante enfocada (`WindowHandles.qml`). La capa
-  no captura entrada: Umbriel sigue haciendo el trabajo. En el fork, un
-  arrastre con Mod que empieza a menos de 12 px del borde de una ventana
-  flotante redimensiona en vez de mover; el resto de la ventana sigue
-  moviendo. Las líneas se ocultan si una ventana flotante las tapa. Probado con
-  un puntero virtual en una sesión anidada: el borde derecho cambió el ancho y
-  el centro movió la ventana. Detalle: `CONFIGURACION-UMBRIEL.md` §11 y §18.
+- **Redimensionar e intercambiar ventanas en modo Super (2026-11-07).** Con
+  Super mantenido aparece una banda con una línea fina en cada borde compartido
+  entre mosaicos y cuatro puntos en las esquinas de la ventana flotante
+  enfocada (`WindowHandles.qml`). La capa no captura entrada: Umbriel sigue
+  haciendo el trabajo. En el fork, la franja de mosaicos creció a 16 px por
+  lado del borde (la zona queda centrada en el hueco y funciona desde ambas
+  ventanas) y la flotante a 20 px. Un arrastre con Mod y botón izquierdo sobre
+  el contenido de un mosaico intercambia esa ventana con la de debajo, con la
+  origen atenuada y la destino resaltada; el movimiento nativo pasa al botón
+  derecho, que sigue redimensionando si empieza sobre un borde. Las líneas se
+  ocultan si una ventana flotante las tapa. Probado con un puntero virtual en
+  una sesión anidada: borde compartido desde ambos lados, intercambio con
+  izquierdo y reubicación con derecho. Detalle: `CONFIGURACION-UMBRIEL.md`
+  §11 y §18.
 - **Avisos emergentes de notificaciones (2026-11-07).** Al llegar un aviso se
   muestra una tarjeta en la esquina superior derecha (en el monitor de la
   ventana enfocada) durante su tiempo de expiración; las de `-t 0` o críticas
   se quedan hasta cerrarlas. Se apilan hasta tres, se ocultan con «No
   molestar», al abrir el panel o la vista general, y un clic abre el panel de
   notificaciones. La «×» descarta el aviso del historial y corta el sonido de
-  una alarma. La capa `shell-notification-popup` se añadió a la regla de
-  cristal para que tenga el mismo desenfoque que los paneles. Probado en una
-  sesión anidada con D-Bus privado, incluyendo expiración automática y aviso
-  crítico persistente.
+  una alarma. Comparten el margen y el ancho del panel lateral, y el modelo es
+  un `ListModel` para que las tarjetas viejas no parpadeen al llegar una nueva.
+  La capa `shell-notification-popup` se añadió a la regla de cristal para que
+  tenga el mismo desenfoque que los paneles. Probado en una sesión anidada con
+  D-Bus privado, incluyendo expiración automática, aviso crítico persistente y
+  dos avisos seguidos sin recrear la primera tarjeta.
 - **Desenfoque y foco al mantener Super.** Umbriel desenfoca ahora solo el
   contenido de la ventana bajo el puntero mientras se mantiene Mod, como el
   mockup: shader de ventana con blur de 1.4 px y desaturación suave, más un
@@ -387,12 +394,15 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   master. Las ventanas abiertas mientras tanto se añaden al final y las
   cerradas dejan un hueco que se colapsa. Verificado en anidado con cuatro
   ventanas: geometría idéntica tras el viaje por stacking.
-- **A15 · Redimensionar mosaico con el borde.** Con Super pulsado, arrastrar
-  con el botón izquierdo a 10 px o menos de un borde, o del hueco entre dos
-  ventanas, redimensiona; en el centro se sigue moviendo. El cursor de
-  redimensionar aparece en esa franja. Verificado en dwindle (796/456),
-  desde el hueco (586/666) y en master (886/366), además de que el arrastre
-  central sigue moviendo.
+- **A15 · Redimensionar e intercambiar mosaico con el borde.** Con Super
+  pulsado, arrastrar con el botón izquierdo a 16 px o menos de un borde, o del
+  hueco entre dos ventanas, redimensiona; en el centro se intercambia con la
+  ventana de debajo. El movimiento nativo de mosaicos vive en el botón derecho,
+  que también redimensiona si empieza sobre un borde. El cursor de
+  redimensionar aparece en una franja más gruesa. Verificado en dwindle desde
+  ambos lados del borde compartido (666/586), intercambio de dos ventanas con
+  izquierdo y reubicación con derecho. La versión anterior movía con el
+  izquierdo en el centro y usaba 10 px de franja.
 - **Incidencia de configuración.** Los scripts `shell-mod-hold` y
   `shell-floating-defaults` compartían `$cfg.shell-tmp` y, al coincidir,
   truncaron `~/.config/umbriel/config.toml` a 13 líneas. Se restauró desde una

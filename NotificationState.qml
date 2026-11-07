@@ -3,6 +3,7 @@ pragma Singleton
 import Quickshell
 import Quickshell.Services.Notifications
 import QtQuick
+import QtQml.Models
 
 // Estado y servidor de notificaciones. El servidor se registra en D-Bus
 // (org.freedesktop.Notifications) mientras el shell está corriendo.
@@ -22,10 +23,15 @@ Singleton {
     property var receivedTimes: ({})
     property int clockTick: 0
 
-    // Avisos emergentes que aparecen unos segundos al llegar. Es una lista
-    // corta: los tres más recientes. Cada entrada guarda lo necesario para
-    // pintar la tarjeta sin volver a consultar el servidor.
-    property var banners: []
+    // Avisos emergentes que aparecen unos segundos al llegar. Es un ListModel
+    // para que insertar uno nuevo no reconstruya los anteriores: así las
+    // tarjetas viejas no parpadean con cada aviso.
+    ListModel {
+        id: bannerList
+    }
+    // Expuesto para las tarjetas y el diagnóstico; el id interno no sale del
+    // singleton.
+    readonly property alias bannerModel: bannerList
     property int bannerSerial: 0
 
     readonly property var items: server.trackedNotifications.values
@@ -171,15 +177,35 @@ Singleton {
     }
 
     // ------------------------------------------------- avisos emergentes
+    // Índice de una tarjeta por su clave o por el id del aviso.
+    function bannerIndex(key): int {
+        for (let i = 0; i < bannerList.count; i++) {
+            if (Number(bannerList.get(i).key) === Number(key))
+                return i;
+        }
+        return -1;
+    }
+
+    function bannerIndexForId(id): int {
+        for (let i = 0; i < bannerList.count; i++) {
+            if (Number(bannerList.get(i).notifId) === Number(id))
+                return i;
+        }
+        return -1;
+    }
+
     // Añade una tarjeta al principio. Si la app reemplaza el aviso con el
     // mismo id, la anterior se sustituye en lugar de duplicarse.
     function showBanner(notification): void {
         if (!notification || root.panelOpen || root.dnd)
             return;
-        const id = notification.id;
-        const entry = {
+        const id = Number(notification.id);
+        const existing = root.bannerIndexForId(id);
+        if (existing >= 0)
+            bannerList.remove(existing, 1);
+        bannerList.insert(0, {
             key: ++root.bannerSerial,
-            id: id,
+            notifId: id,
             appName: notification.appName
                 || notification.desktopEntry || "Sistema",
             appKey: String(notification.desktopEntry
@@ -194,75 +220,53 @@ Singleton {
             timeout: Number(notification.expireTimeout) > 0
                 ? Number(notification.expireTimeout) : 5000,
             urgency: Number(notification.urgency) || 0,
-            stamp: Date.now(),
-            notification: notification
-        };
-        const list = root.banners.slice();
-        for (let i = list.length - 1; i >= 0; i--) {
-            if (list[i].id === id)
-                list.splice(i, 1);
-        }
-        list.unshift(entry);
-        while (list.length > 3)
-            list.pop();
-        root.banners = list;
+            stamp: Date.now()
+        });
+        while (bannerList.count > 3)
+            bannerList.remove(bannerList.count - 1, 1);
     }
 
     function removeBanner(key): void {
-        const list = root.banners || [];
-        const out = [];
-        let changed = false;
-        for (let i = 0; i < list.length; i++) {
-            if (list[i].key === key)
-                changed = true;
-            else
-                out.push(list[i]);
-        }
-        if (changed)
-            root.banners = out;
+        const index = root.bannerIndex(key);
+        if (index >= 0)
+            bannerList.remove(index, 1);
     }
 
     // Cerrar la tarjeta descarta también el aviso del historial, igual que
     // el botón de cerrar de otras distros; así una alarma deja de sonar.
     function dismissBanner(key): void {
-        const list = root.banners || [];
-        let notification = null;
+        const index = root.bannerIndex(key);
+        if (index < 0)
+            return;
+        const id = Number(bannerList.get(index).notifId);
+        bannerList.remove(index, 1);
+        const list = items || [];
         for (let i = 0; i < list.length; i++) {
-            if (list[i].key === key) {
-                notification = list[i].notification;
+            if (Number(list[i].id) === id) {
+                list[i].dismiss();
                 break;
             }
         }
-        root.removeBanner(key);
-        if (notification)
-            notification.dismiss();
     }
 
     function clearBanners(): void {
-        if (root.banners.length > 0)
-            root.banners = [];
+        if (bannerList.count > 0)
+            bannerList.clear();
     }
 
     // Si el aviso desaparece por otra vía (panel, app o reemplazo), su
     // tarjeta tampoco debe quedarse colgada.
     function pruneBanners(): void {
-        const list = root.banners || [];
-        if (list.length === 0)
+        if (bannerList.count === 0)
             return;
         const live = items || [];
         const present = ({});
         for (let i = 0; i < live.length; i++)
             present[String(live[i].id)] = true;
-        const out = [];
-        let changed = false;
-        for (let i = 0; i < list.length; i++) {
-            if (present[String(list[i].id)] === true)
-                out.push(list[i]);
-            else
-                changed = true;
+        for (let i = bannerList.count - 1; i >= 0; i--) {
+            if (present[String(bannerList.get(i).notifId)] !== true)
+                bannerList.remove(i, 1);
         }
-        if (changed)
-            root.banners = out;
     }
 
     onDndChanged: {

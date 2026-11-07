@@ -7,10 +7,14 @@ import QtQuick.Layouts
 // unos segundos y se apilan, como en el resto de escritorios. Un clic abre el
 // panel de notificaciones; la «×» descarta el aviso (y con las alarmas, corta
 // el sonido).
+//
+// El modelo es un ListModel y no un array: al llegar un aviso se inserta una
+// tarjeta nueva sin reconstruir las anteriores, así que solo la nueva hace la
+// animación de entrada.
 PanelWindow {
     id: root
 
-    readonly property var entries: NotificationState.banners || []
+    readonly property var entries: NotificationState.bannerModel
     // La tarjeta aparece en el monitor de la ventana enfocada; si no hay
     // ninguna, en el primero.
     readonly property var targetScreen: {
@@ -19,13 +23,15 @@ PanelWindow {
         return screen || (Quickshell.screens.length > 0
             ? Quickshell.screens[0] : null);
     }
+    // Mismo ancho que el panel lateral y mismo margen que la barra, para que
+    // los avisos queden alineados con el resto del shell.
     readonly property int cardWidth: {
         const available = root.targetScreen
-            ? Number(root.targetScreen.width) - 48 : 340;
-        return Math.max(240, Math.min(340, available));
+            ? Number(root.targetScreen.width) : 1280;
+        return Math.max(260, Math.min(360, available - Theme.edge * 2));
     }
 
-    visible: root.entries.length > 0
+    visible: root.entries.count > 0
         && !NotificationState.panelOpen
         && !NotificationState.dnd
         && !CompositorState.overviewOpen
@@ -35,10 +41,10 @@ PanelWindow {
         right: true
     }
     margins {
-        top: SettingsState.barAtTop
-            ? Theme.edge + Theme.barHeight + 12 : Theme.edge + 12
-        right: SettingsState.barAtRight
-            ? Theme.edge + Theme.barHeight + 12 : Theme.edge + 12
+        top: Theme.edge
+            + (SettingsState.barAtTop ? Theme.barHeight + 10 : 0)
+        right: Theme.edge
+            + (SettingsState.barAtRight ? Theme.barHeight + 10 : 0)
     }
     implicitWidth: root.cardWidth
     implicitHeight: Math.max(1, cards.implicitHeight)
@@ -62,10 +68,20 @@ PanelWindow {
             delegate: Rectangle {
                 id: card
 
-                required property var modelData
+                required property int key
+                required property int notifId
+                required property string appName
+                required property string appKey
+                required property string desktopEntry
+                required property string icon
+                required property string summary
+                required property string body
+                required property bool persistent
+                required property int timeout
+                required property int urgency
+                required property double stamp
 
-                readonly property bool persistent: modelData.persistent === true
-                readonly property bool critical: Number(modelData.urgency) === 2
+                readonly property bool critical: Number(card.urgency) === 2
 
                 width: cards.width
                 height: Math.max(66, content.implicitHeight + 20)
@@ -116,10 +132,9 @@ PanelWindow {
                 Timer {
                     id: hideTimer
 
-                    interval: card.modelData.timeout || 5000
+                    interval: card.timeout || 5000
                     running: !card.persistent && !cardMouse.containsMouse
-                    onTriggered: NotificationState.removeBanner(
-                        card.modelData.key)
+                    onTriggered: NotificationState.removeBanner(card.key)
                 }
 
                 RowLayout {
@@ -140,7 +155,7 @@ PanelWindow {
                         Layout.alignment: Qt.AlignTop
                         radius: 8
                         color: WindowLook.tintFor(
-                            WindowLook.colorFor(card.modelData.appKey))
+                            WindowLook.colorFor(card.appKey))
 
                         Image {
                             id: appIcon
@@ -149,7 +164,7 @@ PanelWindow {
                                 fill: parent
                                 margins: 4
                             }
-                            source: NotificationLook.iconSource(card.modelData)
+                            source: NotificationLook.iconSource(card)
                             visible: status === Image.Ready
                             fillMode: Image.PreserveAspectFit
                             asynchronous: true
@@ -158,8 +173,8 @@ PanelWindow {
                         Text {
                             anchors.centerIn: parent
                             visible: !appIcon.visible
-                            text: WindowLook.letterFor(card.modelData.appKey)
-                            color: WindowLook.colorFor(card.modelData.appKey)
+                            text: WindowLook.letterFor(card.appKey)
+                            color: WindowLook.colorFor(card.appKey)
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
                             font.weight: Font.Bold
@@ -176,7 +191,7 @@ PanelWindow {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: card.modelData.appName
+                                text: card.appName
                                 color: Theme.faint
                                 elide: Text.ElideRight
                                 font.family: Theme.fontFamily
@@ -209,14 +224,14 @@ PanelWindow {
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: NotificationState.dismissBanner(
-                                        card.modelData.key)
+                                        card.key)
                                 }
                             }
                         }
 
                         Text {
                             Layout.fillWidth: true
-                            text: card.modelData.summary
+                            text: card.summary
                             color: Theme.text
                             elide: Text.ElideRight
                             font.family: Theme.fontFamily
@@ -227,7 +242,7 @@ PanelWindow {
                         Text {
                             Layout.fillWidth: true
                             visible: text !== ""
-                            text: card.modelData.body
+                            text: card.body
                             color: Theme.muted
                             textFormat: Text.PlainText
                             wrapMode: Text.Wrap

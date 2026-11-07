@@ -456,7 +456,9 @@ Las notificaciones nuevas aparecen en tarjetas temporales en la esquina
 superior derecha (`NotificationPopup.qml`). La capa
 `shell-notification-popup` está incluida en la regla de cristal, así que usa el
 mismo desenfoque que los paneles. Se apilan hasta tres, se ocultan con «No
-molestar» y un clic abre el panel de notificaciones.
+molestar» y un clic abre el panel de notificaciones. Comparten el margen de la
+barra y el ancho del panel lateral; el modelo es un `ListModel`, así que las
+tarjetas anteriores no se reconstruyen ni parpadean al llegar una nueva.
 
 ---
 
