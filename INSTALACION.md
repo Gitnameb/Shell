@@ -201,7 +201,7 @@ está en `install/packages.txt`.
   (QR del hotspot).
 - **Energía:** `upower`, `power-profiles-daemon`, `powerprofilesctl`.
 - **Brillo:** `ddcutil` y una regla de sudoers (ver abajo).
-- **Bloqueo:** `swayidle` y `hyprlock`; `shell-idle` llama a `shell-lock`, que crea la configuración de hyprlock si falta.
+- **Bloqueo:** `swayidle` y `shell-lock` (que usa `hyprlock` para dibujar la pantalla). `shell-lock` es el único punto de entrada y crea su configuración si falta.
 - **Teclado en pantalla:** `wvkbd` (`wvkbd-mobintl`).
 - **Notificaciones/diálogos:** `libnotify-bin`, `kdialog`; `zenity` es un
   respaldo opcional que no está instalado.
@@ -395,7 +395,7 @@ install -m755 install/bin/umbriel-config-guard ~/.local/bin/umbriel-config-guard
 - `shell-start`: exporta `QT_QPA_PLATFORMTHEME=kde` y
   `QS_ICON_THEME=breeze-dark`, y ejecuta `qs -c shell -d`. También llama al
   guardián antes de arrancar el shell.
-- `shell-idle`: bloqueo con `swayidle` + `shell-lock` (hyprlock).
+- `shell-idle`: bloqueo automático con `swayidle` + `shell-lock`.
 - `shell-keyboard-layout`: escribe `[input.keyboard] layout` en Umbriel.
 - `shell-umbriel-theme`: sincroniza colores y acento con la barra nativa.
 - `shell-config-set`: único programa que sustituye `config.toml`; aplica el
@@ -802,7 +802,7 @@ Comprobar a mano:
 - Clima manual, alarmas y temporizador con el shell cerrado.
 - Portapapeles, teclado en pantalla, bandeja del sistema.
 - Brillo, atenuación extra y luz nocturna.
-- Bloqueo con `Mod+Shift+L`, el menú de energía y `shell-idle`.
+- Bloqueo con `shell-lock` desde `Mod+Shift+L`, el menú de energía y `shell-idle`.
 - Reinicio de sesión y vuelta a entrar sin perder ventanas minimizadas.
 
 ---

@@ -1,9 +1,9 @@
 #!/bin/sh
 # Bloquea la sesión.
 #
-# Usa hyprlock con una configuración mínima si todavía no existe. Si hyprlock
-# no está instalado prueba swaylock o gtklock, que también implementan
-# ext-session-lock-v1. No necesita sudo.
+# Usa hyprlock con una configuración mínima si todavía no existe. Es el único
+# bloqueador del shell: el menú de energía, Mod+Shift+L y shell-idle pasan
+# todos por aquí. No necesita sudo.
 
 set -eu
 
@@ -56,18 +56,12 @@ input-field {
 EOF
 fi
 
-if command -v hyprlock >/dev/null 2>&1; then
-    exec hyprlock
-fi
-if command -v swaylock >/dev/null 2>&1; then
-    exec swaylock -f -c 0c0e12
-fi
-if command -v gtklock >/dev/null 2>&1; then
-    exec gtklock
+if ! command -v hyprlock >/dev/null 2>&1; then
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send -a Shell "Bloqueo" \
+            "Falta hyprlock, el bloqueador del shell." || true
+    fi
+    exit 1
 fi
 
-if command -v notify-send >/dev/null 2>&1; then
-    notify-send -a Shell "Bloqueo" \
-        "Instala hyprlock o swaylock para bloquear la sesión." || true
-fi
-exit 1
+exec hyprlock

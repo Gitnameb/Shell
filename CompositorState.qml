@@ -269,9 +269,15 @@ Singleton {
         return root.callBackend("sessionQuit");
     }
 
-    // Bloquea la pantalla con el bloqueador del sistema.
+    // Bloquea la pantalla. shell-lock es el único punto de entrada, también
+    // para el menú de energía y el bloqueo automático.
     function lockScreen(): bool {
-        return root.callBackend("lockScreen");
+        const repo = Quickshell.shellDir || "";
+        Quickshell.execDetached(["sh", "-c",
+            'lock="$HOME/.local/bin/shell-lock"; '
+            + '[ -x "$lock" ] || lock="' + repo + '/install/bin/shell-lock"; '
+            + 'exec "$lock"']);
+        return true;
     }
 
     // Punto de entrada para IPC y menús: recibe el nombre de la acción como

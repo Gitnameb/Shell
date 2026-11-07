@@ -84,8 +84,6 @@ PanelWindow {
 
     readonly property string alarmsPath: (Quickshell.env("HOME")
         || "/home/username") + "/.config/shell/alarms.conf"
-    readonly property string doneSound:
-        "/usr/share/sounds/freedesktop/stereo/complete.oga"
 
     // --------------------------------------------------------- temporizador
     property int timerTotal: 25 * 60
@@ -181,12 +179,22 @@ PanelWindow {
         root.noteDraft = "";
     }
 
-    function notify(title, body): void {
-        Quickshell.execDetached(["notify-send", "-a", "Shell", title, body]);
-    }
-
     function validTime(value): bool {
         return /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(value);
+    }
+
+    function alarmSeconds(value): int {
+        const parts = String(value || "00:00").split(":");
+        const hour = Math.max(0, Math.min(23, parseInt(parts[0], 10) || 0));
+        const minute = Math.max(0, Math.min(59, parseInt(parts[1], 10) || 0));
+        return hour * 3600 + minute * 60;
+    }
+
+    function formatAlarm(value): string {
+        const total = Math.max(0, Math.min(23 * 3600 + 59 * 60,
+            Math.round(value)));
+        return root.pad(Math.floor(total / 3600)) + ":"
+            + root.pad(Math.floor((total % 3600) / 60));
     }
 
     function updateAlarm(index, field, value): void {
@@ -212,12 +220,6 @@ PanelWindow {
 
     function removeAlarm(index): void {
         root.alarms = root.alarms.filter((alarm, position) => position !== index);
-    }
-
-    function playSound(path): void {
-        Quickshell.execDetached(["sh", "-c",
-            "paplay \"$1\" 2>/dev/null || pw-play \"$1\" 2>/dev/null || true",
-            "shell", path]);
     }
 
     function saveAlarms(): void {
@@ -335,8 +337,7 @@ PanelWindow {
                 root.timerLeft = 0;
                 root.timerRunning = false;
                 root.timerState = "Terminado";
-                root.playSound(root.doneSound);
-                root.notify("Temporizador", "Tiempo cumplido");
+                AlarmState.fireTimer();
             }
         }
     }
@@ -456,8 +457,7 @@ PanelWindow {
             if (deadline <= nowSeconds) {
                 root.timerLeft = 0;
                 root.timerState = "Terminado";
-                root.playSound(root.doneSound);
-                root.notify("Temporizador", "Tiempo cumplido");
+                AlarmState.fireTimer();
                 root.writeTimer(0);
                 return;
             }
@@ -1308,16 +1308,20 @@ PanelWindow {
                             }
                             spacing: 5
 
-                            ClockTimeField {
+                            DurationField {
                                 Layout.preferredWidth: 52
-                                value: alarmRow.modelData.time
+                                seconds: root.alarmSeconds(
+                                    alarmRow.modelData.time)
+                                showSeconds: false
                                 textColor: alarmRow.modelData.enabled
                                     ? Theme.text : Theme.faint
+                                editColor: Theme.accent
                                 pixelSize: 11
-                                onEdited: (value) => root.updateAlarm(
-                                    alarmRow.index, "time", value)
-                                onActiveFocusChanged:
-                                    root.alarmEditing = activeFocus
+                                onEditingChanged:
+                                    root.alarmEditing = editing
+                                onChanged: (value) => root.updateAlarm(
+                                    alarmRow.index, "time",
+                                    root.formatAlarm(value))
                             }
 
                             TextField {

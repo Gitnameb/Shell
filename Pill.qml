@@ -8,6 +8,8 @@ Rectangle {
     default property alias contentData: row.data
 
     property bool active: false
+    // Fondo azul de aviso: suena una alarma o el temporizador.
+    property bool alert: false
     property bool draggable: false
     // Relleno horizontal a cada lado del contenido. El tráfico de red usa
     // menos para que la píldora no quede más ancha que sus cifras.
@@ -34,7 +36,15 @@ Rectangle {
     // Los widgets no se dibujan como botones: comparten el fondo de la barra
     // y solo se tiñen al pasar el ratón. El estado activo lo comunica el
     // icono, igual que el botón de energía del mockup.
-    color: root.hovered ? Theme.hover : "transparent"
+    color: root.alert
+        ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.28)
+        : (root.hovered ? Theme.hover : "transparent")
+    border.width: root.alert ? 1 : 0
+    border.color: Theme.accentLine
+
+    Behavior on color {
+        ColorAnimation { duration: 160 }
+    }
 
     Row {
         id: row

@@ -4,11 +4,12 @@ import Quickshell
 import Quickshell.Io
 import QtQuick
 
-// Sonido y aviso de las alarmas.
+// Sonido y aviso de alarmas y temporizador.
 //
-// El sonido se repite en bucle hasta que se cierra la notificación de alarma
-// o se pulsa el reloj de la barra. `CalendarPanel` llama a `fire()` cuando
-// vence una alarma; la barra y el propio panel llaman a `stop()`.
+// El sonido se repite en bucle hasta que se cierra la notificación o se pulsa
+// el reloj de la barra. `CalendarPanel` llama a `fire()` al vencer una alarma
+// y a `fireTimer()` al terminar la cuenta atrás; la barra y el panel llaman a
+// `stop()`.
 Singleton {
     id: root
 
@@ -19,14 +20,25 @@ Singleton {
     property bool dndAtFire: false
 
     readonly property bool sounding: soundProc.running
-    readonly property string soundFile:
+    readonly property string alarmSound:
         "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"
+    readonly property string timerSound:
+        "/usr/share/sounds/freedesktop/stereo/complete.oga"
 
     function fire(alarms): void {
         if (!alarms || alarms.length === 0)
             return;
         const body = alarms.map((alarm) =>
             String(alarm.label || "Alarma") + " · " + alarm.time).join("\n");
+        root.start("Alarma", body, root.alarmSound, "alarm-clock-elapsed");
+    }
+
+    function fireTimer(): void {
+        root.start("Temporizador", "Tiempo cumplido",
+            root.timerSound, "complete");
+    }
+
+    function start(title, body, sound, canberraEvent): void {
         root.dismissNotification();
         root.dndAtFire = NotificationState.dnd;
 
@@ -34,16 +46,16 @@ Singleton {
             soundProc.command = ["sh", "-c",
                 "while :; do paplay \"$1\" 2>/dev/null "
                     + "|| pw-play \"$1\" 2>/dev/null "
-                    + "|| canberra-gtk-play -f alarm-clock-elapsed 2>/dev/null "
+                    + "|| canberra-gtk-play -f \"$2\" 2>/dev/null "
                     + "|| sleep 1; done",
-                "shell", root.soundFile];
+                "shell", sound, canberraEvent];
             soundProc.running = true;
         }
 
         notifyProc.command = ["sh", "-c",
             "notify-send -p -a Shell -u critical -t 0 "
                 + "-i alarm-clock-elapsed \"$1\" \"$2\"",
-            "shell", "Alarma", body];
+            "shell", title, body];
         notifyProc.running = true;
         watchdog.restart();
     }

@@ -26,6 +26,7 @@ from pathlib import Path
 
 POLL_SECONDS = 20
 SOUND = "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"
+TIMER_SOUND = "/usr/share/sounds/freedesktop/stereo/complete.oga"
 
 
 def config_dir() -> Path:
@@ -83,17 +84,17 @@ def shell_running() -> bool:
     return bool(result.stdout.strip())
 
 
-def play_loop() -> subprocess.Popen | None:
+def play_loop(sound: str = SOUND, event: str = "alarm-clock-elapsed") -> subprocess.Popen | None:
     """Repite el sonido hasta que se pare el proceso."""
     if not (shutil.which("paplay") or shutil.which("canberra-gtk-play")):
         return None
     script = (
         'while :; do paplay "$1" 2>/dev/null '
-        "|| canberra-gtk-play -f alarm-clock-elapsed 2>/dev/null "
+        '|| canberra-gtk-play -f "$2" 2>/dev/null '
         "|| sleep 1; done"
     )
     try:
-        return subprocess.Popen(["sh", "-c", script, "shell", SOUND])
+        return subprocess.Popen(["sh", "-c", script, "shell", sound, event])
     except OSError:
         return None
 
@@ -111,8 +112,13 @@ def stop_loop(process: subprocess.Popen | None) -> None:
             pass
 
 
-def run_with_sound(command: list[str], timeout: int = 900) -> bool:
-    sound = play_loop()
+def run_with_sound(
+    command: list[str],
+    timeout: int = 900,
+    sound: str = SOUND,
+    event: str = "alarm-clock-elapsed",
+) -> bool:
+    process = play_loop(sound, event)
     try:
         subprocess.run(command, timeout=timeout)
         return True
@@ -122,17 +128,26 @@ def run_with_sound(command: list[str], timeout: int = 900) -> bool:
     except OSError:
         return False
     finally:
-        stop_loop(sound)
+        stop_loop(process)
 
 
-def notify(title: str, body: str) -> None:
+def notify(
+    title: str,
+    body: str,
+    sound: str = SOUND,
+    event: str = "alarm-clock-elapsed",
+) -> None:
     # `notify-send -w` espera a que se cierre el aviso, así que el sonido
     # sigue sonando hasta que el usuario lo elimina.
     if shutil.which("notify-send"):
-        if run_with_sound([
-            "notify-send", "-a", "Shell", "-u", "critical", "-t", "0",
-            "-i", "alarm-clock-elapsed", "-w", title, body,
-        ]):
+        if run_with_sound(
+            [
+                "notify-send", "-a", "Shell", "-u", "critical", "-t", "0",
+                "-i", "alarm-clock-elapsed", "-w", title, body,
+            ],
+            sound=sound,
+            event=event,
+        ):
             return
 
     # Sin servidor de notificaciones: un diálogo que hay que cerrar.
@@ -141,16 +156,16 @@ def notify(title: str, body: str) -> None:
         ["zenity", "--info", "--title", title, "--text", body],
     ):
         if shutil.which(command[0]):
-            if run_with_sound(command):
+            if run_with_sound(command, sound=sound, event=event):
                 return
 
-    play_sound()
+    play_sound(sound, event)
 
 
-def play_sound() -> None:
+def play_sound(sound: str = SOUND, event: str = "alarm-clock-elapsed") -> None:
     for command in (
-        ["paplay", SOUND],
-        ["canberra-gtk-play", "-f", "alarm-clock-elapsed"],
+        ["paplay", sound],
+        ["canberra-gtk-play", "-f", event],
     ):
         if shutil.which(command[0]):
             try:
@@ -187,7 +202,7 @@ def fire_timer(path: Path) -> None:
         os.replace(path, claimed)
     except OSError:
         return
-    notify("Temporizador", "Tiempo cumplido")
+    notify("Temporizador", "Tiempo cumplido", TIMER_SOUND, "complete")
     try:
         claimed.unlink()
     except OSError:

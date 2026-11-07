@@ -434,13 +434,6 @@ Item {
         return root.noteAction("sessionQuit", root.dispatch("exit"));
     }
 
-    function lockScreen(): bool {
-        if (!root.available)
-            return root.noteAction("lockScreen", false);
-        Quickshell.execDetached(["hyprlock"]);
-        return root.noteAction("lockScreen", true);
-    }
-
     // ------------------------------------------------------------- relectura
     function refresh(): void {
         root.revision++;

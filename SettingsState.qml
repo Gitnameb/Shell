@@ -147,7 +147,7 @@ Singleton {
     property bool airplaneRestoreWifi: true
     property bool airplaneRestoreBt: true
 
-    // Bloqueo automático de la sesión con hyprlock. 0 = nunca.
+    // Bloqueo automático de la sesión con shell-lock. 0 = nunca.
     property int lockMinutes: 5
 
     // Se rellena al leer el archivo; hasta entonces no se guarda nada para no

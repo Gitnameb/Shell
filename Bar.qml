@@ -464,6 +464,7 @@ Variants {
                     Layout.fillWidth: SettingsState.barVertical
                     horizontalPadding: SettingsState.barVertical ? 2 : 6
                     active: CalendarState.open
+                    alert: AlarmState.sounding
                     onClicked: {
                         NotificationState.hidePanel();
                         LauncherState.hide();

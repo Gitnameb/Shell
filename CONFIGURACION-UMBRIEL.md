@@ -509,34 +509,32 @@ y nieve.
 
 ## 14. Alarmas y temporizador
 
-- `ClockTimeField.qml` edita la hora de una alarma de izquierda a derecha,
-  como texto normal: los dos primeros dígitos son la hora y el foco salta solo
-  a los minutos. Si la hora no es válida se interpreta con un dígito y el
-  sobrante pasa a los minutos (`930` → `09:30`). Los dos puntos son
-  decorativos: nunca hay que escribirlos. Intro o salir del campo confirman;
-  Escape cancela.
-- `DurationField.qml` es el reloj grande del temporizador. Al pulsarlo se
-  edita la duración y mientras escribes se ven los dígitos tal cual, agrupados
-  desde la derecha con los dos puntos automáticos: `123` se ve como `1:23` y
-  `12345` como `1:23:45`. La conversión no se aplica hasta pulsar Intro o salir
-  del campo; retroceso borra el último dígito y Escape cancela. Editar el
-  tiempo detiene la cuenta atrás y deja el temporizador listo. Un tiempo
-  escrito a mano deselecciona los presets aunque coincida con uno de ellos.
-- `AlarmState.qml` reproduce el sonido de alarma en bucle y muestra un aviso
-  crítico sin caducidad. El sonido solo para al cerrar ese aviso o al pulsar
-  el reloj de la barra (que además retira el aviso). Si «No molestar» está
-  activo no hay aviso registrado, así que el sonido se detiene al abrir el
-  calendario. Hay un límite de seguridad de 10 minutos.
+- `DurationField.qml` es el mismo editor para los dos. Se pulsa el tiempo y se
+  escriben dígitos de derecha a izquierda, con los dos puntos automáticos y sin
+  escribirlos nunca. Mientras se escribe se ven los dígitos tal cual y la
+  conversión no se aplica hasta pulsar Intro o salir del campo; retroceso borra
+  el último dígito y Escape cancela.
+  - Temporizador (`showSeconds: true`): `123` → `1:23`, `12345` → `1:23:45`.
+  - Alarma (`showSeconds: false`): `930` → `09:30`, `1230` → `12:30`.
+- Editar el tiempo del temporizador detiene la cuenta atrás y lo deja listo.
+  Un tiempo escrito a mano deselecciona los presets aunque coincida con uno.
+- `AlarmState.qml` reproduce el sonido de alarma o del temporizador en bucle y
+  muestra un aviso crítico sin caducidad. El sonido solo para al cerrar ese
+  aviso o al pulsar el reloj de la barra (que además retira el aviso). Mientras
+  suena, el fondo del reloj se pinta de azul. Si «No molestar» está activo no
+  hay aviso registrado, así que el sonido se detiene al abrir el calendario.
+  Hay un límite de seguridad de 10 minutos.
 - Con el shell cerrado, `scripts/shell-alarms` usa `notify-send -w` (o un
   diálogo de KDialog/Zenity) y mantiene el sonido hasta que se cierra el aviso.
 
 ## 15. Bloqueo de pantalla
 
-El botón «Bloquear» del menú de energía, `Mod+Shift+L` y el bloqueo
-automático de `shell-idle` llaman a `shell-lock`. Ese ayudante crea
-`~/.config/hypr/hyprlock.conf` a partir de la plantilla del repositorio si
-todavía no existe y lanza `hyprlock`. Si `hyprlock` no está instalado prueba
-`swaylock` y `gtklock`, que también implementan `ext-session-lock-v1`.
+`shell-lock` es el **único** bloqueo del shell. El botón «Bloquear» del menú de
+energía, `Mod+Shift+L` y el bloqueo automático de `shell-idle` pasan todos por
+él. El ayudante crea `~/.config/hypr/hyprlock.conf` a partir de la plantilla
+del repositorio si todavía no existe y lanza `hyprlock`, que dibuja la
+superficie `ext-session-lock-v1`; Quickshell no puede crearla por sí mismo.
+No hay respaldos con otros bloqueadores ni llamadas directas a `hyprlock`.
 
 Antes el botón lanzaba `hyprlock` directamente y, sin archivo de
 configuración, hyprlock salía sin bloquear. Ahora la configuración se crea
