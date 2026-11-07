@@ -4,7 +4,7 @@ import Quickshell
 import Quickshell.Io
 import QtQuick
 
-// Historial de textos copiados. `wl-paste --watch` (incluido en scripts/bin)
+// Historial de textos copiados. `wl-paste --watch` (paquete wl-clipboard)
 // escucha el portapapeles de Wayland y guarda cada texto en un JSON local.
 // La vista se actualiza sola al cambiar el archivo y los elementos se pueden
 // copiar o borrar sin depender de que el shell tenga el foco.

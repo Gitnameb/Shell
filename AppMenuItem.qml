@@ -8,6 +8,7 @@ Rectangle {
 
     property string label: ""
     property string iconName: ""
+    property string iconSource: ""
     property string glyph: ""
     property string hint: ""
     property bool danger: false
@@ -30,6 +31,7 @@ Rectangle {
             Layout.preferredWidth: 15
             Layout.preferredHeight: 15
             name: root.iconName
+            source: root.iconSource
             color: root.danger ? Theme.danger : Theme.muted
             size: 15
             fallback: root.glyph

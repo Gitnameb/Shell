@@ -17,12 +17,8 @@ fi
 
 base=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
-# Preferir el wl-paste del sistema; si no está, usar el binario incluido.
-if command -v wl-paste >/dev/null 2>&1; then
-    wl_paste=wl-paste
-else
-    wl_paste="$base/bin/wl-paste"
-fi
+# wl-clipboard lo instala el instalador; no hay binarios empaquetados.
+command -v wl-paste >/dev/null 2>&1 || exit 0
 
-exec "$wl_paste" --no-newline --watch \
+exec wl-paste --no-newline --watch \
     python3 "$base/shell-clipboard-add"

@@ -228,6 +228,14 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   centro de control se carga con `Loader` y los iconos usan `MultiEffect`.
   Medido: `qs` en reposo 7,4 % → 0,6 %; panel abierto 12,4 % → 1,0 %. Detalle:
   `CONFIGURACION-UMBRIEL.md` §17.
+- **Acciones de apps.** El clic derecho en la barra lee `Actions=` del
+  `.desktop` mediante `DesktopEntry.actions`; Brave muestra «New Window» y
+  «New Incognito Window». `DesktopActions.qml` arranca el escaneo asíncrono y
+  avisa cuando termina. Detalle: `CONFIGURACION-UMBRIEL.md` §18.
+- **Limpieza.** `foot` e `Inter Variable` son las dependencias por defecto. Se
+  quitaron `scripts/bin/`, los `alternar-*.sh`, el `portals.conf` duplicado,
+  `install/apt/trixie-backports.list` y `scripts/fix-network.sh`. Detalle:
+  `CONFIGURACION-UMBRIEL.md` §19.
 - **Bloqueo de pantalla.** El botón lanzaba `hyprlock` sin configuración y
   salía sin bloquear. `shell-lock` es ahora el único bloqueo: crea
   `~/.config/hypr/hyprlock.conf` desde la plantilla si falta y lo usan el menú

@@ -611,3 +611,37 @@ Estas sustituciones ya están aplicadas en el instalador:
 - El cursor de la sesión ya era Adwaita (`gsettings`). `breeze-cursor-theme`
   sigue instalado porque `plasma-integration` → `breeze` lo exige; quitarlo de
   la lista no ahorra espacio real.
+
+## 18. Acciones propias de las apps
+
+Al pulsar con el botón derecho sobre el icono de una app en la barra, el menú
+muestra primero las acciones que declara su archivo `.desktop` en la clave
+`Actions=`. Por ejemplo, Brave aporta «New Window» y «New Incognito Window»;
+Thunar aporta «Home», «Computer» y «Trash».
+
+- La fuente es `DesktopEntry.actions` de Quickshell. No hay que leer archivos a
+  mano ni instalar nada extra.
+- El escaneo de entradas es asíncrono. `DesktopActions.qml` lo arranca al
+  inicio del shell, guarda un contador de revisión y vuelve a resolver las
+  acciones cuando termina.
+- `AppContextMenu.qml` dibuja esas acciones antes de las de ventana (enfocar,
+  maximizar, mover al escritorio, cerrar). `AppMenuItem.qml` acepta iconos de
+  tema o rutas completas.
+- Si una app no declara `Actions=`, no aparece la sección. Eso depende del
+  `.desktop` de la app, no del shell.
+
+## 19. Limpieza de dependencias
+
+Además de `foot` e `Inter Variable`:
+
+- Se eliminaron los binarios locales de `wl-clipboard` (`scripts/bin/`). El
+  instalador ya instala `wl-clipboard` y los scripts usan `wl-paste`/`wl-copy`
+  del sistema.
+- Se eliminaron los antiguos `install/config/alternar-*.sh`, que no los usaba
+  ningún atajo actual.
+- Se eliminó el `portals.conf` duplicado de la raíz; el instalador usa
+  `install/config/portals.conf`.
+- Se eliminó `install/apt/trixie-backports.list`, porque el instalador escribe
+  ese archivo directamente.
+- Se eliminó `scripts/fix-network.sh`, que solo era un envoltorio de
+  `scripts/network.sh`.

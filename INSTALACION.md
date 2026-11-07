@@ -251,8 +251,7 @@ sudo apt install -t trixie-backports wayland-protocols libwayland-dev
 - `hyprland`, `hypridle`, `hyprland-guiutils`: restos de la etapa anterior.
 - `xdg-desktop-portal-hyprland`: ya no se usa.
 - `wl-clipboard`: aporta `wl-copy` y `wl-paste` para el historial del
-  portapapeles. Los binarios de `scripts/bin/` solo son un respaldo local y no
-  se publican en el repositorio.
+  portapapeles. El shell ya no empaqueta copias locales de esos binarios.
 - `grim`, `slurp`, `obs-studio`, `btop`, `wlrctl`, `wtype`, `ydotool`, `wev`,
   `weston`: herramientas de prueba/diagnóstico, no dependencias de uso diario.
 
@@ -438,10 +437,6 @@ controlan el cristal. El segundo es el radio global de Umbriel y también
 desenfoca las ventanas; `0` lo apaga. `glassBlurBehind` (0/1, por defecto 0)
 elige entre desenfocar solo el fondo de pantalla (como el mockup) o el
 contenido real que hay detrás; también está en Ajustes → Cristal.
-
-Los antiguos `alternar-autoocultar.sh`, `alternar-no-molestar.sh` y
-`alternar-posicion.sh` están en `install/config/` por si se quieren conservar;
-los atajos actuales de Umbriel no los usan.
 
 ---
 
@@ -702,8 +697,7 @@ sigue pendiente de probar.
 ### 8.2 Configuración de usuario
 
 - `~/.config/shell/`: `settings.conf`, `display.conf`, `alarms.conf`,
-  `calendar-notes.conf`, `notificaciones.json`, `autoocultar`, scripts
-  `alternar-*.sh`.
+  `calendar-notes.conf`, `notificaciones.json`.
 - `~/.config/shell/credenciales`: contraseña local de sudo, modo 600. No la usa
   el código actual; no incluirla en copias compartidas.
 - `~/.config/hypr/hyprlock.conf` (pantalla de bloqueo; se crea sola si falta).

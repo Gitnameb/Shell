@@ -121,8 +121,6 @@ sudo apt install \
 #   hyprland hypridle hyprland-guiutils xdg-desktop-portal-hyprland
 #   (restos de la etapa Hyprland; el shell ya no los usa)
 #
-# wl-clipboard aporta wl-copy y wl-paste. Los scripts del shell usan los del
-# sistema; los binarios de scripts/bin/ solo quedan como respaldo local y no
-# se publican en el repositorio.
+# wl-clipboard aporta wl-copy y wl-paste; el shell usa los del sistema.
 #
 # zenity y canberra-gtk-play no están instalados; el shell usa kdialog y pw-play.

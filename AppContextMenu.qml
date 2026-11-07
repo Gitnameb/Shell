@@ -22,6 +22,13 @@ PanelWindow {
     // Tamaño real de la tarjeta.
     readonly property real cardWidth: 244
     readonly property real cardHeight: menuColumn.implicitHeight + 16
+    // Acciones propias del .desktop de la app («Nueva ventana», «Incógnito»…).
+    readonly property var appActions: {
+        if (!root.app)
+            return [];
+        return DesktopActions.actionsFor(String(root.app.cls
+            || root.app.appId || ""));
+    }
 
     // La tarjeta se centra sobre el icono y se abre hacia dentro de la
     // pantalla (hacia arriba con la barra abajo y hacia abajo con la barra
@@ -157,6 +164,11 @@ PanelWindow {
         CompositorState.closeWindow(root.targetAddress());
     }
 
+    function runAppAction(action) {
+        root.dismiss();
+        DesktopActions.run(action);
+    }
+
     Item {
         id: menuCard
 
@@ -244,6 +256,50 @@ PanelWindow {
 
             Rectangle {
                 Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                Layout.topMargin: 4
+                Layout.bottomMargin: 4
+                color: Theme.border
+            }
+
+            // Acciones del archivo .desktop de la aplicación. Es lo que
+            // convierte «click derecho en Brave» en «Nueva ventana» y «Nueva
+            // ventana de incógnito», igual que en la barra de tareas de
+            // Windows o en Plasma.
+            Text {
+                Layout.fillWidth: true
+                visible: root.appActions.length > 0
+                text: "ACCIONES DE LA APP"
+                color: Theme.faint
+                font.family: Theme.fontFamily
+                font.pixelSize: 8
+                font.weight: Font.DemiBold
+                font.letterSpacing: 0.8
+            }
+
+            Repeater {
+                model: root.appActions
+
+                delegate: AppMenuItem {
+                    required property var modelData
+
+                    readonly property string actionIcon:
+                        String(modelData.icon || "")
+
+                    Layout.fillWidth: true
+                    label: String(modelData.name || "")
+                    iconSource: actionIcon.startsWith("/")
+                        || actionIcon.startsWith("file:")
+                        ? actionIcon : ""
+                    iconName: iconSource.length === 0 ? actionIcon : ""
+                    glyph: "▸"
+                    onClicked: root.runAppAction(modelData)
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                visible: root.appActions.length > 0
                 Layout.preferredHeight: 1
                 Layout.topMargin: 4
                 Layout.bottomMargin: 4

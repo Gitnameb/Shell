@@ -11,9 +11,7 @@ from pathlib import Path
 MAX_ENTRIES = 50
 
 path = Path.home() / ".local/state/shell/clipboard.json"
-wl_copy = shutil.which("wl-copy") or (
-    Path(__file__).resolve().parent / "bin" / "wl-copy"
-)
+wl_copy = shutil.which("wl-copy")
 
 
 def main():
@@ -26,8 +24,10 @@ def main():
     except (IndexError, KeyError, OSError, ValueError):
         return 1
 
+    if not wl_copy:
+        return 1
     try:
-        subprocess.run([str(wl_copy)], input=text.encode("utf-8"), check=False)
+        subprocess.run([wl_copy], input=text.encode("utf-8"), check=False)
     except OSError:
         return 1
 

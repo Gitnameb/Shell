@@ -150,8 +150,8 @@ distribuyes una versión modificada, tiene que seguir siendo GPL-3.0 y con el
 código disponible.
 
 Umbriel es MIT; el parche de `umbriel-fork.patch` conserva esa licencia y su
-aviso de copyright. Los binarios de `wl-clipboard` que se usaban como respaldo
-local no se incluyen en el repositorio: se instala el paquete `wl-clipboard`.
+aviso de copyright. El shell no incluye binarios de `wl-clipboard`: el
+instalador usa el paquete del sistema.
 
 ## Créditos
 
