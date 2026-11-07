@@ -36,7 +36,7 @@ PanelWindow {
             ? Theme.edge + Theme.barHeight + 10 : 0
     }
     implicitWidth: 344
-    implicitHeight: root.tab === "calendar" ? 492
+    implicitHeight: root.tab === "calendar" || root.tab === "agenda" ? 492
         : (root.tab === "weather" ? (root.editingPlace ? 384 : 350)
             : 330)
     color: "transparent"
@@ -61,6 +61,11 @@ PanelWindow {
     // hasta pulsar Aplicar o Intro; vacío vuelve a la detección por IP.
     property bool editingPlace: false
     property string placeDraft: ""
+
+    // Borradores de la pestaña Agenda para dar de alta un calendario ICS.
+    property string sourceNameDraft: ""
+    property string sourceUrlDraft: ""
+    property string noteDraft: ""
 
     function applyWeatherPlace(): void {
         SettingsState.setWeatherPlace(root.placeDraft);
@@ -150,6 +155,54 @@ PanelWindow {
             });
         }
         return cells;
+    }
+
+    function dayEvents(): var {
+        return CalendarEvents.eventsFor(root.selectedDate);
+    }
+
+    function hasEvents(date): bool {
+        return CalendarEvents.dayInfo(date).count > 0;
+    }
+
+    function eventCount(date): int {
+        return Math.min(3, CalendarEvents.dayInfo(date).count);
+    }
+
+    function dayDots(date): var {
+        const list = CalendarEvents.eventsFor(date);
+        const dots = [];
+        for (let i = 0; i < list.length && i < 3; i++) {
+            const entry = list[i];
+            dots.push(entry.note ? Theme.accent : (entry.color || Theme.accent));
+        }
+        return dots;
+    }
+
+    function addNoteFromDraft(): void {
+        const text = root.noteDraft.trim();
+        if (text.length === 0)
+            return;
+        CalendarEvents.addNote(root.selectedDate, text);
+        root.noteDraft = "";
+    }
+
+    function addSourceFromDraft(): void {
+        if (root.sourceNameDraft.trim().length === 0
+                || root.sourceUrlDraft.trim().length === 0)
+            return;
+        CalendarEvents.addSource(root.sourceNameDraft, root.sourceUrlDraft);
+        root.sourceNameDraft = "";
+        root.sourceUrlDraft = "";
+    }
+
+    function agendaDateLabel(value): string {
+        const parts = String(value).split("-");
+        if (parts.length !== 3)
+            return value;
+        const date = new Date(Number(parts[0]), Number(parts[1]) - 1,
+            Number(parts[2]));
+        return Fechas.weekdayNameShort(date) + " " + date.getDate();
     }
 
     function notify(title, body): void {
@@ -314,6 +367,18 @@ PanelWindow {
 
     onAlarmsChanged: alarmSaveTimer.restart()
 
+    // Al abrir el panel o cambiar de mes se recarga la agenda. Con el panel
+    // cerrado no se consulta nada; los calendarios remotos viven en caché.
+    onVisibleChanged: {
+        if (visible)
+            CalendarEvents.refresh(root.shownMonth);
+    }
+
+    onShownMonthChanged: {
+        if (visible)
+            CalendarEvents.refresh(root.shownMonth);
+    }
+
     // Al empezar, pausar o terminar se reescribe el vencimiento; el aviso de
     // cada segundo no toca el archivo.
     onTimerRunningChanged: root.scheduleTimer()
@@ -425,6 +490,10 @@ PanelWindow {
             showTab("calendar");
         }
 
+        function agenda(): void {
+            showTab("agenda");
+        }
+
         function weather(): void {
             showTab("weather");
         }
@@ -465,6 +534,17 @@ PanelWindow {
                     fallback: "▦"
                     selected: root.tab === "calendar"
                     onActivated: root.tab = "calendar"
+                }
+
+                ClockTab {
+                    Layout.fillWidth: true
+                    tabKey: "agenda"
+                    label: "Agenda"
+                    iconName: "x-office-calendar"
+                    iconSource: ShellIcons.src("agenda")
+                    fallback: "☰"
+                    selected: root.tab === "agenda"
+                    onActivated: root.tab = "agenda"
                 }
 
                 ClockTab {
@@ -526,14 +606,31 @@ PanelWindow {
                             font.weight: Font.DemiBold
                             font.capitalization: Font.Capitalize
                         }
+                    }
+
+                    Rectangle {
+                        implicitWidth: 34
+                        implicitHeight: 24
+                        radius: 6
+                        color: todayMouse.containsMouse ? Theme.hover : "transparent"
+                        border.width: 1
+                        border.color: Theme.border
 
                         Text {
-                            Layout.fillWidth: true
-                            text: "Hoy · " + Fechas.longDate(now.date)
-                            color: Theme.faint
+                            anchors.centerIn: parent
+                            text: "Hoy"
+                            color: Theme.muted
                             font.family: Theme.fontFamily
-                            font.pixelSize: 9
-                            elide: Text.ElideRight
+                            font.pixelSize: 8
+                            font.weight: Font.DemiBold
+                        }
+
+                        MouseArea {
+                            id: todayMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.goToday()
                         }
                     }
 
@@ -636,19 +733,43 @@ PanelWindow {
                             border.width: dayCell.chosen ? 1 : 0
                             border.color: Theme.accentLine
 
-                            Text {
+                            Column {
                                 anchors.centerIn: parent
-                                text: dayCell.modelData.day
-                                color: dayCell.modelData.isToday
-                                    ? Theme.accentInk
-                                    : (dayCell.chosen
-                                        ? Theme.accent
-                                        : (dayCell.modelData.inMonth
-                                            ? Theme.text : Theme.faint))
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 10
-                                font.weight: dayCell.modelData.isToday
-                                    || dayCell.chosen ? Font.Bold : Font.Normal
+                                spacing: 1
+
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: dayCell.modelData.day
+                                    color: dayCell.modelData.isToday
+                                        ? Theme.accentInk
+                                        : (dayCell.chosen
+                                            ? Theme.accent
+                                            : (dayCell.modelData.inMonth
+                                                ? Theme.text : Theme.faint))
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    font.weight: dayCell.modelData.isToday
+                                        || dayCell.chosen ? Font.Bold : Font.Normal
+                                }
+
+                                Row {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    spacing: 2
+
+                                    Repeater {
+                                        model: root.dayDots(dayCell.modelData.date)
+
+                                        Rectangle {
+                                            required property color modelData
+
+                                            width: 3
+                                            height: 3
+                                            radius: 1.5
+                                            color: modelData
+                                            opacity: dayCell.modelData.inMonth ? 1 : 0.4
+                                        }
+                                    }
+                                }
                             }
 
                             MouseArea {
@@ -662,46 +783,488 @@ PanelWindow {
                     }
                 }
 
-                // Fecha elegida y vuelta rápida a hoy.
+                // Eventos y notas del día elegido. La fecha larga que había
+                // aquí se sustituyó por la agenda real del día.
+                ListView {
+                    id: dayList
+
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 82
+                    visible: root.dayEvents().length > 0
+                    clip: true
+                    spacing: 1
+                    model: root.dayEvents()
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    delegate: Rectangle {
+                        id: dayRow
+
+                        required property var modelData
+
+                        width: dayList.width
+                        height: 26
+                        radius: 6
+                        color: dayRow.modelData.note
+                            ? Theme.accentSoft
+                            : (dayHover.hovered ? Theme.hover : "transparent")
+
+                        HoverHandler {
+                            id: dayHover
+                        }
+
+                        RowLayout {
+                            anchors {
+                                fill: parent
+                                leftMargin: 6
+                                rightMargin: 5
+                            }
+                            spacing: 5
+
+                            Text {
+                                Layout.preferredWidth: 38
+                                text: dayRow.modelData.all_day
+                                    ? "Día" : dayRow.modelData.time
+                                color: Theme.faint
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 8
+                                elide: Text.ElideRight
+                            }
+
+                            Rectangle {
+                                width: 5
+                                height: 5
+                                radius: 2.5
+                                color: dayRow.modelData.note
+                                    ? Theme.accent
+                                    : (dayRow.modelData.color || Theme.accent)
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: dayRow.modelData.title
+                                color: Theme.text
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 9
+                                elide: Text.ElideRight
+                            }
+
+                            Text {
+                                visible: dayRow.modelData.note
+                                text: "×"
+                                color: removeNoteMouse.containsMouse
+                                    ? Theme.danger : Theme.faint
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 12
+
+                                MouseArea {
+                                    id: removeNoteMouse
+                                    anchors.fill: parent
+                                    anchors.margins: -4
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: CalendarEvents.removeNote(
+                                        dayRow.modelData.id)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    visible: root.dayEvents().length === 0
+                    text: "Sin eventos ni notas para este día."
+                    color: Theme.faint
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 4
+
+                    TextField {
+                        id: noteField
+
+                        Layout.fillWidth: true
+                        implicitHeight: 26
+                        text: root.noteDraft
+                        placeholderText: "Añadir nota a este día…"
+                        placeholderTextColor: Theme.faint
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 9
+                        selectByMouse: true
+                        onTextEdited: root.noteDraft = text
+                        onAccepted: root.addNoteFromDraft()
+                        background: Rectangle {
+                            radius: 7
+                            color: Theme.surfaceAlt
+                            border.width: 1
+                            border.color: noteField.activeFocus
+                                ? Theme.accent : Theme.border
+                        }
+                    }
+
+                    Rectangle {
+                        implicitWidth: 28
+                        implicitHeight: 26
+                        radius: 7
+                        color: addNoteMouse.containsMouse
+                            ? Theme.accent : Theme.accentSoft
+                        border.width: 1
+                        border.color: Theme.accentLine
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "+"
+                            color: addNoteMouse.containsMouse
+                                ? Theme.accentInk : Theme.accent
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 14
+                            font.weight: Font.DemiBold
+                        }
+
+                        MouseArea {
+                            id: addNoteMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.addNoteFromDraft()
+                        }
+                    }
+                }
+            }
+
+            // ------------------------------------------------------------ agenda
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: root.tab === "agenda"
+                spacing: 6
+
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 6
 
                     Text {
                         Layout.fillWidth: true
-                        text: Fechas.longDate(root.selectedDate)
-                        color: root.sameDay(root.selectedDate, now.date)
-                            ? Theme.faint : Theme.accent
+                        text: "PRÓXIMOS EVENTOS"
+                        color: Theme.faint
                         font.family: Theme.fontFamily
-                        font.pixelSize: 9
-                        elide: Text.ElideRight
+                        font.pixelSize: 8
+                        font.weight: Font.DemiBold
+                        font.letterSpacing: 0.9
                     }
 
-                    Rectangle {
-                        visible: !root.sameDay(root.selectedDate, now.date)
-                        implicitWidth: 34
-                        implicitHeight: 20
-                        radius: 6
-                        color: todayMouse.containsMouse ? Theme.hover : "transparent"
-                        border.width: 1
-                        border.color: Theme.border
+                    Text {
+                        text: CalendarEvents.loading ? "…" : "Actualizar"
+                        color: refreshAgendaMouse.containsMouse
+                            ? Theme.accent : Theme.muted
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 8
+                        font.weight: Font.DemiBold
 
-                        Text {
-                            anchors.centerIn: parent
-                            text: "Hoy"
-                            color: Theme.muted
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 8
+                        MouseArea {
+                            id: refreshAgendaMouse
+                            anchors.fill: parent
+                            anchors.margins: -4
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: CalendarEvents.refreshNow(root.shownMonth)
+                        }
+                    }
+                }
+
+                ListView {
+                    id: agendaList
+
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 132
+                    visible: CalendarEvents.upcoming(62).length > 0
+                    clip: true
+                    spacing: 1
+                    model: CalendarEvents.upcoming(62)
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    delegate: Rectangle {
+                        id: agendaRow
+
+                        required property var modelData
+
+                        width: agendaList.width
+                        height: 26
+                        radius: 6
+                        color: agendaMouse.containsMouse ? Theme.hover : "transparent"
+
+                        RowLayout {
+                            anchors {
+                                fill: parent
+                                leftMargin: 6
+                                rightMargin: 6
+                            }
+                            spacing: 5
+
+                            Text {
+                                Layout.preferredWidth: 32
+                                text: root.agendaDateLabel(agendaRow.modelData.date)
+                                color: Theme.faint
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 8
+                                elide: Text.ElideRight
+                            }
+
+                            Text {
+                                Layout.preferredWidth: 32
+                                text: agendaRow.modelData.all_day
+                                    ? "Día" : agendaRow.modelData.time
+                                color: Theme.muted
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 8
+                            }
+
+                            Rectangle {
+                                width: 5
+                                height: 5
+                                radius: 2.5
+                                color: agendaRow.modelData.note
+                                    ? Theme.accent
+                                    : (agendaRow.modelData.color || Theme.accent)
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: agendaRow.modelData.title
+                                color: Theme.text
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 9
+                                elide: Text.ElideRight
+                            }
                         }
 
                         MouseArea {
-                            id: todayMouse
+                            id: agendaMouse
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: root.goToday()
+                            onClicked: {
+                                const parts = String(agendaRow.modelData.date)
+                                    .split("-");
+                                if (parts.length !== 3)
+                                    return;
+                                const date = new Date(Number(parts[0]),
+                                    Number(parts[1]) - 1, Number(parts[2]));
+                                root.selectedDate = date;
+                                root.shownMonth = new Date(date.getFullYear(),
+                                    date.getMonth(), 1);
+                                root.tab = "calendar";
+                            }
                         }
                     }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    visible: CalendarEvents.upcoming(62).length === 0
+                    text: "No hay eventos próximos."
+                    color: Theme.faint
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 2
+                    text: "CALENDARIOS"
+                    color: Theme.faint
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+                    font.weight: Font.DemiBold
+                    font.letterSpacing: 0.9
+                }
+
+                // Las notas locales siempre están activas y no se pueden borrar.
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+
+                    Rectangle {
+                        width: 5
+                        height: 5
+                        radius: 2.5
+                        color: Theme.accent
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Notas locales"
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 9
+                    }
+
+                    Text {
+                        text: "Siempre"
+                        color: Theme.faint
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 8
+                    }
+                }
+
+                Repeater {
+                    model: CalendarEvents.sources
+
+                    RowLayout {
+                        id: sourceRow
+
+                        required property var modelData
+
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Rectangle {
+                            width: 5
+                            height: 5
+                            radius: 2.5
+                            color: sourceRow.modelData.color || Theme.accent
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: sourceRow.modelData.name
+                            color: sourceRow.modelData.enabled
+                                ? Theme.text : Theme.faint
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 9
+                            elide: Text.ElideRight
+                        }
+
+                        ShellSwitch {
+                            checked: sourceRow.modelData.enabled
+                            onToggled: CalendarEvents.toggleSource(
+                                sourceRow.modelData.id)
+                        }
+
+                        Text {
+                            text: "×"
+                            color: removeSourceMouse.containsMouse
+                                ? Theme.danger : Theme.faint
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+
+                            MouseArea {
+                                id: removeSourceMouse
+                                anchors.fill: parent
+                                anchors.margins: -4
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: CalendarEvents.removeSource(
+                                    sourceRow.modelData.id)
+                            }
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 4
+
+                    TextField {
+                        id: sourceNameField
+
+                        Layout.preferredWidth: 82
+                        implicitHeight: 24
+                        text: root.sourceNameDraft
+                        placeholderText: "Nombre"
+                        placeholderTextColor: Theme.faint
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 8
+                        selectByMouse: true
+                        onTextEdited: root.sourceNameDraft = text
+                        onAccepted: root.addSourceFromDraft()
+                        background: Rectangle {
+                            radius: 6
+                            color: Theme.surfaceAlt
+                            border.width: 1
+                            border.color: sourceNameField.activeFocus
+                                ? Theme.accent : Theme.border
+                        }
+                    }
+
+                    TextField {
+                        id: sourceUrlField
+
+                        Layout.fillWidth: true
+                        implicitHeight: 24
+                        text: root.sourceUrlDraft
+                        placeholderText: "URL iCal o archivo .ics"
+                        placeholderTextColor: Theme.faint
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 8
+                        selectByMouse: true
+                        onTextEdited: root.sourceUrlDraft = text
+                        onAccepted: root.addSourceFromDraft()
+                        background: Rectangle {
+                            radius: 6
+                            color: Theme.surfaceAlt
+                            border.width: 1
+                            border.color: sourceUrlField.activeFocus
+                                ? Theme.accent : Theme.border
+                        }
+                    }
+
+                    Rectangle {
+                        implicitWidth: 24
+                        implicitHeight: 24
+                        radius: 6
+                        color: addSourceMouse.containsMouse
+                            ? Theme.accent : Theme.accentSoft
+                        border.width: 1
+                        border.color: Theme.accentLine
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "+"
+                            color: addSourceMouse.containsMouse
+                                ? Theme.accentInk : Theme.accent
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
+                        }
+
+                        MouseArea {
+                            id: addSourceMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.addSourceFromDraft()
+                        }
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Google Calendar: Ajustes → Integrar calendario → dirección secreta en formato iCal. También vale un archivo .ics local."
+                    color: Theme.faint
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+                    wrapMode: Text.Wrap
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    visible: CalendarEvents.errors.length > 0
+                    text: CalendarEvents.errors.join(" · ")
+                    color: Theme.danger
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+                    wrapMode: Text.Wrap
+                }
+
+                Item {
+                    Layout.fillHeight: true
                 }
             }
 

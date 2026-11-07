@@ -508,7 +508,11 @@ Pruebas del escritor y de los seis scripts que lo usan:
 ./scripts/test-config-set.sh
 ./scripts/test-config-writers.sh
 ./scripts/test-config-guard.sh
+./scripts/test-calendar.sh
 ```
+
+`test-calendar.sh` no toca la agenda real: usa notas, fuentes y caché en
+directorios temporales.
 
 Si el escritorio vuelve a quedar negro, la recuperación paso a paso está en
 `CONFIGURACION-UMBRIEL.md`. El resumen es: `Ctrl+Alt+F3`,
@@ -699,7 +703,10 @@ sigue pendiente de probar.
 ### 8.2 Configuración de usuario
 
 - `~/.config/shell/`: `settings.conf`, `display.conf`, `alarms.conf`,
-  `notificaciones.json`, `autoocultar`, scripts `alternar-*.sh`.
+  `calendar-notes.conf`, `calendar-sources.conf`, `notificaciones.json`,
+  `autoocultar`, scripts `alternar-*.sh`.
+- La dirección iCal secreta de Google vive en `calendar-sources.conf`: es una
+  credencial de solo lectura, no la incluyas en copias compartidas.
 - `~/.config/shell/credenciales`: contraseña local de sudo, modo 600. No la usa
   el código actual; no incluirla en copias compartidas.
 - `~/.config/umbriel/config.toml`.
@@ -710,7 +717,8 @@ sigue pendiente de probar.
 - `~/.config/kdeglobals` y `~/.config/gtk-*/` si se quieren conservar; el script
   de tema los recrea.
 - Tu fondo de pantalla (cópialo aparte y ajusta `wallpaperPath`).
-- `~/.local/state/shell/` (historial de portapapeles y progreso; opcional).
+- `~/.local/state/shell/` (historial de portapapeles, progreso y caché de
+  calendarios; opcional).
 
 ### 8.3 Red y secretos
 

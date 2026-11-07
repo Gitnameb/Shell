@@ -480,3 +480,56 @@ El estado vive en el compositor (`View::setModHover` y
 efecto vuelve al preset configurado para esa ventana, si lo había. El parche
 `umbriel-fork.patch` incluye el shader; para verlo hay que instalar el binario
 nuevo y reiniciar la sesión.
+
+## 12. Calendario y agenda
+
+El panel del reloj tiene cinco pestañas: **Calendario**, **Agenda**, Clima,
+Alarmas y Temporizador. La pestaña Calendario pinta el mes, marca con puntos
+los días que tienen algo (hasta tres, con el color de su calendario) y debajo
+muestra los eventos y notas del día elegido. La fecha larga que antes aparecía
+al pie («viernes, 6 de noviembre de 2026») se eliminó: ese espacio lo ocupa
+ahora la agenda real del día.
+
+Los datos los administra `scripts/shell-calendar`, un ayudante en Python que
+solo usa la biblioteca estándar. El shell lo llama desde `CalendarEvents.qml`
+y nunca escribe esos archivos directamente.
+
+### 12.1 Notas locales
+
+- Archivo: `~/.config/shell/calendar-notes.conf`, una línea por nota con el
+  formato `id|AAAA-MM-DD|texto`.
+- Se añaden desde el campo «Añadir nota a este día…» y se borran con la × de
+  la lista. Las notas aparecen como eventos de día completo y siempre están
+  activas; no dependen de ningún calendario externo.
+- También salen en la pestaña Agenda dentro de los próximos 62 días.
+
+### 12.2 Calendarios iCalendar (Google Calendar)
+
+- Archivo: `~/.config/shell/calendar-sources.conf`, una línea por calendario
+  con el formato `id|activo|nombre|color|url|ics`.
+- Se admiten direcciones `https://`, `file://` y rutas absolutas a un `.ics`.
+- **Google Calendar** se enlaza con la dirección secreta en formato iCal, sin
+  OAuth ni tokens: Google Calendar → Ajustes → Integrar calendario →
+  «Dirección secreta en formato iCal». Se pega en Agenda → campo de URL y se
+  pulsa «+». Es una suscripción de solo lectura: los cambios se hacen en
+  Google y el shell los recoge al refrescar.
+- Caché: `~/.local/state/shell/calendars/<id>.ics`. Los remotos se descargan
+  como mucho cada 20 minutos (`SHELL_CALENDAR_REFRESH_MINUTES` lo cambia). Si
+  la descarga falla se conserva la última copia buena y el error se muestra en
+  la pestaña Agenda; nunca se borra la caché por un fallo de red.
+- El parser entiende `DTSTART`/`DTEND` con `VALUE=DATE`, `TZID` y `Z`,
+  `SUMMARY` con escapes, `EXDATE` y `RRULE` con `FREQ=DAILY|WEEKLY|MONTHLY|
+  YEARLY`, `INTERVAL`, `COUNT`, `UNTIL`, `BYDAY` (incluidos `1MO`/`-1FR`),
+  `BYMONTHDAY` y `BYMONTH`. Las horas se convierten a la zona local.
+- Los eventos de varios días se repiten en cada día del rango para que el mes
+  y la agenda los muestren donde toca.
+
+### 12.3 Refresco y límites
+
+- Al abrir el panel o cambiar de mes se consulta el rango visible más 62 días.
+  Con el panel abierto hay un refresco cada 10 minutos.
+- El rango mínimo siempre incluye hoy, así que la pestaña Agenda funciona
+  aunque se esté mirando un mes pasado.
+- No hay dependencias nuevas: `python3` ya es necesario para las alarmas y los
+  ayudantes de red.
+- Pruebas: `./scripts/test-calendar.sh` (29 comprobaciones).

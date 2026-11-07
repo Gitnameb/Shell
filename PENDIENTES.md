@@ -207,9 +207,12 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   lo termina con el shell cerrado y el panel lo restaura al volver. Verificado:
   aviso de alarma y de temporizador, restauración de una cuenta atrás y
   limpieza del archivo al vencer.
-- **Pestañas del reloj: rediseño pendiente.** Las pestañas actuales
-  (Calendario/Clima/Alarmas/Temporizador) no convencen al usuario; las
-  rediseñará él más adelante. No tocarlas por iniciativa propia.
+- **Pestañas del reloj.** El calendario ya se rediseñó por petición del
+  usuario: quita la fecha larga del pie, pinta puntos de eventos, lista los
+  eventos y notas del día y añade la pestaña Agenda con calendarios ICS
+  (Google incluido mediante su dirección secreta iCal). Clima, Alarmas y
+  Temporizador siguen pendientes de su rediseño; no tocarlos por iniciativa
+  propia. Detalle: `CONFIGURACION-UMBRIEL.md` §12.
 - **D1 · El escritorio queda para el final.** El usuario prefiere no seguir con
   iconos del escritorio por ahora; la fase 2 (recolocar, renombrar, papelera,
   menú contextual) se retoma al final, después del resto de bloques.
