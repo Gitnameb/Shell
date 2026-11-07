@@ -5161,10 +5161,46 @@ ColumnLayout {
                 when: !glassBlurSlider.pressed
             }
 
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 1
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Desenfocar el contenido"
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: SettingsState.glassBlurBehind
+                            ? "Se ve el contenido que hay detrás, como un "
+                                + "desenfoque normal."
+                            : "Solo se desenfoca el fondo de pantalla, como "
+                                + "en el mockup."
+                        color: Theme.faint
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 8
+                        wrapMode: Text.WordWrap
+                    }
+                }
+
+                ShellSwitch {
+                    checked: SettingsState.glassBlurBehind
+                    onToggled: SettingsState.setGlassBlurBehind(
+                        !SettingsState.glassBlurBehind)
+                }
+            }
+
             Text {
                 Layout.fillWidth: true
-                text: "El desenfoque es global: también afecta a las ventanas. "
-                    + "El cristal muestra solo el fondo de pantalla."
+                text: "El desenfoque es global: también afecta a las ventanas."
                 color: Theme.faint
                 font.family: Theme.fontFamily
                 font.pixelSize: 8

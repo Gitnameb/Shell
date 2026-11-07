@@ -147,6 +147,17 @@ ShellRoot {
                 SettingsState.setGlassBlur(Number(blurRadius));
         }
 
+        // Qué desenfoca el cristal:
+        //   qs ipc -c shell call appearance glassMode wallpaper|behind
+        // «wallpaper» usa la caché del fondo (como el mockup); «behind»
+        // desenfoca las ventanas y el contenido que hay detrás.
+        function glassMode(mode: string): void {
+            if (mode === "behind" || mode === "contenido")
+                SettingsState.setGlassBlurBehind(true);
+            else if (mode === "wallpaper" || mode === "fondo")
+                SettingsState.setGlassBlurBehind(false);
+        }
+
         // Ciudad del clima; vacío vuelve a la detección por IP.
         //   qs ipc -c shell call appearance weatherPlace Madrid
         function weatherPlace(value: string): void {

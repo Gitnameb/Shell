@@ -10,10 +10,12 @@ Uso:
     shell-config-set --section input.keyboard layout='"es"'
     shell-config-set --section colors --section colors.border ...
     shell-config-set --append-block reglas.toml
+    shell-config-set --drop-block '# inicio' '# fin' --append-block reglas.toml
 
 Los valores son TOML en crudo: números sin comillas, cadenas entre comillas y
 booleanos true/false. `--append-block` añade un bloque literal al final (por
-ejemplo, una o varias tablas `[[layer_rule]]`). La salida es `changed` o
+ejemplo, una o varias tablas `[[layer_rule]]`); `--drop-block` borra el tramo
+entre dos líneas marcadoras antes de aplicar el resto. La salida es `changed` o
 `unchanged`.
 
 Variables:
@@ -49,8 +51,13 @@ def die(message: str) -> NoReturn:
 
 def parse_args(
     argv: list[str],
-) -> tuple[list[tuple[str, list[tuple[str, str]]]], list[str]]:
+) -> tuple[
+    list[tuple[str, list[tuple[str, str]]]],
+    list[tuple[str, str]],
+    list[str],
+]:
     patches: list[tuple[str, list[tuple[str, str]]]] = []
+    drops: list[tuple[str, str]] = []
     blocks: list[str] = []
     current: tuple[str, list[tuple[str, str]]] | None = None
     i = 0
@@ -69,6 +76,14 @@ def parse_args(
                 die(f"sección inválida: {section}")
             current = (section, [])
             patches.append(current)
+        elif arg == "--drop-block":
+            if i + 2 >= len(argv):
+                die("--drop-block necesita las dos líneas marcadoras")
+            begin, end = argv[i + 1], argv[i + 2]
+            if not begin or not end or begin == end:
+                die("marcadores de --drop-block inválidos")
+            drops.append((begin, end))
+            i += 2
         elif arg == "--append-block":
             i += 1
             if i >= len(argv):
@@ -96,9 +111,9 @@ def parse_args(
             current[1].append((key, value))
         i += 1
 
-    if not blocks and not any(items for _, items in patches):
+    if not blocks and not drops and not any(items for _, items in patches):
         die("no hay cambios que aplicar")
-    return patches, blocks
+    return patches, drops, blocks
 
 
 def find_section(lines: list[str], section: str) -> int | None:
@@ -112,10 +127,39 @@ def find_section(lines: list[str], section: str) -> int | None:
 def apply_patch(
     text: str,
     patches: list[tuple[str, list[tuple[str, str]]]],
+    drops: list[tuple[str, str]] | None = None,
     blocks: list[str] | None = None,
 ) -> tuple[str, bool]:
     body = text.rstrip("\n")
     lines = body.split("\n") if body else []
+
+    # Los bloques gestionados se sustituyen enteros: se borra el tramo entre
+    # las dos líneas marcadoras y, si se pide, se añade la versión nueva. El
+    # bucle también limpia duplicados antiguos.
+    for begin_marker, end_marker in drops or []:
+        removed = False
+        while True:
+            begin = None
+            end = None
+            for index, line in enumerate(lines):
+                stripped = line.strip()
+                if begin is None:
+                    if stripped == begin_marker:
+                        begin = index
+                elif stripped == end_marker:
+                    end = index
+                    break
+
+            if begin is None:
+                break
+            if end is None:
+                die(f"no se encontró el final del bloque: {end_marker}")
+            del lines[begin:end + 1]
+            removed = True
+
+        if removed:
+            while lines and not lines[-1].strip():
+                lines.pop()
 
     for section, items in patches:
         if not items:
@@ -213,6 +257,7 @@ def validate_with_umbriel(path: Path) -> None:
 
 def log_change(path: Path,
                patches: list[tuple[str, list[tuple[str, str]]]],
+               drops: list[tuple[str, str]] | None = None,
                blocks: list[str] | None = None) -> None:
     state = Path(os.environ.get("XDG_STATE_HOME", "")
                  or (Path.home() / ".local" / "state"))
@@ -221,7 +266,10 @@ def log_change(path: Path,
     keys = ", ".join(
         f"[{section}] {key}" for section, items in patches for key, _ in items
     )
-    if blocks:
+    if drops:
+        mensaje = "bloque reemplazado" if blocks else "bloque eliminado"
+        keys = (keys + ", " if keys else "") + mensaje
+    elif blocks:
         keys = (keys + ", " if keys else "") + "bloque añadido"
     try:
         log_dir.mkdir(parents=True, exist_ok=True)
@@ -247,7 +295,7 @@ def cleanup_temps(config: Path) -> None:
 
 
 def main() -> int:
-    patches, blocks = parse_args(sys.argv[1:])
+    patches, drops, blocks = parse_args(sys.argv[1:])
 
     config = Path(
         os.environ.get("UMBRIEL_CONFIG", "")
@@ -262,7 +310,7 @@ def main() -> int:
         try:
             cleanup_temps(config)
             original = config.read_text(encoding="utf-8")
-            new_text, changed = apply_patch(original, patches, blocks)
+            new_text, changed = apply_patch(original, patches, drops, blocks)
             if not changed:
                 print("unchanged")
                 return 0
@@ -288,7 +336,7 @@ def main() -> int:
         finally:
             fcntl.flock(lock, fcntl.LOCK_UN)
 
-    log_change(config, patches, blocks)
+    log_change(config, patches, drops, blocks)
     print("changed")
     return 0
 

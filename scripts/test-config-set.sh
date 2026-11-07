@@ -218,6 +218,56 @@ rc=$?
 check "devuelve error" $([ "$rc" != 0 ]; echo $?)
 check "archivo intacto" $([ "$(head_sum "$UMBRIEL_CONFIG")" = "$before" ]; echo $?)
 
+echo "== 14. reemplaza un bloque marcado =="
+fresh
+cat >"$BASE/block-a.toml" <<'EOF'
+# test: inicio
+[[layer_rule]]
+match.namespace = "^test-a$"
+blur = true
+# test: fin
+EOF
+cat >"$BASE/block-b.toml" <<'EOF'
+# test: inicio
+[[layer_rule]]
+match.namespace = "^test-b$"
+blur = true
+blur_ignore_alpha = 0.04
+# test: fin
+EOF
+"$WRITER" --append-block "$BASE/block-a.toml" >/dev/null
+status=$("$WRITER" --drop-block '# test: inicio' '# test: fin' \
+    --append-block "$BASE/block-b.toml")
+check "sale 0" $?
+check "dice changed" $([ "$status" = changed ]; echo $?)
+check "quita el viejo" $(! grep -q 'test-a' "$UMBRIEL_CONFIG"; echo $?)
+check "pone el nuevo" $(grep -q 'test-b' "$UMBRIEL_CONFIG"; echo $?)
+check "una sola regla de prueba" \
+    $([ "$(grep -c 'test: inicio' "$UMBRIEL_CONFIG")" = 1 ]; echo $?)
+check "valida" $(umbriel config validate -c "$UMBRIEL_CONFIG" >/dev/null 2>&1; echo $?)
+before=$(head_sum "$UMBRIEL_CONFIG")
+status=$("$WRITER" --drop-block '# test: inicio' '# test: fin' \
+    --append-block "$BASE/block-b.toml")
+check "repetir es unchanged" $([ "$status" = unchanged ]; echo $?)
+check "mismo contenido" $([ "$(head_sum "$UMBRIEL_CONFIG")" = "$before" ]; echo $?)
+
+echo "== 15. un bloque sin cierre no toca el archivo =="
+fresh
+"$WRITER" --append-block "$BASE/block-a.toml" >/dev/null
+before=$(head_sum "$UMBRIEL_CONFIG")
+"$WRITER" --drop-block '# test: inicio' '# test: no-existe' >/dev/null 2>&1
+rc=$?
+check "devuelve error" $([ "$rc" != 0 ]; echo $?)
+check "archivo intacto" $([ "$(head_sum "$UMBRIEL_CONFIG")" = "$before" ]; echo $?)
+
+echo "== 16. borra un bloque sin añadir otro =="
+fresh
+"$WRITER" --append-block "$BASE/block-a.toml" >/dev/null
+status=$("$WRITER" --drop-block '# test: inicio' '# test: fin')
+check "dice changed" $([ "$status" = changed ]; echo $?)
+check "desaparece" $(! grep -q 'test: inicio' "$UMBRIEL_CONFIG"; echo $?)
+check "valida" $(umbriel config validate -c "$UMBRIEL_CONFIG" >/dev/null 2>&1; echo $?)
+
 echo
 printf 'resultado: %d OK, %d fallos\n' "$pass" "$fail"
 [ "$fail" = 0 ]

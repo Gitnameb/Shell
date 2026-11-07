@@ -63,6 +63,8 @@ fresh
 check "marcador presente" $(grep -q '^# shell-glass: inicio$' "$UMBRIEL_CONFIG"; echo $?)
 check "regla del bar" $(grep -qF 'bar|side-panel' "$UMBRIEL_CONFIG"; echo $?)
 check "excluye el filtro" $(grep -q 'wallpaper|desktop-icons' "$UMBRIEL_CONFIG"; echo $?)
+check "recorta esquinas" $(grep -q '^blur_ignore_alpha = 0.04$' "$UMBRIEL_CONFIG"; echo $?)
+check "modo fondo por defecto" $(grep -q '^blur_optimized = true$' "$UMBRIEL_CONFIG"; echo $?)
 check "valida" $(validate; echo $?)
 status=$("$GLASS" ensure)
 check "ensure no cambia" $([ "$status" = unchanged ]; echo $?)
@@ -96,6 +98,8 @@ fresh
 out=$("$GLASS" status)
 check "reglas presentes" $(printf '%s\n' "$out" | grep -q 'reglas: presentes'; echo $?)
 check "radio visible" $(printf '%s\n' "$out" | grep -q 'radius=12'; echo $?)
+check "modo fondo" $(printf '%s\n' "$out" | grep -q 'desenfoque: fondo de pantalla'; echo $?)
+check "esquinas recortadas" $(printf '%s\n' "$out" | grep -q 'esquinas: recortadas'; echo $?)
 
 echo "== 6. radio fuera de rango =="
 fresh
@@ -107,6 +111,75 @@ check "rechaza 101" $([ "$rc" != 0 ]; echo $?)
 rc=$?
 check "rechaza texto" $([ "$rc" != 0 ]; echo $?)
 check "archivo intacto" $([ "$(sha256sum "$UMBRIEL_CONFIG" | cut -d' ' -f1)" = "$before" ]; echo $?)
+
+echo "== 7. desenfoca el contenido de detrás =="
+fresh
+status=$("$GLASS" mode behind)
+check "dice changed" $([ "$status" = changed ]; echo $?)
+check "optimized false" $(grep -q '^blur_optimized = false$' "$UMBRIEL_CONFIG"; echo $?)
+check "conserva el recorte" $(grep -q '^blur_ignore_alpha = 0.04$' "$UMBRIEL_CONFIG"; echo $?)
+check "solo un bloque" $([ "$(grep -c '^# shell-glass: inicio$' "$UMBRIEL_CONFIG")" = 1 ]; echo $?)
+check "valida" $(validate; echo $?)
+out=$("$GLASS" status)
+check "estado contenido" $(printf '%s\n' "$out" | grep -q 'desenfoque: contenido detrás'; echo $?)
+before=$(sha256sum "$UMBRIEL_CONFIG" | cut -d' ' -f1)
+status=$("$GLASS" mode behind)
+check "repetir unchanged" $([ "$status" = unchanged ]; echo $?)
+check "mismo contenido" $([ "$(sha256sum "$UMBRIEL_CONFIG" | cut -d' ' -f1)" = "$before" ]; echo $?)
+
+echo "== 8. vuelve al fondo de pantalla =="
+status=$("$GLASS" mode wallpaper)
+check "dice changed" $([ "$status" = changed ]; echo $?)
+check "optimized true" $(grep -q '^blur_optimized = true$' "$UMBRIEL_CONFIG"; echo $?)
+check "valida" $(validate; echo $?)
+
+echo "== 9. modo inválido no toca el archivo =="
+before=$(sha256sum "$UMBRIEL_CONFIG" | cut -d' ' -f1)
+"$GLASS" mode cualquiera >/dev/null 2>&1
+rc=$?
+check "rechaza el modo" $([ "$rc" != 0 ]; echo $?)
+check "archivo intacto" $([ "$(sha256sum "$UMBRIEL_CONFIG" | cut -d' ' -f1)" = "$before" ]; echo $?)
+
+echo "== 10. actualiza un bloque antiguo sin máscara =="
+fresh
+drop_rules
+cat >>"$UMBRIEL_CONFIG" <<'EOF'
+
+# shell-glass: inicio
+[[layer_rule]]
+match.namespace = "^shell-(bar|side-panel)$"
+blur = true
+blur_popups = true
+
+[[layer_rule]]
+match.namespace = "^shell-(wallpaper|desktop-icons)$"
+blur = false
+# shell-glass: fin
+EOF
+status=$("$GLASS" ensure)
+check "dice changed" $([ "$status" = changed ]; echo $?)
+check "añade la máscara" $(grep -q '^blur_ignore_alpha = 0.04$' "$UMBRIEL_CONFIG"; echo $?)
+check "añade el modo" $(grep -q '^blur_optimized = true$' "$UMBRIEL_CONFIG"; echo $?)
+check "solo un bloque" $([ "$(grep -c '^# shell-glass: inicio$' "$UMBRIEL_CONFIG")" = 1 ]; echo $?)
+check "valida" $(validate; echo $?)
+
+echo "== 11. la actualización conserva el modo de detrás =="
+fresh
+drop_rules
+cat >>"$UMBRIEL_CONFIG" <<'EOF'
+
+# shell-glass: inicio
+[[layer_rule]]
+match.namespace = "^shell-(bar|side-panel)$"
+blur = true
+blur_optimized = false
+# shell-glass: fin
+EOF
+status=$("$GLASS" ensure)
+check "dice changed" $([ "$status" = changed ]; echo $?)
+check "sigue en detrás" $(grep -q '^blur_optimized = false$' "$UMBRIEL_CONFIG"; echo $?)
+check "añade la máscara" $(grep -q '^blur_ignore_alpha = 0.04$' "$UMBRIEL_CONFIG"; echo $?)
+check "valida" $(validate; echo $?)
 
 echo
 printf 'resultado: %d OK, %d fallos\n' "$pass" "$fail"

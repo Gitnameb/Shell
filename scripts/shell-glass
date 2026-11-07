@@ -2,9 +2,11 @@
 # Cristal del shell: reglas de desenfoque por capa y radio global.
 #
 # Uso:
-#   shell-glass ensure          añade las layer_rule si faltan (idempotente)
-#   shell-glass blur <0-100>    cambia el radio global de Umbriel
-#   shell-glass status          muestra el estado actual
+#   shell-glass ensure               añade o actualiza las layer_rule
+#   shell-glass mode wallpaper       desenfoca solo el fondo de pantalla
+#   shell-glass mode behind          desenfoca el contenido que hay detrás
+#   shell-glass blur <0-100>         cambia el radio global de Umbriel
+#   shell-glass status               muestra el estado actual
 #
 # El shell dibuja superficies transparentes; Umbriel solo las desenfoca si una
 # [[layer_rule]] coincide con su namespace. El radio es global: se aplica
@@ -13,7 +15,12 @@
 set -eu
 
 cfg="${UMBRIEL_CONFIG:-$HOME/.config/umbriel/config.toml}"
-marker='# shell-glass: inicio'
+start_marker='# shell-glass: inicio'
+end_marker='# shell-glass: fin'
+# Debe quedar por debajo del alpha mínimo del cristal (0.10 con transparencia
+# 90 %) y por encima de 0, para que la máscara descarte las esquinas
+# transparentes sin apagar el desenfoque del panel.
+ignore_alpha=0.04
 
 usage() {
     cat <<'EOF'
@@ -21,8 +28,12 @@ Configura el cristal del shell en Umbriel.
 
 Uso:
   shell-glass ensure
+  shell-glass mode wallpaper|behind
   shell-glass blur <0-100>
   shell-glass status
+
+  wallpaper  desenfoca solo el fondo de pantalla (como el mockup)
+  behind     desenfoca las ventanas y el contenido que hay detrás
 EOF
 }
 
@@ -50,44 +61,97 @@ reload() {
     umbriel msg config-reload >/dev/null 2>&1 || true
 }
 
+# El bloque se genera entero para poder sustituirlo sin tocar el resto del
+# archivo. El primer argumento es true (solo fondo) o false (contenido real).
 layer_block() {
-    cat <<'EOF'
-
+    optimized=${1:-true}
+    cat <<EOF
 # shell-glass: inicio
-# Cristal del shell. Umbriel desenfoca solo las superficies transparentes y,
-# con blur_optimized (por defecto), muestrea el fondo de pantalla en caché:
-# los paneles nunca desenfocan las ventanas que tengan detrás.
+# Cristal del shell. Umbriel desenfoca las superficies transparentes. Con
+# blur_optimized = true muestrea la caché del fondo de pantalla y los paneles
+# nunca desenfocan las ventanas; con false desenfoca el contenido real.
+# blur_ignore_alpha descarta los píxeles transparentes de las esquinas
+# redondeadas para que el desenfoque no asome fuera de la superficie.
 [[layer_rule]]
-match.namespace = "^shell-(bar|side-panel|launcher|calendar|battery|tray|power|app-menu|osd|move-menu|welcome-mode|window-mode)$"
+match.namespace = "^shell-(bar|side-panel|launcher|calendar|battery|tray|power|app-menu|osd|move-menu|welcome-mode|window-mode)\$"
 blur = true
 blur_popups = true
+blur_ignore_alpha = $ignore_alpha
+blur_optimized = $optimized
 
 # Superficies transparentes a pantalla completa o que no son cristal: no
 # deben crear una región de desenfoque.
 [[layer_rule]]
-match.namespace = "^shell-(wallpaper|desktop-icons|outside-close|filter)$"
+match.namespace = "^shell-(wallpaper|desktop-icons|outside-close|filter)\$"
 blur = false
 # shell-glass: fin
 EOF
 }
 
-ensure() {
-    [ -f "$cfg" ] || exit 0
-    if grep -qF "$marker" "$cfg"; then
-        printf 'unchanged\n'
-        return 0
-    fi
+current_block() {
+    [ -f "$cfg" ] || return 0
+    sed -n "/^$start_marker\$/,/^$end_marker\$/p" "$cfg"
+}
 
+# Modo actual del bloque. Sin bloque, o sin la clave, se asume el valor global
+# por defecto (solo fondo de pantalla).
+current_optimized() {
+    block=$(current_block)
+    case "$block" in
+        *'blur_optimized = false'*) printf 'false\n' ;;
+        *) printf 'true\n' ;;
+    esac
+}
+
+replace_block() {
+    optimized=$1
     config_set=$(find_config_set) \
         || { echo "falta shell-config-set" >&2; exit 1; }
+
     tmp=$(mktemp "${TMPDIR:-/tmp}/shell-glass.XXXXXX")
     trap 'rm -f "$tmp"' EXIT
-    layer_block >"$tmp"
-    status=$("$config_set" --append-block "$tmp") || exit $?
+    layer_block "$optimized" >"$tmp"
+
+    if [ -n "$(current_block)" ]; then
+        status=$("$config_set" --drop-block "$start_marker" "$end_marker" \
+            --append-block "$tmp") || exit $?
+    else
+        status=$("$config_set" --append-block "$tmp") || exit $?
+    fi
     if [ "$status" = changed ]; then
         reload
     fi
     printf '%s\n' "$status"
+}
+
+ensure() {
+    [ -f "$cfg" ] || exit 0
+    optimized=$(current_optimized)
+    if [ -n "$(current_block)" ] \
+        && [ "$(current_block)" = "$(layer_block "$optimized")" ]; then
+        printf 'unchanged\n'
+        return 0
+    fi
+    replace_block "$optimized"
+}
+
+mode() {
+    value=${1:-}
+    case "$value" in
+        wallpaper|fondo) optimized=true ;;
+        behind|content|contenido) optimized=false ;;
+        *)
+            echo "uso: shell-glass mode wallpaper|behind" >&2
+            exit 2
+            ;;
+    esac
+
+    [ -f "$cfg" ] || exit 0
+    if [ "$(current_block)" = "$(layer_block "$optimized")" ]; then
+        printf 'unchanged\n'
+        return 0
+    fi
+    replace_block "$optimized"
 }
 
 blur() {
@@ -122,8 +186,20 @@ blur() {
 }
 
 status() {
-    if [ -f "$cfg" ] && grep -qF "$marker" "$cfg"; then
+    block=$(current_block)
+    if [ -n "$block" ]; then
         printf 'reglas: presentes\n'
+        if [ "$(current_optimized)" = false ]; then
+            printf 'desenfoque: contenido detrás\n'
+        else
+            printf 'desenfoque: fondo de pantalla\n'
+        fi
+        case "$block" in
+            *"blur_ignore_alpha = $ignore_alpha"*)
+                printf 'esquinas: recortadas\n' ;;
+            *)
+                printf 'esquinas: sin recortar\n' ;;
+        esac
     else
         printf 'reglas: ausentes\n'
     fi
@@ -143,6 +219,7 @@ status() {
 
 case "${1:-}" in
     ensure) ensure ;;
+    mode) shift; mode "${1:-}" ;;
     blur) shift; blur "${1:-}" ;;
     status) status ;;
     -h | --help) usage ;;

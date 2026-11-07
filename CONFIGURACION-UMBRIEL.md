@@ -104,9 +104,10 @@ Todas las escrituras pasan por `shell-config-set`. El escritor:
 - si algo falla, borra el temporal y deja el original intacto;
 - si todo es válido, hace `os.replace` atómico y conserva el modo del archivo.
 
-Los seis scripts ya no abren `config.toml` para escribir: calculan sus valores y
-llaman al escritor. Si un proceso muere a mitad de la operación, el archivo
-original sigue intacto.
+Los scripts del shell ya no abren `config.toml` para escribir: calculan sus
+valores y llaman al escritor. `shell-glass` hace lo mismo con las reglas de
+capa y el bloque de cristal. Si un proceso muere a mitad de la operación, el
+archivo original sigue intacto.
 
 ### 5.2 Copia buena y plantilla
 
@@ -315,7 +316,7 @@ y `ignore_errors=yes`.
 ## 9. El escritor único
 
 Ya está implementado. `install/bin/shell-config-set` es el único programa que
-sustituye `config.toml`; los seis scripts que antes escribían por su cuenta son
+sustituye `config.toml`; los scripts que antes escribían por su cuenta son
 ahora envoltorios finos que calculan valores y le pasan un parche.
 
 ### 9.1 Interfaz
@@ -330,6 +331,11 @@ shell-config-set \
 
 - `--section` puede repetirse para tocar varias tablas en una sola escritura.
 - Cada `clave=valor` se aplica a la sección anterior.
+- `--append-block FILE` añade un bloque literal al final (por ejemplo, tablas
+  `[[layer_rule]]`).
+- `--drop-block BEGIN END` borra el tramo entre dos líneas marcadoras. Con
+  `--drop-block` y `--append-block` en la misma llamada se sustituye un bloque
+  gestionado de forma atómica, como hace `shell-glass`.
 - Los valores son TOML en crudo: números sin comillas, cadenas entre comillas y
   `true`/`false`.
 - La salida es `changed` o `unchanged`. Los scripts solo piden
@@ -363,6 +369,7 @@ visible.
 | `shell-display-filter` | `[display]` |
 | `shell-keyboard-layout` | `[input.keyboard] layout` |
 | `shell-umbriel-theme` | `[colors]`, `[colors.border]`, `[colors.title_bar]` |
+| `shell-glass` | `[[layer_rule]]` y `[appearance.blur]` |
 
 Las llamadas desde QML no cambiaron. Los scripts conservan su interfaz y sus
 validaciones de argumentos; lo único que cambió es que ya no abren el archivo
@@ -382,7 +389,7 @@ Verificados:
 - Una clave conocida que faltaba se añade y valida.
 - Una sección conocida que faltaba se crea y valida.
 - El modo del archivo se conserva.
-- Los seis scripts escriben lo esperado y solo recargan cuando hay cambios.
+- Los siete scripts escriben lo esperado y solo recargan cuando hay cambios.
 - La sustitución es `os.replace` sobre un temporal ya validado; un corte antes
   del reemplazo deja el original intacto.
 - El guardián `ensure` sigue siendo la última red de seguridad.
@@ -417,8 +424,10 @@ una regla de capa coincide con su namespace. Las reglas viven en
 `config.toml` y las administra `scripts/shell-glass`:
 
 ```sh
-./scripts/shell-glass ensure        # añade las reglas si faltan
-./scripts/shell-glass blur 12       # radio global; 0 apaga el blur
+./scripts/shell-glass ensure           # añade o actualiza las reglas
+./scripts/shell-glass mode wallpaper   # solo fondo de pantalla (por defecto)
+./scripts/shell-glass mode behind      # contenido real que hay detrás
+./scripts/shell-glass blur 12          # radio global; 0 apaga el blur
 ./scripts/shell-glass status
 ```
 
@@ -429,15 +438,25 @@ Bloque que se añade (idempotente, marcado con `# shell-glass: inicio`):
 match.namespace = "^shell-(bar|side-panel|launcher|calendar|battery|tray|power|app-menu|osd|move-menu|welcome-mode|window-mode)$"
 blur = true
 blur_popups = true
+blur_ignore_alpha = 0.04
+blur_optimized = true
 
 [[layer_rule]]
 match.namespace = "^shell-(wallpaper|desktop-icons|outside-close|filter)$"
 blur = false
 ```
 
-- `blur_optimized` queda en su valor por defecto (`true`): Umbriel muestrea la
-  caché del fondo de pantalla, así que el cristal nunca desenfoca las ventanas
-  que haya detrás. Es el mismo criterio que el mockup.
+- `blur_optimized = true` muestrea la caché del fondo de pantalla, así que el
+  cristal nunca desenfoca las ventanas que haya detrás: es el modo del mockup.
+  Con `blur_optimized = false` Umbriel desenfoca el contenido real. Se cambia
+  con `shell-glass mode behind` o con el interruptor «Desenfocar el contenido»
+  de Ajustes; el valor se guarda como `glassBlurBehind`.
+- `blur_ignore_alpha = 0.04` usa el alpha de la propia superficie como
+  máscara: descarta los píxeles transparentes de las esquinas redondeadas y
+  evita que el desenfoque asome fuera del panel. Debe quedar por debajo del
+  alpha mínimo del cristal (0.10 con transparencia 90 %).
+- `shell-glass` sustituye el bloque entero entre sus dos marcadores mediante
+  `shell-config-set --drop-block`, sin tocar el resto del archivo.
 - `shell-wallpaper`, `shell-desktop-icons`, `shell-outside-close` y
   `shell-filter` se excluyen: son superficies transparentes a pantalla
   completa (o el velo de luz nocturna) y no deben crear una región de blur.
@@ -445,8 +464,5 @@ blur = false
   escribe `[appearance.blur] radius` y también afecta al blur de las ventanas.
 - La transparencia (`glassTransparency`, 0–90) solo cambia el alpha del shell:
   `alpha = (100 - transparencia) / 100`. Por defecto 22 → 0.78.
-- No definir `blur_ignore_alpha` alto: con transparencias fuertes el alpha de
-  la superficie baja y Umbriel podría saltarse el blur. El valor por defecto
-  es 0.0 y se deja así.
 - Pruebas: `./scripts/test-glass-rules.sh` y
   `./scripts/test-config-writers.sh`.

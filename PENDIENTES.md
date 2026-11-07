@@ -30,12 +30,15 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   sustituye el archivo de forma atómica. Detalle y recuperación:
   `CONFIGURACION-UMBRIEL.md`.
 - **Cristal y desenfoque.** La barra, los paneles y los menús son ahora
-  translúcidos y Umbriel los desenfoca con `[[layer_rule]]` (blur nativo,
-  `blur_optimized`, solo fondo de pantalla). `scripts/shell-glass` añade las
-  reglas y cambia el radio global; el shell expone «Cristal» en Ajustes con
-  transparencia (0–90, por defecto 22) y desenfoque (0–40, por defecto 12). El
-  radio es global y también afecta a las ventanas. Pruebas:
-  `scripts/test-glass-rules.sh`. Detalle: `CONFIGURACION-UMBRIEL.md` §11.
+  translúcidos y Umbriel los desenfoca con `[[layer_rule]]` (blur nativo). Por
+  defecto `blur_optimized = true` muestrea solo el fondo de pantalla; Ajustes →
+  Cristal permite cambiar a contenido real con «Desenfocar el contenido»
+  (`glassBlurBehind`). `blur_ignore_alpha = 0.04` recorta las esquinas
+  redondeadas para que el blur no asome. `scripts/shell-glass` administra el
+  bloque y el radio global; el shell expone transparencia (0–90, por defecto
+  22) y desenfoque (0–40, por defecto 12). El radio es global y también afecta
+  a las ventanas. Pruebas: `scripts/test-glass-rules.sh`. Detalle:
+  `CONFIGURACION-UMBRIEL.md` §11.
 - Fork en `~/umbriel-fork`, rama con 24 commits sobre `b6c4b7d`, árbol limpio.
   Parche regenerable en `~/Shell/umbriel-fork.patch` (50 archivos).
 - **Plataforma decidida: solo Umbriel sobre Debian.** Hyprland y cualquier otro

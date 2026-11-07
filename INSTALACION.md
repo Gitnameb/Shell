@@ -434,7 +434,9 @@ usa.
 
 `glassTransparency` (0–90, por defecto 22) y `glassBlur` (0–40, por defecto 12)
 controlan el cristal. El segundo es el radio global de Umbriel y también
-desenfoca las ventanas; `0` lo apaga.
+desenfoca las ventanas; `0` lo apaga. `glassBlurBehind` (0/1, por defecto 0)
+elige entre desenfocar solo el fondo de pantalla (como el mockup) o el
+contenido real que hay detrás; también está en Ajustes → Cristal.
 
 Los antiguos `alternar-autoocultar.sh`, `alternar-no-molestar.sh` y
 `alternar-posicion.sh` están en `install/config/` por si se quieren conservar;

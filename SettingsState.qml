@@ -101,8 +101,11 @@ Singleton {
     // través de la barra y los paneles: 0 es opaco y 90, casi transparente.
     // «glassBlur» es el radio de desenfoque global de Umbriel, en la misma
     // escala que el mockup (0 lo apaga). Afecta también a las ventanas.
+    // «glassBlurBehind» elige qué se desenfoca: false usa la caché del fondo
+    // de pantalla (como el mockup) y true, el contenido real que hay detrás.
     property int glassTransparency: 22
     property int glassBlur: 12
+    property bool glassBlurBehind: false
 
     // Distribución física del teclado. Se aplica a Hyprland en caliente y se
     // vuelve a aplicar al arrancar el shell.
@@ -155,6 +158,7 @@ Singleton {
     property bool holdApplyPending: false
     property bool floatingApplyPending: false
     property bool glassApplyPending: false
+    property bool glassModeApplyPending: false
 
     readonly property string path: (Quickshell.env("HOME") || "/home/username")
         + "/.config/shell/settings.conf"
@@ -457,6 +461,10 @@ Singleton {
         root.glassBlur = Math.max(0, Math.min(40, Math.round(value)));
     }
 
+    function setGlassBlurBehind(value: bool): void {
+        root.glassBlurBehind = value;
+    }
+
     function applyGlassBlur(): void {
         if (!root.ready)
             return;
@@ -469,6 +477,23 @@ Singleton {
             "sh", root.glassScript, "blur", String(root.glassBlur)
         ];
         glassProc.running = true;
+    }
+
+    // Umbriel guarda el modo en la misma regla de capa, así que cambiarlo
+    // reescribe el bloque administrado por shell-glass.
+    function applyGlassMode(): void {
+        if (!root.ready)
+            return;
+        if (glassModeProc.running) {
+            root.glassModeApplyPending = true;
+            return;
+        }
+        root.glassModeApplyPending = false;
+        glassModeProc.command = [
+            "sh", root.glassScript, "mode",
+            root.glassBlurBehind ? "behind" : "wallpaper"
+        ];
+        glassModeProc.running = true;
     }
 
     function setKeyboardLayout(value: string): void {
@@ -597,6 +622,7 @@ Singleton {
             + "systemTheme=%s\\n"
             + "glassTransparency=%s\\n"
             + "glassBlur=%s\\n"
+            + "glassBlurBehind=%s\\n"
             + "keyboardLayout=%s\\n"
             + "workspaceModeDefault=%s\\n"
             + "workspaceModes=%s\\n"
@@ -643,6 +669,7 @@ Singleton {
             root.systemTheme ? "1" : "0",
             root.glassTransparency,
             root.glassBlur,
+            root.glassBlurBehind ? "1" : "0",
             root.keyboardLayout,
             root.workspaceModeDefault,
             root.workspaceModes,
@@ -728,6 +755,11 @@ Singleton {
         if (root.ready)
             glassApplyTimer.restart();
     }
+    onGlassBlurBehindChanged: {
+        saveTimer.restart();
+        if (root.ready)
+            glassModeApplyTimer.restart();
+    }
     onKeyboardLayoutChanged: {
         saveTimer.restart();
         root.applyKeyboardLayout();
@@ -774,6 +806,13 @@ Singleton {
     }
 
     Timer {
+        id: glassModeApplyTimer
+        interval: 180
+        repeat: false
+        onTriggered: root.applyGlassMode()
+    }
+
+    Timer {
         id: themeTimer
         interval: 220
         repeat: false
@@ -798,6 +837,17 @@ Singleton {
             if (root.glassApplyPending) {
                 root.glassApplyPending = false;
                 root.applyGlassBlur();
+            }
+        }
+    }
+
+    Process {
+        id: glassModeProc
+
+        onExited: {
+            if (root.glassModeApplyPending) {
+                root.glassModeApplyPending = false;
+                root.applyGlassMode();
             }
         }
     }
@@ -835,6 +885,7 @@ Singleton {
             let sysTheme = root.systemTheme;
             let glassPct = root.glassTransparency;
             let glassRadius = root.glassBlur;
+            let glassBehind = root.glassBlurBehind;
             let layout = root.keyboardLayout;
             let shortcut = root.micShortcut;
             let hotspotOff = root.hotspotAutoOff;
@@ -934,6 +985,8 @@ Singleton {
                     const parsed = parseInt(value, 10);
                     if (!isNaN(parsed))
                         glassRadius = Math.max(0, Math.min(40, parsed));
+                } else if (key === "glassBlurBehind") {
+                    glassBehind = value === "1" || value === "true";
                 } else if (key === "keyboardLayout") {
                     if (/^[a-z0-9_]+$/.test(value))
                         layout = value;
@@ -1015,6 +1068,7 @@ Singleton {
             root.systemTheme = sysTheme;
             root.glassTransparency = glassPct;
             root.glassBlur = glassRadius;
+            root.glassBlurBehind = glassBehind;
             root.keyboardLayout = layout;
             root.hotspotAutoOff = hotspotOff;
             root.hotspotMinutes = hotspotMin;
@@ -1042,6 +1096,7 @@ Singleton {
             root.applySuperHoldDelay();
             root.applyFloatingDefaults();
             root.applyGlassBlur();
+            root.applyGlassMode();
             root.applyMicShortcut();
             root.applyKeyboardLayout();
             root.applyIdle();
