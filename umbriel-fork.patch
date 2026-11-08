@@ -4442,7 +4442,7 @@ index 528e1371..c736b128 100644
      static nlohmann::json workspaces(Server& server, IpcArgs args);
      static nlohmann::json submap(Server& server, IpcArgs args);
 diff --git a/src/server/server.cpp b/src/server/server.cpp
-index 560eef66..855c9ba5 100644
+index 560eef66..80d2d1c5 100644
 --- a/src/server/server.cpp
 +++ b/src/server/server.cpp
 @@ -26,6 +26,7 @@
@@ -4458,7 +4458,7 @@ index 560eef66..855c9ba5 100644
    }
  
 +  void Server::showMoveMenu(View* view, double x, double y) {
-+    if (m_moveMenu != nullptr) {
++    if (!m_sessionLocked && m_moveMenu != nullptr) {
 +      m_moveMenu->show(view, x, y);
 +    }
 +  }
