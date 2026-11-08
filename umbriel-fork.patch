@@ -5957,7 +5957,7 @@ index ead8100c..1eb50bf1 100644
      // Show one window of the scratchpad at a time: the one after (`direction` > 0) or before the window on show,
      // wrapping at the ends. A hidden pad shows its most recently focused window.
 diff --git a/src/workspace/workspace.cpp b/src/workspace/workspace.cpp
-index abe1f377..159b9021 100644
+index abe1f377..3be84bfb 100644
 --- a/src/workspace/workspace.cpp
 +++ b/src/workspace/workspace.cpp
 @@ -439,7 +439,10 @@ namespace umbriel {
@@ -6170,7 +6170,7 @@ index abe1f377..159b9021 100644
 +    std::vector<Entry> entries;
 +    for (View* view : m_views) {
 +      if (view == nullptr || !view->mapped() || !view->tiled() || view->layoutFullscreen()
-+          || m_layout->columnOf(view) < 0) {
++          || view->tabHidden() || m_layout->columnOf(view) < 0) {
 +        continue;
 +      }
 +      entries.push_back({view, tiledTargetBox(view, usable, layout)});
