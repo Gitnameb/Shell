@@ -268,6 +268,28 @@ check "dice changed" $([ "$status" = changed ]; echo $?)
 check "desaparece" $(! grep -q 'test: inicio' "$UMBRIEL_CONFIG"; echo $?)
 check "valida" $(umbriel config validate -c "$UMBRIEL_CONFIG" >/dev/null 2>&1; echo $?)
 
+echo "== 17. inserta un bloque antes de un marcador =="
+fresh
+cat >"$BASE/block-insert.toml" <<'TOML'
+# test-insert: inicio
+[[window_rule]]
+match.app_id = "^insert-test$"
+# test-insert: fin
+TOML
+status=$("$WRITER" --insert-block-before '# shell-workspace-modes: inicio' \
+    "$BASE/block-insert.toml")
+check "dice changed" $([ "$status" = changed ]; echo $?)
+marker_line=$(grep -n '^# shell-workspace-modes: inicio$' "$UMBRIEL_CONFIG" | cut -d: -f1)
+insert_line=$(grep -n '^# test-insert: inicio$' "$UMBRIEL_CONFIG" | cut -d: -f1)
+check "queda antes del marcador" \
+    $([ -n "$insert_line" ] && [ "$insert_line" -lt "$marker_line" ]; echo $?)
+check "valida" $(umbriel config validate -c "$UMBRIEL_CONFIG" >/dev/null 2>&1; echo $?)
+lines=$(wc -l <"$UMBRIEL_CONFIG")
+status=$("$WRITER" --insert-block-before '# shell-workspace-modes: inicio' \
+    "$BASE/block-insert.toml")
+check "segunda vez no cambia" $([ "$status" = unchanged ]; echo $?)
+check "sin líneas de más" $([ "$(wc -l <"$UMBRIEL_CONFIG")" = "$lines" ]; echo $?)
+
 echo
 printf 'resultado: %d OK, %d fallos\n' "$pass" "$fail"
 [ "$fail" = 0 ]

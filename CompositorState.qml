@@ -281,6 +281,12 @@ Singleton {
         return root.callBackend("setWorkspaceMode", workspaceId, mode);
     }
 
+    // Fija la presentación de ventanas (controles nativos y barras de título)
+    // sin mantener Mod, como el antiguo «Mostrar con Super» del shell.
+    function setOverlayPinned(pinned): bool {
+        return root.callBackend("setOverlayPinned", pinned);
+    }
+
     // Cambia el layout del teclado físico sin reiniciar la sesión.
     function setKeyboardLayout(layout): bool {
         return root.callBackend("setKeyboardLayout", layout);

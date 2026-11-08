@@ -182,7 +182,7 @@ index 5083cbf3..9f59ca34 100644
  [layout.scrolling]
  default_extent_fraction = 0.5
 diff --git a/meson.build b/meson.build
-index 352b1482..a0ff2e8b 100644
+index 352b1482..2ef26989 100644
 --- a/meson.build
 +++ b/meson.build
 @@ -123,6 +123,7 @@ tomlplusplus_dep = dependency('tomlplusplus')
@@ -193,7 +193,15 @@ index 352b1482..a0ff2e8b 100644
  libdrm_dep = dependency('libdrm', version: '>=2.4.129')
  libdisplay_info_dep = dependency('libdisplay-info', version: '>=0.3.0')
  libudev_dep = dependency('libudev', required: false)
-@@ -848,6 +849,7 @@ core_sources = files(
+@@ -840,6 +841,7 @@ core_sources = files(
+   'src/scene/surface_blur.cpp',
+   'src/scene/surface_shape.cpp',
+   'src/scene/hint_rect.cpp',
++  'src/scene/native_handles.cpp',
+   'src/scene/border_rect.cpp',
+   'src/scene/surface_shadow.cpp',
+   'src/scene/config_banner.cpp',
+@@ -848,6 +850,7 @@ core_sources = files(
    'src/scene/text_buffer.cpp',
    'src/scene/cairo_buffer.cpp',
    'src/scene/title_bar_icon.cpp',
@@ -201,7 +209,7 @@ index 352b1482..a0ff2e8b 100644
    'src/scene/tab_bar.cpp',
    'src/scene/ssd_frame.cpp',
    'src/scene/tab_bar_style.cpp',
-@@ -876,6 +878,7 @@ umbriel_core_deps = [
+@@ -876,6 +879,7 @@ umbriel_core_deps = [
    tomlplusplus_dep,
    cairo_dep,
    pangocairo_dep,
@@ -1817,6 +1825,299 @@ index 12b377cc..b98498ef 100644
        bind(this, screen, m_output->enabled);
        wlr_scene_output_set_screen_effect(m_sceneOutput, screen, &parameters);
      } else {
+diff --git a/src/scene/app_icon.cpp b/src/scene/app_icon.cpp
+new file mode 100644
+index 00000000..23b3d883
+--- /dev/null
++++ b/src/scene/app_icon.cpp
+@@ -0,0 +1,266 @@
++#include "scene/app_icon.h"
++
++#include "scene/cairo_buffer.h"
++
++#include <gdk-pixbuf/gdk-pixbuf.h>
++
++#include <algorithm>
++#include <array>
++#include <cctype>
++#include <cstdint>
++#include <cstdlib>
++#include <filesystem>
++#include <fstream>
++#include <string>
++#include <string_view>
++#include <unordered_map>
++#include <vector>
++
++namespace umbriel {
++  namespace {
++    namespace fs = std::filesystem;
++
++    std::string lower(std::string_view value) {
++      std::string out(value);
++      std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) {
++        return static_cast<char>(std::tolower(c));
++      });
++      return out;
++    }
++
++    std::string homeDir() {
++      const char* home = std::getenv("HOME");
++      return home != nullptr ? std::string(home) : std::string();
++    }
++
++    std::vector<fs::path> dataDirs() {
++      std::vector<fs::path> dirs;
++      const std::string home = homeDir();
++      if (!home.empty()) {
++        dirs.emplace_back(fs::path(home) / ".local/share");
++        dirs.emplace_back(fs::path(home) / ".local/share/flatpak/exports/share");
++      }
++      dirs.emplace_back("/usr/local/share");
++      dirs.emplace_back("/usr/share");
++      dirs.emplace_back("/var/lib/flatpak/exports/share");
++      return dirs;
++    }
++
++    // Lee una clave sencilla («Icon=», «StartupWMClass=») de un .desktop.
++    std::string desktopValue(const fs::path& file, std::string_view key) {
++      std::ifstream stream(file);
++      if (!stream)
++        return {};
++      std::string line;
++      const std::string prefix = std::string(key) + "=";
++      while (std::getline(stream, line)) {
++        if (line.rfind(prefix, 0) == 0) {
++          std::string value = line.substr(prefix.size());
++          while (!value.empty() && (value.back() == '\r' || value.back() == ' '))
++            value.pop_back();
++          const size_t start = value.find_first_not_of(' ');
++          return start == std::string::npos ? std::string() : value.substr(start);
++        }
++      }
++      return {};
++    }
++
++    // Nombre de icono declarado por la app. Se prueba el .desktop con el mismo
++    // id y, si no existe, se busca por StartupWMClass o por nombre de archivo.
++    std::string desktopIcon(const std::string& appId) {
++      static std::unordered_map<std::string, std::string> cache;
++      if (const auto found = cache.find(appId); found != cache.end())
++        return found->second;
++
++      const std::string wanted = lower(appId);
++      std::string icon;
++
++      for (const fs::path& base : dataDirs()) {
++        const fs::path applications = base / "applications";
++        std::error_code error;
++
++        const fs::path direct = applications / (appId + ".desktop");
++        if (fs::is_regular_file(direct, error)) {
++          icon = desktopValue(direct, "Icon");
++          if (!icon.empty())
++            break;
++        }
++
++        if (!fs::is_directory(applications, error))
++          continue;
++        for (const fs::directory_entry& entry : fs::directory_iterator(applications, error)) {
++          if (error || !entry.is_regular_file() || entry.path().extension() != ".desktop")
++            continue;
++          if (lower(entry.path().stem().string()) == wanted) {
++            icon = desktopValue(entry.path(), "Icon");
++            if (!icon.empty())
++              break;
++          }
++          const std::string wmClass = lower(desktopValue(entry.path(), "StartupWMClass"));
++          if (!wmClass.empty() && wmClass == wanted) {
++            icon = desktopValue(entry.path(), "Icon");
++            if (!icon.empty())
++              break;
++          }
++        }
++        if (!icon.empty())
++          break;
++      }
++
++      if (icon.empty())
++        icon = appId; // muchas apps usan su app_id como nombre de icono
++      cache.emplace(appId, icon);
++      return icon;
++    }
++
++    bool isAbsoluteIcon(const std::string& icon, fs::path* out) {
++      if (icon.empty() || icon.front() != '/')
++        return false;
++      std::error_code error;
++      if (!fs::is_regular_file(icon, error))
++        return false;
++      *out = icon;
++      return true;
++    }
++
++    // Busca «Icon=» en los temas instalados. Primero breeze-dark (el tema que
++    // usa ALBA), después los demás; los iconos de apps de terceros suelen estar
++    // en hicolor.
++    std::string findIconFile(const std::string& icon) {
++      static constexpr std::array<std::string_view, 8> themes{
++          "breeze-dark", "breeze", "Breeze_Light", "hicolor", "Adwaita", "oxygen", "locolor", "default"};
++      // Breeze usa carpetas numéricas («48»), hicolor usa «48x48».
++      static constexpr std::array<std::string_view, 17> sizes{
++          "scalable", "256x256", "256", "128x128", "128", "64x64", "64", "48x48", "48",
++          "32x32", "32", "24x24", "24", "22x22", "22", "16x16", "16"};
++      static constexpr std::array<std::string_view, 3> categories{"apps", "applications", "mimetypes"};
++      static constexpr std::array<std::string_view, 3> extensions{".svg", ".png", ".xpm"};
++
++      std::vector<fs::path> roots;
++      const std::string home = homeDir();
++      if (!home.empty()) {
++        roots.emplace_back(fs::path(home) / ".local/share/icons");
++        roots.emplace_back(fs::path(home) / ".icons");
++        roots.emplace_back(fs::path(home) / ".local/share/flatpak/exports/share/icons");
++      }
++      roots.emplace_back("/usr/local/share/icons");
++      roots.emplace_back("/usr/share/icons");
++      roots.emplace_back("/var/lib/flatpak/exports/share/icons");
++      roots.emplace_back("/usr/share/pixmaps");
++
++      std::error_code error;
++      for (const fs::path& root : roots) {
++        // /usr/share/pixmaps guarda los archivos directamente.
++        if (root.filename() == "pixmaps") {
++          for (const std::string_view extension : extensions) {
++            const fs::path candidate = root / (icon + std::string(extension));
++            if (fs::is_regular_file(candidate, error))
++              return candidate.string();
++          }
++          continue;
++        }
++        if (!fs::is_directory(root, error))
++          continue;
++        for (const std::string_view theme : themes) {
++          const fs::path themeRoot = root / theme;
++          if (!fs::is_directory(themeRoot, error))
++            continue;
++          for (const std::string_view size : sizes) {
++            for (const std::string_view category : categories) {
++              // hicolor: <tema>/48x48/apps. Breeze: <tema>/apps/48.
++              const std::array<fs::path, 2> folders{
++                  themeRoot / size / category, themeRoot / category / size};
++              for (const fs::path& folder : folders) {
++                if (!fs::is_directory(folder, error))
++                  continue;
++                for (const std::string_view extension : extensions) {
++                  const fs::path candidate = folder / (icon + std::string(extension));
++                  if (fs::is_regular_file(candidate, error))
++                    return candidate.string();
++                }
++              }
++            }
++          }
++        }
++      }
++      return {};
++    }
++
++    std::string resolveIconPath(const std::string& appId) {
++      static std::unordered_map<std::string, std::string> cache;
++      if (const auto found = cache.find(appId); found != cache.end())
++        return found->second;
++
++      fs::path absolute;
++      const std::string icon = desktopIcon(appId);
++      std::string resolved;
++      if (isAbsoluteIcon(icon, &absolute))
++        resolved = absolute.string();
++      else
++        resolved = findIconFile(icon);
++      cache.emplace(appId, resolved);
++      return resolved;
++    }
++
++    cairo_surface_t* pixbufToSurface(GdkPixbuf* pixbuf) {
++      const int width = gdk_pixbuf_get_width(pixbuf);
++      const int height = gdk_pixbuf_get_height(pixbuf);
++      const int channels = gdk_pixbuf_get_n_channels(pixbuf);
++      const int stride = gdk_pixbuf_get_rowstride(pixbuf);
++      const bool alpha = gdk_pixbuf_get_has_alpha(pixbuf) != 0;
++      const guchar* pixels = gdk_pixbuf_get_pixels(pixbuf);
++      if (width <= 0 || height <= 0 || pixels == nullptr)
++        return nullptr;
++
++      cairo_surface_t* surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
++      cairo_surface_flush(surface);
++      auto* destination = reinterpret_cast<uint32_t*>(cairo_image_surface_get_data(surface));
++      const int destinationStride = cairo_image_surface_get_stride(surface) / 4;
++      for (int y = 0; y < height; ++y) {
++        const guchar* row = pixels + static_cast<size_t>(y) * stride;
++        for (int x = 0; x < width; ++x) {
++          const guchar* source = row + static_cast<size_t>(x) * channels;
++          const uint32_t a = alpha ? source[3] : 255U;
++          const uint32_t r = static_cast<uint32_t>(source[0]) * a / 255U;
++          const uint32_t g = static_cast<uint32_t>(source[1]) * a / 255U;
++          const uint32_t b = static_cast<uint32_t>(source[2]) * a / 255U;
++          destination[static_cast<size_t>(y) * destinationStride + x] = (a << 24U) | (r << 16U) | (g << 8U) | b;
++        }
++      }
++      cairo_surface_mark_dirty(surface);
++      return surface;
++    }
++  } // namespace
++
++  wlr_buffer* renderAppIcon(const std::string& appId, int pixels) {
++    if (appId.empty() || pixels < 8)
++      return nullptr;
++    const std::string path = resolveIconPath(appId);
++    if (path.empty())
++      return nullptr;
++
++    GError* error = nullptr;
++    GdkPixbuf* pixbuf = gdk_pixbuf_new_from_file_at_scale(path.c_str(), pixels, pixels, TRUE, &error);
++    if (pixbuf == nullptr) {
++      if (error != nullptr)
++        g_error_free(error);
++      return nullptr;
++    }
++    cairo_surface_t* icon = pixbufToSurface(pixbuf);
++    g_object_unref(pixbuf);
++    if (icon == nullptr)
++      return nullptr;
++
++    const int width = cairo_image_surface_get_width(icon);
++    const int height = cairo_image_surface_get_height(icon);
++    cairo_surface_t* canvas = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pixels, pixels);
++    cairo_t* context = cairo_create(canvas);
++    cairo_set_source_surface(
++        context, icon, (pixels - width) / 2.0, (pixels - height) / 2.0
++    );
++    cairo_paint(context);
++    cairo_destroy(context);
++    cairo_surface_destroy(icon);
++    return createCairoBuffer(canvas);
++  }
++} // namespace umbriel
+diff --git a/src/scene/app_icon.h b/src/scene/app_icon.h
+new file mode 100644
+index 00000000..ba4956f9
+--- /dev/null
++++ b/src/scene/app_icon.h
+@@ -0,0 +1,15 @@
++#pragma once
++
++#include <string>
++
++struct wlr_buffer;
++
++namespace umbriel {
++  // Icono real de la aplicación para la barra de título.
++  //
++  // Umbriel no depende de GTK ni de un lector de temas de iconos, así que se
++  // resuelve el .desktop de la app, se busca su Icon= en los temas instalados y
++  // se rasteriza con gdk-pixbuf en un buffer cuadrado de `pixels` píxeles.
++  // Devuelve nullptr si no hay icono; el llamador libera el buffer.
++  [[nodiscard]] wlr_buffer* renderAppIcon(const std::string& appId, int pixels);
++} // namespace umbriel
 diff --git a/src/scene/effect_registry.cpp b/src/scene/effect_registry.cpp
 index e4303532..be8c58e3 100644
 --- a/src/scene/effect_registry.cpp
@@ -1966,6 +2267,330 @@ index 9b42b181..130c9c2f 100644
      std::shared_ptr<fx_effect_shader> m_deformation; // null once compilation failed
      bool m_deformationCompiled = false;
      bool m_persistentReferenced = false;
+diff --git a/src/scene/native_handles.cpp b/src/scene/native_handles.cpp
+new file mode 100644
+index 00000000..a6d1954d
+--- /dev/null
++++ b/src/scene/native_handles.cpp
+@@ -0,0 +1,239 @@
++#include "scene/native_handles.h"
++
++#include "config/config.h"
++#include "scene/color.h"
++
++// clang-format off
++#include <algorithm>
++#include <cmath>
++#include "wlr.h"
++// clang-format on
++
++namespace umbriel {
++
++  namespace {
++    constexpr int kDotSize = 8;
++    constexpr int kDotInset = 6;
++    constexpr int kBandWidth = 14;
++    constexpr int kCoreWidth = 2;
++    constexpr float kBandAlpha = 0.10F;
++    constexpr float kCoreAlpha = 0.42F;
++    constexpr float kDotAlpha = 0.90F;
++
++    wlr_scene_rect* makeRect(wlr_scene_tree* tree) {
++      float color[4]{};
++      wlr_scene_rect* rect = wlr_scene_rect_create(tree, 1, 1, color);
++      if (rect != nullptr) {
++        rect->accepts_input = false;
++        wlr_scene_node_set_enabled(&rect->node, false);
++      }
++      return rect;
++    }
++
++    // Tramo visible de un borde compartido, con el mismo margen que el diseño:
++    // 7 % de cada extremo, acotado entre 6 y 46 px.
++    bool spanBounds(double start, double end, int extent, int& first, int& last) {
++      if (extent <= 0 || end <= start) {
++        return false;
++      }
++      const int rawStart = std::clamp(static_cast<int>(std::lround(start * extent)), 0, extent);
++      const int rawEnd = std::clamp(static_cast<int>(std::lround(end * extent)), 0, extent);
++      const int span = rawEnd - rawStart;
++      if (span < 48) {
++        return false;
++      }
++      const int inset = std::clamp(static_cast<int>(std::lround(span * 0.07)), 6, 46);
++      first = rawStart + inset;
++      last = rawEnd - inset;
++      return last - first >= 12;
++    }
++  } // namespace
++
++  NativeHandles::NativeHandles(wlr_scene_tree* parent) : m_parent(parent) {}
++
++  NativeHandles::~NativeHandles() {
++    if (m_tree != nullptr) {
++      wlr_scene_node_destroy(&m_tree->node);
++      m_tree = nullptr;
++    }
++  }
++
++  void NativeHandles::ensureScene() {
++    if (m_tree != nullptr) {
++      return;
++    }
++    m_tree = wlr_scene_tree_create(m_parent);
++    for (wlr_scene_rect*& dot : m_dots) {
++      dot = makeRect(m_tree);
++      if (dot != nullptr) {
++        wlr_scene_rect_set_corner_radius(dot, kDotSize / 2);
++      }
++    }
++    m_rightBand = makeRect(m_tree);
++    m_rightCore = makeRect(m_tree);
++    m_bottomBand = makeRect(m_tree);
++    m_bottomCore = makeRect(m_tree);
++    if (m_rightBand != nullptr) {
++      wlr_scene_rect_set_corner_radius(m_rightBand, kBandWidth / 2);
++    }
++    if (m_bottomBand != nullptr) {
++      wlr_scene_rect_set_corner_radius(m_bottomBand, kBandWidth / 2);
++    }
++    if (m_rightCore != nullptr) {
++      wlr_scene_rect_set_corner_radius(m_rightCore, kCoreWidth / 2);
++    }
++    if (m_bottomCore != nullptr) {
++      wlr_scene_rect_set_corner_radius(m_bottomCore, kCoreWidth / 2);
++    }
++    wlr_scene_node_set_enabled(&m_tree->node, false);
++  }
++
++  void NativeHandles::setActive(bool active) {
++    if (m_active == active) {
++      return;
++    }
++    m_active = active;
++    apply();
++  }
++
++  void NativeHandles::setFocused(bool focused) {
++    if (m_focused == focused) {
++      return;
++    }
++    m_focused = focused;
++    apply();
++  }
++
++  void NativeHandles::setTileEdges(
++      bool right, double rightStart, double rightEnd, bool bottom, double bottomStart, double bottomEnd
++  ) {
++    m_right = right;
++    m_rightStart = rightStart;
++    m_rightEnd = rightEnd;
++    m_bottom = bottom;
++    m_bottomStart = bottomStart;
++    m_bottomEnd = bottomEnd;
++    apply();
++  }
++
++  void NativeHandles::layout(
++      int contentWidth, int contentHeight, int gap, bool tiled, bool dotsAllowed, bool suppressed
++  ) {
++    m_width = contentWidth;
++    m_height = contentHeight;
++    m_gap = gap > 0 ? gap : config().layoutGap();
++    m_tiled = tiled;
++    m_dotsAllowed = dotsAllowed;
++    m_suppressed = suppressed;
++    apply();
++  }
++
++  void NativeHandles::apply() {
++    if (!m_active || m_suppressed || m_width <= 0 || m_height <= 0) {
++      if (m_visible) {
++        wlr_scene_node_set_enabled(&m_tree->node, false);
++        m_visible = false;
++      }
++      return;
++    }
++
++    ensureScene();
++    if (m_tree == nullptr) {
++      return;
++    }
++
++    const bool showDots = !m_tiled && m_focused && m_dotsAllowed
++        && m_width >= 2 * (kDotInset + kDotSize) && m_height >= 2 * (kDotInset + kDotSize);
++    int rightFirst = 0;
++    int rightLast = 0;
++    int bottomFirst = 0;
++    int bottomLast = 0;
++    const bool showRight = m_tiled && m_right && spanBounds(m_rightStart, m_rightEnd, m_height, rightFirst, rightLast);
++    const bool showBottom = m_tiled && m_bottom
++        && spanBounds(m_bottomStart, m_bottomEnd, m_width, bottomFirst, bottomLast);
++
++    const bool visible = showDots || showRight || showBottom;
++    if (!visible) {
++      if (m_visible) {
++        wlr_scene_node_set_enabled(&m_tree->node, false);
++        m_visible = false;
++      }
++      return;
++    }
++
++    if (!m_visible) {
++      wlr_scene_node_set_enabled(&m_tree->node, true);
++      wlr_scene_node_raise_to_top(&m_tree->node);
++      m_visible = true;
++    }
++
++    // El acento sigue al tema sin reiniciar. Los nodos son pocos y esto solo
++    // se ejecuta mientras los indicadores están visibles.
++    const auto& accent = config().colors.accentPrimary;
++    float bandColor[4]{};
++    float coreColor[4]{};
++    float dotColor[4]{};
++    premultiplied(bandColor, accent, kBandAlpha);
++    premultiplied(coreColor, accent, kCoreAlpha);
++    premultiplied(dotColor, accent, kDotAlpha);
++
++    for (size_t i = 0; i < m_dots.size(); ++i) {
++      wlr_scene_rect* dot = m_dots[i];
++      if (dot == nullptr) {
++        continue;
++      }
++      wlr_scene_node_set_enabled(&dot->node, showDots);
++      if (!showDots) {
++        continue;
++      }
++      const int x = (i % 2 == 0) ? kDotInset : m_width - kDotInset - kDotSize;
++      const int y = (i < 2) ? kDotInset : m_height - kDotInset - kDotSize;
++      wlr_scene_node_set_position(&dot->node, x, y);
++      wlr_scene_rect_set_size(dot, kDotSize, kDotSize);
++      wlr_scene_rect_set_color(dot, dotColor);
++    }
++
++    setDividerVisible();
++    if (showRight) {
++      placeDivider(m_rightBand, m_rightCore, true, m_width + m_gap / 2, rightFirst, rightLast);
++      wlr_scene_rect_set_color(m_rightBand, bandColor);
++      wlr_scene_rect_set_color(m_rightCore, coreColor);
++    }
++    if (showBottom) {
++      placeDivider(m_bottomBand, m_bottomCore, false, m_height + m_gap / 2, bottomFirst, bottomLast);
++      wlr_scene_rect_set_color(m_bottomBand, bandColor);
++      wlr_scene_rect_set_color(m_bottomCore, coreColor);
++    }
++  }
++
++  void NativeHandles::setDividerVisible() {
++    for (wlr_scene_rect* rect : {m_rightBand, m_rightCore, m_bottomBand, m_bottomCore}) {
++      if (rect != nullptr) {
++        wlr_scene_node_set_enabled(&rect->node, false);
++      }
++    }
++  }
++
++  void NativeHandles::placeDivider(
++      wlr_scene_rect* band, wlr_scene_rect* core, bool vertical, int position, int first, int last
++  ) {
++    const int length = last - first;
++    if (band == nullptr || core == nullptr || length <= 0) {
++      return;
++    }
++    if (vertical) {
++      wlr_scene_node_set_position(&band->node, position - kBandWidth / 2, first);
++      wlr_scene_rect_set_size(band, kBandWidth, length);
++      wlr_scene_node_set_position(&core->node, position - kCoreWidth / 2, first);
++      wlr_scene_rect_set_size(core, kCoreWidth, length);
++    } else {
++      wlr_scene_node_set_position(&band->node, first, position - kBandWidth / 2);
++      wlr_scene_rect_set_size(band, length, kBandWidth);
++      wlr_scene_node_set_position(&core->node, first, position - kCoreWidth / 2);
++      wlr_scene_rect_set_size(core, length, kCoreWidth);
++    }
++    wlr_scene_node_set_enabled(&band->node, true);
++    wlr_scene_node_set_enabled(&core->node, true);
++  }
++
++} // namespace umbriel
+diff --git a/src/scene/native_handles.h b/src/scene/native_handles.h
+new file mode 100644
+index 00000000..8fc2d6ea
+--- /dev/null
++++ b/src/scene/native_handles.h
+@@ -0,0 +1,73 @@
++#pragma once
++
++extern "C" {
++#include <wlr/util/box.h>
++}
++
++#include <array>
++
++struct wlr_scene_rect;
++struct wlr_scene_tree;
++
++namespace umbriel {
++
++  // Indicadores nativos del modo ventanas. Viven dentro del árbol de la
++  // ventana, así que se mueven y redimensionan con ella en el mismo frame, sin
++  // el retraso de una capa externa:
++  //
++  //  · cuatro puntos en las esquinas de la ventana flotante enfocada;
++  //  · una línea en cada borde compartido entre mosaicos.
++  //
++  // Solo se dibujan mientras se mantiene Mod (el mismo estado que muestra las
++  // barras de título superpuestas) y nunca sobre la vista general ni el bloqueo.
++  class NativeHandles {
++  public:
++    explicit NativeHandles(wlr_scene_tree* parent);
++    ~NativeHandles();
++    NativeHandles(const NativeHandles&) = delete;
++    NativeHandles& operator=(const NativeHandles&) = delete;
++
++    void setActive(bool active);
++    void setFocused(bool focused);
++    // Tramos normalizados (0..1) del borde propio que comparte con un vecino.
++    // `right` dibuja el divisor vertical y `bottom` el horizontal.
++    void setTileEdges(
++        bool right, double rightStart, double rightEnd, bool bottom, double bottomStart, double bottomEnd
++    );
++    // `gap` es el hueco total entre cajas de contenido (incluye los bordes).
++    // `dotsAllowed` deja fuera las flotantes maximizadas y las de pantalla
++    // completa; `suppressed` oculta todo (vista general, bloqueo, minimizada).
++    void layout(int contentWidth, int contentHeight, int gap, bool tiled, bool dotsAllowed, bool suppressed);
++
++  private:
++    void ensureScene();
++    void apply();
++    void placeDivider(wlr_scene_rect* band, wlr_scene_rect* core, bool vertical, int position, int first, int last);
++    void setDividerVisible();
++
++    wlr_scene_tree* m_parent = nullptr;
++    wlr_scene_tree* m_tree = nullptr;
++    std::array<wlr_scene_rect*, 4> m_dots{};
++    wlr_scene_rect* m_rightBand = nullptr;
++    wlr_scene_rect* m_rightCore = nullptr;
++    wlr_scene_rect* m_bottomBand = nullptr;
++    wlr_scene_rect* m_bottomCore = nullptr;
++
++    bool m_active = false;
++    bool m_focused = false;
++    bool m_tiled = false;
++    bool m_dotsAllowed = false;
++    bool m_suppressed = false;
++    bool m_visible = false;
++    bool m_right = false;
++    bool m_bottom = false;
++    double m_rightStart = 0.0;
++    double m_rightEnd = 0.0;
++    double m_bottomStart = 0.0;
++    double m_bottomEnd = 0.0;
++    int m_width = 0;
++    int m_height = 0;
++    int m_gap = 0;
++  };
++
++} // namespace umbriel
 diff --git a/src/scene/ssd_frame.cpp b/src/scene/ssd_frame.cpp
 index 213d2361..da413f28 100644
 --- a/src/scene/ssd_frame.cpp
@@ -3082,7 +3707,7 @@ index 7357ed75..6ed548b7 100644
  
  } // namespace umbriel
 diff --git a/src/server/ipc_commands.cpp b/src/server/ipc_commands.cpp
-index 7e1bd5d9..436d0499 100644
+index 7e1bd5d9..31119cb3 100644
 --- a/src/server/ipc_commands.cpp
 +++ b/src/server/ipc_commands.cpp
 @@ -11,6 +11,7 @@
@@ -3122,7 +3747,7 @@ index 7e1bd5d9..436d0499 100644
        entry["fullscreen"] = view.scheduledFullscreen();
        entry["maximized"] = view.scheduledMaximized();
        entry["maximized_to_edges"] = view.maximizedToEdges();
-@@ -744,6 +759,62 @@ namespace umbriel {
+@@ -744,6 +759,82 @@ namespace umbriel {
      return nlohmann::json{{"ok", windowEntry(server, *view, pendingLayouts)}};
    }
  
@@ -3182,10 +3807,30 @@ index 7e1bd5d9..436d0499 100644
 +    return nlohmann::json{{"ok", nullptr}};
 +  }
 +
++  // The shell's «Mostrar con Super» pin keeps the native resize handles and
++  // overlay title bars visible without holding Mod, and without shielding the
++  // window content from input.
++  nlohmann::json IpcCommands::overlayPin(Server& server, IpcArgs args) {
++    if (args.size() != 1 || args.front().empty()) {
++      return nlohmann::json{{"err", "usage: overlay-pin <on|off|toggle>"}};
++    }
++    const std::string& value = args.front();
++    if (value == "on") {
++      server.setOverlayPinned(true);
++    } else if (value == "off") {
++      server.setOverlayPinned(false);
++    } else if (value == "toggle") {
++      server.setOverlayPinned(!server.overlayPinned());
++    } else {
++      return nlohmann::json{{"err", "overlay-pin: expected on, off or toggle"}};
++    }
++    return nlohmann::json{{"pinned", server.overlayPinned()}};
++  }
++
    nlohmann::json IpcCommands::effects(Server& server, IpcArgs /*args*/) {
      nlohmann::json presets = nlohmann::json::array();
      for (const auto& preset : config().effects.presets) {
-@@ -1394,6 +1465,10 @@ namespace umbriel {
+@@ -1394,6 +1485,12 @@ namespace umbriel {
         &IpcCommands::effects, &printEffects},
        {"windows", "", "list windows (app id and title)", IpcCommandGroup::Inspect, false, &IpcCommands::windows,
         &printWindows},
@@ -3193,19 +3838,22 @@ index 7e1bd5d9..436d0499 100644
 +       IpcCommandGroup::Control, true, &IpcCommands::movedWindowMenu, nullptr},
 +      {"restore-window", "<window-id>", "restore a minimized or scratchpad window",
 +       IpcCommandGroup::Control, true, &IpcCommands::restoreWindow, nullptr},
++      {"overlay-pin", "<on|off|toggle>", "keep the native window controls visible without holding Mod",
++       IpcCommandGroup::Control, true, &IpcCommands::overlayPin, nullptr},
        {"focused-window", "", "print the focused window (app id and title)", IpcCommandGroup::Inspect, false,
         &IpcCommands::focusedWindow, &printWindowRow},
        {"workspaces", "", "list workspaces and their layouts", IpcCommandGroup::Inspect, false, &IpcCommands::workspaces,
 diff --git a/src/server/ipc_commands.h b/src/server/ipc_commands.h
-index 528e1371..b4932fad 100644
+index 528e1371..c736b128 100644
 --- a/src/server/ipc_commands.h
 +++ b/src/server/ipc_commands.h
-@@ -23,6 +23,8 @@ namespace umbriel {
+@@ -23,6 +23,9 @@ namespace umbriel {
      static std::optional<EffectAudio> parseAudioSpectrum(const nlohmann::json& request);
      static nlohmann::json effects(Server& server, IpcArgs args);
      static nlohmann::json windows(Server& server, IpcArgs args);
 +    static nlohmann::json movedWindowMenu(Server& server, IpcArgs args);
 +    static nlohmann::json restoreWindow(Server& server, IpcArgs args);
++    static nlohmann::json overlayPin(Server& server, IpcArgs args);
      static nlohmann::json focusedWindow(Server& server, IpcArgs args);
      static nlohmann::json workspaces(Server& server, IpcArgs args);
      static nlohmann::json submap(Server& server, IpcArgs args);
@@ -3225,10 +3873,10 @@ index 560eef66..25fec3fb 100644
        if (source != nullptr) {
          wl_event_source_remove(source);
 diff --git a/src/server/server.h b/src/server/server.h
-index 03e10604..ff61bb74 100644
+index 03e10604..9b6f3596 100644
 --- a/src/server/server.h
 +++ b/src/server/server.h
-@@ -429,7 +429,30 @@ namespace umbriel {
+@@ -429,7 +429,35 @@ namespace umbriel {
      bool handleVtSwitch(uint32_t keysym, uint32_t modifiers);
      void armModifierTap(const void* source, uint32_t keycode, std::span<const uint32_t> keysyms, uint32_t modifiers);
      [[nodiscard]] std::optional<Keybind> releaseModifierTap(const void* source, uint32_t keycode);
@@ -3252,6 +3900,11 @@ index 03e10604..ff61bb74 100644
 +    // Turns the held-Mod presentation (content shield, hover blur, overlay
 +    // title bars) on or off as one unit.
 +    void setModHoldActive(bool active);
++    // Keeps the Mod presentation visible without the input shield, so the
++    // shell's «Mostrar con Super» pin can leave the resize handles usable.
++    void setOverlayPinned(bool pinned);
++    bool overlayPinned() const { return m_overlayPinned; }
++    bool overlayChromeActive() const { return m_modInputShield || m_overlayPinned; }
 +    // Tracks which window is under the pointer while Mod is held and blurs
 +    // only its client content. Passing null clears the previous window.
 +    void updateModHoverBlur(View* view);
@@ -3260,7 +3913,7 @@ index 03e10604..ff61bb74 100644
      void arrangeLayers(wlr_output* output);
      // Re-send every surface's output scale (views, layer surfaces, popups). Run after anything that changes an output's
      // scale or moves surfaces between outputs outside setWorkspace; the notifies dedup, so extra calls are cheap.
-@@ -476,6 +499,10 @@ namespace umbriel {
+@@ -476,6 +504,10 @@ namespace umbriel {
      bool syncingKeyboardLocks() const;
      void removeKeyboard(Keyboard* keyboard);
      void removeView(View* view);
@@ -3271,7 +3924,7 @@ index 03e10604..ff61bb74 100644
      void removeLayerSurface(LayerSurface* layerSurface, wlr_output* output);
      void removeSessionLock(SessionLock* lock);
      void activateSessionLock(SessionLock* lock);
-@@ -587,6 +614,8 @@ namespace umbriel {
+@@ -587,6 +619,8 @@ namespace umbriel {
      // when there are none.
      void armBackgroundRenderTimer();
      static int onStartupRulesTimer(void* data);
@@ -3280,7 +3933,7 @@ index 03e10604..ff61bb74 100644
      static int onTerminateSignal(int signal, void* data);
      static void onIpcWindowsIdle(void* data);
      static void onIpcWorkspacesIdle(void* data);
-@@ -950,6 +979,9 @@ namespace umbriel {
+@@ -950,6 +984,9 @@ namespace umbriel {
      wl_event_source* m_backgroundRenderTimer = nullptr;
      // One-shot refresh when dynamic startup rules expire.
      wl_event_source* m_startupRulesTimer = nullptr;
@@ -3290,7 +3943,7 @@ index 03e10604..ff61bb74 100644
      // Non-null while a windows-event idle callback is pending. The idle source
      // removes itself when it runs, so a non-null pointer means "already queued".
      wl_event_source* m_ipcWindowsIdle = nullptr;
-@@ -1020,6 +1052,14 @@ namespace umbriel {
+@@ -1020,6 +1057,17 @@ namespace umbriel {
      Keyboard* m_keyboardLayoutSource = nullptr;
      Keyboard* m_keyboardInputSource = nullptr;
      ModifierTapState m_modifierTap;
@@ -3300,6 +3953,9 @@ index 03e10604..ff61bb74 100644
 +    bool m_modInputShield = false;
 +    // Whether overlay title bars are currently shown while the mod key is held.
 +    bool m_titleBarOverlayVisible = false;
++    // Shell-requested pin of the same overlay without holding Mod.
++    bool m_overlayPinned = false;
++    void updateOverlayChrome();
 +    // The window blurred under the pointer while Mod is held, if any.
 +    View* m_modHoverView = nullptr;
      std::vector<std::unique_ptr<PointerDevice>> m_pointers;
@@ -3383,7 +4039,7 @@ index 11f0d54d..4096613a 100644
      if (m_scratchpadManager != nullptr) {
        m_scratchpadManager->remove(view);
 diff --git a/src/server/server_keybinds.cpp b/src/server/server_keybinds.cpp
-index 504a98c3..8196549a 100644
+index 504a98c3..4b716ebc 100644
 --- a/src/server/server_keybinds.cpp
 +++ b/src/server/server_keybinds.cpp
 @@ -9,6 +9,7 @@
@@ -3402,7 +4058,7 @@ index 504a98c3..8196549a 100644
    } // namespace
  
    bool Server::handleVtSwitch(uint32_t keysym, uint32_t modifiers) {
-@@ -317,6 +319,116 @@ namespace umbriel {
+@@ -317,6 +319,131 @@ namespace umbriel {
      return nullptr;
    }
  
@@ -3442,16 +4098,7 @@ index 504a98c3..8196549a 100644
 +        m_cursor->setModInputShield(active);
 +      }
 +    }
-+    // Overlay title bars are native chrome: the compositor shows them while Mod
-+    // is held, over the content, without changing any window geometry.
-+    const bool overlayVisible = active && config().appearance.titleBar.overlay;
-+    if (overlayVisible != m_titleBarOverlayVisible) {
-+      m_titleBarOverlayVisible = overlayVisible;
-+      for (const auto& view : views()) {
-+        if (view != nullptr)
-+          view->setTitleBarOverlay(overlayVisible);
-+      }
-+    }
++    updateOverlayChrome();
 +
 +    if (!active) {
 +      updateModHoverBlur(nullptr);
@@ -3467,6 +4114,30 @@ index 504a98c3..8196549a 100644
 +    } else {
 +      updateModHoverBlur(nullptr);
 +    }
++  }
++
++  void Server::updateOverlayChrome() {
++    const bool shown = overlayChromeActive() && !m_sessionLocked;
++    // Resize handles are native too: dots on the focused floating window and
++    // dividers between mosaics, drawn inside each window tree so they animate
++    // with it instead of trailing on an external overlay.
++    for (const auto& view : views()) {
++      if (view != nullptr) {
++        view->setModHandlesActive(shown);
++        // Overlay title bars are native chrome: they appear over the content
++        // without changing any window geometry.
++        view->setTitleBarOverlay(shown && config().appearance.titleBar.overlay);
++      }
++    }
++    m_titleBarOverlayVisible = shown && config().appearance.titleBar.overlay;
++  }
++
++  void Server::setOverlayPinned(bool pinned) {
++    if (m_overlayPinned == pinned) {
++      return;
++    }
++    m_overlayPinned = pinned;
++    updateOverlayChrome();
 +  }
 +
 +  void Server::updateModHoverBlur(View* view) {
@@ -3645,7 +4316,7 @@ index e4cf551f..1419cce7 100644
    };
  
 diff --git a/src/view/view.cpp b/src/view/view.cpp
-index 2a3b3bcc..97089f8a 100644
+index 2a3b3bcc..89e5e84b 100644
 --- a/src/view/view.cpp
 +++ b/src/view/view.cpp
 @@ -20,6 +20,7 @@ extern "C" {
@@ -3656,7 +4327,7 @@ index 2a3b3bcc..97089f8a 100644
  #include <cassert>
  #include <ranges>
  #include <utility>
-@@ -178,6 +179,13 @@ namespace umbriel {
+@@ -178,7 +179,20 @@ namespace umbriel {
      m_contentTree->node.data = sceneNodeData(this);
      wlr_scene_node_set_enabled(&m_sceneTree->node, false);
      m_presentation.createBackdrop(m_contentTree);
@@ -3668,9 +4339,16 @@ index 2a3b3bcc..97089f8a 100644
 +    m_modShade->accepts_input = false;
 +    wlr_scene_node_set_enabled(&m_modShade->node, false);
      m_attachmentTree = wlr_scene_tree_create(m_sceneTree);
++    // Los indicadores viven en el árbol de la ventana, por encima del
++    // contenido, de la barra de título y de los diálogos adjuntos.
++    m_handles = std::make_unique<NativeHandles>(m_sceneTree);
++    if (m_server->modInputShield()) {
++      m_handles->setActive(true);
++    }
  
      // A scene-node capture uses the node's scene as its render source. Keep a
-@@ -289,6 +297,7 @@ namespace umbriel {
+     // second scene containing only the client surfaces so transparency cannot
+@@ -289,6 +303,7 @@ namespace umbriel {
    }
  
    View::~View() {
@@ -3678,7 +4356,16 @@ index 2a3b3bcc..97089f8a 100644
      clearLaunchPlacement(true, true);
      if (m_effectSelectionIdle != nullptr) {
        wl_event_source_remove(m_effectSelectionIdle);
-@@ -418,7 +427,9 @@ namespace umbriel {
+@@ -353,6 +368,8 @@ namespace umbriel {
+       // The attachment's nodes hang under the frame: release them first so their owner never destroys a freed node.
+       m_chromeAttachment.reset();
+       m_ssdFrame.reset();
++      // Destroy the native handles while their parent tree is still alive.
++      m_handles.reset();
+       m_decoration.poolShadow(m_sceneTree, nullptr, 0, 0, false);
+       wlr_scene_node_destroy(&m_sceneTree->node);
+       m_sceneTree = nullptr;
+@@ -418,7 +435,9 @@ namespace umbriel {
        m_workspace = nullptr;
        // Keep an empty destination alive until this view has been attached.
        // addView() reconciles the group after the transfer is complete.
@@ -3690,10 +4377,18 @@ index 2a3b3bcc..97089f8a 100644
      m_workspace = workspace;
      if (m_workspace != nullptr) {
 diff --git a/src/view/view.h b/src/view/view.h
-index 52a43f63..706149d1 100644
+index 52a43f63..38d96d13 100644
 --- a/src/view/view.h
 +++ b/src/view/view.h
-@@ -216,7 +216,17 @@ namespace umbriel {
+@@ -1,6 +1,7 @@
+ #pragma once
+ #include "config/config.h"
+ #include "core/animation.h"
++#include "scene/native_handles.h"
+ #include "scene/node.h"
+ #include "view/chrome_attachment.h"
+ #include "view/decoration.h"
+@@ -216,7 +217,24 @@ namespace umbriel {
      // Border widths and corner_radius after this window's rule overrides; overview cards draw with the same ones.
      void setXdgDecorationPreference(std::optional<bool> serverSide);
      void setLegacyDecorationPreference(std::optional<bool> serverSide);
@@ -3708,10 +4403,17 @@ index 52a43f63..706149d1 100644
 +    void setModHover(bool visible);
 +    // Shows or hides overlay chrome without changing the window's geometry.
 +    void setTitleBarOverlay(bool visible);
++    // Muestra u oculta los indicadores nativos de redimensionado mientras se
++    // mantiene Mod. Viven dentro del árbol de la ventana, así que se mueven con
++    // ella en el mismo frame.
++    void setModHandlesActive(bool active);
++    void setTileHandles(
++        bool right, double rightStart, double rightEnd, bool bottom, double bottomStart, double bottomEnd
++    );
      void syncSsdFrame();
      SsdFramePoint ssdFramePointAt(double lx, double ly) const;
      SsdFrame* ssdFrame() const { return m_ssdFrame.get(); }
-@@ -227,6 +237,9 @@ namespace umbriel {
+@@ -227,6 +245,9 @@ namespace umbriel {
      int borderEffectPadding() const { return m_effects.borderPadding(); }
      // Opacity multiplier the overview applies to windows it leaves on screen (pinned ones) while it opens and closes.
      void setOverviewOpacity(float opacity);
@@ -3721,7 +4423,7 @@ index 52a43f63..706149d1 100644
      wlr_scene_tree* homeTree() const;
      // The toplevel view owning `surface` after walking xdg popup parents, or
      // nullptr when the surface is not under a view (layer surfaces, cursors).
-@@ -475,9 +488,14 @@ namespace umbriel {
+@@ -475,9 +496,14 @@ namespace umbriel {
      // `Detached` re-tiles without inserting into the layout, for a caller that
      // places the window itself (an interactive drag drops it at its own target).
      enum class TilePlacement : uint8_t { Layout, Detached };
@@ -3739,8 +4441,12 @@ index 52a43f63..706149d1 100644
      void adoptStackingLayoutFloat();
      void togglePinned();
      // Restore the global pinned scene layer after temporary drag reparenting.
-@@ -631,10 +649,15 @@ namespace umbriel {
+@@ -629,12 +655,19 @@ namespace umbriel {
+     void handleCaptureSourceDestroy();
+     void updateBorderGeometry();
      void updateBorderGeometry(int contentWidth, int contentHeight);
++    // Coloca los indicadores nativos con el tamaño de contenido presentado.
++    void syncWindowHandles(int contentWidth, int contentHeight);
      // Lay the chrome attachment out around content of that size, which is remembered for later relayouts.
      void layoutChromeAttachment(int contentWidth, int contentHeight);
 -    float chromeAlpha() const { return (fadeComposited() ? 1.0F : m_fadeAlpha) * m_dragOpacity * m_overviewOpacity; }
@@ -3756,7 +4462,7 @@ index 52a43f63..706149d1 100644
      void updateBlur();
      void updateBlur(int contentWidth, int contentHeight);
      SurfaceBlurOptions blurOptions() const;
-@@ -775,9 +798,17 @@ namespace umbriel {
+@@ -775,9 +808,17 @@ namespace umbriel {
          const wlr_box usable, const std::optional<WindowPosition>& position = std::nullopt,
          const std::optional<std::array<int, 2>> size = std::nullopt
      );
@@ -3775,7 +4481,7 @@ index 52a43f63..706149d1 100644
      );
      // The output box a fullscreen window covers: its workspace's output, else the one under it.
      wlr_box fullscreenArea() const;
-@@ -804,6 +835,7 @@ namespace umbriel {
+@@ -804,6 +845,7 @@ namespace umbriel {
      // Fade the shade in while a dialog is attached and out once none is; animation.dialogs times it.
      void retargetModalShade();
      void syncModalShade();
@@ -3783,7 +4489,7 @@ index 52a43f63..706149d1 100644
      void releaseDialog();
      [[nodiscard]] bool inheritScratchpadFromParent(bool restoreTiled);
      void syncTransientSceneParent();
-@@ -935,12 +967,17 @@ namespace umbriel {
+@@ -935,12 +977,18 @@ namespace umbriel {
      wlr_scene_rect* m_modalShade = nullptr;
      // 0 to 1 of animation.dialogs.dim.
      AnimatedValue m_modalShadeAlpha{0.0};
@@ -3797,11 +4503,12 @@ index 52a43f63..706149d1 100644
      ViewDecoration m_decoration;
      std::unique_ptr<ViewChromeAttachment> m_chromeAttachment;
      std::unique_ptr<SsdFrame> m_ssdFrame;
++    std::unique_ptr<NativeHandles> m_handles;
 +    bool m_titleBarOverlayVisible = false;
      std::optional<bool> m_xdgDecorationPreference;
      std::optional<bool> m_legacyDecorationPreference;
      std::optional<TitleBarMode> m_titleBarMode;
-@@ -1078,6 +1115,7 @@ namespace umbriel {
+@@ -1078,6 +1126,7 @@ namespace umbriel {
      bool m_allowShortcutsInhibit = true;
      float m_dragOpacity = 1.0F;
      float m_overviewOpacity = 1.0F;
@@ -3810,7 +4517,7 @@ index 52a43f63..706149d1 100644
      bool m_hasMaximizeRestoreBox = false;
      wlr_box m_maximizeRestoreBox{};
 diff --git a/src/view/view_animation.cpp b/src/view/view_animation.cpp
-index 7d9615c7..25a4f137 100644
+index 7d9615c7..30c8d16e 100644
 --- a/src/view/view_animation.cpp
 +++ b/src/view/view_animation.cpp
 @@ -54,7 +54,9 @@ namespace umbriel {
@@ -3843,8 +4550,24 @@ index 7d9615c7..25a4f137 100644
    void View::applyEffectiveOpacity() {
      if (m_sceneTree == nullptr) {
        return;
+@@ -271,6 +285,7 @@ namespace umbriel {
+     const int width = m_presentation.width();
+     const int height = m_presentation.height();
+     updateBorderGeometry(width, height);
++    syncWindowHandles(width, height);
+     if (!scheduledFullscreen()) {
+       updateShadow(width, height);
+     }
+@@ -1247,6 +1262,7 @@ namespace umbriel {
+       applyPresentedCrop(content, surfaceClip);
+     }
+     updateBorderGeometry(content.width, content.height);
++    syncWindowHandles(content.width, content.height);
+     updateShadow();
+     updateBlur(content.width, content.height);
+     syncModalShade();
 diff --git a/src/view/view_chrome.cpp b/src/view/view_chrome.cpp
-index 3d39675f..3e360659 100644
+index 3d39675f..24b28fa6 100644
 --- a/src/view/view_chrome.cpp
 +++ b/src/view/view_chrome.cpp
 @@ -18,6 +18,7 @@ extern "C" {
@@ -3855,7 +4578,7 @@ index 3d39675f..3e360659 100644
  #include "wlr.h"
  // clang-format on
  #include "workspace/scratchpad.h"
-@@ -25,13 +26,38 @@ extern "C" {
+@@ -25,13 +26,64 @@ extern "C" {
  #include "xwayland/xwayland.h"
  
  namespace umbriel {
@@ -3893,10 +4616,36 @@ index 3d39675f..3e360659 100644
 +        wlr_scene_node_raise_to_top(&m_attachmentTree->node);
 +      }
 +    }
++  }
++
++  void View::setModHandlesActive(bool active) {
++    if (m_handles != nullptr) {
++      m_handles->setActive(active);
++    }
++  }
++
++  void View::setTileHandles(
++      bool right, double rightStart, double rightEnd, bool bottom, double bottomStart, double bottomEnd
++  ) {
++    if (m_handles != nullptr) {
++      m_handles->setTileEdges(right, rightStart, rightEnd, bottom, bottomStart, bottomEnd);
++    }
++  }
++
++  void View::syncWindowHandles(int contentWidth, int contentHeight) {
++    if (m_handles == nullptr) {
++      return;
++    }
++    const bool suppressed = !m_mapped || m_server->sessionLocked()
++        || (m_server->overview() != nullptr && m_server->overview()->active());
++    const bool dotsAllowed = !m_tiled && !m_maximizedToEdges && !floatingMaximized()
++        && !scheduledFullscreen() && !currentFullscreen();
++    const int gap = m_workspace != nullptr ? m_workspace->layoutConfig().totalGap : config().layoutGap();
++    m_handles->layout(contentWidth, contentHeight, gap, m_tiled, dotsAllowed, suppressed);
    }
  
    bool View::wantsTitleBar(TitleBarMode mode) const {
-@@ -88,14 +114,19 @@ namespace umbriel {
+@@ -88,14 +140,19 @@ namespace umbriel {
    void View::syncSsdFrame() {
      if (!m_mapped)
        return;
@@ -3918,7 +4667,7 @@ index 3d39675f..3e360659 100644
      }
      if (m_ssdFrame == nullptr)
        return;
-@@ -105,10 +136,15 @@ namespace umbriel {
+@@ -105,10 +162,15 @@ namespace umbriel {
          && hints.maxHeight > 0
          && hints.maxHeight == hints.minHeight;
      m_ssdFrame->setTitle(title() != nullptr ? title() : "");
@@ -3934,7 +4683,7 @@ index 3d39675f..3e360659 100644
      m_ssdFrame->setFocused(m_borderFocusedState);
      m_ssdFrame->setAlphas(chromeAlpha(), blurAlpha());
      m_ssdFrame->setBlurOptions(blurOptions());
-@@ -116,6 +152,10 @@ namespace umbriel {
+@@ -116,6 +178,10 @@ namespace umbriel {
      const wlr_box content =
          m_presentedBox.width > 0 && m_presentedBox.height > 0 ? m_presentedBox : committedContentBox();
      layoutChromeAttachment(content.width, content.height);
@@ -3945,7 +4694,7 @@ index 3d39675f..3e360659 100644
      wlr_scene_node_raise_to_top(&m_attachmentTree->node);
    }
  
-@@ -124,11 +164,23 @@ namespace umbriel {
+@@ -124,11 +190,23 @@ namespace umbriel {
        return;
      const std::vector<TitleBarButton>& configured =
          m_titleBarButtons ? *m_titleBarButtons : config().appearance.titleBar.buttons;
@@ -3971,7 +4720,16 @@ index 3d39675f..3e360659 100644
          shown[count++] = button;
        }
      }
-@@ -383,6 +435,30 @@ namespace umbriel {
+@@ -151,6 +229,8 @@ namespace umbriel {
+     }
+     if (m_ssdFrame != nullptr)
+       m_ssdFrame->setFocused(focused);
++    if (m_handles != nullptr)
++      m_handles->setFocused(focused);
+ 
+     const auto& animation = config().animation;
+     const auto& dim = animation.dimUnfocused;
+@@ -383,6 +463,30 @@ namespace umbriel {
      wlr_scene_node_raise_to_top(&m_attachmentTree->node);
    }
  
@@ -4002,7 +4760,7 @@ index 3d39675f..3e360659 100644
    void View::layoutChromeAttachment(int contentWidth, int contentHeight) {
      m_chromeContentWidth = contentWidth;
      m_chromeContentHeight = contentHeight;
-@@ -397,7 +473,8 @@ namespace umbriel {
+@@ -397,7 +501,8 @@ namespace umbriel {
          .contentHeight = contentHeight,
          .borderInset = borderInset(),
          .cornerRadius = m_maximizedToEdges ? 0 : decorationCornerRadius(),
@@ -4012,7 +4770,7 @@ index 3d39675f..3e360659 100644
          .scale = output != nullptr ? output->wlr()->scale : 1.0F,
          .suppressed = !m_mapped || scheduledFullscreen() || currentFullscreen(),
      };
-@@ -406,9 +483,34 @@ namespace umbriel {
+@@ -406,9 +511,34 @@ namespace umbriel {
      geometry.suppressed = geometry.suppressed || m_maximizedToEdges;
      if (m_chromeAttachment != nullptr)
        m_chromeAttachment->layout(geometry);
@@ -4047,7 +4805,7 @@ index 3d39675f..3e360659 100644
      syncSsdFrame();
      if (m_ssdFrame != nullptr)
        m_ssdFrame->reloadConfig();
-@@ -419,6 +521,13 @@ namespace umbriel {
+@@ -419,6 +549,13 @@ namespace umbriel {
      // Temporary unfocus would consume pool selections during an unrelated reload.
      setBorderFocused(m_borderFocusedState);
      updateBorderGeometry();
@@ -4496,7 +5254,7 @@ index ead8100c..1eb50bf1 100644
      // Show one window of the scratchpad at a time: the one after (`direction` > 0) or before the window on show,
      // wrapping at the ends. A hidden pad shows its most recently focused window.
 diff --git a/src/workspace/workspace.cpp b/src/workspace/workspace.cpp
-index abe1f377..01a0157f 100644
+index abe1f377..43138200 100644
 --- a/src/workspace/workspace.cpp
 +++ b/src/workspace/workspace.cpp
 @@ -439,7 +439,10 @@ namespace umbriel {
@@ -4695,7 +5453,82 @@ index abe1f377..01a0157f 100644
    void Workspace::clampScrollToRange() {
      if (ScrollingLayout* scrolling = scrollingLayout()) {
        scrolling->clampScroll(scrollViewportExtent());
-@@ -1857,6 +2014,18 @@ namespace umbriel {
+@@ -1191,7 +1348,74 @@ namespace umbriel {
+ 
+   } // namespace
+ 
++  void Workspace::updateTiledHandles(const wlr_box& usable) {
++    struct Entry {
++      View* view;
++      wlr_box box;
++    };
++    std::vector<Entry> entries;
++    for (View* view : m_views) {
++      if (view == nullptr || !view->mapped() || !view->tiled() || view->layoutFullscreen()
++          || m_layout->columnOf(view) < 0) {
++        continue;
++      }
++      entries.push_back({view, tiledTargetBox(view, usable)});
++    }
++
++    const int gap = m_layoutConfig.totalGap;
++    for (const Entry& entry : entries) {
++      const wlr_box& a = entry.box;
++      bool right = false;
++      bool bottom = false;
++      double rightStart = 0.0;
++      double rightEnd = 0.0;
++      double bottomStart = 0.0;
++      double bottomEnd = 0.0;
++      for (const Entry& other : entries) {
++        if (other.view == entry.view) {
++          continue;
++        }
++        const wlr_box& b = other.box;
++        // Vecino a la derecha: el hueco entre cajas es el mismo que usa el
++        // layout (incluye los bordes de ambas ventanas).
++        const int gapX = b.x - (a.x + a.width);
++        const int top = std::max(a.y, b.y);
++        const int bottomEdge = std::min(a.y + a.height, b.y + b.height);
++        if (gapX >= -2 && gapX <= gap + 2 && a.height > 0 && bottomEdge - top > 60) {
++          right = true;
++          rightStart = static_cast<double>(top - a.y) / a.height;
++          rightEnd = static_cast<double>(bottomEdge - a.y) / a.height;
++        }
++        // Vecino inferior.
++        const int gapY = b.y - (a.y + a.height);
++        const int left = std::max(a.x, b.x);
++        const int rightEdge = std::min(a.x + a.width, b.x + b.width);
++        if (gapY >= -2 && gapY <= gap + 2 && a.width > 0 && rightEdge - left > 60) {
++          bottom = true;
++          bottomStart = static_cast<double>(left - a.x) / a.width;
++          bottomEnd = static_cast<double>(rightEdge - a.x) / a.width;
++        }
++      }
++      entry.view->setTileHandles(right, rightStart, rightEnd, bottom, bottomStart, bottomEnd);
++    }
++
++    // Una ventana que dejó el mosaico (flotante, pantalla completa, pestaña
++    // oculta) no debe conservar los divisores de su hueco anterior.
++    for (View* view : m_views) {
++      if (view == nullptr) {
++        continue;
++      }
++      const bool present = std::ranges::any_of(entries, [view](const Entry& entry) {
++        return entry.view == view;
++      });
++      if (!present) {
++        view->setTileHandles(false, 0.0, 0.0, false, 0.0, 0.0);
++      }
++    }
++  }
++
+   void Workspace::applyTiledMotion(const wlr_box& usable, bool animate, std::span<View* const> resized) {
++    updateTiledHandles(usable);
+     const Overview* overview = m_group->server()->overview();
+     const bool overviewActive = overview != nullptr && overview->active();
+ 
+@@ -1857,6 +2081,18 @@ namespace umbriel {
      return true;
    }
  
@@ -4714,7 +5547,7 @@ index abe1f377..01a0157f 100644
    bool Workspace::increaseMasterCount() {
      MasterStackLayout* master = masterLayout();
      if (master == nullptr || !master->promoteFromStack()) {
-@@ -2525,6 +2694,8 @@ namespace umbriel {
+@@ -2525,6 +2761,8 @@ namespace umbriel {
        return;
      }
      // The members leave one layout and join another; the next arrange carries them there from their current boxes.
@@ -4723,7 +5556,7 @@ index abe1f377..01a0157f 100644
      endLayoutMotion();
      // Remember each column's extent on its leading view; the other members join the new layout without one.
      if (isMovingFromScroll) {
-@@ -2545,9 +2716,12 @@ namespace umbriel {
+@@ -2545,9 +2783,12 @@ namespace umbriel {
          tiledViews.push_back(view);
        }
      }
@@ -4737,7 +5570,7 @@ index abe1f377..01a0157f 100644
        }
        tiledViews.clear();
      } else {
-@@ -2559,6 +2733,22 @@ namespace umbriel {
+@@ -2559,6 +2800,22 @@ namespace umbriel {
      m_layout = createLayout(m_layoutMode);
      m_layout->setConfig(&m_layoutConfig);
      m_layout->setConstraints(&viewLayoutConstraints);
@@ -4760,7 +5593,7 @@ index abe1f377..01a0157f 100644
      for (View* view : tiledViews) {
        m_layout->insertView(view, static_cast<int>(m_layout->columns().size()));
      }
-@@ -2589,6 +2779,7 @@ namespace umbriel {
+@@ -2589,6 +2846,7 @@ namespace umbriel {
        }
      }
      markArrange();
@@ -4768,7 +5601,7 @@ index abe1f377..01a0157f 100644
      refreshDropZonePreview(*m_group->server());
    }
  
-@@ -3004,13 +3195,19 @@ namespace umbriel {
+@@ -3004,13 +3262,19 @@ namespace umbriel {
      m_workspaceAxis = axis;
    }
  
@@ -4793,7 +5626,7 @@ index abe1f377..01a0157f 100644
          workspace->applyLayoutConfig(std::move(layout));
        } else {
 diff --git a/src/workspace/workspace.h b/src/workspace/workspace.h
-index f72069c0..01a1e2f3 100644
+index f72069c0..f0861878 100644
 --- a/src/workspace/workspace.h
 +++ b/src/workspace/workspace.h
 @@ -135,7 +135,7 @@ namespace umbriel {
@@ -4823,7 +5656,7 @@ index f72069c0..01a1e2f3 100644
  
      // `resized` lists the members whose assigned size this arrange changed.
      void applyPositions(bool animate, std::span<View* const> resized);
-@@ -314,6 +318,16 @@ namespace umbriel {
+@@ -314,8 +318,21 @@ namespace umbriel {
      bool moveWithinLane(int direction);
      // Take `view` out of the layout while holding visible lanes still.
      void detachFromLayout(View* view);
@@ -4839,8 +5672,13 @@ index f72069c0..01a1e2f3 100644
 +    bool restoreViewTileSlot(View* view);
      // Snap or animate every tiled member of the layout into its slot from wherever it is presented now.
      void applyTiledMotion(const wlr_box& usable, bool animate, std::span<View* const> resized);
++    // Indica a cada mosaico qué bordes comparte con un vecino y en qué tramo,
++    // para que sus indicadores nativos se dibujen dentro de la propia ventana.
++    void updateTiledHandles(const wlr_box& usable);
      void endLayoutMotion();
-@@ -335,6 +349,17 @@ namespace umbriel {
+     void syncCloseSnapshots();
+     void discardCloseSnapshots();
+@@ -335,6 +352,17 @@ namespace umbriel {
      ResolvedLayoutConfig m_layoutConfig;
      LayoutMode m_layoutMode = LayoutMode::Scrolling;
      std::optional<LayoutMode> m_layoutModeOverride;
@@ -4858,7 +5696,7 @@ index f72069c0..01a1e2f3 100644
      View* m_focusedView = nullptr;
      // The focus the last show-desktop toggle hid, restored with the windows.
      View* m_showDesktopFocus = nullptr;
-@@ -433,7 +458,10 @@ namespace umbriel {
+@@ -433,7 +461,10 @@ namespace umbriel {
      Workspace* insertDynamicWorkspace(size_t index);
      bool moveActiveWorkspace(int direction);
      void reconcileInventory();

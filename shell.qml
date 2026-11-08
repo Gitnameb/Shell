@@ -24,7 +24,6 @@ ShellRoot {
     // ventana y elección inicial del modo de escritorio. El cambio de modo
     // vive en el icono del escritorio activo, no en una barra aparte.
     WindowChrome {}
-    WindowHandles {}
     WelcomeMode {}
     WorkspacePicker {}
 

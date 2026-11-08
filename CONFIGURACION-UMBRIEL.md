@@ -706,8 +706,8 @@ etiquetas, mismos iconos y mismos atajos. El orden imita los botones nativos
 
 ### Redimensionar e intercambiar ventanas
 
-Con Super mantenido (o con el modo ventanas fijado), `WindowHandles.qml` dibuja
-una capa transparente encima de las ventanas:
+Con Super mantenido (o con el pin de «Mostrar con Super»), Umbriel dibuja los
+indicadores **dentro del árbol de cada ventana** (`NativeHandles`):
 
 - una banda de 14 px centrada en el hueco entre cada par de mosaicos vecinos,
   con una línea de 2 px en el centro y un margen del 7 % en los extremos como
@@ -715,8 +715,10 @@ una capa transparente encima de las ventanas:
 - cuatro puntos en las esquinas de la ventana flotante **enfocada**, unos
   píxeles hacia dentro para que queden sobre el borde redondeado.
 
-La capa usa `mask: Region {}`: no captura clics. La manipulación la sigue
-haciendo Umbriel. En el fork:
+Al ser nodos de escena de la propia ventana, se mueven y redimensionan con ella
+en el mismo frame, no capturan clics y quedan cubiertos por una ventana
+flotante que pase por encima. El shell no superpone ninguna capa. La
+manipulación la sigue haciendo Umbriel. En el fork:
 
 - La franja de redimensionado de mosaicos es de 16 px a cada lado del borde,
   así que la zona útil queda centrada en el hueco y funciona igual desde
@@ -732,10 +734,13 @@ haciendo Umbriel. En el fork:
   contenido, mueve la ventana como antes.
 - En una ventana flotante, el botón derecho sigue redimensionando.
 
-Si una ventana flotante tapa un divisor, la línea correspondiente se oculta
-para no dibujarse sobre su contenido. Probado con un puntero virtual en una
-sesión anidada: el borde compartido redimensionó desde ambos lados, el centro
-izquierdo intercambió las dos ventanas y el derecho las reubicó.
+Si una ventana flotante tapa un divisor, su propia escena queda por encima y
+la línea no se dibuja sobre el contenido. El pin del shell se conserva con
+`umbriel overlay-pin on|off|toggle`, que muestra los controles sin activar el
+escudo de entrada de Mod. Probado con un puntero virtual en una sesión
+anidada: el borde compartido redimensionó desde ambos lados, los indicadores
+siguieron a la ventana durante el arrastre y el redimensionado, y el centro
+izquierdo intercambió las dos ventanas mientras el derecho las reubicó.
 
 ### Barra de título nativa
 

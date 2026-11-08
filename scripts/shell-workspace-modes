@@ -1,0 +1,67 @@
+#!/bin/sh
+# Guarda el modo de ventanas de cada escritorio en la configuración de
+# Umbriel, para que lo aplique el compositor desde el arranque y sobreviva a
+# las recargas de configuración. Sin esto, el modo se aplicaba solo con una
+# orden en caliente y cualquier recarga volvía al layout global.
+#
+# Uso: shell-workspace-modes <mosaic|floating> [1=mosaic;2=floating]
+set -eu
+
+default_mode="${1:-mosaic}"
+exceptions="${2:-}"
+
+case "$default_mode" in
+    mosaic | floating) ;;
+    *)
+        echo "shell-workspace-modes: modo inválido: $default_mode" >&2
+        exit 2
+        ;;
+esac
+
+native_mode() {
+    if [ "$1" = "mosaic" ]; then
+        echo "dwindle"
+    else
+        echo "stacking"
+    fi
+}
+
+repo_dir=$(cd "$(dirname "$0")/.." && pwd)
+config_set="${SHELL_CONFIG_SET:-}"
+if [ -z "$config_set" ] || [ ! -x "$config_set" ]; then
+    config_set="${repo_dir}/install/bin/shell-config-set"
+fi
+if [ ! -x "$config_set" ]; then
+    echo "shell-workspace-modes: no se encontró shell-config-set" >&2
+    exit 1
+fi
+
+block=$(mktemp)
+rules=$(mktemp)
+trap 'rm -f "$block" "$rules"' EXIT
+
+# Reglas de los escritorios que se salen del modo por defecto. El layout
+# global ya cubre el resto, incluidos los escritorios nuevos.
+printf '%s' "$exceptions" | tr ';' '\n' |
+    awk -F= -v def="$default_mode" '
+        NF == 2 && $1 ~ /^[0-9]+$/ && $1 >= 1 && $1 <= 64 && ($2 == "mosaic" || $2 == "floating") && $2 != def {
+            print $1, $2
+        }
+    ' | sort -n > "$rules"
+
+{
+    echo "# shell-workspace-modes: inicio"
+    echo "# Generado desde «Configuración de ventanas»; no editar a mano."
+    while read -r id mode; do
+        [ -n "$id" ] || continue
+        printf '\n[[workspace]]\nindex = %d\nlayout.mode = "%s"\n' \
+            "$id" "$(native_mode "$mode")"
+    done < "$rules"
+    echo
+    echo "# shell-workspace-modes: fin"
+} > "$block"
+
+"$config_set" \
+    --section layout "mode=\"$(native_mode "$default_mode")\"" \
+    --drop-block '# shell-workspace-modes: inicio' '# shell-workspace-modes: fin' \
+    --insert-block-before '# shell-glass: inicio' "$block"

@@ -171,6 +171,7 @@ Singleton {
     property bool ready: false
     property bool themeApplyPending: false
     property bool chromeApplyPending: false
+    property bool workspaceModesApplyPending: false
     property bool holdApplyPending: false
     property bool floatingApplyPending: false
     property bool glassApplyPending: false
@@ -181,6 +182,8 @@ Singleton {
         + "/scripts/shell-system-theme"
     readonly property string windowChromeScript: (Quickshell.shellDir || "")
         + "/scripts/shell-window-chrome"
+    readonly property string workspaceModesScript: (Quickshell.shellDir || "")
+        + "/scripts/shell-workspace-modes"
     readonly property string superHoldScript: (Quickshell.shellDir || "")
         + "/scripts/shell-mod-hold"
     readonly property string floatingScript: (Quickshell.shellDir || "")
@@ -400,6 +403,26 @@ Singleton {
             root.nativeTitlebar = root.windowChrome === "integrated"
                 ? "always" : "auto";
         }
+    }
+
+    // El modo de cada escritorio se guarda también como reglas nativas de
+    // Umbriel: así el compositor lo aplica desde el arranque y una recarga de
+    // configuración no lo borra. La orden en caliente sigue existiendo para el
+    // cambio inmediato.
+    function applyWorkspaceModes(): void {
+        if (!root.ready || !root.workspaceModeChosen
+                || !CompositorState.supports("nativeWorkspaceModes"))
+            return;
+        if (workspaceModesProc.running) {
+            root.workspaceModesApplyPending = true;
+            return;
+        }
+        root.workspaceModesApplyPending = false;
+        workspaceModesProc.command = [
+            "sh", root.workspaceModesScript,
+            root.workspaceModeDefault, root.workspaceModes
+        ];
+        workspaceModesProc.running = true;
     }
 
     function setWallpaperPath(path: string): void {
@@ -728,6 +751,24 @@ Singleton {
         saveProc.running = true;
     }
 
+    // El backend del compositor puede aparecer después de cargar los
+    // ajustes. En cuanto esté listo, se escriben sus reglas nativas.
+    Connections {
+        target: CompositorState
+
+        function onBackendChanged(): void {
+            root.applyWorkspaceModes();
+        }
+
+        function onAvailableChanged(): void {
+            root.applyWorkspaceModes();
+        }
+
+        function onWindowDataReadyChanged(): void {
+            root.applyWorkspaceModes();
+        }
+    }
+
     // El orden de los controles vive en BarState, no en este singleton. Se
     // guarda cuando cambia, igual que cualquier otro ajuste.
     Connections {
@@ -761,9 +802,18 @@ Singleton {
     onShowBatteryPercentChanged: saveTimer.restart()
     onShowTempsChanged: saveTimer.restart()
     onUnifiedPanelsChanged: saveTimer.restart()
-    onWorkspaceModeDefaultChanged: saveTimer.restart()
-    onWorkspaceModesChanged: saveTimer.restart()
-    onWorkspaceModeChosenChanged: saveTimer.restart()
+    onWorkspaceModeDefaultChanged: {
+        saveTimer.restart();
+        workspaceModesTimer.restart();
+    }
+    onWorkspaceModesChanged: {
+        saveTimer.restart();
+        workspaceModesTimer.restart();
+    }
+    onWorkspaceModeChosenChanged: {
+        saveTimer.restart();
+        workspaceModesTimer.restart();
+    }
     onNativeTitlebarChanged: saveTimer.restart()
     onWindowChromeChanged: saveTimer.restart()
     onWallpaperPathChanged: saveTimer.restart()
@@ -1166,6 +1216,7 @@ Singleton {
             BarState.restore(controlsOrder, centerOrderText);
             root.ready = true;
             root.applyWindowChrome();
+            root.applyWorkspaceModes();
             root.applySuperHoldDelay();
             root.applyFloatingDefaults();
             root.applyGlassAll();
@@ -1192,6 +1243,13 @@ Singleton {
         interval: 220
         repeat: false
         onTriggered: root.applyFloatingDefaults()
+    }
+
+    Timer {
+        id: workspaceModesTimer
+        interval: 260
+        repeat: false
+        onTriggered: root.applyWorkspaceModes()
     }
 
     Process {
@@ -1231,6 +1289,17 @@ Singleton {
             if (root.chromeApplyPending) {
                 root.chromeApplyPending = false;
                 root.applyWindowChrome();
+            }
+        }
+    }
+
+    Process {
+        id: workspaceModesProc
+
+        onExited: {
+            if (root.workspaceModesApplyPending) {
+                root.workspaceModesApplyPending = false;
+                root.applyWorkspaceModes();
             }
         }
     }

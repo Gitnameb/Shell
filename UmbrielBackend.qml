@@ -83,7 +83,8 @@ Scope {
         close: true,
         focusWorkspace: true,
         setLayout: true,
-        setWorkspaceMode: true
+        setWorkspaceMode: true,
+        overlayPin: true
     })
 
     function numberOr(value, fallback): real {
@@ -460,6 +461,13 @@ Scope {
         const value = String(mode === undefined || mode === null ? "" : mode);
         return root.setWorkspaceLayout(workspaceId,
             value === "mosaic" ? "dwindle" : "stacking");
+    }
+
+    // Mantiene visibles los controles nativos (puntos y divisores) sin tener
+    // que sostener Mod, para el botón «Mostrar con Super» del shell.
+    function setOverlayPinned(pinned): bool {
+        return root.run("umbriel overlay-pin "
+            + (pinned === true ? "on" : "off"), "setOverlayPinned");
     }
 
     // Umbriel no tiene una acción para fijar un layout concreto: se escribe en

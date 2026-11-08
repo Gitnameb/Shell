@@ -17,9 +17,9 @@ xwayland = true
 show_cheatsheet = false
 
 [layout]
-# «Flotante / Como Windows» por defecto. El shell cambia a dwindle en los
-# escritorios que el usuario marque como Mosaico.
-mode = "stacking"
+# Mosaico por defecto: el escritorio 1 y los nuevos reparten las ventanas.
+# «Configuración de ventanas» guarda abajo las excepciones (el 2 en ventana).
+mode = "dwindle"
 gap = 8
 client_maximize = "edges"
 
@@ -192,6 +192,15 @@ warm = 0.000
 
 [input]
 mod_hold_delay_ms = 320
+
+# shell-workspace-modes: inicio
+# Generado desde «Configuración de ventanas»; no editar a mano.
+
+[[workspace]]
+index = 2
+layout.mode = "stacking"
+
+# shell-workspace-modes: fin
 
 # shell-glass: inicio
 # Cristal del shell. Umbriel desenfoca las superficies transparentes. Con

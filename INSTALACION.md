@@ -428,6 +428,12 @@ cp install/config/shell-display.conf ~/.config/shell/display.conf
 cp install/config/glass-blur.conf ~/.config/shell/glass-blur.conf
 ```
 
+El shell escribe esos modos en `~/.config/umbriel/config.toml` como
+`[layout] mode` y reglas `[[workspace]] layout.mode` mediante
+`scripts/shell-workspace-modes`. Así el compositor los aplica desde el
+arranque y una recarga de configuración no los borra; no hay que mantenerlos
+a mano.
+
 Revisar `wallpaperPath` (la plantilla lo deja vacío y usa un color de fondo) y
 `weatherPlace` (vacío significa que se deduce por IP). No copiar `credenciales`
 salvo que se sepa que hace falta: es un secreto local y el código actual no lo

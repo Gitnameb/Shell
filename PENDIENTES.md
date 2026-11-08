@@ -53,8 +53,9 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
 - **Redimensionar e intercambiar ventanas en modo Super (2026-11-07).** Con
   Super mantenido aparece una banda con una línea fina en cada borde compartido
   entre mosaicos y cuatro puntos en las esquinas de la ventana flotante
-  enfocada (`WindowHandles.qml`). La capa no captura entrada: Umbriel sigue
-  haciendo el trabajo. En el fork, la franja de mosaicos creció a 16 px por
+  enfocada. Los dibuja Umbriel dentro del árbol de cada ventana
+  (`NativeHandles`), así que se mueven y redimensionan con ella en el mismo
+  frame; el shell ya no superpone ninguna capa. En el fork, la franja de mosaicos creció a 16 px por
   lado del borde (la zona queda centrada en el hueco y funciona desde ambas
   ventanas) y la flotante a 20 px. Un arrastre con Mod y botón izquierdo sobre
   el contenido de un mosaico intercambia esa ventana con la de debajo, con la
@@ -102,10 +103,23 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   guarda la preferencia y se aplica al entrar, en vez de saltar a él y volver.
   Probado en una sesión anidada con cambios rápidos entre un escritorio en
   mosaico y otro en ventana: los layouts se mantuvieron y el foco no saltó.
-- **Líneas de mosaico durante la animación (2026-11-07).** Al cambiar de
-  escritorio, `WindowHandles` oculta las líneas y los puntos 320 ms hasta que
-  termina la animación de las ventanas; antes quedaban quietas sobre las
-  ventanas en movimiento.
+- **Modos de escritorio nativos (2026-11-07).** El modo por escritorio se
+  guarda también en `config.toml` como `[layout] mode` y reglas
+  `[[workspace]] layout.mode`, mediante `scripts/shell-workspace-modes`. Así
+  Umbriel aplica el reparto desde el arranque y una recarga de configuración
+  ya no lo borra: antes, el modo vivía solo en un override en caliente y una
+  recarga podía devolver el escritorio entero a ventana. La orden
+  `workspace-set-layout` sigue dando el cambio inmediato y las reglas
+  nativas lo hacen persistente. Probado cambiando el escritorio 1 a ventana,
+  recargando la configuración y volviendo a mosaico.
+- **Indicadores de ventana nativos (2026-11-07).** Los puntos y divisores
+  pasan del overlay QML `WindowHandles` a nodos de escena de Umbriel. Viven en
+  el árbol de la ventana, así que no se quedan atrás al arrastrar ni al
+  redimensionar, se recortan bajo una ventana flotante por el orden de escena
+  y siguen el acento del tema. Se muestran con Mod mantenido o con el pin de
+  «Mostrar con Super»; Umbriel conserva ese pin con
+  `umbriel overlay-pin on|off|toggle` sin bloquear la entrada. El overlay del
+  shell se eliminó.
 - **Desenfoque y foco al mantener Super.** Umbriel desenfoca ahora solo el
   contenido de la ventana bajo el puntero mientras se mantiene Mod, como el
   mockup: shader de ventana con blur de 1.4 px y desaturación suave, más un
@@ -116,7 +130,7 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   a todas las ventanas. El parche del fork está regenerado; falta instalar el
   binario nuevo (cerrar sesión) y probarlo con ratón real.
 - Fork en `~/umbriel-fork`, rama de trabajo sobre `b6c4b7d`.
-  Parche regenerable en `~/Shell/umbriel-fork.patch` (50 archivos).
+  Parche regenerable en `~/Shell/umbriel-fork.patch` (62 archivos).
 - **Plataforma decidida: solo Umbriel sobre Debian.** Hyprland y cualquier otro
   compositor quedan descartados; no se mantiene ni se prueba ese backend. El
   código antiguo de `HyprlandBackend.qml` puede quedarse como legado, pero no

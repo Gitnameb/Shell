@@ -78,18 +78,28 @@ Singleton {
         holdTimer.stop();
     }
 
+    // La presentación nativa (puntos, divisores y barras de título) la pinta
+    // Umbriel. El pin solo se lo pide al compositor; el estado visual de este
+    // lado sigue mandando sobre qué paneles del shell se muestran.
+    function syncOverlayPin(): void {
+        if (CompositorState.supports("overlayPin"))
+            CompositorState.setOverlayPinned(root.pinned);
+    }
+
     function togglePinned(): void {
         if (root.blocked)
             return;
         root.pinned = !root.pinned;
         if (!root.pinned)
             root.heldOverlay = false;
+        root.syncOverlayPin();
     }
 
     function showPinned(): void {
         if (root.blocked)
             return;
         root.pinned = true;
+        root.syncOverlayPin();
     }
 
     function hide(): void {
@@ -97,7 +107,11 @@ Singleton {
         root.heldOverlay = false;
         root.held = false;
         holdTimer.stop();
+        root.syncOverlayPin();
     }
+
+    // Una recarga de QML no debe dejar el compositor con el overlay fijado.
+    Component.onCompleted: root.syncOverlayPin()
 
     Timer {
         id: holdTimer
