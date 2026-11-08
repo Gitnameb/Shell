@@ -86,18 +86,6 @@ Singleton {
     readonly property var focusedWorkspace: root.backend
         ? root.backend.focusedWorkspace : null
 
-    // El botón «Mover» de la barra de título nativa abrió su selector. El
-    // serial cambia en cada petición, aunque se pulse dos veces en el mismo
-    // sitio; ventana y coordenadas son globales.
-    readonly property int moveMenuSerial: root.backend
-        ? Number(root.backend.moveMenuSerial) || 0 : 0
-    readonly property string moveMenuWindow: root.backend
-        ? String(root.backend.moveMenuWindow || "") : ""
-    readonly property real moveMenuX: root.backend
-        ? Number(root.backend.moveMenuX) || 0 : 0
-    readonly property real moveMenuY: root.backend
-        ? Number(root.backend.moveMenuY) || 0 : 0
-
     // Vista general del compositor abierta. En Umbriel llega por el evento
     // `overview`; el shell la usa para retirar sus paneles.
     readonly property bool overviewOpen: root.backend
@@ -169,12 +157,9 @@ Singleton {
     }
 
     function backendFile(): string {
-        if (root.detected === "hyprland")
-            return "HyprlandBackend.qml";
-        if (root.detected === "umbriel")
-            return "UmbrielBackend.qml";
-        // Los siguientes backends se añaden aquí cuando estén listos:
-        return "";
+        // Solo se mantiene el compositor nativo. Otros backends se añaden aquí
+        // cuando estén listos.
+        return root.detected === "umbriel" ? "UmbrielBackend.qml" : "";
     }
 
     function loadBackend(): void {

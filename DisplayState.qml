@@ -6,10 +6,9 @@ import QtQuick
 
 // Brillo, atenuación extra y luz nocturna. El brillo intenta controlar el
 // monitor de verdad con DDC/CI (`ddcutil`); si no hay monitor compatible o
-// faltan permisos, cae al filtro del compositor de siempre. En Hyprland la
-// atenuación extra y la luz nocturna usan `decoration:screen_shader`; en los
-// demás compositores (Umbriel) se dibuja una capa click-through
-// (`DisplayFilter.qml`).
+// faltan permisos, cae al filtro nativo del compositor. Umbriel aplica la
+// atenuación extra y la luz nocturna en su propia escena, por encima de la
+// barra y de las ventanas.
 Singleton {
     id: root
 
@@ -45,24 +44,10 @@ Singleton {
         || root.nightLight
         || (!root.hardwareAvailable && root.brightness < 0.995)
 
-    // Filtro para compositores sin shader global (Umbriel).
-    readonly property bool overlayFilter:
-        !CompositorState.supports("screenShader")
-            && !CompositorState.supports("displayFilter")
     // Filtro nativo de Umbriel: cubre toda la salida, incluida la barra, y
     // multiplica el color en vez de superponer un velo.
     readonly property bool nativeDisplayFilter:
         CompositorState.supports("displayFilter")
-    // Opacidad del velo negro. Con brillo por hardware solo cuenta la
-    // atenuación extra; sin él, el brillo también se aplica aquí.
-    readonly property real overlayDark: Math.min(1, Math.max(0, 1
-        - (root.hardwareAvailable ? 1 : root.brightness)
-            * (1 - root.extraDim)))
-    readonly property real overlayWarm: root.nightLight
-        ? Math.max(0, Math.min(1, root.nightStrength)) * 0.3 : 0
-
-    readonly property string shaderPath: (Quickshell.env("HOME") || "/home/username")
-        + "/.config/shell/display.frag"
     readonly property string displayFilterScript: (Quickshell.shellDir || "")
         + "/scripts/shell-display-filter"
 
@@ -289,8 +274,8 @@ Singleton {
                 root.schedule();
                 return;
             }
-            // Ya manda el monitor: el shader solo queda para atenuación y
-            // luz nocturna.
+            // Ya manda el monitor: el filtro nativo solo queda para la
+            // atenuación extra y la luz nocturna.
             root.applyNow();
         }
     }
@@ -364,58 +349,9 @@ Singleton {
         }
     }
 
-    // -------------------------------------------------------------- shader
-    function shaderSource(): string {
-        // Con brillo real el shader no oscurece: solo aplica atenuación y
-        // temperatura. Sin DDC/CI el brillo vuelve a multiplicar la imagen.
-        const b = root.hardwareAvailable ? "1.000" : root.brightness.toFixed(3);
-        const d = root.extraDim.toFixed(3);
-        const n = root.nightLight ? root.nightStrength.toFixed(3) : "0.000";
-        return "#version 300 es\n"
-            + "precision highp float;\n"
-            + "in vec2 v_texcoord;\n"
-            + "layout(location = 0) out vec4 fragColor;\n"
-            + "uniform sampler2D tex;\n"
-            + "\n"
-            + "void main() {\n"
-            + "    vec4 pixColor = texture(tex, v_texcoord);\n"
-            + "    vec3 rgb = pixColor.rgb;\n"
-            + "    vec3 warm = vec3(1.0, 0.78, 0.58);\n"
-            + "    rgb = mix(rgb, rgb * warm, " + n + ");\n"
-            + "    rgb *= " + b + " * (1.0 - " + d + ");\n"
-            + "    fragColor = vec4(rgb, pixColor.a);\n"
-            + "}\n";
-    }
-
     function applyNow(): void {
-        // Sin filtro de compositor, DisplayFilter.qml se actualiza solo.
-        if (root.overlayFilter)
-            return;
-        if (root.nativeDisplayFilter) {
+        if (root.nativeDisplayFilter)
             root.applyNativeFilter();
-            return;
-        }
-        if (applyProc.running) {
-            root.pending = true;
-            return;
-        }
-
-        let script = "";
-        if (root.filterActive) {
-            script = "mkdir -p \""
-                + root.shaderPath.substring(0, root.shaderPath.lastIndexOf("/"))
-                + "\"; cat > \"" + root.shaderPath + "\" <<'SHELL'\n"
-                + root.shaderSource()
-                + "SHELL\n"
-                + "hyprctl keyword decoration:screen_shader \""
-                + root.shaderPath + "\" >/dev/null 2>&1";
-        } else {
-            script = "hyprctl keyword decoration:screen_shader \"\" >/dev/null 2>&1;"
-                + " rm -f \"" + root.shaderPath + "\"";
-        }
-
-        applyProc.command = ["sh", "-c", script];
-        applyProc.running = true;
     }
 
     // Umbriel aplica el filtro en el compositor: cubre barra, paneles y
@@ -437,7 +373,6 @@ Singleton {
         nativeProc.running = true;
     }
 
-    property bool pending: false
     property bool nativePending: false
 
     Timer {
@@ -445,17 +380,6 @@ Singleton {
         interval: 90
         repeat: false
         onTriggered: root.applyNow()
-    }
-
-    Process {
-        id: applyProc
-
-        onExited: {
-            if (!root.pending)
-                return;
-            root.pending = false;
-            Qt.callLater(root.applyNow);
-        }
     }
 
     Process {

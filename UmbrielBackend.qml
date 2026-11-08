@@ -45,14 +45,6 @@ Scope {
     // arranca antes que el socket del compositor, sin repetir para siempre.
     property int modFailures: 0
 
-    // Selector de escritorio que pide el botón «Mover» de la barra de título
-    // nativa. Cada petición lleva un serial para que dos aperturas seguidas en
-    // la misma posición sigan siendo eventos distintos.
-    property int moveMenuSerial: 0
-    property string moveMenuWindow: ""
-    property real moveMenuX: 0
-    property real moveMenuY: 0
-
     // Vista general de Umbriel. El shell la usa para cerrar sus paneles cuando
     // aparece, de modo que no queden flotando encima de las miniaturas.
     property bool overviewOpen: false
@@ -678,48 +670,6 @@ Scope {
         onTriggered: {
             if (root.available && !modProc.running)
                 modProc.running = true;
-        }
-    }
-
-    // ------------------------------------------------- selector de escritorio
-    // El botón «Mover» de la barra de título nativa pide este menú. Umbriel
-    // solo entrega la ventana y la posición; la tarjeta la dibuja el shell.
-    Process {
-        id: moveMenuProc
-
-        command: ["umbriel", "subscribe", "move_menu"]
-        running: root.available
-
-        stdout: SplitParser {
-            onRead: (line) => {
-                try {
-                    const message = JSON.parse(line);
-                    if (!message || message.event !== "move_menu"
-                            || !message.data)
-                        return;
-                    root.moveMenuWindow = String(message.data.window || "");
-                    root.moveMenuX = Number(message.data.x) || 0;
-                    root.moveMenuY = Number(message.data.y) || 0;
-                    root.moveMenuSerial = Number(message.data.serial) || 0;
-                } catch (error) {
-                }
-            }
-        }
-
-        onExited: {
-            if (root.available)
-                moveMenuRestart.restart();
-        }
-    }
-
-    Timer {
-        id: moveMenuRestart
-
-        interval: 1000
-        repeat: false
-        onTriggered: {
-            if (root.available && !moveMenuProc.running)
-                moveMenuProc.running = true;
         }
     }
 

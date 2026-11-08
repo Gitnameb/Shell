@@ -100,7 +100,6 @@ Variants {
             CalendarState.hide();
             PowerState.hide();
             BatteryState.hide();
-            MoveMenuState.hide();
             // mapToItem(null) devuelve coordenadas de la ventana de la barra;
             // se suman el margen y el origen de la pantalla para obtenerlas
             // globales.
@@ -141,7 +140,6 @@ Variants {
             CalendarState.hide();
             PowerState.hide();
             BatteryState.hide();
-            MoveMenuState.hide();
             TrayState.hide();
         }
 
@@ -251,7 +249,7 @@ Variants {
         readonly property bool keepVisible: NotificationState.panelOpen
             || QuickPanelState.open
             || CalendarState.open || LauncherState.open || PowerState.open
-            || BatteryState.open || TrayState.open || MoveMenuState.open
+            || BatteryState.open || TrayState.open
             || ControlDrag.active || bar.appMenuApp !== null
             || SuperState.active
 
@@ -1052,8 +1050,7 @@ Variants {
             visible: appMenu.visible || NotificationState.panelOpen
                 || QuickPanelState.open
                 || CalendarState.open || PowerState.open
-                || BatteryState.open
-                || MoveMenuState.open || TrayState.open
+                || BatteryState.open || TrayState.open
             anchors {
                 top: true
                 left: true

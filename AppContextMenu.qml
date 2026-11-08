@@ -1,5 +1,4 @@
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
@@ -95,27 +94,9 @@ PanelWindow {
         ? WlrKeyboardFocus.OnDemand
         : WlrKeyboardFocus.None
 
-    // En Hyprland se conserva su captador de foco como respaldo; en Umbriel
-    // basta la capa de cierre del shell y el teclado sigue en el menú.
-    HyprlandFocusGrab {
-        id: focusGrab
-
-        windows: [root]
-        active: false
-        onCleared: root.dismiss()
-    }
-
     onVisibleChanged: {
-        if (root.visible) {
-            if (CompositorState.supports("hyprlandFocusGrab"))
-                Qt.callLater(function() {
-                    if (root.visible)
-                        focusGrab.active = true;
-                });
-        } else {
-            focusGrab.active = false;
+        if (!root.visible)
             root.dismissed();
-        }
     }
 
     Shortcut {

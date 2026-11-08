@@ -443,7 +443,7 @@ Bloque que se añade (idempotente, marcado con `# shell-glass: inicio`):
 
 ```toml
 [[layer_rule]]
-match.namespace = "^shell-(bar|side-panel|launcher|calendar|battery|tray|power|app-menu|osd|move-menu|welcome-mode|window-mode|notification-popup)$"
+match.namespace = "^shell-(bar|side-panel|launcher|calendar|battery|tray|power|app-menu|osd|welcome-mode|notification-popup)$"
 blur = true
 blur_popups = true
 blur_ignore_alpha = 0.04
@@ -720,11 +720,14 @@ en el mismo frame, no capturan clics y quedan cubiertos por una ventana
 flotante que pase por encima. El shell no superpone ninguna capa. La
 manipulación la sigue haciendo Umbriel. En el fork:
 
-- La franja de redimensionado de mosaicos es de 16 px a cada lado del borde,
-  así que la zona útil queda centrada en el hueco y funciona igual desde
-  cualquiera de las dos ventanas. Antes era de 10 px y costaba acertar.
-- La franja de una ventana flotante es de 20 px alrededor de sus bordes y
-  esquinas; el resto de la ventana sigue moviendo.
+- En mosaico **solo redimensiona la línea entre ventanas**. La banda activa
+  es el hueco más dos píxeles por lado, centrada en la línea; los bordes
+  exteriores de una ventana no redimensionan. En un cruce de cuatro ventanas
+  se elige el eje más cercano, como en el mockup.
+- En una ventana flotante, las cuatro esquinas tienen una zona de 24 px
+  alrededor del punto y los bordes una franja fina de 6 px. El resto de la
+  ventana sigue moviendo. El cursor muestra la doble flecha en la línea y en
+  los agarres.
 - Un arrastre con Mod y botón izquierdo sobre el contenido de un mosaico
   **intercambia** esa ventana con la que quede debajo: la origen se atenúa, la
   destino se resalta y al soltar cambian de sitio. Un clic sin arrastrar solo

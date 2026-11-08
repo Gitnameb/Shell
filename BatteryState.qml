@@ -76,7 +76,6 @@ Singleton {
         CalendarState.hide();
         PowerState.hide();
         TrayState.hide();
-        MoveMenuState.hide();
         SuperState.hide();
         root.open = true;
         root.opened();

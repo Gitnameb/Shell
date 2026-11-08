@@ -210,7 +210,7 @@ layout.mode = "stacking"
 # redondeadas para que el desenfoque no asome fuera de la superficie.
 # blur_strength escala el radio global para que el shell tenga el suyo.
 [[layer_rule]]
-match.namespace = "^shell-(bar|side-panel|launcher|calendar|battery|tray|power|app-menu|osd|move-menu|welcome-mode|window-mode|notification-popup)$"
+match.namespace = "^shell-(bar|side-panel|launcher|calendar|battery|tray|power|app-menu|osd|welcome-mode|notification-popup)$"
 blur = true
 blur_popups = true
 blur_ignore_alpha = 0.04

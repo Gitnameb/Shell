@@ -13,7 +13,7 @@ index 1146a02c..53233b54 100644
  [colors.title_bar]
  background = "#292933FF"
 diff --git a/docs/user/input.md b/docs/user/input.md
-index 47c4faa4..37c88d21 100644
+index 47c4faa4..3cb53409 100644
 --- a/docs/user/input.md
 +++ b/docs/user/input.md
 @@ -6,12 +6,15 @@ Configure keyboard, pointer, touchpad, tablet, cursor, and focus behavior under
@@ -37,7 +37,7 @@ index 47c4faa4..37c88d21 100644
  `client_window_drag = false` ignores move requests from applications, such as dragging a client-side title bar or the empty tab strip of Chromium, Firefox, or Electron apps. Ordinary window moves then use Mod+drag, keybinds, or an enabled [Umbriel title bar](appearance.md#title-bar). Resizing from client-side borders and tab tear-off operations using `xdg-toplevel-drag-v1` are unaffected.
  
 -When the title bar is shown by `[appearance.title_bar] mode` or a window rule, dragging empty server-side title bar space moves a window without a modifier. Double-click it to maximize or restore. Floating windows resize by dragging the frame's edges or corners with the left button without a modifier, whether or not the Umbriel title bar is shown. This also works for individually floated windows in tiling layouts. Tiled windows use Mod+right-drag for compositor resizing. Application content and client-side resize controls keep their normal pointer behavior. These compositor-owned interactions work with `client_window_drag = false`.
-+When the title bar is shown by `[appearance.title_bar] mode` or a window rule, dragging empty server-side title bar space moves a window without a modifier. Double-click it to maximize or restore. Floating windows resize by dragging the frame's edges or corners with the left button without a modifier, whether or not the Umbriel title bar is shown. This also works for individually floated windows in tiling layouts. While Mod is held, a left drag that starts within a few pixels of a floating window's edge or on its corner handles also resizes it; any other point moves the window. Tiled windows resize by dragging the border between two tiles while Mod is held: a left drag that starts within 16 pixels of a tile edge, or in the gap between tiles, resizes the split, and the pointer shows the resize cursor there. The band is centered on the gap, so it works the same from either tile's side. A Mod+left drag anywhere else on a tiled window swaps it with the tile under the pointer: the source dims, the target is highlighted, and releasing over the target exchanges their places; a plain click only focuses. The native tile move stays on Mod+right-drag, and a right drag that starts on a tile border resizes that split instead. On a floating window, Mod+right-drag still resizes from the outer third. Panels and shell chrome still receive clicks while Mod is held, so bar buttons such as the workspace mode switch work with Mod down. The resize cursor follows the same rule: it appears over a tile border or in the gap between tiles, and returns to the normal pointer over the bar, panels, and the empty desktop. Application content and client-side resize controls keep their normal pointer behavior. These compositor-owned interactions work with `client_window_drag = false`.
++When the title bar is shown by `[appearance.title_bar] mode` or a window rule, dragging empty server-side title bar space moves a window without a modifier. Double-click it to maximize or restore. Floating windows resize by dragging the frame's edges or corners with the left button without a modifier, whether or not the Umbriel title bar is shown. This also works for individually floated windows in tiling layouts. While Mod is held, a left drag that starts within a few pixels of a floating window's edge or on its corner handles also resizes it; any other point moves the window. Tiled windows resize only by dragging the divider between two tiles while Mod is held: a left drag that starts on the line drawn in the gap resizes the split. The active band is the gap plus two pixels on each side, so it works the same from either tile's side; the outer edges of a tile do not resize. The pointer shows the double-arrow resize cursor over the divider. Floating windows resize from the four corner dots or from a thin six-pixel band along an edge while Mod is held. A Mod+left drag anywhere else on a tiled window swaps it with the tile under the pointer: the source dims, the target is highlighted, and releasing over the target exchanges their places; a plain click only focuses. The native tile move stays on Mod+right-drag, and a right drag that starts on a tile border resizes that split instead. On a floating window, Mod+right-drag still resizes from the outer third. Panels and shell chrome still receive clicks while Mod is held, so bar buttons such as the workspace mode switch work with Mod down. The resize cursor follows the same rule: it appears over the divider between tiles and over the floating handles, and returns to the normal pointer over the bar, panels, and the empty desktop. Application content and client-side resize controls keep their normal pointer behavior. These compositor-owned interactions work with `client_window_drag = false`.
  
  Title bar presses keep the normal cursor until the pointer crosses a threshold of 10 logical pixels from its position at the original button press. Umbriel then starts dragging and switches to the grabbing cursor. Movement before an application's move request counts toward that threshold. If the pointer has already crossed it, dragging starts immediately without requiring another motion event or another threshold.
  
@@ -182,7 +182,7 @@ index 5083cbf3..9f59ca34 100644
  [layout.scrolling]
  default_extent_fraction = 0.5
 diff --git a/meson.build b/meson.build
-index 352b1482..2ef26989 100644
+index 352b1482..a526116b 100644
 --- a/meson.build
 +++ b/meson.build
 @@ -123,6 +123,7 @@ tomlplusplus_dep = dependency('tomlplusplus')
@@ -193,15 +193,16 @@ index 352b1482..2ef26989 100644
  libdrm_dep = dependency('libdrm', version: '>=2.4.129')
  libdisplay_info_dep = dependency('libdisplay-info', version: '>=0.3.0')
  libudev_dep = dependency('libudev', required: false)
-@@ -840,6 +841,7 @@ core_sources = files(
+@@ -840,6 +841,8 @@ core_sources = files(
    'src/scene/surface_blur.cpp',
    'src/scene/surface_shape.cpp',
    'src/scene/hint_rect.cpp',
++  'src/scene/move_menu.cpp',
 +  'src/scene/native_handles.cpp',
    'src/scene/border_rect.cpp',
    'src/scene/surface_shadow.cpp',
    'src/scene/config_banner.cpp',
-@@ -848,6 +850,7 @@ core_sources = files(
+@@ -848,6 +851,7 @@ core_sources = files(
    'src/scene/text_buffer.cpp',
    'src/scene/cairo_buffer.cpp',
    'src/scene/title_bar_icon.cpp',
@@ -209,7 +210,7 @@ index 352b1482..2ef26989 100644
    'src/scene/tab_bar.cpp',
    'src/scene/ssd_frame.cpp',
    'src/scene/tab_bar_style.cpp',
-@@ -876,6 +879,7 @@ umbriel_core_deps = [
+@@ -876,6 +880,7 @@ umbriel_core_deps = [
    tomlplusplus_dep,
    cairo_dep,
    pangocairo_dep,
@@ -649,55 +650,32 @@ index 16a64d47..08cfa6a7 100644
      resolved.tabs.newTabPosition = config.layout.tabs.newTabPosition;
      resolved.tabs.wrapFocus = config.layout.tabs.wrapFocus;
 diff --git a/src/input/cursor.cpp b/src/input/cursor.cpp
-index 04ee05c5..32f0381b 100644
+index 04ee05c5..30bc170a 100644
 --- a/src/input/cursor.cpp
 +++ b/src/input/cursor.cpp
-@@ -19,6 +19,7 @@
+@@ -17,8 +17,10 @@
+ #include "overview/overview.h"
+ #include "scene/cheatsheet.h"
  #include "scene/hint_rect.h"
++#include "scene/move_menu.h"
  #include "scene/quit_confirm.h"
  #include "scene/ssd_frame.h"
 +#include "server/ipc.h"
  #include "server/server.h"
  #include "view/size_hints.h"
  #include "view/view.h"
-@@ -49,10 +50,44 @@ namespace umbriel {
+@@ -49,10 +51,18 @@ namespace umbriel {
      // pair up, so no grab may run and drop the layout's maximize bookkeeping.
      constexpr uint32_t kDoubleClickMsec = 300;
      constexpr double kDoubleClickSlop = 8.0;
-+    // How close to a tile's edge the pointer must be for a Mod+left drag to
-+    // resize instead of swap. The mockup draws one indicator in the gap, but
-+    // each tile carries half of that band; 16 px per side keeps the target
-+    // generous without swallowing the whole tile.
-+    constexpr double kTiledBorderSlop = 16.0;
-+    // Same idea for floating windows: the shell draws dots at the corners and
-+    // subtle bands along the edges while Mod is held, and a press inside them
-+    // resizes instead of moving the window.
-+    constexpr double kFloatingBorderSlop = 20.0;
++    // Las esquinas flotantes se agarran desde el punto visible. La franja de
++    // los bordes es fina, como en el mockup; la zona de la esquina es más
++    // generosa para que el punto no sea decorativo.
++    constexpr double kFloatingCornerReach = 24.0;
++    constexpr double kFloatingEdgeBand = 6.0;
 +    // How far a Mod+left press must travel before it stops being a click and
 +    // starts swapping tiles.
 +    constexpr double kSwapThreshold = 5.0;
-+
-+    uint32_t tiledFrameBorderEdges(const wlr_box& box, double x, double y) {
-+      if (box.width <= 0 || box.height <= 0 || x < box.x - kTiledBorderSlop
-+          || x > box.x + box.width + kTiledBorderSlop || y < box.y - kTiledBorderSlop
-+          || y > box.y + box.height + kTiledBorderSlop) {
-+        return 0;
-+      }
-+      uint32_t edges = 0;
-+      if (std::abs(x - box.x) <= kTiledBorderSlop) {
-+        edges |= WLR_EDGE_LEFT;
-+      }
-+      if (std::abs(x - (box.x + box.width)) <= kTiledBorderSlop) {
-+        edges |= WLR_EDGE_RIGHT;
-+      }
-+      if (std::abs(y - box.y) <= kTiledBorderSlop) {
-+        edges |= WLR_EDGE_TOP;
-+      }
-+      if (std::abs(y - (box.y + box.height)) <= kTiledBorderSlop) {
-+        edges |= WLR_EDGE_BOTTOM;
-+      }
-+      return edges;
-+    }
  
      // Panels (top/overlay) keep working inside the overview. Background- and bottom-layer surfaces are part of the
      // inert backdrop behind the filmstrip, so their clicks belong to the overview instead.
@@ -706,7 +684,7 @@ index 04ee05c5..32f0381b 100644
        if (layer == nullptr) {
          return false;
        }
-@@ -72,7 +107,7 @@ namespace umbriel {
+@@ -72,7 +82,7 @@ namespace umbriel {
          const LayerSurface* hitLayer
      ) {
        const bool covered =
@@ -715,7 +693,7 @@ index 04ee05c5..32f0381b 100644
        if (covered) {
          return std::nullopt;
        }
-@@ -1035,6 +1070,9 @@ namespace umbriel {
+@@ -1035,6 +1045,9 @@ namespace umbriel {
      if (const auto* grab = std::get_if<PendingResizeGrab>(&m_grab)) {
        return grab->view;
      }
@@ -725,7 +703,7 @@ index 04ee05c5..32f0381b 100644
      return nullptr;
    }
  
-@@ -1135,8 +1173,27 @@ namespace umbriel {
+@@ -1135,8 +1148,27 @@ namespace umbriel {
      return true;
    }
  
@@ -755,7 +733,22 @@ index 04ee05c5..32f0381b 100644
      if (!beginMove(view, button)) {
        return;
      }
-@@ -1378,6 +1435,9 @@ namespace umbriel {
+@@ -1189,8 +1221,12 @@ namespace umbriel {
+       uint32_t resolvedEdges = 0;
+       if (edges != 0) {
+         resolvedEdges = layout.resolveResizeEdges(view, edges, m_cursor->x, m_cursor->y);
+-      } else {
+-        resolvedEdges = tiledResizeEdges(view, m_cursor->x, m_cursor->y);
++      } else if (const std::optional<Workspace::TiledDivider> divider = workspace->dividerAt(m_cursor->x, m_cursor->y);
++                 divider.has_value()) {
++        // El divisor pertenece a la ventana izquierda/superior, aunque el
++        // puntero esté sobre la derecha/inferior o en el hueco.
++        view = divider->owner;
++        resolvedEdges = divider->vertical ? WLR_EDGE_RIGHT : WLR_EDGE_BOTTOM;
+       }
+       if (resolvedEdges == 0) {
+         revealClickedTile(view);
+@@ -1378,6 +1414,9 @@ namespace umbriel {
      if (std::holds_alternative<FloatingResizeGrab>(m_grab) && view != nullptr) {
        view->finishFloatingResize();
      }
@@ -765,7 +758,7 @@ index 04ee05c5..32f0381b 100644
      m_toplevelDrag = false;
      m_grab = PassthroughGrab{};
      m_grabButton = 0;
-@@ -1489,10 +1549,14 @@ namespace umbriel {
+@@ -1489,10 +1528,14 @@ namespace umbriel {
        }
      }
  
@@ -784,7 +777,28 @@ index 04ee05c5..32f0381b 100644
  
      if (m_activeConstraint != nullptr && !constraintSurfaceActive()) {
        clearConstraint();
-@@ -1705,7 +1769,32 @@ namespace umbriel {
+@@ -1650,6 +1693,20 @@ namespace umbriel {
+       }
+     }
+ 
++    if (MoveMenu* menu = m_server->moveMenu(); menu != nullptr && menu->visible()) {
++      if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
++        m_swallowedButtons.push_back(button);
++        (void)menu->handlePress(m_cursor->x, m_cursor->y, button);
++        return;
++      }
++      // La pareja de la pulsación que abrió o cerró el menú no llega al
++      // cliente, aunque el menú ya se haya cerrado.
++      if (std::erase(m_swallowedButtons, button) > 0) {
++        return;
++      }
++      return;
++    }
++
+     // Config mouse binds win over the overview and the built-in Mod+drag / Mod+resize grabs. Presses consumed here
+     // swallow their paired release so clients never see an unmatched release.
+     if (state == WL_POINTER_BUTTON_STATE_PRESSED && isPassthrough()) {
+@@ -1705,7 +1762,29 @@ namespace umbriel {
                press.view->maximizedToEdges() || press.view->scheduledMaximized() || press.view->floatingMaximized();
            press.view->setMaximizedLikeClientRequest(!maximized);
          } else if (press.part == SsdFramePart::Minimize) {
@@ -793,7 +807,7 @@ index 04ee05c5..32f0381b 100644
 +              && !press.view->scheduledFullscreen()
 +              && !press.view->currentFullscreen()) {
 +            // En mosaico Umbriel no puede minimizar de forma nativa: se
-+            // esconde en el scratchpad, como hace ALBA desde la ficha.
++            // esconde en el scratchpad, como hace el shell desde la ficha.
 +            if (auto* scratchpad = m_server->scratchpadManager()) {
 +              Output* output = press.view->currentOutput();
 +              if (output == nullptr)
@@ -807,18 +821,30 @@ index 04ee05c5..32f0381b 100644
 +          press.view->toggleFloating();
 +        } else if (press.part == SsdFramePart::Move) {
 +          // El mockup abre un selector de escritorio junto al botón, no la
-+          // vista general. El shell dibuja esa tarjeta; aquí solo se le avisa
-+          // con la ventana y la posición del puntero.
-+          if (Ipc* ipc = m_server->ipc()) {
-+            const char* id = press.view->extForeignIdentifier();
-+            ipc->notifyMoveMenu(id != nullptr ? id : "", m_cursor->x, m_cursor->y);
-+          }
++          // vista general. La tarjeta la dibuja Umbriel, como el resto de la
++          // decoración.
++          m_server->showMoveMenu(press.view, m_cursor->x, m_cursor->y);
 +        } else if (press.part == SsdFramePart::Fullscreen) {
 +          press.view->toggleFullscreen();
          }
        }
      }
-@@ -1767,7 +1856,7 @@ namespace umbriel {
+@@ -1739,7 +1818,13 @@ namespace umbriel {
+     }
+ 
+     if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
+-      if (auto* grab = std::get_if<ScrollDragGrab>(&m_grab)) {
++      if (MoveMenu* menu = m_server->moveMenu(); menu != nullptr && menu->visible()) {
++      clearPointerFocus();
++      menu->updateHover(m_cursor->x, m_cursor->y);
++      updateInteractiveCursor(nullptr);
++      return;
++    }
++    if (auto* grab = std::get_if<ScrollDragGrab>(&m_grab)) {
+         if (button == grab->button) {
+           m_server->gestures()->endPointerScroll(m_server->sessionLocked(), timeMsec);
+           resetMode();
+@@ -1767,7 +1852,7 @@ namespace umbriel {
        LayerSurface* layer = nullptr;
        m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
        wlr_seat* seat = m_server->seat()->wlr();
@@ -827,7 +853,7 @@ index 04ee05c5..32f0381b 100644
          if (surface != nullptr) {
            setPointerFocus(surface, sx, sy, timeMsec);
          }
-@@ -1785,6 +1874,10 @@ namespace umbriel {
+@@ -1785,6 +1870,10 @@ namespace umbriel {
      }
  
      if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
@@ -838,7 +864,7 @@ index 04ee05c5..32f0381b 100644
        if (auto* grab = std::get_if<MoveGrab>(&m_grab)) {
          if (grab->pending) {
            resetMode();
-@@ -1890,6 +1983,10 @@ namespace umbriel {
+@@ -1890,6 +1979,10 @@ namespace umbriel {
              && !target->blocked()
              && (hit->part == SsdFramePart::Close
                  || hit->part == SsdFramePart::Minimize
@@ -849,7 +875,7 @@ index 04ee05c5..32f0381b 100644
                  || (hit->part == SsdFramePart::Maximize && target->ssdFrame()->maximizeEnabled()))
          ) {
            m_server->focusView(target, FocusReason::PointerPress);
-@@ -1928,15 +2025,63 @@ namespace umbriel {
+@@ -1928,15 +2021,63 @@ namespace umbriel {
      }
  
      const bool modHeld = (m_server->keyboardModifiers() & m_server->modKey()) != 0;
@@ -917,7 +943,43 @@ index 04ee05c5..32f0381b 100644
        if (config().input.modRightDoubleClick == ModRightDoubleClick::None) {
          beginResize(view, view->tiled() ? 0 : floatResizeEdges(view), button);
          return;
-@@ -1979,6 +2124,14 @@ namespace umbriel {
+@@ -1960,25 +2101,44 @@ namespace umbriel {
+       // Defer the grab until the pointer leaves the slop: a grab would drop the
+       // maximize state the second click reads. Edges are snapshotted at the
+       // press point; a press proposing none is a plain click.
+-      const uint32_t edges = view->tiled() ? tiledResizeEdges(view, m_cursor->x, m_cursor->y) : floatResizeEdges(view);
+-      if (edges != 0) {
++      View* resizeTarget = view;
++      uint32_t edges = 0;
++      if (view->tiled()) {
++        resizeTarget = tiledBorderTarget(view, m_cursor->x, m_cursor->y, &edges);
++        if (resizeTarget == nullptr) {
++          edges = 0;
++        }
++      } else {
++        edges = floatResizeEdges(view);
++      }
++      if (edges != 0 && resizeTarget != nullptr) {
+         m_grab = PendingResizeGrab{
+-            .view = view,
++            .view = resizeTarget,
+             .button = button,
+             .startX = m_cursor->x,
+             .startY = m_cursor->y,
+             .edges = edges,
+-            .workspace = view->tiled() ? view->workspace() : nullptr,
+-            .layout = view->tiled() && view->workspace() != nullptr ? &view->workspace()->layout() : nullptr,
++            .workspace = resizeTarget->tiled() ? resizeTarget->workspace() : nullptr,
++            .layout = resizeTarget->tiled() && resizeTarget->workspace() != nullptr
++                ? &resizeTarget->workspace()->layout()
++                : nullptr,
+         };
+         m_grabButton = button;
+-        updateInteractiveCursor(view);
++        updateInteractiveCursor(resizeTarget);
+       } else if (view->tiled()) {
+         revealClickedTile(view);
+       }
        return;
      }
  
@@ -932,7 +994,7 @@ index 04ee05c5..32f0381b 100644
      // Pointer focus must match the surface under the cursor before the button
      // event so wl_data_device drag serial validation succeeds.
      wlr_seat* seat = m_server->seat()->wlr();
-@@ -2055,7 +2208,7 @@ namespace umbriel {
+@@ -2055,7 +2215,7 @@ namespace umbriel {
        wlr_surface* surface = nullptr;
        LayerSurface* layer = nullptr;
        m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -941,7 +1003,7 @@ index 04ee05c5..32f0381b 100644
          if (!overview->interactive()) {
            return;
          }
-@@ -2108,6 +2261,18 @@ namespace umbriel {
+@@ -2108,6 +2268,18 @@ namespace umbriel {
      }
      if (!armed) {
        m_wheelAccum[orientation] = 0;
@@ -960,7 +1022,7 @@ index 04ee05c5..32f0381b 100644
        const double scale = touchpadScrollFactor(event->pointer, isVertical);
        wlr_seat_pointer_notify_axis(
            m_server->seat()->wlr(), event->time_msec, event->orientation, event->delta * scale, event->delta_discrete,
-@@ -2224,7 +2389,7 @@ namespace umbriel {
+@@ -2224,7 +2396,7 @@ namespace umbriel {
  
      // A tap in overview activates like a left click; panels keep their touch.
      if (Overview* overview = m_server->overview();
@@ -969,7 +1031,7 @@ index 04ee05c5..32f0381b 100644
        if (overview->interactive()) {
          overview->handleButton(BTN_LEFT, true, lx, ly, event->time_msec);
          overview->handleButton(BTN_LEFT, false, lx, ly, event->time_msec);
-@@ -2249,6 +2414,11 @@ namespace umbriel {
+@@ -2249,6 +2421,11 @@ namespace umbriel {
        }
      }
  
@@ -981,7 +1043,7 @@ index 04ee05c5..32f0381b 100644
      if (surface != nullptr) {
        // Focus the touched view (click-to-focus equivalent).
        if (!m_server->sessionLocked() && m_server->exclusiveKeyboardLayer() == nullptr) {
-@@ -2360,7 +2530,7 @@ namespace umbriel {
+@@ -2360,7 +2537,7 @@ namespace umbriel {
        wlr_surface* surface = nullptr;
        LayerSurface* layer = nullptr;
        m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -990,7 +1052,7 @@ index 04ee05c5..32f0381b 100644
          setPointerFocus(surface, sx, sy, timeMsec);
          wlr_seat_pointer_notify_motion(m_server->seat()->wlr(), timeMsec, sx, sy);
          return;
-@@ -2396,6 +2566,14 @@ namespace umbriel {
+@@ -2396,6 +2573,14 @@ namespace umbriel {
          }
        }
      }
@@ -1005,7 +1067,7 @@ index 04ee05c5..32f0381b 100644
      if (std::holds_alternative<FloatingResizeGrab>(m_grab)) {
        if (m_server->sessionLocked()) {
          resetMode();
-@@ -2421,6 +2599,48 @@ namespace umbriel {
+@@ -2421,6 +2606,48 @@ namespace umbriel {
        resetMode();
      }
  
@@ -1054,7 +1116,7 @@ index 04ee05c5..32f0381b 100644
      wlr_seat* seat = m_server->seat()->wlr();
      updateDataDragEdgeScroll();
      if (seat->drag == nullptr
-@@ -2443,6 +2663,9 @@ namespace umbriel {
+@@ -2443,6 +2670,9 @@ namespace umbriel {
      wlr_surface* surface = nullptr;
      LayerSurface* layer = nullptr;
      View* view = m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -1064,7 +1126,7 @@ index 04ee05c5..32f0381b 100644
  
      if (allowFocusChange
          && config().input.focus.followsMouse
-@@ -2694,6 +2917,7 @@ namespace umbriel {
+@@ -2694,6 +2924,7 @@ namespace umbriel {
      wlr_surface* surface = nullptr;
      LayerSurface* layer = nullptr;
      View* view = m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -1072,10 +1134,22 @@ index 04ee05c5..32f0381b 100644
      if (surface == nullptr || !wlr_surface_accepts_tablet_v2(surface, v2tablet)) {
        setToolEmulating(state, true);
        processMotion(timeMsec, oldX, oldY);
-@@ -3371,6 +3595,69 @@ namespace umbriel {
-     return workspace->layout().sanitizeResizeEdges(view, resizeEdgesForPoint(reachable, x, y));
-   }
- 
+@@ -3362,13 +3593,41 @@ namespace umbriel {
+     if (workspace == nullptr || workspace->group() == nullptr || workspace->group()->output() == nullptr) {
+       return 0;
+     }
+-    const wlr_box presented = workspace->presentedTiledBox(view);
+-    const wlr_box visible = workspace->usableArea();
+-    wlr_box reachable{};
+-    if (!wlr_box_intersection(&reachable, &presented, &visible)) {
++    const std::optional<Workspace::TiledDivider> divider = workspace->dividerAt(x, y);
++    if (!divider.has_value() || (divider->owner != view && divider->neighbor != view)) {
+       return 0;
+     }
+-    return workspace->layout().sanitizeResizeEdges(view, resizeEdgesForPoint(reachable, x, y));
++    return divider->vertical ? WLR_EDGE_RIGHT : WLR_EDGE_BOTTOM;
++  }
++
 +  View* Cursor::tiledBorderTarget(View* under, double x, double y, uint32_t* edges) const {
 +    if (edges == nullptr) {
 +      return nullptr;
@@ -1094,55 +1168,20 @@ index 04ee05c5..32f0381b 100644
 +    if (workspace == nullptr) {
 +      return nullptr;
 +    }
-+    View* best = nullptr;
-+    uint32_t bestEdges = 0;
-+    double bestDistance = std::numeric_limits<double>::infinity();
-+    const auto consider = [&](View* candidate) {
-+      if (candidate == nullptr || !candidate->tiled() || !candidate->mapped() || candidate->attached()
-+          || candidate->tabHidden() || candidate->scheduledFullscreen() || candidate->currentFullscreen()) {
-+        return;
-+      }
-+      const wlr_box box = workspace->presentedTiledBox(candidate);
-+      const uint32_t candidateEdges =
-+          workspace->layout().sanitizeResizeEdges(candidate, tiledFrameBorderEdges(box, x, y));
-+      if (candidateEdges == 0) {
-+        return;
-+      }
-+      double distance = std::numeric_limits<double>::infinity();
-+      if ((candidateEdges & WLR_EDGE_LEFT) != 0) {
-+        distance = std::min(distance, std::abs(x - box.x));
-+      }
-+      if ((candidateEdges & WLR_EDGE_RIGHT) != 0) {
-+        distance = std::min(distance, std::abs(x - (box.x + box.width)));
-+      }
-+      if ((candidateEdges & WLR_EDGE_TOP) != 0) {
-+        distance = std::min(distance, std::abs(y - box.y));
-+      }
-+      if ((candidateEdges & WLR_EDGE_BOTTOM) != 0) {
-+        distance = std::min(distance, std::abs(y - (box.y + box.height)));
-+      }
-+      if (distance < bestDistance) {
-+        best = candidate;
-+        bestEdges = candidateEdges;
-+        bestDistance = distance;
-+      }
-+    };
-+    if (under != nullptr && under->tiled()) {
-+      consider(under);
++    const std::optional<Workspace::TiledDivider> divider = workspace->dividerAt(x, y);
++    if (!divider.has_value()) {
++      return nullptr;
 +    }
-+    for (View* candidate : workspace->allViews()) {
-+      if (candidate != under) {
-+        consider(candidate);
-+      }
++    const uint32_t resolved = divider->vertical ? WLR_EDGE_RIGHT : WLR_EDGE_BOTTOM;
++    if (workspace->layout().sanitizeResizeEdges(divider->owner, resolved) == 0) {
++      return nullptr;
 +    }
-+    *edges = bestEdges;
-+    return best;
-+  }
-+
++    *edges = resolved;
++    return divider->owner;
+   }
+ 
    void Cursor::forgetView(const View* view) {
-     if (m_lastTitleBarClick.view == view)
-       m_lastTitleBarClick = {};
-@@ -3383,6 +3670,14 @@ namespace umbriel {
+@@ -3383,11 +3642,22 @@ namespace umbriel {
      if (auto* grab = std::get_if<MoveGrab>(&m_grab); grab != nullptr && grab->view != view) {
        std::erase(grab->tabGroup.tabs, view);
      }
@@ -1157,7 +1196,15 @@ index 04ee05c5..32f0381b 100644
      // Only the click pair sits outside the grab machinery: the deferred press
      // is a grab and handleUnmap's resetMode() drops it.
      if (m_lastModRightClick.view == view) {
-@@ -3401,32 +3696,42 @@ namespace umbriel {
+       m_lastModRightClick = ModRightClick{};
+     }
++    if (m_hoverDividerView == view) {
++      clearDividerHover();
++    }
+   }
+ 
+   uint32_t Cursor::floatResizeEdges(View* view) const {
+@@ -3401,70 +3671,92 @@ namespace umbriel {
      return resizeEdgesForPoint(box, m_cursor->x, m_cursor->y);
    }
  
@@ -1170,21 +1217,42 @@ index 04ee05c5..32f0381b 100644
 +    const double top = view->layoutY() + geo.y;
 +    const double right = left + geo.width;
 +    const double bottom = top + geo.height;
-+    if (x < left - kFloatingBorderSlop || x > right + kFloatingBorderSlop
-+        || y < top - kFloatingBorderSlop || y > bottom + kFloatingBorderSlop) {
++    // Unos píxeles de margen fuera del contenido cubren el borde dibujado.
++    const double margin = 2.0;
++    if (x < left - margin || x > right + margin || y < top - margin || y > bottom + margin) {
 +      return 0;
 +    }
++    const bool nearLeft = x <= left + kFloatingCornerReach && x >= left - margin;
++    const bool nearRight = x >= right - kFloatingCornerReach && x <= right + margin;
++    const bool nearTop = y <= top + kFloatingCornerReach && y >= top - margin;
++    const bool nearBottom = y >= bottom - kFloatingCornerReach && y <= bottom + margin;
++    // Esquinas primero: el punto manda sobre la franja del borde.
++    if (nearLeft && nearTop) {
++      return WLR_EDGE_LEFT | WLR_EDGE_TOP;
++    }
++    if (nearRight && nearTop) {
++      return WLR_EDGE_RIGHT | WLR_EDGE_TOP;
++    }
++    if (nearLeft && nearBottom) {
++      return WLR_EDGE_LEFT | WLR_EDGE_BOTTOM;
++    }
++    if (nearRight && nearBottom) {
++      return WLR_EDGE_RIGHT | WLR_EDGE_BOTTOM;
++    }
++    // Franjas finas, sin invadir la zona de las esquinas.
++    const bool spanY = y > top + kFloatingCornerReach && y < bottom - kFloatingCornerReach;
++    const bool spanX = x > left + kFloatingCornerReach && x < right - kFloatingCornerReach;
 +    uint32_t edges = 0;
-+    if (std::abs(x - left) <= kFloatingBorderSlop) {
++    if (spanY && x >= left - margin && x <= left + kFloatingEdgeBand) {
 +      edges |= WLR_EDGE_LEFT;
 +    }
-+    if (std::abs(x - right) <= kFloatingBorderSlop) {
++    if (spanY && x >= right - kFloatingEdgeBand && x <= right + margin) {
 +      edges |= WLR_EDGE_RIGHT;
 +    }
-+    if (std::abs(y - top) <= kFloatingBorderSlop) {
++    if (spanX && y >= top - margin && y <= top + kFloatingEdgeBand) {
 +      edges |= WLR_EDGE_TOP;
 +    }
-+    if (std::abs(y - bottom) <= kFloatingBorderSlop) {
++    if (spanX && y >= bottom - kFloatingEdgeBand && y <= bottom + margin) {
 +      edges |= WLR_EDGE_BOTTOM;
 +    }
 +    return edges;
@@ -1220,8 +1288,13 @@ index 04ee05c5..32f0381b 100644
      }
  
      if (view->workspace() == nullptr) {
-@@ -3437,34 +3742,7 @@ namespace umbriel {
-     if (box.width <= 0 || box.height <= 0) {
+       return 0;
+     }
+     Workspace* workspace = view->workspace();
+-    const wlr_box box = workspace->presentedTiledBox(view);
+-    if (box.width <= 0 || box.height <= 0) {
++    const std::optional<Workspace::TiledDivider> divider = workspace->dividerAt(m_cursor->x, m_cursor->y);
++    if (!divider.has_value()) {
        return 0;
      }
 -    wlr_box reachable = box;
@@ -1230,7 +1303,13 @@ index 04ee05c5..32f0381b 100644
 -      if (!wlr_box_intersection(&reachable, &box, &usable)) {
 -        return 0;
 -      }
--    }
++    return divider->vertical ? WLR_EDGE_RIGHT : WLR_EDGE_BOTTOM;
++  }
++
++  void Cursor::setDividerHover(View* owner, bool vertical) {
++    if (m_hoverDividerView == owner && m_hoverDividerVertical == vertical) {
++      return;
+     }
 -    uint32_t edges =
 -        workspace->layout().sanitizeResizeEdges(view, resizeEdgesForPoint(reachable, m_cursor->x, m_cursor->y));
 -    // Advertise an edge that extends past the output from the reachable
@@ -1244,19 +1323,28 @@ index 04ee05c5..32f0381b 100644
 -      if (dist > kHoverSlop) {
 -        edges &= ~(WLR_EDGE_LEFT | WLR_EDGE_RIGHT);
 -      }
--    }
++    if (m_hoverDividerView != nullptr) {
++      m_hoverDividerView->setTileHandlesHover(false, false);
+     }
 -    if ((edges & (WLR_EDGE_TOP | WLR_EDGE_BOTTOM)) != 0) {
 -      const double dist = (edges & WLR_EDGE_TOP) != 0 ? std::abs(m_cursor->y - top) : std::abs(m_cursor->y - bottom);
 -      if (dist > kHoverSlop) {
 -        edges &= ~(WLR_EDGE_TOP | WLR_EDGE_BOTTOM);
 -      }
--    }
++    m_hoverDividerView = owner;
++    m_hoverDividerVertical = vertical;
++    if (owner != nullptr) {
++      owner->setTileHandlesHover(vertical, !vertical);
+     }
 -    return edges;
-+    return workspace->layout().sanitizeResizeEdges(view, tiledFrameBorderEdges(box, m_cursor->x, m_cursor->y));
++  }
++
++  void Cursor::clearDividerHover() {
++    setDividerHover(nullptr, false);
    }
  
    void Cursor::setCompositorCursor(const char* name) {
-@@ -3548,10 +3826,13 @@ namespace umbriel {
+@@ -3548,10 +3840,13 @@ namespace umbriel {
      wlr_surface* surface = nullptr;
      LayerSurface* layer = nullptr;
      m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -1271,7 +1359,7 @@ index 04ee05c5..32f0381b 100644
        surface = nullptr;
      }
      const bool stale = !pointerFocusPinned() && pointerContentsStale(surface, sx, sy);
-@@ -3615,23 +3896,32 @@ namespace umbriel {
+@@ -3615,27 +3910,42 @@ namespace umbriel {
      wlr_surface* surface = nullptr;
      LayerSurface* layer = nullptr;
      View* view = m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -1313,25 +1401,41 @@ index 04ee05c5..32f0381b 100644
 -  void Cursor::updateInteractiveCursor(View* under) {
 +  void Cursor::updateInteractiveCursor(View* under, bool overPanel) {
      if (m_server->sessionLocked()) {
++      clearDividerHover();
        setCompositorCursor(nullptr);
        return;
-@@ -3650,6 +3940,10 @@ namespace umbriel {
+     }
++    if (MoveMenu* menu = m_server->moveMenu(); menu != nullptr && menu->visible()) {
++      clearDividerHover();
++      setCompositorCursor(menu->rowAt(m_cursor->x, m_cursor->y) >= 0 ? "pointer" : nullptr);
++      return;
++    }
+ 
+     uint32_t resizeEdges = 0;
+     if (const auto* grab = std::get_if<FloatingResizeGrab>(&m_grab)) {
+@@ -3650,7 +3960,13 @@ namespace umbriel {
        setCompositorCursor(name != nullptr ? name : "default");
        return;
      }
 +    if (const auto* grab = std::get_if<SwapGrab>(&m_grab)) {
++      clearDividerHover();
 +      setCompositorCursor(grab->active ? "grabbing" : "grab");
 +      return;
 +    }
      if (const auto* grab = std::get_if<MoveGrab>(&m_grab)) {
++      clearDividerHover();
        if (!grab->pending) {
          setCompositorCursor("grabbing");
-@@ -3658,14 +3952,31 @@ namespace umbriel {
+       }
+@@ -3658,14 +3974,36 @@ namespace umbriel {
      }
  
      const bool modHeld = (m_server->keyboardModifiers() & m_server->modKey()) != 0;
 -    if (modHeld && under != nullptr && under->mapped()) {
 -      const uint32_t edges = hoverResizeEdges(under);
++    if (!modHeld || overPanel) {
++      clearDividerHover();
++    }
 +    if (modHeld) {
 +      // A bar or overlay panel keeps its own cursor: the tile-border hint only
 +      // belongs to the desktop and the windows on it.
@@ -1340,11 +1444,13 @@ index 04ee05c5..32f0381b 100644
 +        return;
 +      }
 +      uint32_t edges = 0;
++      View* dividerOwner = nullptr;
 +      if (under != nullptr && under->floating()) {
 +        edges = hoverResizeEdges(under);
 +      } else {
-+        tiledBorderTarget(under, m_cursor->x, m_cursor->y, &edges);
++        dividerOwner = tiledBorderTarget(under, m_cursor->x, m_cursor->y, &edges);
 +      }
++      setDividerHover(dividerOwner, (edges & WLR_EDGE_RIGHT) != 0);
        if (edges != 0) {
          const char* name = wlr_xcursor_get_resize_name(static_cast<enum wlr_edges>(edges));
          setCompositorCursor(name != nullptr ? name : "default");
@@ -1361,7 +1467,7 @@ index 04ee05c5..32f0381b 100644
        return;
      }
  
-@@ -3678,6 +3989,10 @@ namespace umbriel {
+@@ -3678,6 +4016,10 @@ namespace umbriel {
              !hit->view->blocked()
              && (hit->part == SsdFramePart::Close
                  || hit->part == SsdFramePart::Minimize
@@ -1372,7 +1478,7 @@ index 04ee05c5..32f0381b 100644
                  || (hit->part == SsdFramePart::Maximize && hit->view->ssdFrame()->maximizeEnabled()))
          ) {
            name = "pointer";
-@@ -3697,8 +4012,9 @@ namespace umbriel {
+@@ -3697,8 +4039,9 @@ namespace umbriel {
      double sx = 0;
      double sy = 0;
      wlr_surface* surface = nullptr;
@@ -1384,7 +1490,7 @@ index 04ee05c5..32f0381b 100644
    }
  
    void Cursor::processResizeTile() {
-@@ -3722,4 +4038,78 @@ namespace umbriel {
+@@ -3722,4 +4065,78 @@ namespace umbriel {
      grab->workspace->markArrange(false);
    }
  
@@ -1464,7 +1570,7 @@ index 04ee05c5..32f0381b 100644
 +
  } // namespace umbriel
 diff --git a/src/input/cursor.h b/src/input/cursor.h
-index 609e9f45..2e5be9ca 100644
+index 609e9f45..94f88b77 100644
 --- a/src/input/cursor.h
 +++ b/src/input/cursor.h
 @@ -104,6 +104,18 @@ namespace umbriel {
@@ -1524,7 +1630,7 @@ index 609e9f45..2e5be9ca 100644
      // Recompute compositor cursor (mod-held resize/move affordance, or active grab).
      void refreshInteractiveCursor();
      // Re-resolve what lies under a stationary cursor on `output` once its content has settled, so the client under it
-@@ -344,10 +367,20 @@ namespace umbriel {
+@@ -344,10 +367,24 @@ namespace umbriel {
      void toggleDragTarget(uint32_t button);
      void processResize();
      void processResizeTile();
@@ -1539,13 +1645,17 @@ index 609e9f45..2e5be9ca 100644
 +    // visible corner dots and edge bands drawn by the shell.
 +    uint32_t floatingBorderEdges(View* view, double x, double y) const;
      uint32_t hoverResizeEdges(View* view) const;
++    // Resalta el divisor nativo bajo el puntero. Solo uno puede estar activo:
++    // el propietario dibuja la línea, así que el vecino no la duplica.
++    void setDividerHover(View* owner, bool vertical);
++    void clearDividerHover();
 +    // The tiled window whose border is under (x, y), and the resizable edges
 +    // there. A point in the gap between two tiles lands on the nearest one.
 +    View* tiledBorderTarget(View* under, double x, double y, uint32_t* edges) const;
      // True when this press completes a Mod+double-right-click with the
      // recorded one (same window, within the time window and pointer slop).
      bool isModRightDoubleClick(uint32_t timeMsec, const View* view) const;
-@@ -367,7 +400,7 @@ namespace umbriel {
+@@ -367,7 +404,7 @@ namespace umbriel {
      // A Mod+right click that resized nothing still reveals the focused tile,
      // since a grab focus skips the reveal.
      void revealClickedTile(View* view);
@@ -1554,7 +1664,7 @@ index 609e9f45..2e5be9ca 100644
      void setCompositorCursor(const char* name);
      void restoreClientCursor();
      // True while a client owns an implicit pointer grab, which pins focus.
-@@ -412,7 +445,7 @@ namespace umbriel {
+@@ -412,7 +449,7 @@ namespace umbriel {
      void cancelDataDragEdgeScroll();
      static int onDataDragEdgeScrollTimer(void* data);
      int handleDataDragEdgeScrollTimer();
@@ -1563,7 +1673,7 @@ index 609e9f45..2e5be9ca 100644
      void updateConstraintForSurface(wlr_surface* surface);
      bool constraintSurfaceActive() const;
      void warpToConstraintHint(wlr_pointer_constraint_v1* constraint);
-@@ -434,6 +467,7 @@ namespace umbriel {
+@@ -434,6 +471,7 @@ namespace umbriel {
      std::string m_activeXcursorName;
      int m_xcursorSize = 0;
      wlr_pointer_constraint_v1* m_activeConstraint = nullptr;
@@ -1571,6 +1681,16 @@ index 609e9f45..2e5be9ca 100644
      // A stable map ID preserves keyboard escape when a focus-sensitive rule stops matching, without retaining a
      // View pointer across unmap. Reloading config retires the escape so disabled rules cannot affect native input.
      std::string m_ruleConfinementView;
+@@ -476,6 +514,9 @@ namespace umbriel {
+       SsdFramePart part = SsdFramePart::None;
+     } m_ssdButtonPress;
+     View* m_ssdHoverView = nullptr;
++    // Divisor nativo bajo el puntero mientras se mantiene Mod.
++    View* m_hoverDividerView = nullptr;
++    bool m_hoverDividerVertical = false;
+     std::vector<std::unique_ptr<TabletToolState>> m_tools;
+     bool m_hoverFocusInvalidated = false;
+     bool m_compositorOwnsCursor = false;
 diff --git a/src/input/cursor_constraint.cpp b/src/input/cursor_constraint.cpp
 index d19fdfa9..3edc273d 100644
 --- a/src/input/cursor_constraint.cpp
@@ -1654,18 +1774,20 @@ index d19fdfa9..3edc273d 100644
          && m_server->seat()->wlr()->drag == nullptr
          && View::fromSurface(m_server->seat()->wlr()->keyboard_state.focused_surface) == &view;
 diff --git a/src/input/keyboard.cpp b/src/input/keyboard.cpp
-index 95473013..7a868429 100644
+index 95473013..e9bd05d2 100644
 --- a/src/input/keyboard.cpp
 +++ b/src/input/keyboard.cpp
-@@ -13,6 +13,7 @@
+@@ -12,7 +12,9 @@
+ #include "input/text_input.h"
  #include "overview/overview.h"
  #include "scene/cheatsheet.h"
++#include "scene/move_menu.h"
  #include "scene/quit_confirm.h"
 +#include "server/ipc.h"
  #include "server/server.h"
  #include "wlr.h"
  
-@@ -23,6 +24,25 @@ namespace umbriel {
+@@ -23,6 +25,25 @@ namespace umbriel {
  
    namespace {
      constexpr Logger kLog("keyboard");
@@ -1691,7 +1813,7 @@ index 95473013..7a868429 100644
    } // namespace
  
    Keyboard::Keyboard(Server& server, wlr_input_device* device)
-@@ -276,6 +296,10 @@ namespace umbriel {
+@@ -276,6 +297,10 @@ namespace umbriel {
            wlr_seat_keyboard_notify_modifiers(seat, &m_keyboard->modifiers);
          }
          m_server->seat()->notifyPointerModifiers();
@@ -1702,7 +1824,7 @@ index 95473013..7a868429 100644
        }
        return;
      }
-@@ -299,6 +323,10 @@ namespace umbriel {
+@@ -299,6 +324,10 @@ namespace umbriel {
        m_server->seat()->notifyPointerModifiers();
      }
      m_server->cursor()->refreshInteractiveCursor();
@@ -1713,7 +1835,7 @@ index 95473013..7a868429 100644
      notifyLayoutIfChanged();
    }
  
-@@ -334,6 +362,21 @@ namespace umbriel {
+@@ -334,6 +363,21 @@ namespace umbriel {
      // An XF86 key can arrive from a dedicated hotkey device while its modifiers are held on the main keyboard. Match
      // against the combined seat-wide state so those chords behave like keys on one device.
      uint32_t modifiers = m_server->keyboardModifiers(true);
@@ -1735,7 +1857,32 @@ index 95473013..7a868429 100644
      if (QuitConfirm* confirm = m_server->quitConfirm();
          confirm != nullptr && confirm->visible() && confirm->kind() == QuitConfirm::Kind::InputCapture && m_virtual) {
        if (event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-@@ -529,8 +572,16 @@ namespace umbriel {
+@@ -392,11 +436,22 @@ namespace umbriel {
+           handled = true;
+         }
+       }
++      // El selector nativo de escritorio es modal mientras está abierto:
++      // Escape lo cierra, 1–9 eligen y el resto no escribe en la ventana.
++      if (MoveMenu* menu = m_server->moveMenu(); menu != nullptr && menu->visible() && !modifierOnly) {
++        bool chosen = false;
++        for (int i = 0; i < nsyms && !chosen; ++i) {
++          chosen = menu->handleKey(syms[i]);
++        }
++        (void)chosen;
++        handled = true;
++      }
+       // Modal confirmation consumes non-modifier presses before binds or clients.
+       // Enter or a matching action confirms; input capture can also offer R to
+       // remember approval. Modifier-only presses keep held chords intact.
+-      bool confirmationConsumed = false;
+-      if (QuitConfirm* confirm = m_server->quitConfirm(); confirm != nullptr && confirm->visible() && !modifierOnly) {
++      bool confirmationConsumed = handled;
++      if (QuitConfirm* confirm = m_server->quitConfirm();
++          !handled && confirm != nullptr && confirm->visible() && !modifierOnly) {
+         bool confirmed = false;
+         bool rememberCapture = false;
+         for (int i = 0; i < nsyms; ++i) {
+@@ -529,8 +584,16 @@ namespace umbriel {
      m_modifiers.link.next = nullptr;
      m_key.link.next = nullptr;
      m_destroy.link.next = nullptr;
@@ -2267,12 +2414,413 @@ index 9b42b181..130c9c2f 100644
      std::shared_ptr<fx_effect_shader> m_deformation; // null once compilation failed
      bool m_deformationCompiled = false;
      bool m_persistentReferenced = false;
+diff --git a/src/scene/move_menu.cpp b/src/scene/move_menu.cpp
+new file mode 100644
+index 00000000..3378141e
+--- /dev/null
++++ b/src/scene/move_menu.cpp
+@@ -0,0 +1,315 @@
++#include "scene/move_menu.h"
++
++#include "config/config.h"
++#include "output/output.h"
++#include "scene/color.h"
++#include "scene/text_buffer.h"
++#include "server/actions.h"
++#include "server/server.h"
++#include "view/view.h"
++#include "workspace/workspace.h"
++// clang-format off
++#include <algorithm>
++#include <cmath>
++#include <format>
++#include <string>
++#include "wlr.h"
++// clang-format on
++#include <linux/input-event-codes.h>
++#include <xkbcommon/xkbcommon-keysyms.h>
++
++namespace umbriel {
++
++  namespace {
++    constexpr int kCardWidth = 46;
++    constexpr int kRowHeight = 32;
++    constexpr int kPadding = 5;
++    constexpr int kRowGap = 2;
++    constexpr int kMargin = 8;
++    constexpr int kOffsetY = 26;
++    constexpr int kRadius = 13;
++    constexpr int kRowRadius = 8;
++    constexpr int kMaxRows = 9;
++  } // namespace
++
++  MoveMenu::MoveMenu(Server& server, wlr_scene_tree* parent) : m_server(server), m_parent(parent) {}
++
++  MoveMenu::~MoveMenu() { hide(); }
++
++  void MoveMenu::show(View* view, double anchorX, double anchorY) {
++    if (view == nullptr) {
++      hide();
++      return;
++    }
++    Workspace* workspace = view->workspace();
++    WorkspaceGroup* group = workspace != nullptr ? workspace->group() : nullptr;
++    // Una ventana del scratchpad no tiene escritorio propio; el selector usa
++    // el grupo de su salida, que es donde puede aterrizar.
++    if (group == nullptr) {
++      Output* output = view->currentOutput();
++      group = output != nullptr ? output->workspaceGroup() : nullptr;
++    }
++    if (group == nullptr) {
++      hide();
++      return;
++    }
++    const size_t count = std::min<size_t>(group->workspaceCount(), kMaxRows);
++    if (count == 0) {
++      hide();
++      return;
++    }
++
++    hide();
++    m_view = view;
++    m_group = group;
++    m_count = count;
++    const size_t current = workspace != nullptr
++        ? workspace->index()
++        : (group->active() != nullptr ? group->active()->index() : 0);
++    m_current = std::min(current, count - 1);
++    m_hoverRow = -1;
++    m_cardWidth = kCardWidth;
++    m_padding = kPadding;
++    m_rowHeight = kRowHeight;
++    m_rowGap = kRowGap;
++    m_cardHeight = kPadding * 2 + kRowHeight * static_cast<int>(count) + kRowGap * (static_cast<int>(count) - 1);
++
++    Output* output = view->currentOutput();
++    if (output == nullptr) {
++      output = m_server.outputFromWlr(m_server.preferredOutput());
++    }
++    wlr_box outputBox{};
++    if (output != nullptr) {
++      wlr_output_layout_get_box(m_server.outputLayout(), output->wlr(), &outputBox);
++    }
++    if (outputBox.width <= 0 || outputBox.height <= 0) {
++      outputBox = {.x = 0, .y = 0, .width = 1920, .height = 1080};
++    }
++
++    const double desiredX = anchorX - m_cardWidth / 2.0;
++    const double desiredY = anchorY + kOffsetY;
++    m_cardX = std::round(std::clamp(
++        desiredX, static_cast<double>(outputBox.x + kMargin),
++        static_cast<double>(outputBox.x + outputBox.width - m_cardWidth - kMargin)
++    ));
++    m_cardY = std::round(std::clamp(
++        desiredY, static_cast<double>(outputBox.y + kMargin),
++        static_cast<double>(outputBox.y + outputBox.height - m_cardHeight - kMargin)
++    ));
++
++    render();
++  }
++
++  void MoveMenu::hide() {
++    if (m_tree != nullptr) {
++      m_shadow.reset();
++      wlr_scene_node_destroy(&m_tree->node);
++      m_tree = nullptr;
++    }
++    m_view = nullptr;
++    m_group = nullptr;
++    m_count = 0;
++    m_current = 0;
++    m_hoverRow = -1;
++    m_currentRow = nullptr;
++    m_hoverRowRect = nullptr;
++  }
++
++  void MoveMenu::forgetView(const View* view) {
++    if (m_view == view) {
++      hide();
++    }
++  }
++
++  bool MoveMenu::contains(double x, double y) const {
++    return x >= m_cardX && x < m_cardX + m_cardWidth && y >= m_cardY && y < m_cardY + m_cardHeight;
++  }
++
++  int MoveMenu::rowAt(double x, double y) const {
++    if (m_tree == nullptr || !contains(x, y)) {
++      return -1;
++    }
++    const double localX = x - m_cardX - m_padding;
++    const double localY = y - m_cardY - m_padding;
++    if (localX < 0.0 || localX >= m_cardWidth - 2.0 * m_padding || localY < 0.0) {
++      return -1;
++    }
++    const int stride = m_rowHeight + m_rowGap;
++    const int row = static_cast<int>(localY) / stride;
++    if (row < 0 || static_cast<size_t>(row) >= m_count) {
++      return -1;
++    }
++    if (static_cast<int>(localY) % stride >= m_rowHeight) {
++      return -1;
++    }
++    return row;
++  }
++
++  void MoveMenu::updateHover(double x, double y) {
++    setHoverRow(rowAt(x, y));
++  }
++
++  void MoveMenu::setHoverRow(int row) {
++    if (m_hoverRow == row) {
++      return;
++    }
++    m_hoverRow = row;
++    if (m_hoverRowRect == nullptr) {
++      return;
++    }
++    // El escritorio actual ya tiene su propio resaltado.
++    if (row < 0 || static_cast<size_t>(row) == m_current) {
++      wlr_scene_node_set_enabled(&m_hoverRowRect->node, false);
++      return;
++    }
++    wlr_scene_node_set_position(
++        &m_hoverRowRect->node, m_padding, m_padding + row * (m_rowHeight + m_rowGap)
++    );
++    wlr_scene_node_set_enabled(&m_hoverRowRect->node, true);
++  }
++
++  bool MoveMenu::handlePress(double x, double y, uint32_t button) {
++    if (m_tree == nullptr) {
++      return false;
++    }
++    if (button != BTN_LEFT) {
++      hide();
++      return true;
++    }
++    const int row = rowAt(x, y);
++    if (row < 0) {
++      hide();
++      return true;
++    }
++    choose(static_cast<size_t>(row));
++    return true;
++  }
++
++  bool MoveMenu::handleKey(uint32_t keysym) {
++    if (m_tree == nullptr) {
++      return false;
++    }
++    if (keysym == XKB_KEY_Escape) {
++      hide();
++      return true;
++    }
++    if (keysym >= XKB_KEY_1 && keysym <= XKB_KEY_9) {
++      choose(static_cast<size_t>(keysym - XKB_KEY_1));
++      return true;
++    }
++    if (keysym >= XKB_KEY_KP_1 && keysym <= XKB_KEY_KP_9) {
++      choose(static_cast<size_t>(keysym - XKB_KEY_KP_1));
++      return true;
++    }
++    // El menú es modal mientras está abierto: una tecla suelta no debe
++    // escribir en la ventana que quedó debajo.
++    return true;
++  }
++
++  void MoveMenu::choose(size_t index) {
++    View* view = m_view;
++    WorkspaceGroup* group = m_group;
++    const size_t current = m_current;
++    hide();
++    if (view == nullptr || group == nullptr || index >= kMaxRows || index == current) {
++      return;
++    }
++    // Como el selector del shell: la ventana se va al destino y el asiento se
++    // queda donde estaba.
++    (void)moveViewToWorkspaceAt(m_server, *view, *group, index, false);
++  }
++
++  void MoveMenu::render() {
++    if (m_view == nullptr || m_count == 0) {
++      return;
++    }
++    Output* output = m_view->currentOutput();
++    if (output == nullptr) {
++      output = m_server.outputFromWlr(m_server.preferredOutput());
++    }
++    const double scale = output != nullptr ? std::max(1.0, std::ceil(static_cast<double>(output->wlr()->scale))) : 1.0;
++
++    wlr_scene_node_raise_to_top(&m_parent->node);
++    m_tree = wlr_scene_tree_create(m_parent);
++    if (m_tree == nullptr) {
++      return;
++    }
++    wlr_scene_node_set_position(&m_tree->node, static_cast<int>(m_cardX), static_cast<int>(m_cardY));
++    m_shadow.update(m_tree, m_cardWidth, m_cardHeight, 1, kRadius);
++
++    const auto& colors = config().colors;
++    float borderColor[4]{};
++    float backgroundColor[4]{};
++    float currentColor[4]{};
++    float hoverColor[4]{};
++    premultiplied(borderColor, colors.border.focused, 0.45F);
++    premultiplied(backgroundColor, colors.background, 0.97F);
++    premultiplied(currentColor, colors.accentPrimary, 0.16F);
++    premultiplied(hoverColor, colors.textPrimary, 0.07F);
++
++    wlr_scene_rect* border = wlr_scene_rect_create(m_tree, m_cardWidth, m_cardHeight, borderColor);
++    if (border != nullptr) {
++      wlr_scene_rect_set_corner_radius(border, kRadius);
++      border->accepts_input = false;
++    }
++    wlr_scene_rect* panel =
++        wlr_scene_rect_create(m_tree, m_cardWidth - 2, m_cardHeight - 2, backgroundColor);
++    if (panel != nullptr) {
++      wlr_scene_node_set_position(&panel->node, 1, 1);
++      wlr_scene_rect_set_corner_radius(panel, kRadius - 1);
++      panel->accepts_input = false;
++    }
++
++    const int rowWidth = m_cardWidth - 2 * m_padding;
++    m_currentRow = wlr_scene_rect_create(m_tree, rowWidth, m_rowHeight, currentColor);
++    if (m_currentRow != nullptr) {
++      wlr_scene_rect_set_corner_radius(m_currentRow, kRowRadius);
++      m_currentRow->accepts_input = false;
++      wlr_scene_node_set_position(
++          &m_currentRow->node, m_padding, m_padding + static_cast<int>(m_current) * (m_rowHeight + m_rowGap)
++      );
++    }
++    m_hoverRowRect = wlr_scene_rect_create(m_tree, rowWidth, m_rowHeight, hoverColor);
++    if (m_hoverRowRect != nullptr) {
++      wlr_scene_rect_set_corner_radius(m_hoverRowRect, kRowRadius);
++      m_hoverRowRect->accepts_input = false;
++      wlr_scene_node_set_enabled(&m_hoverRowRect->node, false);
++    }
++
++    // Un buffer por número: Pango devuelve el ancho natural y así el dígito
++    // queda centrado en la celda sin depender de una fuente monoespaciada.
++    for (size_t index = 0; index < m_count; ++index) {
++      const bool current = index == m_current;
++      const std::string markup = std::format(
++          "<span foreground='{}' weight='bold'>{}</span>",
++          rgbaHex(current ? colors.accentPrimary : colors.textPrimary), index + 1
++      );
++      TextBufferResult rendered = renderTextBuffer({
++          .markup = markup,
++          .font = "sans 11",
++          .maxWidth = rowWidth,
++          .padding = 0,
++          .scale = scale,
++          .bgR = 0.0,
++          .bgG = 0.0,
++          .bgB = 0.0,
++          .bgA = 0.0,
++      });
++      if (rendered.buffer == nullptr) {
++        continue;
++      }
++      wlr_scene_buffer* node = wlr_scene_buffer_create(m_tree, rendered.buffer);
++      wlr_buffer_drop(rendered.buffer);
++      if (node == nullptr) {
++        continue;
++      }
++      node->point_accepts_input = [](wlr_scene_buffer*, double*, double*) -> bool { return false; };
++      wlr_scene_buffer_set_dest_size(node, rendered.logicalWidth, rendered.logicalHeight);
++      const int x = m_padding + (rowWidth - rendered.logicalWidth) / 2;
++      const int y = m_padding + static_cast<int>(index) * (m_rowHeight + m_rowGap)
++          + (m_rowHeight - rendered.logicalHeight) / 2;
++      wlr_scene_node_set_position(&node->node, x, y);
++    }
++  }
++
++} // namespace umbriel
+diff --git a/src/scene/move_menu.h b/src/scene/move_menu.h
+new file mode 100644
+index 00000000..81756f52
+--- /dev/null
++++ b/src/scene/move_menu.h
+@@ -0,0 +1,74 @@
++#pragma once
++
++#include "scene/surface_shadow.h"
++
++#include <cstddef>
++#include <cstdint>
++
++struct wlr_scene_rect;
++struct wlr_scene_tree;
++
++namespace umbriel {
++
++  class Server;
++  class View;
++  class WorkspaceGroup;
++
++  // Selector 1–9 del botón «Mover» de la barra de título. Vive en Umbriel,
++  // como el resto de la decoración: una tarjeta estrecha junto al puntero con
++  // el escritorio actual resaltado. El teclado y el ratón los atienden
++  // Keyboard y Cursor; esta clase solo dibuja y resuelve el destino.
++  class MoveMenu {
++  public:
++    MoveMenu(Server& server, wlr_scene_tree* parent);
++    ~MoveMenu();
++
++    MoveMenu(const MoveMenu&) = delete;
++    MoveMenu& operator=(const MoveMenu&) = delete;
++
++    void show(View* view, double anchorX, double anchorY);
++    void hide();
++    bool visible() const { return m_tree != nullptr; }
++    View* view() const { return m_view; }
++    // Una ventana destruida no puede dejar el menú apuntando a memoria libre.
++    void forgetView(const View* view);
++
++    bool contains(double x, double y) const;
++    int rowAt(double x, double y) const;
++    void updateHover(double x, double y);
++    // Cualquier pulsación se consume mientras el menú está abierto: dentro
++    // elige un escritorio y fuera solo lo cierra.
++    bool handlePress(double x, double y, uint32_t button);
++    // Escape cierra; 1–9 eligen; el resto no llega a la ventana de debajo.
++    bool handleKey(uint32_t keysym);
++
++  private:
++    void render();
++    void choose(size_t index);
++    void setHoverRow(int row);
++
++    Server& m_server;
++    wlr_scene_tree* m_parent;
++    wlr_scene_tree* m_tree = nullptr;
++    SurfaceShadow m_shadow;
++
++    View* m_view = nullptr;
++    WorkspaceGroup* m_group = nullptr;
++    size_t m_count = 0;
++    size_t m_current = 0;
++    int m_hoverRow = -1;
++
++    // Coordenadas globales de la tarjeta.
++    double m_cardX = 0.0;
++    double m_cardY = 0.0;
++    int m_cardWidth = 46;
++    int m_cardHeight = 0;
++    int m_padding = 5;
++    int m_rowHeight = 32;
++    int m_rowGap = 2;
++
++    wlr_scene_rect* m_currentRow = nullptr;
++    wlr_scene_rect* m_hoverRowRect = nullptr;
++  };
++
++} // namespace umbriel
 diff --git a/src/scene/native_handles.cpp b/src/scene/native_handles.cpp
 new file mode 100644
-index 00000000..a6d1954d
+index 00000000..8e5c2f4a
 --- /dev/null
 +++ b/src/scene/native_handles.cpp
-@@ -0,0 +1,239 @@
+@@ -0,0 +1,254 @@
 +#include "scene/native_handles.h"
 +
 +#include "config/config.h"
@@ -2293,6 +2841,8 @@ index 00000000..a6d1954d
 +    constexpr int kCoreWidth = 2;
 +    constexpr float kBandAlpha = 0.10F;
 +    constexpr float kCoreAlpha = 0.42F;
++    constexpr float kHoverBandAlpha = 0.18F;
++    constexpr float kHoverCoreAlpha = 0.90F;
 +    constexpr float kDotAlpha = 0.90F;
 +
 +    wlr_scene_rect* makeRect(wlr_scene_tree* tree) {
@@ -2379,6 +2929,15 @@ index 00000000..a6d1954d
 +    apply();
 +  }
 +
++  void NativeHandles::setDividerHover(bool right, bool bottom) {
++    if (m_hoverRight == right && m_hoverBottom == bottom) {
++      return;
++    }
++    m_hoverRight = right;
++    m_hoverBottom = bottom;
++    apply();
++  }
++
 +  void NativeHandles::setTileEdges(
 +      bool right, double rightStart, double rightEnd, bool bottom, double bottomStart, double bottomEnd
 +  ) {
@@ -2451,6 +3010,10 @@ index 00000000..a6d1954d
 +    premultiplied(bandColor, accent, kBandAlpha);
 +    premultiplied(coreColor, accent, kCoreAlpha);
 +    premultiplied(dotColor, accent, kDotAlpha);
++    float hoverBandColor[4]{};
++    float hoverCoreColor[4]{};
++    premultiplied(hoverBandColor, accent, kHoverBandAlpha);
++    premultiplied(hoverCoreColor, accent, kHoverCoreAlpha);
 +
 +    for (size_t i = 0; i < m_dots.size(); ++i) {
 +      wlr_scene_rect* dot = m_dots[i];
@@ -2471,13 +3034,13 @@ index 00000000..a6d1954d
 +    setDividerVisible();
 +    if (showRight) {
 +      placeDivider(m_rightBand, m_rightCore, true, m_width + m_gap / 2, rightFirst, rightLast);
-+      wlr_scene_rect_set_color(m_rightBand, bandColor);
-+      wlr_scene_rect_set_color(m_rightCore, coreColor);
++      wlr_scene_rect_set_color(m_rightBand, m_hoverRight ? hoverBandColor : bandColor);
++      wlr_scene_rect_set_color(m_rightCore, m_hoverRight ? hoverCoreColor : coreColor);
 +    }
 +    if (showBottom) {
 +      placeDivider(m_bottomBand, m_bottomCore, false, m_height + m_gap / 2, bottomFirst, bottomLast);
-+      wlr_scene_rect_set_color(m_bottomBand, bandColor);
-+      wlr_scene_rect_set_color(m_bottomCore, coreColor);
++      wlr_scene_rect_set_color(m_bottomBand, m_hoverBottom ? hoverBandColor : bandColor);
++      wlr_scene_rect_set_color(m_bottomCore, m_hoverBottom ? hoverCoreColor : coreColor);
 +    }
 +  }
 +
@@ -2514,10 +3077,10 @@ index 00000000..a6d1954d
 +} // namespace umbriel
 diff --git a/src/scene/native_handles.h b/src/scene/native_handles.h
 new file mode 100644
-index 00000000..8fc2d6ea
+index 00000000..6aa20119
 --- /dev/null
 +++ b/src/scene/native_handles.h
-@@ -0,0 +1,73 @@
+@@ -0,0 +1,78 @@
 +#pragma once
 +
 +extern "C" {
@@ -2554,6 +3117,9 @@ index 00000000..8fc2d6ea
 +    void setTileEdges(
 +        bool right, double rightStart, double rightEnd, bool bottom, double bottomStart, double bottomEnd
 +    );
++    // Resalta el divisor que está bajo el puntero. Son dos ejes porque una
++    // ventana puede compartir borde derecho e inferior a la vez.
++    void setDividerHover(bool right, bool bottom);
 +    // `gap` es el hueco total entre cajas de contenido (incluye los bordes).
 +    // `dotsAllowed` deja fuera las flotantes maximizadas y las de pantalla
 +    // completa; `suppressed` oculta todo (vista general, bloqueo, minimizada).
@@ -2581,6 +3147,8 @@ index 00000000..8fc2d6ea
 +    bool m_visible = false;
 +    bool m_right = false;
 +    bool m_bottom = false;
++    bool m_hoverRight = false;
++    bool m_hoverBottom = false;
 +    double m_rightStart = 0.0;
 +    double m_rightEnd = 0.0;
 +    double m_bottomStart = 0.0;
@@ -3598,11 +4166,61 @@ index 80a6fd98..5eb6a5fe 100644
      cairo_stroke(cr);
      cairo_destroy(cr);
      return createCairoBuffer(surface);
+diff --git a/src/server/actions.cpp b/src/server/actions.cpp
+index e9edb432..0f0781e9 100644
+--- a/src/server/actions.cpp
++++ b/src/server/actions.cpp
+@@ -2395,6 +2395,15 @@ namespace umbriel {
+ 
+   } // namespace
+ 
++  bool moveViewToWorkspaceAt(Server& server, View& view, WorkspaceGroup& group, size_t index, bool follow) {
++    Workspace* target = group.workspaceAtClamped(index);
++    if (target == nullptr) {
++      return false;
++    }
++    moveViewToWorkspace(server, view, *target, follow);
++    return true;
++  }
++
+   ActionHandlerFn actionHandlerFor(KeybindAction action) {
+     const auto index = static_cast<size_t>(action);
+     return index < kActionHandlers.size() ? kActionHandlers[index] : nullptr;
+diff --git a/src/server/actions.h b/src/server/actions.h
+index a90ca1d0..377da6ce 100644
+--- a/src/server/actions.h
++++ b/src/server/actions.h
+@@ -2,16 +2,25 @@
+ 
+ #include "config/keybind_parse.h"
+ 
++#include <cstddef>
+ #include <string>
+ 
+ namespace umbriel {
+ 
+   class Server;
++  class View;
++  class WorkspaceGroup;
+ 
+   // One action's behaviour. Returns whether the action was consumed; a message
+   // written to `error` (when non-null) is surfaced by the IPC `msg` command.
+   using ActionHandlerFn = bool (*)(Server& server, const Keybind& bind, std::string* error);
+ 
++  // Mueve `view` al escritorio `index` (0-based) del grupo y lo sigue. Lo usa
++  // el selector nativo del botón «Mover»; no pasa por el shell.
++  bool moveViewToWorkspaceAt(
++      Server& server, View& view, WorkspaceGroup& group, size_t index, bool follow = true
++  );
++
+   // Null when the action has no implementation, which the caller reports rather than silently ignoring. Keeping the
+   // dispatch table separate from `actionSpecs()` lets the parser stay free of any dependency on Server.
+   ActionHandlerFn actionHandlerFor(KeybindAction action);
 diff --git a/src/server/ipc.cpp b/src/server/ipc.cpp
-index e59e7726..efe4bdc0 100644
+index e59e7726..1d995c78 100644
 --- a/src/server/ipc.cpp
 +++ b/src/server/ipc.cpp
-@@ -133,6 +133,38 @@ namespace umbriel {
+@@ -133,6 +133,23 @@ namespace umbriel {
        return nlohmann::json{{"event", "outputs"}, {"data", IpcCommands::outputs(server, {}).at("ok")}};
      }
  
@@ -3622,26 +4240,11 @@ index e59e7726..efe4bdc0 100644
 +      };
 +    }
 +
-+    // One-shot: the move button of a title bar asks the shell for its workspace
-+    // picker. `x`/`y` are global layout coordinates of the pointer, so the
-+    // shell can place the card next to the button that was clicked.
-+    nlohmann::json moveMenuEvent(std::string_view windowId, double x, double y, uint64_t serial) {
-+      return nlohmann::json{
-+          {"event", "move_menu"},
-+          {"data",
-+           {
-+               {"serial", serial},
-+               {"window", std::string(windowId)},
-+               {"x", x},
-+               {"y", y},
-+           }},
-+      };
-+    }
 +
      nlohmann::json screenCastEvent(Server& server) {
        const ScreenCastCommand& command = server.screenCastCommand();
        nlohmann::json data{{"serial", command.serial}};
-@@ -660,6 +692,9 @@ namespace umbriel {
+@@ -660,6 +677,9 @@ namespace umbriel {
        if ((requested & Ipc::kEventOutputs) != 0) {
          append(outputsEvent(*m_server));
        }
@@ -3651,63 +4254,47 @@ index e59e7726..efe4bdc0 100644
        return response;
      }
  #ifdef UMBRIEL_HARNESS
-@@ -775,4 +810,10 @@ namespace umbriel {
+@@ -775,4 +795,6 @@ namespace umbriel {
  
    void Ipc::notifyOutputsChanged() { broadcastEvent(kEventOutputs, outputsEvent(*m_server)); }
  
 +  void Ipc::notifyModifiersChanged() { broadcastEvent(kEventModifiers, modifiersEvent(*m_server)); }
 +
-+  void Ipc::notifyMoveMenu(std::string_view windowId, double x, double y) {
-+    broadcastEvent(kEventMoveMenu, moveMenuEvent(windowId, x, y, ++m_moveMenuSerial));
-+  }
-+
  } // namespace umbriel
 diff --git a/src/server/ipc.h b/src/server/ipc.h
-index 7357ed75..6ed548b7 100644
+index 7357ed75..ed344492 100644
 --- a/src/server/ipc.h
 +++ b/src/server/ipc.h
-@@ -31,13 +31,16 @@ namespace umbriel {
+@@ -31,13 +31,15 @@ namespace umbriel {
        kEventScreenCast = 1 << 6,
        kEventLayers = 1 << 7,
        kEventOutputs = 1 << 8,
 +      kEventModifiers = 1 << 9,
-+      kEventMoveMenu = 1 << 10,
      };
      // Number of bits above; sizes the last-broadcast cache.
 -    static constexpr size_t kEventCount = 9;
-+    static constexpr size_t kEventCount = 11;
++    static constexpr size_t kEventCount = 10;
      // Subscribable names in bit order: the subscribe handler matches against this table and `umbriel subscribe`
      // lists it, so a new family cannot be accepted by one and unknown to the other.
      static constexpr std::array<std::string_view, kEventCount> kEventNames = {
 -        "theme", "overview", "keyboard_layout", "windows", "workspaces", "submap", "screencast", "layers", "outputs"
 +        "theme", "overview", "keyboard_layout", "windows", "workspaces", "submap", "screencast", "layers", "outputs",
-+        "modifiers", "move_menu"
++        "modifiers"
      };
  
      Ipc(Server& server, const std::string& waylandSocketName);
-@@ -55,6 +58,12 @@ namespace umbriel {
+@@ -55,6 +57,9 @@ namespace umbriel {
      void notifyScreenCastChanged();
      void notifyLayersChanged();
      void notifyOutputsChanged();
 +    // The user pressed or released a modifier. Sent so a shell can react to a
 +    // held Super instead of waiting for a modifier-only bind on release.
 +    void notifyModifiersChanged();
-+    // The title bar's move button asked for the workspace picker. One-shot, so
-+    // the payload carries a serial to survive the duplicate-broadcast filter.
-+    void notifyMoveMenu(std::string_view windowId, double x, double y);
      // End of an output frame: answers frame waits (settle, clock-advance) once every output has drawn a frame.
      void notifyOutputFrame(const Output& output);
      // A window committed. A window off screen draws no frame when it commits its configure, so while a settle waits,
-@@ -113,6 +122,7 @@ namespace umbriel {
-     // same JSON is dropped rather than woken through to every subscriber; a fresh subscriber gets its own initial
-     // line from the subscribe handler, so skipping a no-op broadcast can never leave anyone behind.
-     std::array<std::string, kEventCount> m_lastBroadcast;
-+    uint64_t m_moveMenuSerial = 0;
-   };
- 
- } // namespace umbriel
 diff --git a/src/server/ipc_commands.cpp b/src/server/ipc_commands.cpp
-index 7e1bd5d9..31119cb3 100644
+index 7e1bd5d9..6a05d130 100644
 --- a/src/server/ipc_commands.cpp
 +++ b/src/server/ipc_commands.cpp
 @@ -11,6 +11,7 @@
@@ -3747,7 +4334,7 @@ index 7e1bd5d9..31119cb3 100644
        entry["fullscreen"] = view.scheduledFullscreen();
        entry["maximized"] = view.scheduledMaximized();
        entry["maximized_to_edges"] = view.maximizedToEdges();
-@@ -744,6 +759,82 @@ namespace umbriel {
+@@ -744,6 +759,79 @@ namespace umbriel {
      return nlohmann::json{{"ok", windowEntry(server, *view, pendingLayouts)}};
    }
  
@@ -3767,11 +4354,8 @@ index 7e1bd5d9..31119cb3 100644
 +    if (view == nullptr) {
 +      return nlohmann::json{{"err", "move-menu: no such window"}};
 +    }
-+    if (Ipc* ipc = server.ipc(); ipc != nullptr) {
-+      const char* id = view->extForeignIdentifier();
-+      wlr_cursor* cursor = server.cursor()->wlr();
-+      ipc->notifyMoveMenu(id != nullptr ? id : "", cursor->x, cursor->y);
-+    }
++    wlr_cursor* cursor = server.cursor()->wlr();
++    server.showMoveMenu(view, cursor->x, cursor->y);
 +    return nlohmann::json{{"ok", nullptr}};
 +  }
 +
@@ -3830,11 +4414,11 @@ index 7e1bd5d9..31119cb3 100644
    nlohmann::json IpcCommands::effects(Server& server, IpcArgs /*args*/) {
      nlohmann::json presets = nlohmann::json::array();
      for (const auto& preset : config().effects.presets) {
-@@ -1394,6 +1485,12 @@ namespace umbriel {
+@@ -1394,6 +1482,12 @@ namespace umbriel {
         &IpcCommands::effects, &printEffects},
        {"windows", "", "list windows (app id and title)", IpcCommandGroup::Inspect, false, &IpcCommands::windows,
         &printWindows},
-+      {"move-menu", "<window-id>", "ask the shell for the workspace picker of a window",
++      {"move-menu", "<window-id>", "open the native workspace picker for a window",
 +       IpcCommandGroup::Control, true, &IpcCommands::movedWindowMenu, nullptr},
 +      {"restore-window", "<window-id>", "restore a minimized or scratchpad window",
 +       IpcCommandGroup::Control, true, &IpcCommands::restoreWindow, nullptr},
@@ -3858,10 +4442,59 @@ index 528e1371..c736b128 100644
      static nlohmann::json workspaces(Server& server, IpcArgs args);
      static nlohmann::json submap(Server& server, IpcArgs args);
 diff --git a/src/server/server.cpp b/src/server/server.cpp
-index 560eef66..25fec3fb 100644
+index 560eef66..855c9ba5 100644
 --- a/src/server/server.cpp
 +++ b/src/server/server.cpp
-@@ -1086,6 +1086,10 @@ namespace umbriel {
+@@ -26,6 +26,7 @@
+ #include "scene/config_banner.h"
+ #include "scene/effect_registry.h"
+ #include "scene/hint_rect.h"
++#include "scene/move_menu.h"
+ #include "scene/quit_confirm.h"
+ #include "server/allocator.h"
+ #include "server/backend_manager.h"
+@@ -363,6 +364,24 @@ namespace umbriel {
+     }
+   }
+ 
++  void Server::showMoveMenu(View* view, double x, double y) {
++    if (m_moveMenu != nullptr) {
++      m_moveMenu->show(view, x, y);
++    }
++  }
++
++  void Server::hideMoveMenu() {
++    if (m_moveMenu != nullptr) {
++      m_moveMenu->hide();
++    }
++  }
++
++  void Server::forgetMoveMenuView(const View* view) {
++    if (m_moveMenu != nullptr) {
++      m_moveMenu->forgetView(view);
++    }
++  }
++
+   void Server::dismissConfirmation() {
+     if (m_pendingCaptureId != 0 && m_inputCapture != nullptr) {
+       const auto id = std::exchange(m_pendingCaptureId, 0);
+@@ -746,6 +765,7 @@ namespace umbriel {
+     m_imPopupTree = wlr_scene_tree_create(&m_scene->tree);
+     m_cheatsheetTree = wlr_scene_tree_create(&m_scene->tree);
+     m_bannerTree = wlr_scene_tree_create(&m_scene->tree);
++    m_moveMenuTree = wlr_scene_tree_create(&m_scene->tree);
+     m_quitConfirmTree = wlr_scene_tree_create(&m_scene->tree);
+     m_lockTree = wlr_scene_tree_create(&m_scene->tree);
+     m_lockBlank = wlr_scene_rect_create(m_lockTree, 0, 0, config().colors.backdrop.data());
+@@ -1029,6 +1049,7 @@ namespace umbriel {
+     // Each snapshot destroys its own scene tree.
+     m_closeSnapshots.clear();
+     m_configBanner.reset();
++    m_moveMenu.reset();
+     // Owns scene nodes under m_scene; must go before the scene teardown below.
+     m_cheatsheet.reset();
+     m_overview.reset();
+@@ -1086,6 +1107,10 @@ namespace umbriel {
        wl_event_source_remove(m_startupRulesTimer);
        m_startupRulesTimer = nullptr;
      }
@@ -3872,11 +4505,56 @@ index 560eef66..25fec3fb 100644
      for (wl_event_source*& source : m_signalSources) {
        if (source != nullptr) {
          wl_event_source_remove(source);
+@@ -1101,6 +1126,7 @@ namespace umbriel {
+     // Chrome components destroy scene nodes in their destructors, so they must go before the scene tree does; otherwise
+     // the destructor body frees the nodes and the member destructors touch already-freed memory.
+     m_quitConfirm.reset();
++    m_moveMenu.reset();
+     m_cheatsheet.reset();
+     m_configBanner.reset();
+     m_scratchpadManager.reset();
+@@ -1331,6 +1357,7 @@ namespace umbriel {
+     if (config().general.showCheatsheet) {
+       m_cheatsheet->showOnStartup();
+     }
++    m_moveMenu = std::make_unique<MoveMenu>(*this, m_moveMenuTree);
+     m_quitConfirm = std::make_unique<QuitConfirm>(*this, m_quitConfirmTree);
+     if (!notifyServiceReady(notifySocket)) {
+       kLog.error("failed to report session readiness: {}", std::strerror(errno));
 diff --git a/src/server/server.h b/src/server/server.h
-index 03e10604..9b6f3596 100644
+index 03e10604..fbcf498a 100644
 --- a/src/server/server.h
 +++ b/src/server/server.h
-@@ -429,7 +429,35 @@ namespace umbriel {
+@@ -156,6 +156,7 @@ namespace umbriel {
+   class ScratchpadManager;
+   class ConfigBanner;
+   class Cheatsheet;
++  class MoveMenu;
+   class QuitConfirm;
+   class Ipc;
+ 
+@@ -214,6 +215,7 @@ namespace umbriel {
+     ConfigBanner* configBanner() const { return m_configBanner.get(); }
+     Cheatsheet* cheatsheet() const { return m_cheatsheet.get(); }
+     QuitConfirm* quitConfirm() const { return m_quitConfirm.get(); }
++    MoveMenu* moveMenu() const { return m_moveMenu.get(); }
+     // Above xdg windows, below layer-shell top/overlay (drag/drop insert hint).
+     wlr_scene_tree* dragTree() const { return m_dragTree; }
+     // Parent for wl_data_device drag icons; moved to the cursor while a drag is active.
+@@ -288,6 +290,12 @@ namespace umbriel {
+     void confirmInputEmulation();
+     void confirmInputCapture(bool remember = false);
+     void dismissConfirmation();
++    // Abre el selector 1–9 del botón «Mover» junto al puntero. `x`/`y` son
++    // coordenadas globales del layout.
++    void showMoveMenu(View* view, double x, double y);
++    void hideMoveMenu();
++    // Una ventana destruida no puede dejar el menú apuntando a memoria libre.
++    void forgetMoveMenuView(const View* view);
+     // Owners register themselves for the frame tick. The registry is kept in phase order, so the three traversals above
+     // never re-state which owners exist or in what order they run.
+     void registerAnimatable(Animatable* animatable);
+@@ -429,7 +437,35 @@ namespace umbriel {
      bool handleVtSwitch(uint32_t keysym, uint32_t modifiers);
      void armModifierTap(const void* source, uint32_t keycode, std::span<const uint32_t> keysyms, uint32_t modifiers);
      [[nodiscard]] std::optional<Keybind> releaseModifierTap(const void* source, uint32_t keycode);
@@ -3913,7 +4591,7 @@ index 03e10604..9b6f3596 100644
      void arrangeLayers(wlr_output* output);
      // Re-send every surface's output scale (views, layer surfaces, popups). Run after anything that changes an output's
      // scale or moves surfaces between outputs outside setWorkspace; the notifies dedup, so extra calls are cheap.
-@@ -476,6 +504,10 @@ namespace umbriel {
+@@ -476,6 +512,10 @@ namespace umbriel {
      bool syncingKeyboardLocks() const;
      void removeKeyboard(Keyboard* keyboard);
      void removeView(View* view);
@@ -3924,7 +4602,7 @@ index 03e10604..9b6f3596 100644
      void removeLayerSurface(LayerSurface* layerSurface, wlr_output* output);
      void removeSessionLock(SessionLock* lock);
      void activateSessionLock(SessionLock* lock);
-@@ -587,6 +619,8 @@ namespace umbriel {
+@@ -587,6 +627,8 @@ namespace umbriel {
      // when there are none.
      void armBackgroundRenderTimer();
      static int onStartupRulesTimer(void* data);
@@ -3933,7 +4611,16 @@ index 03e10604..9b6f3596 100644
      static int onTerminateSignal(int signal, void* data);
      static void onIpcWindowsIdle(void* data);
      static void onIpcWorkspacesIdle(void* data);
-@@ -950,6 +984,9 @@ namespace umbriel {
+@@ -918,6 +960,8 @@ namespace umbriel {
+     std::unique_ptr<Cheatsheet> m_cheatsheet;
+     wlr_scene_tree* m_quitConfirmTree = nullptr;
+     std::unique_ptr<QuitConfirm> m_quitConfirm;
++    wlr_scene_tree* m_moveMenuTree = nullptr;
++    std::unique_ptr<MoveMenu> m_moveMenu;
+ 
+     bool m_nested = false;
+     bool m_stopping = false;
+@@ -950,6 +994,9 @@ namespace umbriel {
      wl_event_source* m_backgroundRenderTimer = nullptr;
      // One-shot refresh when dynamic startup rules expire.
      wl_event_source* m_startupRulesTimer = nullptr;
@@ -3943,7 +4630,7 @@ index 03e10604..9b6f3596 100644
      // Non-null while a windows-event idle callback is pending. The idle source
      // removes itself when it runs, so a non-null pointer means "already queued".
      wl_event_source* m_ipcWindowsIdle = nullptr;
-@@ -1020,6 +1057,17 @@ namespace umbriel {
+@@ -1020,6 +1067,17 @@ namespace umbriel {
      Keyboard* m_keyboardLayoutSource = nullptr;
      Keyboard* m_keyboardInputSource = nullptr;
      ModifierTapState m_modifierTap;
@@ -3962,7 +4649,7 @@ index 03e10604..9b6f3596 100644
      std::vector<std::unique_ptr<TouchDevice>> m_touchDevices;
      std::vector<std::unique_ptr<TabletDevice>> m_tabletDevices;
 diff --git a/src/server/server_events.cpp b/src/server/server_events.cpp
-index 11f0d54d..4096613a 100644
+index 11f0d54d..63e72175 100644
 --- a/src/server/server_events.cpp
 +++ b/src/server/server_events.cpp
 @@ -783,7 +783,7 @@ namespace umbriel {
@@ -4004,7 +4691,15 @@ index 11f0d54d..4096613a 100644
      assignLaunchOriginFromEnvironment(adopted);
      return adopted;
    }
-@@ -3770,6 +3777,24 @@ namespace umbriel {
+@@ -1998,6 +2005,7 @@ namespace umbriel {
+   }
+ 
+   void Server::beginSessionLock(wlr_session_lock_v1* lock) {
++    hideMoveMenu();
+     if (m_inputCapture != nullptr) {
+       m_inputCapture->suspend();
+     }
+@@ -3770,6 +3778,24 @@ namespace umbriel {
      updateSeatCapabilities();
    }
  
@@ -4029,7 +4724,7 @@ index 11f0d54d..4096613a 100644
    void Server::removeView(View* view) {
      if (view == nullptr) {
        return;
-@@ -3777,6 +3802,8 @@ namespace umbriel {
+@@ -3777,6 +3803,8 @@ namespace umbriel {
      for (const auto& output : m_outputs) {
        output->forgetHdrView(view);
      }
@@ -4316,7 +5011,7 @@ index e4cf551f..1419cce7 100644
    };
  
 diff --git a/src/view/view.cpp b/src/view/view.cpp
-index 2a3b3bcc..89e5e84b 100644
+index 2a3b3bcc..d223b427 100644
 --- a/src/view/view.cpp
 +++ b/src/view/view.cpp
 @@ -20,6 +20,7 @@ extern "C" {
@@ -4348,15 +5043,16 @@ index 2a3b3bcc..89e5e84b 100644
  
      // A scene-node capture uses the node's scene as its render source. Keep a
      // second scene containing only the client surfaces so transparency cannot
-@@ -289,6 +303,7 @@ namespace umbriel {
+@@ -289,6 +303,8 @@ namespace umbriel {
    }
  
    View::~View() {
 +    m_server->forgetModHoverView(this);
++    m_server->forgetMoveMenuView(this);
      clearLaunchPlacement(true, true);
      if (m_effectSelectionIdle != nullptr) {
        wl_event_source_remove(m_effectSelectionIdle);
-@@ -353,6 +368,8 @@ namespace umbriel {
+@@ -353,6 +369,8 @@ namespace umbriel {
        // The attachment's nodes hang under the frame: release them first so their owner never destroys a freed node.
        m_chromeAttachment.reset();
        m_ssdFrame.reset();
@@ -4365,7 +5061,7 @@ index 2a3b3bcc..89e5e84b 100644
        m_decoration.poolShadow(m_sceneTree, nullptr, 0, 0, false);
        wlr_scene_node_destroy(&m_sceneTree->node);
        m_sceneTree = nullptr;
-@@ -418,7 +435,9 @@ namespace umbriel {
+@@ -418,7 +436,9 @@ namespace umbriel {
        m_workspace = nullptr;
        // Keep an empty destination alive until this view has been attached.
        // addView() reconciles the group after the transfer is complete.
@@ -4377,7 +5073,7 @@ index 2a3b3bcc..89e5e84b 100644
      m_workspace = workspace;
      if (m_workspace != nullptr) {
 diff --git a/src/view/view.h b/src/view/view.h
-index 52a43f63..38d96d13 100644
+index 52a43f63..65360674 100644
 --- a/src/view/view.h
 +++ b/src/view/view.h
 @@ -1,6 +1,7 @@
@@ -4388,7 +5084,7 @@ index 52a43f63..38d96d13 100644
  #include "scene/node.h"
  #include "view/chrome_attachment.h"
  #include "view/decoration.h"
-@@ -216,7 +217,24 @@ namespace umbriel {
+@@ -216,7 +217,25 @@ namespace umbriel {
      // Border widths and corner_radius after this window's rule overrides; overview cards draw with the same ones.
      void setXdgDecorationPreference(std::optional<bool> serverSide);
      void setLegacyDecorationPreference(std::optional<bool> serverSide);
@@ -4410,10 +5106,11 @@ index 52a43f63..38d96d13 100644
 +    void setTileHandles(
 +        bool right, double rightStart, double rightEnd, bool bottom, double bottomStart, double bottomEnd
 +    );
++    void setTileHandlesHover(bool right, bool bottom);
      void syncSsdFrame();
      SsdFramePoint ssdFramePointAt(double lx, double ly) const;
      SsdFrame* ssdFrame() const { return m_ssdFrame.get(); }
-@@ -227,6 +245,9 @@ namespace umbriel {
+@@ -227,6 +246,9 @@ namespace umbriel {
      int borderEffectPadding() const { return m_effects.borderPadding(); }
      // Opacity multiplier the overview applies to windows it leaves on screen (pinned ones) while it opens and closes.
      void setOverviewOpacity(float opacity);
@@ -4423,7 +5120,7 @@ index 52a43f63..38d96d13 100644
      wlr_scene_tree* homeTree() const;
      // The toplevel view owning `surface` after walking xdg popup parents, or
      // nullptr when the surface is not under a view (layer surfaces, cursors).
-@@ -475,9 +496,14 @@ namespace umbriel {
+@@ -475,9 +497,14 @@ namespace umbriel {
      // `Detached` re-tiles without inserting into the layout, for a caller that
      // places the window itself (an interactive drag drops it at its own target).
      enum class TilePlacement : uint8_t { Layout, Detached };
@@ -4441,7 +5138,7 @@ index 52a43f63..38d96d13 100644
      void adoptStackingLayoutFloat();
      void togglePinned();
      // Restore the global pinned scene layer after temporary drag reparenting.
-@@ -629,12 +655,19 @@ namespace umbriel {
+@@ -629,12 +656,19 @@ namespace umbriel {
      void handleCaptureSourceDestroy();
      void updateBorderGeometry();
      void updateBorderGeometry(int contentWidth, int contentHeight);
@@ -4462,7 +5159,7 @@ index 52a43f63..38d96d13 100644
      void updateBlur();
      void updateBlur(int contentWidth, int contentHeight);
      SurfaceBlurOptions blurOptions() const;
-@@ -775,9 +808,17 @@ namespace umbriel {
+@@ -775,9 +809,17 @@ namespace umbriel {
          const wlr_box usable, const std::optional<WindowPosition>& position = std::nullopt,
          const std::optional<std::array<int, 2>> size = std::nullopt
      );
@@ -4481,7 +5178,7 @@ index 52a43f63..38d96d13 100644
      );
      // The output box a fullscreen window covers: its workspace's output, else the one under it.
      wlr_box fullscreenArea() const;
-@@ -804,6 +845,7 @@ namespace umbriel {
+@@ -804,6 +846,7 @@ namespace umbriel {
      // Fade the shade in while a dialog is attached and out once none is; animation.dialogs times it.
      void retargetModalShade();
      void syncModalShade();
@@ -4489,7 +5186,7 @@ index 52a43f63..38d96d13 100644
      void releaseDialog();
      [[nodiscard]] bool inheritScratchpadFromParent(bool restoreTiled);
      void syncTransientSceneParent();
-@@ -935,12 +977,18 @@ namespace umbriel {
+@@ -935,12 +978,18 @@ namespace umbriel {
      wlr_scene_rect* m_modalShade = nullptr;
      // 0 to 1 of animation.dialogs.dim.
      AnimatedValue m_modalShadeAlpha{0.0};
@@ -4508,7 +5205,7 @@ index 52a43f63..38d96d13 100644
      std::optional<bool> m_xdgDecorationPreference;
      std::optional<bool> m_legacyDecorationPreference;
      std::optional<TitleBarMode> m_titleBarMode;
-@@ -1078,6 +1126,7 @@ namespace umbriel {
+@@ -1078,6 +1127,7 @@ namespace umbriel {
      bool m_allowShortcutsInhibit = true;
      float m_dragOpacity = 1.0F;
      float m_overviewOpacity = 1.0F;
@@ -4567,7 +5264,7 @@ index 7d9615c7..30c8d16e 100644
      updateBlur(content.width, content.height);
      syncModalShade();
 diff --git a/src/view/view_chrome.cpp b/src/view/view_chrome.cpp
-index 3d39675f..24b28fa6 100644
+index 3d39675f..89702763 100644
 --- a/src/view/view_chrome.cpp
 +++ b/src/view/view_chrome.cpp
 @@ -18,6 +18,7 @@ extern "C" {
@@ -4578,7 +5275,7 @@ index 3d39675f..24b28fa6 100644
  #include "wlr.h"
  // clang-format on
  #include "workspace/scratchpad.h"
-@@ -25,13 +26,64 @@ extern "C" {
+@@ -25,13 +26,70 @@ extern "C" {
  #include "xwayland/xwayland.h"
  
  namespace umbriel {
@@ -4632,6 +5329,12 @@ index 3d39675f..24b28fa6 100644
 +    }
 +  }
 +
++  void View::setTileHandlesHover(bool right, bool bottom) {
++    if (m_handles != nullptr) {
++      m_handles->setDividerHover(right, bottom);
++    }
++  }
++
 +  void View::syncWindowHandles(int contentWidth, int contentHeight) {
 +    if (m_handles == nullptr) {
 +      return;
@@ -4645,7 +5348,7 @@ index 3d39675f..24b28fa6 100644
    }
  
    bool View::wantsTitleBar(TitleBarMode mode) const {
-@@ -88,14 +140,19 @@ namespace umbriel {
+@@ -88,14 +146,19 @@ namespace umbriel {
    void View::syncSsdFrame() {
      if (!m_mapped)
        return;
@@ -4667,7 +5370,7 @@ index 3d39675f..24b28fa6 100644
      }
      if (m_ssdFrame == nullptr)
        return;
-@@ -105,10 +162,15 @@ namespace umbriel {
+@@ -105,10 +168,15 @@ namespace umbriel {
          && hints.maxHeight > 0
          && hints.maxHeight == hints.minHeight;
      m_ssdFrame->setTitle(title() != nullptr ? title() : "");
@@ -4683,7 +5386,7 @@ index 3d39675f..24b28fa6 100644
      m_ssdFrame->setFocused(m_borderFocusedState);
      m_ssdFrame->setAlphas(chromeAlpha(), blurAlpha());
      m_ssdFrame->setBlurOptions(blurOptions());
-@@ -116,6 +178,10 @@ namespace umbriel {
+@@ -116,6 +184,10 @@ namespace umbriel {
      const wlr_box content =
          m_presentedBox.width > 0 && m_presentedBox.height > 0 ? m_presentedBox : committedContentBox();
      layoutChromeAttachment(content.width, content.height);
@@ -4694,7 +5397,7 @@ index 3d39675f..24b28fa6 100644
      wlr_scene_node_raise_to_top(&m_attachmentTree->node);
    }
  
-@@ -124,11 +190,23 @@ namespace umbriel {
+@@ -124,11 +196,23 @@ namespace umbriel {
        return;
      const std::vector<TitleBarButton>& configured =
          m_titleBarButtons ? *m_titleBarButtons : config().appearance.titleBar.buttons;
@@ -4715,12 +5418,12 @@ index 3d39675f..24b28fa6 100644
 +      if (button == TitleBarButton::Pin && m_tiled)
 +        continue;
 +      // Minimizar también se muestra en mosaico: el clic lo manda al
-+      // scratchpad, igual que la ficha de la app en ALBA.
++      // scratchpad, igual que la ficha de la app en el shell.
 +      if (count < shown.size()) {
          shown[count++] = button;
        }
      }
-@@ -151,6 +229,8 @@ namespace umbriel {
+@@ -151,6 +235,8 @@ namespace umbriel {
      }
      if (m_ssdFrame != nullptr)
        m_ssdFrame->setFocused(focused);
@@ -4729,7 +5432,7 @@ index 3d39675f..24b28fa6 100644
  
      const auto& animation = config().animation;
      const auto& dim = animation.dimUnfocused;
-@@ -383,6 +463,30 @@ namespace umbriel {
+@@ -383,6 +469,30 @@ namespace umbriel {
      wlr_scene_node_raise_to_top(&m_attachmentTree->node);
    }
  
@@ -4760,7 +5463,7 @@ index 3d39675f..24b28fa6 100644
    void View::layoutChromeAttachment(int contentWidth, int contentHeight) {
      m_chromeContentWidth = contentWidth;
      m_chromeContentHeight = contentHeight;
-@@ -397,7 +501,8 @@ namespace umbriel {
+@@ -397,7 +507,8 @@ namespace umbriel {
          .contentHeight = contentHeight,
          .borderInset = borderInset(),
          .cornerRadius = m_maximizedToEdges ? 0 : decorationCornerRadius(),
@@ -4770,7 +5473,7 @@ index 3d39675f..24b28fa6 100644
          .scale = output != nullptr ? output->wlr()->scale : 1.0F,
          .suppressed = !m_mapped || scheduledFullscreen() || currentFullscreen(),
      };
-@@ -406,9 +511,34 @@ namespace umbriel {
+@@ -406,9 +517,34 @@ namespace umbriel {
      geometry.suppressed = geometry.suppressed || m_maximizedToEdges;
      if (m_chromeAttachment != nullptr)
        m_chromeAttachment->layout(geometry);
@@ -4805,7 +5508,7 @@ index 3d39675f..24b28fa6 100644
      syncSsdFrame();
      if (m_ssdFrame != nullptr)
        m_ssdFrame->reloadConfig();
-@@ -419,6 +549,13 @@ namespace umbriel {
+@@ -419,6 +555,13 @@ namespace umbriel {
      // Temporary unfocus would consume pool selections during an unrelated reload.
      setBorderFocused(m_borderFocusedState);
      updateBorderGeometry();
@@ -5254,7 +5957,7 @@ index ead8100c..1eb50bf1 100644
      // Show one window of the scratchpad at a time: the one after (`direction` > 0) or before the window on show,
      // wrapping at the ends. A hidden pad shows its most recently focused window.
 diff --git a/src/workspace/workspace.cpp b/src/workspace/workspace.cpp
-index abe1f377..43138200 100644
+index abe1f377..159b9021 100644
 --- a/src/workspace/workspace.cpp
 +++ b/src/workspace/workspace.cpp
 @@ -439,7 +439,10 @@ namespace umbriel {
@@ -5453,11 +6156,13 @@ index abe1f377..43138200 100644
    void Workspace::clampScrollToRange() {
      if (ScrollingLayout* scrolling = scrollingLayout()) {
        scrolling->clampScroll(scrollViewportExtent());
-@@ -1191,7 +1348,74 @@ namespace umbriel {
+@@ -1191,7 +1348,169 @@ namespace umbriel {
  
    } // namespace
  
-+  void Workspace::updateTiledHandles(const wlr_box& usable) {
++  std::vector<Workspace::TiledDivider> Workspace::sharedDividers(
++      const wlr_box& usable, const Layout* layout
++  ) const {
 +    struct Entry {
 +      View* view;
 +      wlr_box box;
@@ -5468,67 +6173,160 @@ index abe1f377..43138200 100644
 +          || m_layout->columnOf(view) < 0) {
 +        continue;
 +      }
-+      entries.push_back({view, tiledTargetBox(view, usable)});
++      entries.push_back({view, tiledTargetBox(view, usable, layout)});
 +    }
 +
 +    const int gap = m_layoutConfig.totalGap;
-+    for (const Entry& entry : entries) {
-+      const wlr_box& a = entry.box;
-+      bool right = false;
-+      bool bottom = false;
-+      double rightStart = 0.0;
-+      double rightEnd = 0.0;
-+      double bottomStart = 0.0;
-+      double bottomEnd = 0.0;
-+      for (const Entry& other : entries) {
-+        if (other.view == entry.view) {
++    // Las cajas de contenido están separadas exactamente por totalGap. La
++    // tolerancia absorbe el redondeo de los repartos fraccionarios.
++    const int tolerance = 2;
++    std::vector<TiledDivider> dividers;
++    for (const Entry& a : entries) {
++      int rightStart = std::numeric_limits<int>::max();
++      int rightEnd = std::numeric_limits<int>::min();
++      View* rightNeighbor = nullptr;
++      int bottomStart = std::numeric_limits<int>::max();
++      int bottomEnd = std::numeric_limits<int>::min();
++      View* bottomNeighbor = nullptr;
++      for (const Entry& b : entries) {
++        if (a.view == b.view) {
 +          continue;
 +        }
-+        const wlr_box& b = other.box;
-+        // Vecino a la derecha: el hueco entre cajas es el mismo que usa el
-+        // layout (incluye los bordes de ambas ventanas).
-+        const int gapX = b.x - (a.x + a.width);
-+        const int top = std::max(a.y, b.y);
-+        const int bottomEdge = std::min(a.y + a.height, b.y + b.height);
-+        if (gapX >= -2 && gapX <= gap + 2 && a.height > 0 && bottomEdge - top > 60) {
-+          right = true;
-+          rightStart = static_cast<double>(top - a.y) / a.height;
-+          rightEnd = static_cast<double>(bottomEdge - a.y) / a.height;
++        // Vecino a la derecha: comparten un tramo vertical y el hueco entre
++        // ambas cajas coincide con el del layout.
++        const int gapX = b.box.x - (a.box.x + a.box.width);
++        const int top = std::max(a.box.y, b.box.y);
++        const int bottom = std::min(a.box.y + a.box.height, b.box.y + b.box.height);
++        if (gapX >= -tolerance && gapX <= gap + tolerance && bottom - top >= 60) {
++          rightNeighbor = b.view;
++          rightStart = std::min(rightStart, top);
++          rightEnd = std::max(rightEnd, bottom);
 +        }
 +        // Vecino inferior.
-+        const int gapY = b.y - (a.y + a.height);
-+        const int left = std::max(a.x, b.x);
-+        const int rightEdge = std::min(a.x + a.width, b.x + b.width);
-+        if (gapY >= -2 && gapY <= gap + 2 && a.width > 0 && rightEdge - left > 60) {
-+          bottom = true;
-+          bottomStart = static_cast<double>(left - a.x) / a.width;
-+          bottomEnd = static_cast<double>(rightEdge - a.x) / a.width;
++        const int gapY = b.box.y - (a.box.y + a.box.height);
++        const int left = std::max(a.box.x, b.box.x);
++        const int right = std::min(a.box.x + a.box.width, b.box.x + b.box.width);
++        if (gapY >= -tolerance && gapY <= gap + tolerance && right - left >= 60) {
++          bottomNeighbor = b.view;
++          bottomStart = std::min(bottomStart, left);
++          bottomEnd = std::max(bottomEnd, right);
 +        }
 +      }
-+      entry.view->setTileHandles(right, rightStart, rightEnd, bottom, bottomStart, bottomEnd);
++      if (rightNeighbor != nullptr) {
++        dividers.push_back(TiledDivider{
++            .owner = a.view,
++            .neighbor = rightNeighbor,
++            .vertical = true,
++            .center = a.box.x + a.box.width + gap / 2,
++            .start = rightStart,
++            .end = rightEnd,
++            .ownerBox = a.box,
++        });
++      }
++      if (bottomNeighbor != nullptr) {
++        dividers.push_back(TiledDivider{
++            .owner = a.view,
++            .neighbor = bottomNeighbor,
++            .vertical = false,
++            .center = a.box.y + a.box.height + gap / 2,
++            .start = bottomStart,
++            .end = bottomEnd,
++            .ownerBox = a.box,
++        });
++      }
 +    }
++    return dividers;
++  }
 +
-+    // Una ventana que dejó el mosaico (flotante, pantalla completa, pestaña
-+    // oculta) no debe conservar los divisores de su hueco anterior.
++  std::optional<Workspace::TiledDivider> Workspace::dividerAt(double x, double y) const {
++    if (m_group == nullptr || m_group->output() == nullptr) {
++      return std::nullopt;
++    }
++    // La banda activa coincide con la línea: medio hueco más dos píxeles de
++    // margen, con un mínimo para que el ratón no tenga que ser milimétrico.
++    const int halfBand = std::max(6, m_layoutConfig.totalGap / 2 + 2);
++    const std::vector<TiledDivider> dividers = sharedDividers(usableArea());
++    const TiledDivider* best = nullptr;
++    double bestDistance = std::numeric_limits<double>::infinity();
++    for (const TiledDivider& divider : dividers) {
++      if (divider.vertical) {
++        if (y < divider.start || y > divider.end) {
++          continue;
++        }
++        const double distance = std::abs(x - divider.center);
++        if (distance > halfBand) {
++          continue;
++        }
++        // En un cruce, el eje más cercano gana. A igualdad, la vertical, que
++        // es la que el mockup deja encima en una rejilla.
++        if (distance < bestDistance - 0.5
++            || (std::abs(distance - bestDistance) <= 0.5 && (best == nullptr || !best->vertical))) {
++          best = &divider;
++          bestDistance = distance;
++        }
++      } else {
++        if (x < divider.start || x > divider.end) {
++          continue;
++        }
++        const double distance = std::abs(y - divider.center);
++        if (distance > halfBand) {
++          continue;
++        }
++        if (distance < bestDistance - 0.5) {
++          best = &divider;
++          bestDistance = distance;
++        }
++      }
++    }
++    return best != nullptr ? std::optional<TiledDivider>(*best) : std::nullopt;
++  }
++
++  void Workspace::updateTiledHandles(const wlr_box& usable) {
++    const std::vector<TiledDivider> dividers = sharedDividers(usable);
 +    for (View* view : m_views) {
 +      if (view == nullptr) {
 +        continue;
 +      }
-+      const bool present = std::ranges::any_of(entries, [view](const Entry& entry) {
-+        return entry.view == view;
-+      });
-+      if (!present) {
-+        view->setTileHandles(false, 0.0, 0.0, false, 0.0, 0.0);
++      bool right = false;
++      bool bottom = false;
++      int rightStart = std::numeric_limits<int>::max();
++      int rightEnd = std::numeric_limits<int>::min();
++      int bottomStart = std::numeric_limits<int>::max();
++      int bottomEnd = std::numeric_limits<int>::min();
++      for (const TiledDivider& divider : dividers) {
++        if (divider.owner != view) {
++          continue;
++        }
++        if (divider.vertical) {
++          right = true;
++          rightStart = std::min(rightStart, divider.start);
++          rightEnd = std::max(rightEnd, divider.end);
++        } else {
++          bottom = true;
++          bottomStart = std::min(bottomStart, divider.start);
++          bottomEnd = std::max(bottomEnd, divider.end);
++        }
 +      }
++      if (!right && !bottom) {
++        view->setTileHandles(false, 0.0, 0.0, false, 0.0, 0.0);
++        continue;
++      }
++      const wlr_box box = tiledTargetBox(view, usable);
++      const double rightNormStart = box.height > 0 && right ? double(rightStart - box.y) / box.height : 0.0;
++      const double rightNormEnd = box.height > 0 && right ? double(rightEnd - box.y) / box.height : 0.0;
++      const double bottomNormStart = box.width > 0 && bottom ? double(bottomStart - box.x) / box.width : 0.0;
++      const double bottomNormEnd = box.width > 0 && bottom ? double(bottomEnd - box.x) / box.width : 0.0;
++      view->setTileHandles(right, rightNormStart, rightNormEnd, bottom, bottomNormStart, bottomNormEnd);
 +    }
 +  }
++
 +
    void Workspace::applyTiledMotion(const wlr_box& usable, bool animate, std::span<View* const> resized) {
 +    updateTiledHandles(usable);
      const Overview* overview = m_group->server()->overview();
      const bool overviewActive = overview != nullptr && overview->active();
  
-@@ -1857,6 +2081,18 @@ namespace umbriel {
+@@ -1857,6 +2176,18 @@ namespace umbriel {
      return true;
    }
  
@@ -5547,7 +6345,7 @@ index abe1f377..43138200 100644
    bool Workspace::increaseMasterCount() {
      MasterStackLayout* master = masterLayout();
      if (master == nullptr || !master->promoteFromStack()) {
-@@ -2525,6 +2761,8 @@ namespace umbriel {
+@@ -2525,6 +2856,8 @@ namespace umbriel {
        return;
      }
      // The members leave one layout and join another; the next arrange carries them there from their current boxes.
@@ -5556,7 +6354,7 @@ index abe1f377..43138200 100644
      endLayoutMotion();
      // Remember each column's extent on its leading view; the other members join the new layout without one.
      if (isMovingFromScroll) {
-@@ -2545,9 +2783,12 @@ namespace umbriel {
+@@ -2545,9 +2878,12 @@ namespace umbriel {
          tiledViews.push_back(view);
        }
      }
@@ -5570,7 +6368,7 @@ index abe1f377..43138200 100644
        }
        tiledViews.clear();
      } else {
-@@ -2559,6 +2800,22 @@ namespace umbriel {
+@@ -2559,6 +2895,22 @@ namespace umbriel {
      m_layout = createLayout(m_layoutMode);
      m_layout->setConfig(&m_layoutConfig);
      m_layout->setConstraints(&viewLayoutConstraints);
@@ -5593,7 +6391,7 @@ index abe1f377..43138200 100644
      for (View* view : tiledViews) {
        m_layout->insertView(view, static_cast<int>(m_layout->columns().size()));
      }
-@@ -2589,6 +2846,7 @@ namespace umbriel {
+@@ -2589,6 +2941,7 @@ namespace umbriel {
        }
      }
      markArrange();
@@ -5601,7 +6399,7 @@ index abe1f377..43138200 100644
      refreshDropZonePreview(*m_group->server());
    }
  
-@@ -3004,13 +3262,19 @@ namespace umbriel {
+@@ -3004,13 +3357,19 @@ namespace umbriel {
      m_workspaceAxis = axis;
    }
  
@@ -5626,10 +6424,34 @@ index abe1f377..43138200 100644
          workspace->applyLayoutConfig(std::move(layout));
        } else {
 diff --git a/src/workspace/workspace.h b/src/workspace/workspace.h
-index f72069c0..f0861878 100644
+index f72069c0..c69e165a 100644
 --- a/src/workspace/workspace.h
 +++ b/src/workspace/workspace.h
-@@ -135,7 +135,7 @@ namespace umbriel {
+@@ -97,6 +97,23 @@ namespace umbriel {
+     wlr_box tiledArea() const;
+     // Tiled view box used for presentation. Maximize-to-edges maps the
+     // scrolling strip position back into the unstrutted usable area.
++    // Un divisor compartido entre dos mosaicos. `owner` es la ventana que lo
++    // dibuja (su borde derecho o inferior) y `center` la línea central del
++    // hueco, en coordenadas globales. El tramo visible ya está recortado al
++    // solapamiento de ambas cajas.
++    struct TiledDivider {
++      View* owner = nullptr;
++      View* neighbor = nullptr;
++      bool vertical = false;
++      int center = 0;
++      int start = 0;
++      int end = 0;
++      wlr_box ownerBox{};
++    };
++    std::vector<TiledDivider> sharedDividers(const wlr_box& usable, const Layout* layout = nullptr) const;
++    // Divisor bajo el puntero, si lo hay. La banda mide lo mismo que la línea
++    // dibujada, no los 16 px por lado que usaba antes el cursor.
++    std::optional<TiledDivider> dividerAt(double x, double y) const;
+     wlr_box presentedTiledBox(const View* view, const Layout* layout = nullptr) const;
+     // Output box a fullscreen view rests in. A member of the scrolling strip keeps its column's position, so scrolling
+     // still carries it off-screen.
+@@ -135,7 +152,7 @@ namespace umbriel {
          View* view, bool attachToLayout = true, LayoutAttachOrigin origin = LayoutAttachOrigin::ExistingView,
          bool reconcile = true
      );
@@ -5638,7 +6460,7 @@ index f72069c0..f0861878 100644
      // Take over the pinned members of another workspace on this output without reconciling the group, so it is safe
      // during activation and inventory reconciliation.
      void adoptPinnedViews(Workspace& from);
-@@ -202,6 +202,8 @@ namespace umbriel {
+@@ -202,6 +219,8 @@ namespace umbriel {
      bool swapFocusedInCycle(int direction);
      // Swaps the focused window with its neighbor on screen in that direction.
      bool swapFocusedInDirection(bool horizontal, int direction);
@@ -5647,7 +6469,7 @@ index f72069c0..f0861878 100644
      bool increaseMasterCount();
      bool decreaseMasterCount();
      bool toggleDwindleSplit();
-@@ -288,6 +290,8 @@ namespace umbriel {
+@@ -288,6 +307,8 @@ namespace umbriel {
      void transferTo(WorkspaceGroup& group);
      void syncFloatingLayer();
      friend class WorkspaceGroup;
@@ -5656,7 +6478,7 @@ index f72069c0..f0861878 100644
  
      // `resized` lists the members whose assigned size this arrange changed.
      void applyPositions(bool animate, std::span<View* const> resized);
-@@ -314,8 +318,21 @@ namespace umbriel {
+@@ -314,8 +335,21 @@ namespace umbriel {
      bool moveWithinLane(int direction);
      // Take `view` out of the layout while holding visible lanes still.
      void detachFromLayout(View* view);
@@ -5678,7 +6500,7 @@ index f72069c0..f0861878 100644
      void endLayoutMotion();
      void syncCloseSnapshots();
      void discardCloseSnapshots();
-@@ -335,6 +352,17 @@ namespace umbriel {
+@@ -335,6 +369,17 @@ namespace umbriel {
      ResolvedLayoutConfig m_layoutConfig;
      LayoutMode m_layoutMode = LayoutMode::Scrolling;
      std::optional<LayoutMode> m_layoutModeOverride;
@@ -5696,7 +6518,7 @@ index f72069c0..f0861878 100644
      View* m_focusedView = nullptr;
      // The focus the last show-desktop toggle hid, restored with the windows.
      View* m_showDesktopFocus = nullptr;
-@@ -433,7 +461,10 @@ namespace umbriel {
+@@ -433,7 +478,10 @@ namespace umbriel {
      Workspace* insertDynamicWorkspace(size_t index);
      bool moveActiveWorkspace(int direction);
      void reconcileInventory();

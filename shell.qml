@@ -9,7 +9,6 @@ ShellRoot {
     // Va antes que la barra para quedar debajo de ella dentro de la misma capa.
     Wallpaper {}
     DesktopIcons {}
-    DisplayFilter {}
     Bar {}
     Launcher {}
     SidePanel {}
@@ -23,23 +22,13 @@ ShellRoot {
     // Fase 3: controles de ventana al mantener Super, barra de título por
     // ventana y elección inicial del modo de escritorio. El cambio de modo
     // vive en el icono del escritorio activo, no en una barra aparte.
-    WindowChrome {}
     WelcomeMode {}
-    WorkspacePicker {}
 
-    // El botón «Mover» de la barra de título nativa pide el selector 1–9.
+    // La vista general de Umbriel ocupa toda la pantalla. Al abrirse se
+    // retiran los paneles del shell para no dejarlos flotando encima.
     Connections {
         target: CompositorState
 
-        function onMoveMenuSerialChanged(): void {
-            if (CompositorState.moveMenuSerial <= 0)
-                return;
-            MoveMenuState.show(CompositorState.moveMenuWindow,
-                CompositorState.moveMenuX, CompositorState.moveMenuY);
-        }
-
-        // La vista general de Umbriel ocupa toda la pantalla. Al abrirse se
-        // retiran los paneles del shell para no dejarlos flotando encima.
         function onOverviewOpenChanged(): void {
             if (!CompositorState.overviewOpen)
                 return;
@@ -50,7 +39,6 @@ ShellRoot {
             CalendarState.hide();
             PowerState.hide();
             BatteryState.hide();
-            MoveMenuState.hide();
             TrayState.hide();
             SuperState.hide();
         }
@@ -68,7 +56,6 @@ ShellRoot {
             CalendarState.hide();
             PowerState.hide();
             BatteryState.hide();
-            MoveMenuState.hide();
             SuperState.hide();
         }
     }

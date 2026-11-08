@@ -48,7 +48,6 @@ Singleton {
         PowerState.hide();
         BatteryState.hide();
         TrayState.hide();
-        MoveMenuState.hide();
         SuperState.hide();
         root.opened();
     }
@@ -118,15 +117,6 @@ Singleton {
 
         function onOpenChanged(): void {
             if (TrayState.open)
-                root.hide();
-        }
-    }
-
-    Connections {
-        target: MoveMenuState
-
-        function onOpenChanged(): void {
-            if (MoveMenuState.open)
                 root.hide();
         }
     }

@@ -55,16 +55,18 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   entre mosaicos y cuatro puntos en las esquinas de la ventana flotante
   enfocada. Los dibuja Umbriel dentro del árbol de cada ventana
   (`NativeHandles`), así que se mueven y redimensionan con ella en el mismo
-  frame; el shell ya no superpone ninguna capa. En el fork, la franja de mosaicos creció a 16 px por
-  lado del borde (la zona queda centrada en el hueco y funciona desde ambas
-  ventanas) y la flotante a 20 px. Un arrastre con Mod y botón izquierdo sobre
-  el contenido de un mosaico intercambia esa ventana con la de debajo, con la
-  origen atenuada y la destino resaltada; el movimiento nativo pasa al botón
-  derecho, que sigue redimensionando si empieza sobre un borde. Las líneas se
-  ocultan si una ventana flotante las tapa. Probado con un puntero virtual en
-  una sesión anidada: borde compartido desde ambos lados, intercambio con
-  izquierdo y reubicación con derecho. Detalle: `CONFIGURACION-UMBRIEL.md`
-  §11 y §18.
+  frame; el shell ya no superpone ninguna capa. En el fork, **solo la línea
+  entre mosaicos redimensiona**: la banda activa es el hueco más dos píxeles
+  por lado, no los 16 px dentro de cada ventana, y los bordes exteriores no
+  redimensionan. En una flotante, los cuatro puntos de esquina tienen una zona
+  de 24 px y los bordes una franja fina de 6 px, como el mockup. Un arrastre
+  con Mod y botón izquierdo sobre el contenido de un mosaico intercambia esa
+  ventana con la de debajo, con la origen atenuada y la destino resaltada; el
+  movimiento nativo pasa al botón derecho, que sigue redimensionando si
+  empieza sobre el divisor. Las líneas se ocultan si una ventana flotante las
+  tapa. Probado con un puntero virtual en una sesión anidada: divisor desde
+  ambos lados, borde exterior sin efecto, intercambio con izquierdo y
+  reubicación con derecho. Detalle: `CONFIGURACION-UMBRIEL.md` §11 y §18.
 - **Avisos emergentes de notificaciones (2026-11-07).** Al llegar un aviso se
   muestra una tarjeta en la esquina superior derecha (en el monitor de la
   ventana enfocada) durante su tiempo de expiración; las de `-t 0` o críticas
@@ -120,6 +122,20 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   «Mostrar con Super»; Umbriel conserva ese pin con
   `umbriel overlay-pin on|off|toggle` sin bloquear la entrada. El overlay del
   shell se eliminó.
+- **Selector de escritorio nativo (2026-11-07).** El botón «Mover» de la
+  barra de título ya no pide una tarjeta al shell: Umbriel dibuja el selector
+  1–9 en su propia escena (`MoveMenu`), junto al puntero y por encima de las
+  ventanas. Admite clic, Escape y las teclas 1–9; el escritorio actual queda
+  resaltado y elegirlo solo cierra. La ventana se mueve sin cambiar de
+  escritorio, como hacía el selector anterior. Se eliminaron
+  `WorkspacePicker.qml`, `MoveMenuState.qml` y el evento `move_menu`; el
+  comando `umbriel move-menu <id>` sigue abriendo el selector nativo.
+- **Limpieza de capas de respaldo (2026-11-07).** Se borraron
+  `WindowChrome.qml`, `DisplayFilter.qml`, `HyprlandBackend.qml`,
+  `WindowModeBar.qml`, `WorkspacePicker.qml`, `MoveMenuState.qml` y
+  `ChromeButton.qml`: eran fallbacks de otros compositores o capas que ya no
+  se instanciaban. El shell queda solo con Umbriel como backend. También se
+  quitó `move-menu` y `window-mode` del desenfoque de cristal.
 - **Desenfoque y foco al mantener Super.** Umbriel desenfoca ahora solo el
   contenido de la ventana bajo el puntero mientras se mantiene Mod, como el
   mockup: shader de ventana con blur de 1.4 px y desaturación suave, más un
@@ -130,12 +146,11 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   a todas las ventanas. El parche del fork está regenerado; falta instalar el
   binario nuevo (cerrar sesión) y probarlo con ratón real.
 - Fork en `~/umbriel-fork`, rama de trabajo sobre `b6c4b7d`.
-  Parche regenerable en `~/Shell/umbriel-fork.patch` (62 archivos).
+  Parche regenerable en `~/Shell/umbriel-fork.patch` (66 archivos).
 - **Plataforma decidida: solo Umbriel sobre Debian.** Hyprland y cualquier otro
   compositor quedan descartados; no se mantiene ni se prueba ese backend. El
-  código antiguo de `HyprlandBackend.qml` puede quedarse como legado, pero no
-  es objetivo de trabajo. Tras la próxima instalación limpia se eliminará si
-  estorba.
+  backend antiguo de Hyprland y las capas de respaldo del shell ya se
+  eliminaron.
 - Copia de seguridad del binario original: `/usr/bin/umbriel.stock-0.1.0`.
 - El shell vive en `~/Shell` y está enlazado desde
   `~/.config/quickshell/shell`. Se recarga solo al guardar QML, salvo el pragma
@@ -886,11 +901,9 @@ L=$(ls -t /run/user/1000/quickshell/by-id/*/log.qslog | head -1); tail -50 "$L"
 - `~/Shell/scripts/shell-display-filter` — escribe `[display]` en la
   configuración de Umbriel y recarga.
 - `~/Shell/DisplayState.qml` — brillo, atenuación extra y luz
-  nocturna; elige filtro nativo de Umbriel o capa QML.
+  nocturna; usa el filtro nativo de Umbriel.
 - `~/.config/umbriel/config.toml` — `[display]` con `brightness`,
   `extra_dim` y `warm`.
-- `~/Shell/WindowChrome.qml` — barra de título del shell (solo si el
-  usuario desactiva la nativa).
 - `~/Shell/WindowActions.qml` — lista única de acciones de ventana para la
   barra de título y el clic derecho.
 - `~/umbriel-fork/src/workspace/scratchpad.cpp` — ocultar/mostrar/restaurar.
