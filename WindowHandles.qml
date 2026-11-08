@@ -28,6 +28,33 @@ Variants {
             CompositorState.focusedWorkspace
                 ? Number(CompositorState.focusedWorkspace.id) || 0 : 0
 
+        // Al cambiar de escritorio las ventanas se animan hasta su hueco.
+        // Dibujar las líneas mientras tanto las deja quietas sobre contenido
+        // en movimiento, así que se ocultan hasta que la transición termina
+        // (la animación del compositor dura unos 250 ms).
+        property int previousWorkspaceId: 0
+        property bool settling: false
+
+        onActiveWorkspaceIdChanged: {
+            if (activeWorkspaceId <= 0)
+                return;
+            if (previousWorkspaceId !== 0
+                    && previousWorkspaceId !== activeWorkspaceId) {
+                settling = true;
+                settleTimer.restart();
+            }
+            previousWorkspaceId = activeWorkspaceId;
+        }
+
+        Component.onCompleted: previousWorkspaceId = activeWorkspaceId
+
+        Timer {
+            id: settleTimer
+            interval: 320
+            repeat: false
+            onTriggered: handleScreen.settling = false
+        }
+
         // Ventanas visibles de este monitor en el escritorio activo. Las
         // fijadas se muestran en todos los escritorios.
         readonly property var windows: {
@@ -207,6 +234,7 @@ Variants {
         }
 
         visible: SuperState.active && !CompositorState.overviewOpen
+            && !handleScreen.settling
             && CompositorState.supports("windowGeometry")
             && (handleScreen.handles.length > 0
                 || handleScreen.dividers.length > 0)

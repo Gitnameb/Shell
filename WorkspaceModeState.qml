@@ -31,6 +31,11 @@ Singleton {
     // tic del temporizador.
     property int lastFocusedWorkspace: 0
     property string lastWorkspaceMode: ""
+    // Escritorio al que se aplicará el modo cuando deje de cambiar. Umbriel
+    // solo cambia el layout del escritorio activo, así que esperar a que el
+    // usuario se detenga evita aplicar un modo a un escritorio intermedio.
+    property int pendingWorkspace: 0
+    property string pendingMode: ""
 
     function labelFor(mode): string {
         return mode === "mosaic" ? "Mosaico" : "Ventana";
@@ -48,6 +53,24 @@ Singleton {
             return;
         const mode = root.modeFor(id);
         if (CompositorState.supports("setWorkspaceMode")) {
+            // Umbriel cambia el layout del escritorio activo. Si el objetivo
+            // no está activo, el ajuste ya quedó guardado y se aplicará al
+            // entrar en él; saltar allí y volver provocaba que un cambio de
+            // escritorio rápido aplicara el modo al escritorio equivocado.
+            if (id !== root.focusedWorkspaceId)
+                return;
+            // Si el layout real ya coincide no se envía ninguna orden. Así el
+            // seguimiento periódico no compite con el usuario al cambiar de
+            // escritorio.
+            const desired = mode === "mosaic" ? "dwindle" : "stacking";
+            const list = CompositorState.workspaces || [];
+            for (let i = 0; i < list.length; i++) {
+                if (Number(list[i].id) === id) {
+                    if (String(list[i].layout) === desired)
+                        return;
+                    break;
+                }
+            }
             // El layout nativo no necesita la lista de ventanas: se aplica
             // aunque el primer `umbriel windows --json` todavía no haya
             // llegado. Antes, el primer clic tras iniciar sesión se perdía.
@@ -159,6 +182,11 @@ Singleton {
 
     // Umbriel aplica el layout al entrar en un escritorio. Hyprland ya tiene
     // el suyo en caliente y no necesita este seguimiento.
+    //
+    // No se aplica en cuanto llega el cambio: si el usuario encadena varios
+    // escritorios, el layout se escribiría sobre el que esté activo en ese
+    // instante. Se espera a que el destino se mantenga estable y entonces se
+    // comprueba de nuevo que sigue siendo el mismo.
     function watchFocused(): void {
         if (!root.applied
                 || !CompositorState.supports("nativeWorkspaceModes"))
@@ -166,11 +194,32 @@ Singleton {
         const id = root.focusedWorkspaceId;
         const mode = root.modeFor(id);
         if (id === root.lastFocusedWorkspace
-                && mode === root.lastWorkspaceMode)
+                && mode === root.lastWorkspaceMode) {
+            root.pendingWorkspace = 0;
             return;
-        root.lastFocusedWorkspace = id;
-        root.lastWorkspaceMode = mode;
-        root.applyWorkspace(id);
+        }
+        root.pendingWorkspace = id;
+        root.pendingMode = mode;
+        settleTimer.restart();
+    }
+
+    onFocusedWorkspaceIdChanged: root.watchFocused()
+
+    Timer {
+        id: settleTimer
+
+        interval: 320
+        repeat: false
+        onTriggered: {
+            const id = root.focusedWorkspaceId;
+            if (!root.applied || id <= 0 || id !== root.pendingWorkspace
+                    || root.modeFor(id) !== root.pendingMode)
+                return;
+            root.pendingWorkspace = 0;
+            root.lastFocusedWorkspace = id;
+            root.lastWorkspaceMode = root.modeFor(id);
+            root.applyWorkspace(id);
+        }
     }
 
     // La primera pasada sí aplica el modo a las ventanas que ya existían.

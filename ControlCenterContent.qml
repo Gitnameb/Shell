@@ -734,6 +734,8 @@ ColumnLayout {
             return "Portapapeles";
         if (view === "settings")
             return "Ajustes del shell";
+        if (view === "theme")
+            return "Temas";
         if (view === "windows")
             return "Configuración de ventanas";
         if (view === "compositor")
@@ -4879,435 +4881,30 @@ ColumnLayout {
             visible: root.view === "settings"
             spacing: 8
 
-            // --------------------------------------------------- apariencia
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
 
                 Text {
                     Layout.fillWidth: true
-                    text: "Tema"
+                    text: "Temas"
                     color: Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
                 }
 
                 Rectangle {
-                    implicitWidth: 118
+                    implicitWidth: 58
                     implicitHeight: 24
                     radius: 7
-                    color: Theme.surfaceAlt
-                    border.width: 1
-                    border.color: Theme.border
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 2
-                        spacing: 2
-
-                        Repeater {
-                            model: [
-                                { key: "dark", label: "Oscuro", icon: "moon" },
-                                { key: "light", label: "Claro", icon: "sun" }
-                            ]
-
-                            delegate: Rectangle {
-                                id: modeChip
-
-                                required property var modelData
-
-                                readonly property bool selected:
-                                    SettingsState.themeMode === modeChip.modelData.key
-
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                radius: 5
-                                color: modeChip.selected
-                                    ? Theme.accent : "transparent"
-
-                                RowLayout {
-                                    anchors.centerIn: parent
-                                    spacing: 3
-
-                                    ShellIcon {
-                                        source: ShellIcons.src(modeChip.modelData.icon)
-                                        color: modeChip.selected
-                                            ? Theme.accentInk : Theme.muted
-                                        size: 11
-                                    }
-
-                                    Text {
-                                        text: modeChip.modelData.label
-                                        color: modeChip.selected
-                                            ? Theme.accentInk : Theme.muted
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 9
-                                        font.weight: Font.DemiBold
-                                    }
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: SettingsState.setThemeMode(
-                                        modeChip.modelData.key)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Acento"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                }
-
-                Row {
-                    spacing: 4
-
-                    Repeater {
-                        model: [
-                            "#b8bec7", "#c9b8f5", "#a9e8cf",
-                            "#f4e6a6", "#8ab4f8", "#e8a9d6"
-                        ]
-
-                        delegate: Rectangle {
-                            id: accentDot
-
-                            required property string modelData
-
-                            readonly property bool selected:
-                                SettingsState.accentColor === accentDot.modelData
-
-                            width: 18
-                            height: 18
-                            radius: 9
-                            color: accentDot.modelData
-                            border.width: 2
-                            border.color: accentDot.selected
-                                ? Theme.text : Theme.border
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: SettingsState.setAccentColor(
-                                    accentDot.modelData)
-                            }
-                        }
-                    }
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Color propio"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                }
-
-                TextField {
-                    id: accentHex
-
-                    implicitWidth: 82
-                    implicitHeight: 24
-                    padding: 0
-                    leftPadding: 7
-                    rightPadding: 7
-                    verticalAlignment: TextInput.AlignVCenter
-                    placeholderText: "#RRGGBB"
-                    placeholderTextColor: Theme.faint
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                    selectByMouse: true
-                    maximumLength: 7
-                    background: Rectangle {
-                        radius: 6
-                        color: Theme.surfaceAlt
-                        border.width: 1
-                        border.color: accentHex.activeFocus
-                            ? Theme.accent : Theme.border
-                    }
-                    onAccepted: applyAccent()
-                    onEditingFinished: applyAccent()
-
-                    function applyAccent(): void {
-                        if (SettingsState.setAccentColor(text)) {
-                            text = "";
-                            focus = false;
-                        }
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Theme.border
-            }
-
-            // ------------------------------------------------------- cristal
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Shell"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                    font.weight: Font.DemiBold
-                }
-
-                Text {
-                    text: "Restablecer"
-                    color: shellResetMouse.containsMouse
-                        ? Theme.accent : Theme.faint
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 8
-
-                    MouseArea {
-                        id: shellResetMouse
-                        anchors.fill: parent
-                        anchors.margins: -4
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            SettingsState.setGlassTransparency(22);
-                            SettingsState.setGlassBlur(16);
-                            SettingsState.setGlassBlurBehind(false);
-                        }
-                    }
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Transparencia"
-                    color: Theme.muted
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                }
-
-                Text {
-                    text: SettingsState.glassTransparency + " %"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                    font.weight: Font.DemiBold
-                }
-            }
-
-            ShellSlider {
-                id: glassTransparencySlider
-
-                Layout.fillWidth: true
-                from: 0
-                to: 90
-                stepSize: 2
-                value: SettingsState.glassTransparency
-                onMoved: SettingsState.setGlassTransparency(value)
-            }
-
-            Binding {
-                target: glassTransparencySlider
-                property: "value"
-                value: SettingsState.glassTransparency
-                when: !glassTransparencySlider.pressed
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Desenfoque"
-                    color: Theme.muted
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                }
-
-                Text {
-                    text: SettingsState.glassBlur + " px"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                    font.weight: Font.DemiBold
-                }
-            }
-
-            ShellSlider {
-                id: glassBlurSlider
-
-                Layout.fillWidth: true
-                from: 0
-                to: 40
-                stepSize: 2
-                value: SettingsState.glassBlur
-                onMoved: SettingsState.setGlassBlur(value)
-            }
-
-            Binding {
-                target: glassBlurSlider
-                property: "value"
-                value: SettingsState.glassBlur
-                when: !glassBlurSlider.pressed
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Tipo de desenfoque"
-                    color: Theme.muted
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                }
-
-                BlurModeChoice {
-                    behind: SettingsState.glassBlurBehind
-                    onSelected: (behind) =>
-                        SettingsState.setGlassBlurBehind(behind)
-                }
-            }
-
-            Text {
-                Layout.fillWidth: true
-                text: SettingsState.glassBlurBehind
-                    ? "Se ve el contenido que hay detrás, con un desenfoque "
-                        + "simple."
-                    : "Solo se ve el fondo de pantalla desenfocado; el "
-                        + "contenido de detrás queda oculto."
-                color: Theme.faint
-                font.family: Theme.fontFamily
-                font.pixelSize: 8
-                wrapMode: Text.WordWrap
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Theme.border
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 1
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Tema en las apps"
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 10
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Aplica el modo y el acento a GTK y a las apps "
-                            + "de KDE."
-                        color: Theme.faint
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 8
-                        wrapMode: Text.WordWrap
-                    }
-                }
-
-                ShellSwitch {
-                    checked: SettingsState.systemTheme
-                    onToggled: SettingsState.setSystemTheme(
-                        !SettingsState.systemTheme)
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Theme.border
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Fondo de pantalla"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                }
-
-                Rectangle {
-                    width: 46
-                    height: 28
-                    radius: 6
-                    color: SettingsState.wallpaperColor.length > 0
-                        ? SettingsState.wallpaperColor : Theme.surfaceAlt
-                    border.width: 1
-                    border.color: Theme.border
-                    clip: true
-
-                    Image {
-                        anchors.fill: parent
-                        source: SettingsState.wallpaperPath.length > 0
-                            ? Qt.resolvedUrl("file://"
-                                + SettingsState.wallpaperPath) : ""
-                        fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
-                        cache: true
-                        visible: source != ""
-                    }
-
-                    Text {
-                        anchors.centerIn: parent
-                        visible: SettingsState.wallpaperPath.length === 0
-                            && SettingsState.wallpaperColor.length === 0
-                        text: "—"
-                        color: Theme.faint
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 10
-                    }
-                }
-
-                Rectangle {
-                    implicitWidth: 52
-                    implicitHeight: 24
-                    radius: 7
-                    color: wallpaperChoose.containsMouse
+                    color: openThemeButton.containsMouse
                         ? Theme.hover : Theme.surfaceAlt
                     border.width: 1
                     border.color: Theme.border
 
                     Text {
                         anchors.centerIn: parent
-                        text: "Elegir"
+                        text: "Abrir"
                         color: Theme.muted
                         font.family: Theme.fontFamily
                         font.pixelSize: 9
@@ -5315,161 +4912,11 @@ ColumnLayout {
                     }
 
                     MouseArea {
-                        id: wallpaperChoose
+                        id: openThemeButton
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: SettingsState.chooseWallpaper()
-                    }
-                }
-
-                Rectangle {
-                    implicitWidth: 52
-                    implicitHeight: 24
-                    radius: 7
-                    visible: SettingsState.wallpaperPath.length > 0
-                    color: wallpaperClear.containsMouse
-                        ? Theme.hover : Theme.surfaceAlt
-                    border.width: 1
-                    border.color: Theme.border
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Quitar"
-                        color: Theme.muted
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 9
-                        font.weight: Font.DemiBold
-                    }
-
-                    MouseArea {
-                        id: wallpaperClear
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: SettingsState.clearWallpaper()
-                    }
-                }
-            }
-
-            // Color de fondo: una alternativa ligera a la imagen. Al elegir
-            // uno se quita la imagen para que el cambio se vea al momento.
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Color de fondo"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                }
-
-                Row {
-                    spacing: 4
-
-                    Repeater {
-                        model: [
-                            "#0b0d10", "#141821", "#1b1520",
-                            "#101a16", "#231a14", "#f2f1ee"
-                        ]
-
-                        delegate: Rectangle {
-                            id: wallpaperDot
-
-                            required property string modelData
-
-                            readonly property bool selected:
-                                SettingsState.wallpaperColor
-                                    === wallpaperDot.modelData
-
-                            width: 18
-                            height: 18
-                            radius: 9
-                            color: wallpaperDot.modelData
-                            border.width: 2
-                            border.color: wallpaperDot.selected
-                                ? Theme.text : Theme.border
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: SettingsState.setWallpaperColor(
-                                    wallpaperDot.modelData)
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        width: 18
-                        height: 18
-                        radius: 9
-                        color: Theme.surfaceAlt
-                        border.width: 1
-                        border.color: SettingsState.wallpaperColor.length
-                            === 0 ? Theme.text : Theme.border
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "—"
-                            color: Theme.faint
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 9
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: SettingsState.clearWallpaperColor()
-                        }
-                    }
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Color propio"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                }
-
-                TextField {
-                    id: wallpaperHex
-
-                    implicitWidth: 82
-                    implicitHeight: 24
-                    padding: 0
-                    leftPadding: 7
-                    rightPadding: 7
-                    verticalAlignment: TextInput.AlignVCenter
-                    placeholderText: "#RRGGBB"
-                    placeholderTextColor: Theme.faint
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                    selectByMouse: true
-                    maximumLength: 7
-                    background: Rectangle {
-                        radius: 6
-                        color: Theme.surfaceAlt
-                        border.width: 1
-                        border.color: wallpaperHex.activeFocus
-                            ? Theme.accent : Theme.border
-                    }
-                    onAccepted: applyWallpaperColor()
-                    onEditingFinished: applyWallpaperColor()
-
-                    function applyWallpaperColor(): void {
-                        if (SettingsState.setWallpaperColor(text)) {
-                            text = "";
-                            focus = false;
-                        }
+                        onClicked: root.setView("theme")
                     }
                 }
             }
@@ -6067,6 +5514,608 @@ ColumnLayout {
                 }
             }
 
+        }
+
+        // -------------------------------------------------------- Temas
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: root.view === "theme"
+            spacing: 8
+
+            // --------------------------------------------------- apariencia
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Tema"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                Rectangle {
+                    implicitWidth: 118
+                    implicitHeight: 24
+                    radius: 7
+                    color: Theme.surfaceAlt
+                    border.width: 1
+                    border.color: Theme.border
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 2
+                        spacing: 2
+
+                        Repeater {
+                            model: [
+                                { key: "dark", label: "Oscuro", icon: "moon" },
+                                { key: "light", label: "Claro", icon: "sun" }
+                            ]
+
+                            delegate: Rectangle {
+                                id: modeChip
+
+                                required property var modelData
+
+                                readonly property bool selected:
+                                    SettingsState.themeMode === modeChip.modelData.key
+
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                radius: 5
+                                color: modeChip.selected
+                                    ? Theme.accent : "transparent"
+
+                                RowLayout {
+                                    anchors.centerIn: parent
+                                    spacing: 3
+
+                                    ShellIcon {
+                                        source: ShellIcons.src(modeChip.modelData.icon)
+                                        color: modeChip.selected
+                                            ? Theme.accentInk : Theme.muted
+                                        size: 11
+                                    }
+
+                                    Text {
+                                        text: modeChip.modelData.label
+                                        color: modeChip.selected
+                                            ? Theme.accentInk : Theme.muted
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 9
+                                        font.weight: Font.DemiBold
+                                    }
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: SettingsState.setThemeMode(
+                                        modeChip.modelData.key)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Acento"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                Row {
+                    spacing: 4
+
+                    Repeater {
+                        model: [
+                            "#b8bec7", "#c9b8f5", "#a9e8cf",
+                            "#f4e6a6", "#8ab4f8", "#e8a9d6"
+                        ]
+
+                        delegate: Rectangle {
+                            id: accentDot
+
+                            required property string modelData
+
+                            readonly property bool selected:
+                                SettingsState.accentColor === accentDot.modelData
+
+                            width: 18
+                            height: 18
+                            radius: 9
+                            color: accentDot.modelData
+                            border.width: 2
+                            border.color: accentDot.selected
+                                ? Theme.text : Theme.border
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: SettingsState.setAccentColor(
+                                    accentDot.modelData)
+                            }
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Color propio"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                TextField {
+                    id: accentHex
+
+                    implicitWidth: 82
+                    implicitHeight: 24
+                    padding: 0
+                    leftPadding: 7
+                    rightPadding: 7
+                    verticalAlignment: TextInput.AlignVCenter
+                    placeholderText: "#RRGGBB"
+                    placeholderTextColor: Theme.faint
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                    selectByMouse: true
+                    maximumLength: 7
+                    background: Rectangle {
+                        radius: 6
+                        color: Theme.surfaceAlt
+                        border.width: 1
+                        border.color: accentHex.activeFocus
+                            ? Theme.accent : Theme.border
+                    }
+                    onAccepted: applyAccent()
+                    onEditingFinished: applyAccent()
+
+                    function applyAccent(): void {
+                        if (SettingsState.setAccentColor(text)) {
+                            text = "";
+                            focus = false;
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: Theme.border
+            }
+
+            // ------------------------------------------------------- cristal
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Shell"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                    font.weight: Font.DemiBold
+                }
+
+                Text {
+                    text: "Restablecer"
+                    color: shellResetMouse.containsMouse
+                        ? Theme.accent : Theme.faint
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+
+                    MouseArea {
+                        id: shellResetMouse
+                        anchors.fill: parent
+                        anchors.margins: -4
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            SettingsState.setGlassTransparency(22);
+                            SettingsState.setGlassBlur(16);
+                            SettingsState.setGlassBlurBehind(false);
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Transparencia"
+                    color: Theme.muted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                }
+
+                Text {
+                    text: SettingsState.glassTransparency + " %"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                }
+            }
+
+            ShellSlider {
+                id: glassTransparencySlider
+
+                Layout.fillWidth: true
+                from: 0
+                to: 90
+                stepSize: 2
+                value: SettingsState.glassTransparency
+                onMoved: SettingsState.setGlassTransparency(value)
+            }
+
+            Binding {
+                target: glassTransparencySlider
+                property: "value"
+                value: SettingsState.glassTransparency
+                when: !glassTransparencySlider.pressed
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Desenfoque"
+                    color: Theme.muted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                }
+
+                Text {
+                    text: SettingsState.glassBlur + " px"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                }
+            }
+
+            ShellSlider {
+                id: glassBlurSlider
+
+                Layout.fillWidth: true
+                from: 0
+                to: 40
+                stepSize: 2
+                value: SettingsState.glassBlur
+                onMoved: SettingsState.setGlassBlur(value)
+            }
+
+            Binding {
+                target: glassBlurSlider
+                property: "value"
+                value: SettingsState.glassBlur
+                when: !glassBlurSlider.pressed
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Tipo de desenfoque"
+                    color: Theme.muted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                }
+
+                BlurModeChoice {
+                    behind: SettingsState.glassBlurBehind
+                    onSelected: (behind) =>
+                        SettingsState.setGlassBlurBehind(behind)
+                }
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: SettingsState.glassBlurBehind
+                    ? "Se ve el contenido que hay detrás, con un desenfoque "
+                        + "simple."
+                    : "Solo se ve el fondo de pantalla desenfocado; el "
+                        + "contenido de detrás queda oculto."
+                color: Theme.faint
+                font.family: Theme.fontFamily
+                font.pixelSize: 8
+                wrapMode: Text.WordWrap
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: Theme.border
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 1
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Tema en las apps"
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Aplica el modo y el acento a GTK y a las apps "
+                            + "de KDE."
+                        color: Theme.faint
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 8
+                        wrapMode: Text.WordWrap
+                    }
+                }
+
+                ShellSwitch {
+                    checked: SettingsState.systemTheme
+                    onToggled: SettingsState.setSystemTheme(
+                        !SettingsState.systemTheme)
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: Theme.border
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Fondo de pantalla"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                Rectangle {
+                    width: 46
+                    height: 28
+                    radius: 6
+                    color: SettingsState.wallpaperColor.length > 0
+                        ? SettingsState.wallpaperColor : Theme.surfaceAlt
+                    border.width: 1
+                    border.color: Theme.border
+                    clip: true
+
+                    Image {
+                        anchors.fill: parent
+                        source: SettingsState.wallpaperPath.length > 0
+                            ? Qt.resolvedUrl("file://"
+                                + SettingsState.wallpaperPath) : ""
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                        cache: true
+                        visible: source != ""
+                    }
+
+                    Text {
+                        anchors.centerIn: parent
+                        visible: SettingsState.wallpaperPath.length === 0
+                            && SettingsState.wallpaperColor.length === 0
+                        text: "—"
+                        color: Theme.faint
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                    }
+                }
+
+                Rectangle {
+                    implicitWidth: 52
+                    implicitHeight: 24
+                    radius: 7
+                    color: wallpaperChoose.containsMouse
+                        ? Theme.hover : Theme.surfaceAlt
+                    border.width: 1
+                    border.color: Theme.border
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Elegir"
+                        color: Theme.muted
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 9
+                        font.weight: Font.DemiBold
+                    }
+
+                    MouseArea {
+                        id: wallpaperChoose
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: SettingsState.chooseWallpaper()
+                    }
+                }
+
+                Rectangle {
+                    implicitWidth: 52
+                    implicitHeight: 24
+                    radius: 7
+                    visible: SettingsState.wallpaperPath.length > 0
+                    color: wallpaperClear.containsMouse
+                        ? Theme.hover : Theme.surfaceAlt
+                    border.width: 1
+                    border.color: Theme.border
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Quitar"
+                        color: Theme.muted
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 9
+                        font.weight: Font.DemiBold
+                    }
+
+                    MouseArea {
+                        id: wallpaperClear
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: SettingsState.clearWallpaper()
+                    }
+                }
+            }
+
+            // Color de fondo: una alternativa ligera a la imagen. Al elegir
+            // uno se quita la imagen para que el cambio se vea al momento.
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Color de fondo"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                Row {
+                    spacing: 4
+
+                    Repeater {
+                        model: [
+                            "#0b0d10", "#141821", "#1b1520",
+                            "#101a16", "#231a14", "#f2f1ee"
+                        ]
+
+                        delegate: Rectangle {
+                            id: wallpaperDot
+
+                            required property string modelData
+
+                            readonly property bool selected:
+                                SettingsState.wallpaperColor
+                                    === wallpaperDot.modelData
+
+                            width: 18
+                            height: 18
+                            radius: 9
+                            color: wallpaperDot.modelData
+                            border.width: 2
+                            border.color: wallpaperDot.selected
+                                ? Theme.text : Theme.border
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: SettingsState.setWallpaperColor(
+                                    wallpaperDot.modelData)
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        width: 18
+                        height: 18
+                        radius: 9
+                        color: Theme.surfaceAlt
+                        border.width: 1
+                        border.color: SettingsState.wallpaperColor.length
+                            === 0 ? Theme.text : Theme.border
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "—"
+                            color: Theme.faint
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 9
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: SettingsState.clearWallpaperColor()
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Color propio"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                TextField {
+                    id: wallpaperHex
+
+                    implicitWidth: 82
+                    implicitHeight: 24
+                    padding: 0
+                    leftPadding: 7
+                    rightPadding: 7
+                    verticalAlignment: TextInput.AlignVCenter
+                    placeholderText: "#RRGGBB"
+                    placeholderTextColor: Theme.faint
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                    selectByMouse: true
+                    maximumLength: 7
+                    background: Rectangle {
+                        radius: 6
+                        color: Theme.surfaceAlt
+                        border.width: 1
+                        border.color: wallpaperHex.activeFocus
+                            ? Theme.accent : Theme.border
+                    }
+                    onAccepted: applyWallpaperColor()
+                    onEditingFinished: applyWallpaperColor()
+
+                    function applyWallpaperColor(): void {
+                        if (SettingsState.setWallpaperColor(text)) {
+                            text = "";
+                            focus = false;
+                        }
+                    }
+                }
+            }
         }
 
         // -------------------------------------- Configuración de ventanas

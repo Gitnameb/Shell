@@ -88,6 +88,24 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   de modo de la píldora enseña el modo al que se va a cambiar. Además,
   `applyWorkspace` aplica el layout nativo aunque `umbriel windows --json`
   todavía no haya llegado, así el primer clic tras iniciar sesión ya funciona.
+- **Temas como vista propia (2026-11-07).** En Ajustes del shell queda una
+  fila «Temas → Abrir», igual que «Configuración de ventanas». La vista nueva
+  reúne el modo oscuro/claro, el acento y el color propio, el cristal del
+  shell (transparencia, desenfoque y tipo), «Tema en las apps», el fondo de
+  pantalla y sus colores. Del ajuste general solo se movió lo relativo a
+  colores, fondos y apariencia; bloqueo, barra y tamaños siguen en Ajustes.
+- **Escritorios rápidos sin cambiar el modo equivocado (2026-11-07).** Umbriel
+  solo cambia el layout del escritorio activo. Ahora el shell guarda el modo y
+  espera 320 ms a que el escritorio se asiente antes de aplicarlo; si el
+  destino cambió, no envía nada. Si el layout real ya coincide, tampoco envía
+  la orden. Al elegir el modo de un escritorio que no está activo solo se
+  guarda la preferencia y se aplica al entrar, en vez de saltar a él y volver.
+  Probado en una sesión anidada con cambios rápidos entre un escritorio en
+  mosaico y otro en ventana: los layouts se mantuvieron y el foco no saltó.
+- **Líneas de mosaico durante la animación (2026-11-07).** Al cambiar de
+  escritorio, `WindowHandles` oculta las líneas y los puntos 320 ms hasta que
+  termina la animación de las ventanas; antes quedaban quietas sobre las
+  ventanas en movimiento.
 - **Desenfoque y foco al mantener Super.** Umbriel desenfoca ahora solo el
   contenido de la ventana bajo el puntero mientras se mantiene Mod, como el
   mockup: shader de ventana con blur de 1.4 px y desaturación suave, más un
@@ -603,7 +621,7 @@ Tras cerrar sesión y volver a entrar:
 - Luz nocturna y atenuación extra: deben afectar también a la barra, paneles y
   lanzador, y la luz nocturna no debe lavar el negro. Comprobarlo con una
   ventana clara y con el centro de control abierto.
-- Ajustes → «Fondo de pantalla»: elegir una imagen, ver que aparece detrás de
+- Temas → «Fondo de pantalla»: elegir una imagen, ver que aparece detrás de
   los iconos y quitarla.
 - Abrir una carpeta del escritorio con doble clic y una imagen; comprobar que
   no hay iconos duplicados en varios monitores.
