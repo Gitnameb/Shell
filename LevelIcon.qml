@@ -12,7 +12,7 @@ Item {
     property bool muted: false
     property color color: Theme.accent
     property real size: 16
-    property real zoom: 1.0
+    property bool normalize: false
     property string fallback: ""
 
     readonly property string state: root.muted
@@ -32,7 +32,7 @@ Item {
         source: root.iconSource
         color: root.color
         size: root.size
-        zoom: root.zoom
+        normalize: root.normalize
         fallback: root.fallback
     }
 }

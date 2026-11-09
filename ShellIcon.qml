@@ -13,9 +13,11 @@ Item {
     property string source: ""
     property color color: Theme.text
     property real size: 16
-    // Ajuste fino del tamaño dibujado. Los SVG no ocupan todo el viewBox: unos
-    // dibujan más alto que otros. La barra usa este factor para que todos los
-    // iconos tengan un peso visual parecido sin cambiar la caja de 22 px.
+    // Normaliza el dibujo para que su lado mayor ocupe siempre la misma
+    // fracción de la caja. Así Ethernet, Wi-Fi o los ajustes no parecen más
+    // grandes unos que otros aunque sus SVG usen márgenes distintos.
+    property bool normalize: false
+    // Ajuste fino adicional del tamaño dibujado.
     property real zoom: 1.0
     property string fallback: ""
     property bool tint: true
@@ -33,10 +35,23 @@ Item {
         return "";
     }
     readonly property bool ready: iconImage.status === Image.Ready
+    readonly property string sourceName: {
+        const path = String(root.source || "");
+        if (path.length === 0)
+            return "";
+        const slash = path.lastIndexOf("/");
+        let name = slash >= 0 ? path.substring(slash + 1) : path;
+        const dot = name.lastIndexOf(".");
+        if (dot > 0)
+            name = name.substring(0, dot);
+        return name;
+    }
+    readonly property real normalizeScale: root.normalize
+        ? ShellIcons.normalizeScale(root.sourceName) : 1.0
 
     implicitWidth: root.size
     implicitHeight: root.size
-    scale: root.zoom
+    scale: root.zoom * root.normalizeScale
     transformOrigin: Item.Center
 
     Image {

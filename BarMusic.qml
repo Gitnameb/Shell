@@ -80,6 +80,7 @@ Pill {
                 source: ShellIcons.src("music")
                 color: Theme.accent
                 size: Math.min(18, SettingsState.barIconSize)
+                normalize: true
                 fallback: "♪"
             }
 

@@ -10,10 +10,12 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   `hotspot` usan SVG nuevos con la forma de las referencias de Descargas. Los
   controles de la barra ya no dibujan huecos invisibles: los slots vacíos de
   icono se ocultan y la píldora mide solo su contenido (22 px + 6 de relleno).
-  `ShellIcon.zoom` iguala el peso visual de los SVG, y la portada de música,
-  el lanzador y las fichas de escritorio comparten la caja de `barIconSize`.
-  El punto de notificaciones mide 7 px, igual que el de las apps. El botón de
-  energía conserva su tamaño original.
+  `ShellIcons.visualSizes` mide el dibujo real de cada SVG y `ShellIcon.normalize`
+  escala todos para que su lado mayor ocupe el mismo 84 % de la caja; así
+  Ethernet, Wi-Fi, ajustes o Bluetooth dejan de parecer más grandes unos que
+  otros. La portada de música, el lanzador y las fichas de escritorio comparten
+  la caja de `barIconSize`. El punto de notificaciones mide 7 px, igual que el
+  de las apps. El botón de energía conserva su tamaño original.
 - **Configuración por defecto, greeter y fondo (2026-11-09).** Las plantillas
   de `install/config/` ya son la configuración de este equipo: barra, orden de
   iconos, tamaños, acento, cristal, ventanas y escritorios. El fondo se copia a

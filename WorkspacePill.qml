@@ -405,6 +405,7 @@ Rectangle {
         ShellIcon {
             anchors.centerIn: parent
             size: 14
+            normalize: true
             color: modeMouse.containsMouse ? Theme.accentInk : Theme.accent
             // El icono enseña el modo al que se va a cambiar, no el actual.
             source: ShellIcons.src(root.floatingMode

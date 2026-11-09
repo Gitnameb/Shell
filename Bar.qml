@@ -807,6 +807,7 @@ Variants {
                                         color: TrayState.open
                                             ? Theme.accent : Theme.accentFaded
                                         size: Math.min(18, SettingsState.barIconSize)
+                                        normalize: true
                                         // La flecha apunta hacia dentro de la
                                         // pantalla según el lado de la barra.
                                         rotation: SettingsState.barVertical
@@ -846,7 +847,7 @@ Variants {
                                         color: controlButton.active
                                             ? Theme.accent : Theme.accentFaded
                                         size: SettingsState.barIconSize
-                                        zoom: 1.04
+                                        normalize: true
                                         fallback: "▦"
                                     }
                                 }
@@ -888,6 +889,7 @@ Variants {
                                                     || NotificationState.count > 0)
                                                     ? Theme.accent : Theme.accentFaded)
                                             size: SettingsState.barIconSize
+                                            normalize: true
                                             fallback: "!"
                                         }
 

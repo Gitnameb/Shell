@@ -22,42 +22,6 @@ Pill {
     horizontalPadding: root.compact ? 2 : 3
     preferredWidth: root.key === "net" && !root.compact ? 34 : 0
     readonly property real glyphSize: SettingsState.barIconSize
-    // Los SVG tienen distinto margen interno. Este factor iguala el peso
-    // visual de los iconos dentro de la misma caja. El botón de energía no
-    // pasa por aquí: conserva su tamaño original.
-    readonly property real glyphZoom: {
-        if (root.key === "wifi")
-            return 1.18;
-        if (root.key === "bluetooth")
-            return 1.05;
-        if (root.key === "cpu")
-            return 0.94;
-        if (root.key === "gpu")
-            return 1.08;
-        if (root.key === "net")
-            return 1.08;
-        if (root.key === "night")
-            return 1.00;
-        if (root.key === "airplane")
-            return 0.94;
-        if (root.key === "brightness")
-            return 0.90;
-        if (root.key === "extraDim")
-            return 1.15;
-        if (root.key === "vpn")
-            return 0.98;
-        if (root.key === "keyboard")
-            return 1.12;
-        if (root.key === "clipboard")
-            return 0.94;
-        if (root.key === "hotspot")
-            return 0.95;
-        if (root.key === "settings")
-            return 0.85;
-        if (root.key === "dns")
-            return 1.00;
-        return 1.00;
-    }
 
     // Elige el SVG del Wi-Fi con la misma escala de bandas que el diseño.
     function wifiSource(strength: real): string {
@@ -435,7 +399,7 @@ Pill {
                 source: root.iconSource
                 color: root.iconColor
                 size: root.glyphSize
-                zoom: root.glyphZoom
+                normalize: true
                 fallback: root.fallbackIcon
             }
         }
@@ -461,7 +425,7 @@ Pill {
                 muted: root.key === "mic" ? Audio.micMuted : Audio.muted
                 color: root.iconColor
                 size: root.glyphSize
-                zoom: root.key === "mic" ? 1.00 : 1.12
+                normalize: root.key === "mic"
                 fallback: root.fallbackIcon
             }
         }
@@ -488,7 +452,7 @@ Pill {
                     && root.activeWifi.signalStrength < 0.5
                     ? Theme.warning : Theme.accent
                 size: wifiSlot.side
-                zoom: root.glyphZoom
+                normalize: true
                 fallback: "◌"
             }
         }
