@@ -58,6 +58,12 @@ check_package cliphist "Historial del portapapeles (cliphist)" \
     cliphist "sudo apt install cliphist"
 check_package udiskie "Montaje automático de USB (udiskie)" \
     udiskie "sudo apt install udiskie"
+check_package udisks2 "Montaje de discos (udisks2)" \
+    udisks2 "sudo apt install udisks2"
+check_package ntfs-3g "Discos NTFS (ntfs-3g)" \
+    ntfs-3g "sudo apt install ntfs-3g"
+check_package exfatprogs "Discos exFAT (exfatprogs)" \
+    exfatprogs "sudo apt install exfatprogs"
 
 # python3 ejecuta los ayudantes de DNS y proxy; no lo instala network.sh.
 if ! command -v python3 >/dev/null 2>&1; then

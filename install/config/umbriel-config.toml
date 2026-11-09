@@ -54,7 +54,7 @@ font = "sans 11"
 button_position = "right"
 # Del título hacia fuera: volumen, flotar, fijar, pantalla completa, mover
 # (abre la vista general), minimizar, maximizar y cerrar. Los botones nuevos
-# son del fork del shell.
+# son del edit del shell.
 buttons = ["volume", "float", "pin", "fullscreen", "move", "minimize", "maximize", "close"]
 button_corner_radius = 6
 button_glyph = "always"

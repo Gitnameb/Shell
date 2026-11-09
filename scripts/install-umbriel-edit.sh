@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Compila el fork de Umbriel y sustituye /usr/bin/umbriel de forma atómica.
+# Compila el edit personal de Umbriel y sustituye /usr/bin/umbriel de forma atómica.
 #
 # Uso:
-#   ./scripts/install-umbriel-fork.sh [opciones]
+#   ./scripts/install-umbriel-edit.sh [opciones]
 #
 # Opciones:
-#   --source DIR      Árbol de Umbriel (por defecto ~/umbriel-fork)
-#   --patch FILE      Parche para reconstruir el fork (por defecto el del repo)
+#   --source DIR      Árbol de Umbriel (por defecto ~/umbriel-edit)
+#   --patch FILE      Parche para reconstruir el edit (por defecto el del repo)
 #   --build-dir DIR   Directorio de compilación (por defecto DIR/build)
 #   --build-only      Compila y valida, pero no instala
 #   --no-backup       No guarda copia del binario actual
@@ -20,14 +20,14 @@
 set -Eeuo pipefail
 
 REPO_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-PATCH="${REPO_DIR}/umbriel-fork.patch"
+PATCH="${REPO_DIR}/umbriel-edit.patch"
 UPSTREAM="${UMBRIEL_UPSTREAM:-https://github.com/noctalia-dev/umbriel.git}"
 BASE_COMMIT="${UMBRIEL_BASE_COMMIT:-b6c4b7d}"
-SOURCE_DIR="${UMBRIEL_FORK_DIR:-$HOME/umbriel-fork}"
-# Por defecto se instala el fork propio, sin depender del Umbriel original.
-# UMBRIEL_FORK_REPO= (vacío) fuerza el modo antiguo: upstream + parche.
-FORK_REPO="${UMBRIEL_FORK_REPO-https://github.com/Gitnameb/umbriel-edit.git}"
-FORK_BRANCH="${UMBRIEL_FORK_BRANCH:-main}"
+SOURCE_DIR="${UMBRIEL_EDIT_DIR:-$HOME/umbriel-edit}"
+# Por defecto se instala el edit propio, sin depender del Umbriel original.
+# UMBRIEL_EDIT_REPO= (vacío) fuerza el modo antiguo: upstream + parche.
+EDIT_REPO="${UMBRIEL_EDIT_REPO-https://github.com/Gitnameb/umbriel-edit.git}"
+EDIT_BRANCH="${UMBRIEL_EDIT_BRANCH:-main}"
 BUILD_DIR=""
 INSTALLED_BIN="/usr/bin/umbriel"
 
@@ -39,16 +39,16 @@ DIVERT=1
 
 usage() {
     cat <<'EOF'
-Compila el fork de Umbriel y sustituye /usr/bin/umbriel de forma atómica.
+Compila el edit personal de Umbriel y sustituye /usr/bin/umbriel de forma atómica.
 
 Uso:
-  ./scripts/install-umbriel-fork.sh [opciones]
+  ./scripts/install-umbriel-edit.sh [opciones]
 
 Opciones:
-  --source DIR      Árbol de Umbriel (por defecto ~/umbriel-fork)
-  --fork-repo URL   Clonar un fork propio en vez de aplicar el parche
-  --fork-branch B   Rama del fork (por defecto shell-fork)
-  --patch FILE      Parche para reconstruir el fork (por defecto el del repo)
+  --source DIR      Árbol de Umbriel (por defecto ~/umbriel-edit)
+  --edit-repo URL   Clonar el edit propio en vez de aplicar el parche
+  --edit-branch B   Rama del edit (por defecto main)
+  --patch FILE      Parche para reconstruir el edit (por defecto el del repo)
   --build-dir DIR   Directorio de compilación (por defecto DIR/build)
   --build-only      Compila y valida, pero no instala
   --no-backup       No guarda copia del binario actual
@@ -96,14 +96,14 @@ while (( $# > 0 )); do
             SOURCE_DIR=$2
             shift 2
             ;;
-        --fork-repo)
-            [[ $# -ge 2 ]] || die "Falta el valor de --fork-repo"
-            FORK_REPO=$2
+        --edit-repo | --edit-repo)
+            [[ $# -ge 2 ]] || die "Falta el valor de --edit-repo"
+            EDIT_REPO=$2
             shift 2
             ;;
-        --fork-branch)
-            [[ $# -ge 2 ]] || die "Falta el valor de --fork-branch"
-            FORK_BRANCH=$2
+        --edit-branch | --edit-branch)
+            [[ $# -ge 2 ]] || die "Falta el valor de --edit-branch"
+            EDIT_BRANCH=$2
             shift 2
             ;;
         --patch)
@@ -176,18 +176,18 @@ log "Compilación: $BUILD_DIR"
 # ---------------------------------------------------------------------------
 # 1. Preparar el código
 # ---------------------------------------------------------------------------
-if [[ -n "$FORK_REPO" ]]; then
+if [[ -n "$EDIT_REPO" ]]; then
     if [[ -d "$SOURCE_DIR/.git" ]]; then
-        log "Usando el árbol del fork ya existente en $SOURCE_DIR."
+        log "Usando el árbol del edit ya existente en $SOURCE_DIR."
     elif [[ -e "$SOURCE_DIR" ]]; then
         die "$SOURCE_DIR existe y no es un repositorio git."
-    elif ! run git clone --branch "$FORK_BRANCH" "$FORK_REPO" "$SOURCE_DIR"; then
-        warn "No se pudo clonar el fork; se usará el Umbriel original con el parche."
-        FORK_REPO=""
+    elif ! run git clone --branch "$EDIT_BRANCH" "$EDIT_REPO" "$SOURCE_DIR"; then
+        warn "No se pudo clonar el edit; se usará el Umbriel original con el parche."
+        EDIT_REPO=""
     fi
 fi
 
-if [[ -z "$FORK_REPO" ]]; then
+if [[ -z "$EDIT_REPO" ]]; then
     if [[ -d "$SOURCE_DIR/.git" ]]; then
         if [[ -n "$(git -C "$SOURCE_DIR" status --porcelain 2>/dev/null)" ]]; then
             log "El árbol tiene cambios locales; se compila tal cual."
@@ -195,13 +195,13 @@ if [[ -z "$FORK_REPO" ]]; then
             current=$(git -C "$SOURCE_DIR" rev-parse HEAD 2>/dev/null || true)
             base=$(git -C "$SOURCE_DIR" rev-parse "$BASE_COMMIT" 2>/dev/null || true)
             if [[ "$current" == "$base" ]]; then
-                log "Aplicando el parche del fork."
+                log "Aplicando el parche del edit."
                 run git -C "$SOURCE_DIR" apply "$PATCH"
             elif git -C "$SOURCE_DIR" merge-base --is-ancestor "$base" "$current"; then
-                log "El árbol ya contiene los commits del fork; se compila tal cual."
+                log "El árbol ya contiene los commits del edit; se compila tal cual."
             else
                 log "Árbol limpio; se cambia a la base $BASE_COMMIT."
-                run git -C "$SOURCE_DIR" checkout -B shell-fork "$BASE_COMMIT"
+                run git -C "$SOURCE_DIR" checkout -B shell-edit "$BASE_COMMIT"
                 run git -C "$SOURCE_DIR" apply "$PATCH"
             fi
         fi
@@ -210,7 +210,7 @@ if [[ -z "$FORK_REPO" ]]; then
     else
         log "Clonando Umbriel desde $UPSTREAM."
         run git clone "$UPSTREAM" "$SOURCE_DIR"
-        run git -C "$SOURCE_DIR" checkout -B shell-fork "$BASE_COMMIT"
+        run git -C "$SOURCE_DIR" checkout -B shell-edit "$BASE_COMMIT"
         run git -C "$SOURCE_DIR" apply "$PATCH"
     fi
 fi
@@ -290,19 +290,19 @@ build_hash=$(sha "$BINARY" 2>/dev/null || true)
 current_hash=$(sha "$INSTALLED_BIN" 2>/dev/null || true)
 
 if [[ -n "$build_hash" && "$build_hash" == "$current_hash" ]]; then
-    log "El binario instalado ya es este mismo fork. No hay nada que hacer."
+    log "El binario instalado ya es este mismo edit. No hay nada que hacer."
     ensure_volume_button
     exit 0
 fi
 
 if (( ! ASSUME_YES && ! DRY_RUN )); then
-    printf '\nSe va a sustituir %s por el fork compilado.\n' "$INSTALLED_BIN"
+    printf '\nSe va a sustituir %s por el edit compilado.\n' "$INSTALLED_BIN"
     read -r -p "¿Continuar? [s/N] " answer || answer=""
     [[ "$answer" =~ ^[sSyY]$ ]] || die "Cancelado."
 fi
 
 # Un `apt upgrade` del paquete oficial escribe /usr/bin/umbriel y borraría el
-# fork. La diversión local hace que el paquete escriba en
+# edit. La diversión local hace que el paquete escriba en
 # /usr/bin/umbriel.distrib y deja intacto el binario compilado.
 if (( DIVERT )); then
     if ! dpkg-divert --list /usr/bin/umbriel 2>/dev/null |
@@ -313,7 +313,7 @@ if (( DIVERT )); then
         log "El binario oficial ya está apartado con dpkg-divert."
     fi
 else
-    warn "Sin dpkg-divert, apt o install-packages pueden volver a sustituir el fork."
+    warn "Sin dpkg-divert, apt o install-packages pueden volver a sustituir el edit."
 fi
 
 if (( BACKUP )) && (( ! DIVERT )); then
@@ -351,7 +351,7 @@ fi
 installed_hash=$(sha "$INSTALLED_BIN" 2>/dev/null || true)
 [[ "$installed_hash" == "$build_hash" ]] || die "La instalación no coincide con el binario compilado."
 
-log "Fork instalado correctamente."
+log "Edit instalado correctamente."
 "$INSTALLED_BIN" --version 2>/dev/null || warn "No se pudo comprobar 'umbriel --version'."
 
 ensure_volume_button
@@ -360,7 +360,7 @@ cat <<'EOF'
 
 Cierra sesión y vuelve a entrar para que el compositor use el binario nuevo.
 El binario oficial queda en /usr/bin/umbriel.distrib y los futuros
-`apt upgrade` no deberían pisar el fork. Si alguna vez quieres volver al
+`apt upgrade` no deberían pisar el edit. Si alguna vez quieres volver al
 oficial, quita la diversión con:
 
   sudo dpkg-divert --local --rename --remove /usr/bin/umbriel

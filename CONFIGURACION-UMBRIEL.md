@@ -510,7 +510,7 @@ cliente** (1.4 px y una desaturación suave, como el mockup) y añade un velo de
 El estado vive en el compositor (`View::setModHover` y
 `Server::updateModHoverBlur`). Al soltar Mod o salir de la ventana, el slot de
 efecto vuelve al preset configurado para esa ventana, si lo había. El parche
-`umbriel-fork.patch` incluye el shader; para verlo hay que instalar el binario
+`umbriel-edit.patch` incluye el shader; para verlo hay que instalar el binario
 nuevo y reiniciar la sesión.
 
 Además, mantener Mod es un modo de **enfoque**: la ventana bajo el puntero
@@ -746,7 +746,7 @@ indicadores **dentro del árbol de cada ventana** (`NativeHandles`):
 Al ser nodos de escena de la propia ventana, se mueven y redimensionan con ella
 en el mismo frame, no capturan clics y quedan cubiertos por una ventana
 flotante que pase por encima. El shell no superpone ninguna capa. La
-manipulación la sigue haciendo Umbriel. En el fork:
+manipulación la sigue haciendo Umbriel. En el edit:
 
 - En mosaico **solo redimensiona la línea entre ventanas**. La banda activa
   es el hueco más dos píxeles por lado, centrada en la línea; los bordes

@@ -25,22 +25,22 @@ propia y sin relación de pull request con `noctalia-dev/umbriel`.
 
 ## Estado
 
-En `~/umbriel-fork` hay dos ramas locales:
+En `~/umbriel-edit` hay dos ramas locales:
 
 | Rama | Contenido |
 | --- | --- |
-| `shell-fork` | Historial completo con los cambios del edit. Solo local. |
-| `standalone` | Un commit independiente, sin ancestros del Umbriel original. |
+| `shell-edit` | Historial completo con los cambios del edit. Solo local. |
+| `main` | Un commit independiente, sin ancestros del Umbriel original. |
 
-La rama `standalone` ya está publicada en `Gitnameb/umbriel-edit` como `main`.
-Los remotos locales son:
+La rama `main` está publicada en `Gitnameb/umbriel-edit`. Los remotos locales
+son:
 
 ```text
+origin      → Gitnameb/umbriel-edit
 upstream    → noctalia-dev/umbriel
-standalone  → Gitnameb/umbriel-edit
 ```
 
-No hay un remoto `origin` apuntando al proyecto original.
+El remoto `origin` es tu edit; el original está en `upstream`.
 
 ## Instalar
 
@@ -48,7 +48,7 @@ El instalador usa el edit por defecto:
 
 ```sh
 cd ~/Shell
-./scripts/install-umbriel-fork.sh --yes
+./scripts/install-umbriel-edit.sh --yes
 ```
 
 Valores por defecto:
@@ -61,9 +61,9 @@ rama: main
 También se puede forzar:
 
 ```sh
-./scripts/install-umbriel-fork.sh \
-  --fork-repo https://github.com/Gitnameb/umbriel-edit.git \
-  --fork-branch main \
+./scripts/install-umbriel-edit.sh \
+  --edit-repo https://github.com/Gitnameb/umbriel-edit.git \
+  --edit-branch main \
   --yes
 ```
 
@@ -75,12 +75,12 @@ parche local.
 Si algún día hay que recrear el repositorio:
 
 1. Crear un repositorio **vacío** en GitHub llamado `umbriel-edit`. No usar el
-   botón Fork.
+   botón Fork ni importar el repositorio original.
 2. Subir la rama independiente:
 
    ```sh
-   cd ~/umbriel-fork
-   git push -u standalone standalone:main
+   cd ~/umbriel-edit
+   git push -u origin main
    ```
 
 Eso crea una `main` con un solo commit, sin relación de fork.
@@ -110,11 +110,11 @@ Al ser independiente no hay `git merge` automático. Si quieres un cambio de
 Noctalia:
 
 ```sh
-cd ~/umbriel-fork
+cd ~/umbriel-edit
 git fetch upstream
 git cherry-pick <commit>
 # resolver conflictos, compilar y probar
-git push standalone HEAD:main
+git push origin HEAD:main
 ```
 
 Es una decisión manual. Es el precio de no ser un fork.

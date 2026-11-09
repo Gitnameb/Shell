@@ -41,6 +41,7 @@ sudo apt install \
   ddcutil qrencode libnotify-bin fonts-inter-variable wvkbd swayidle foot \
   network-manager-openvpn wpasupplicant rfkill dnsmasq-base \
   power-profiles-daemon iputils-ping wl-clipboard \
+  cliphist udiskie udisks2 ntfs-3g exfatprogs usbutils \
   qml6-module-qtquick-effects \
   qml6-module-qt-labs-folderlistmodel \
   xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-kde \
@@ -84,7 +85,7 @@ sudo apt install \
 # (paquete plasma-workspace). Es opcional; sin él, las apps usan Breeze.
 
 # ---------------------------------------------------------------------------
-# 4. Dependencias para compilar el fork de Umbriel
+# 4. Dependencias para compilar el edit de Umbriel
 # ---------------------------------------------------------------------------
 sudo apt install -t trixie-backports \
   build-essential cmake git meson ninja-build pkg-config \

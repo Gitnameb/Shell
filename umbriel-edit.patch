@@ -1,3 +1,59 @@
+diff --git a/EDIT-PERSONAL.md b/EDIT-PERSONAL.md
+new file mode 100644
+index 00000000..9db189ea
+--- /dev/null
++++ b/EDIT-PERSONAL.md
+@@ -0,0 +1,37 @@
++# Umbriel · edit personal
++
++Este repositorio es un **edit personal** de [Umbriel](https://github.com/noctalia-dev/umbriel)
++para mi escritorio Debian con el shell de `~/Shell`.
++
++No es una versión oficial, no está afiliado a Noctalia y no pretende ser una
++versión mejorada ni una alternativa general. Los cambios están pensados para
++mis necesidades y mi forma de usar el escritorio.
++
++## Base
++
++- Proyecto original: Umbriel de Noctalia.
++- Base: commit `b6c4b7d`.
++- Este repositorio no comparte historia con el original: es una copia
++  independiente, no un fork de GitHub.
++
++## Qué incluye
++
++- Barra de título nativa con botón de volumen y acciones propias del shell.
++- Modos de escritorio mosaico/ventana integrados con la configuración nativa.
++- Restauración de posición y tamaño de ventanas flotantes.
++- Velocidad de animaciones y opción de desactivarlas.
++- Desenfoque «Fondo» que se mantiene al arrastrar ventanas.
++- Atajos del micrófono, incluidas teclas multimedia y botones laterales del
++  ratón.
++- Ajustes de integración con el shell: foco con Super, notificaciones, volumen
++  por ventana y detalles de la barra.
++
++## Licencia
++
++Umbriel es MIT. Este edit conserva la licencia y la atribución del proyecto
++original. Revisa `LICENSE`.
++
++## Sin soporte
++
++No hay soporte, garantías ni compromiso de mantener compatibilidad con el
++Umbriel oficial. Si algo te sirve, úsalo; si no, usa el proyecto original.
+diff --git a/README.md b/README.md
+index abe7ebd1..a27227bb 100644
+--- a/README.md
++++ b/README.md
+@@ -1,3 +1,8 @@
++> **Edit personal de Umbriel.** Este repositorio es una copia modificada de
++> Umbriel para mi escritorio. No es una versión oficial, no está afiliado a
++> Noctalia y no pretende ser mejor que el proyecto original. Si lo usas,
++> hazlo bajo tu responsabilidad y revisa los cambios.
++
+ # Umbriel
+ 
+ A Wayland compositor designed for daily use, with scrolling, dwindle, master, and stacking layouts, per-output workspaces, window rules, blur, shadows, and fluid animations.
 diff --git a/docs/user/animation.md b/docs/user/animation.md
 index fe8a5241..14426225 100644
 --- a/docs/user/animation.md
@@ -1878,7 +1934,7 @@ index 609e9f45..94f88b77 100644
      bool m_hoverFocusInvalidated = false;
      bool m_compositorOwnsCursor = false;
 diff --git a/src/input/cursor_constraint.cpp b/src/input/cursor_constraint.cpp
-index d19fdfa9..3edc273d 100644
+index d19fdfa9..64b8d8c3 100644
 --- a/src/input/cursor_constraint.cpp
 +++ b/src/input/cursor_constraint.cpp
 @@ -1,5 +1,6 @@
@@ -1904,7 +1960,7 @@ index d19fdfa9..3edc273d 100644
 +      // A locked pointer would keep consuming motion, hiding the cursor and
 +      // keeping the window's mouse input alive while Mod is held. Skip the
 +      // cursor hint: opening window management must not teleport the pointer.
-+      // Keep the modifier-tap state intact: a clean tap still opens ALBA's
++      // Keep the modifier-tap state intact: a clean tap still opens Shell's
 +      // launcher on release.
 +      cancelHotCorner();
 +      clearConstraint(false);
@@ -2160,7 +2216,7 @@ index 12b377cc..b98498ef 100644
      } else {
 diff --git a/src/scene/app_icon.cpp b/src/scene/app_icon.cpp
 new file mode 100644
-index 00000000..23b3d883
+index 00000000..24e5db00
 --- /dev/null
 +++ b/src/scene/app_icon.cpp
 @@ -0,0 +1,266 @@
@@ -2290,7 +2346,7 @@ index 00000000..23b3d883
 +    }
 +
 +    // Busca «Icon=» en los temas instalados. Primero breeze-dark (el tema que
-+    // usa ALBA), después los demás; los iconos de apps de terceros suelen estar
++    // usa Shell), después los demás; los iconos de apps de terceros suelen estar
 +    // en hicolor.
 +    std::string findIconFile(const std::string& icon) {
 +      static constexpr std::array<std::string_view, 8> themes{
@@ -2452,7 +2508,7 @@ index 00000000..ba4956f9
 +  [[nodiscard]] wlr_buffer* renderAppIcon(const std::string& appId, int pixels);
 +} // namespace umbriel
 diff --git a/src/scene/effect_registry.cpp b/src/scene/effect_registry.cpp
-index e4303532..be8c58e3 100644
+index e4303532..ab1fcb0f 100644
 --- a/src/scene/effect_registry.cpp
 +++ b/src/scene/effect_registry.cpp
 @@ -32,6 +32,44 @@ namespace umbriel {
@@ -2462,14 +2518,14 @@ index e4303532..be8c58e3 100644
 +    // Whole-output display filter: brightness, extra dim, and an amber white
 +    // point. Multiplying keeps black at black, unlike an alpha-tinted overlay.
 +    constexpr const char* kDisplayFilter = R"(
-+uniform float alba_brightness;
-+uniform float alba_extra_dim;
-+uniform float alba_warm;
++uniform float shell_brightness;
++uniform float shell_extra_dim;
++uniform float shell_warm;
 +vec4 screen(vec2 uv) {
 +  vec4 c = umbriel_sample(uv);
 +  vec3 rgb = c.rgb;
-+  rgb *= vec3(1.0, mix(1.0, 0.84, alba_warm), mix(1.0, 0.64, alba_warm));
-+  rgb *= alba_brightness * (1.0 - alba_extra_dim);
++  rgb *= vec3(1.0, mix(1.0, 0.84, shell_warm), mix(1.0, 0.64, shell_warm));
++  rgb *= shell_brightness * (1.0 - shell_extra_dim);
 +  return vec4(rgb, c.a);
 +}
 +)";
@@ -2524,7 +2580,7 @@ index e4303532..be8c58e3 100644
      }
 +    if (settings.display.active() && m_displayFilter == nullptr) {
 +      m_displayFilter = {
-+          fx_effect_shader_create(m_renderer, FX_EFFECT_SCREEN, kDisplayFilter, "screen.alba_display"),
++          fx_effect_shader_create(m_renderer, FX_EFFECT_SCREEN, kDisplayFilter, "screen.shell_display"),
 +          fx_effect_shader_unref
 +      };
 +      if (m_displayFilter == nullptr) {
@@ -2559,13 +2615,13 @@ index e4303532..be8c58e3 100644
  
 +  void EffectRegistry::fillDisplayUniforms(fx_animation_parameters& parameters) const {
 +    const Config::Display& display = config().display;
-+    if (fx_uniform* brightness = fx_parameters_add_uniform(&parameters, "alba_brightness", FX_UNIFORM_FLOAT, 1)) {
++    if (fx_uniform* brightness = fx_parameters_add_uniform(&parameters, "shell_brightness", FX_UNIFORM_FLOAT, 1)) {
 +      brightness->floats[0] = display.brightness;
 +    }
-+    if (fx_uniform* dim = fx_parameters_add_uniform(&parameters, "alba_extra_dim", FX_UNIFORM_FLOAT, 1)) {
++    if (fx_uniform* dim = fx_parameters_add_uniform(&parameters, "shell_extra_dim", FX_UNIFORM_FLOAT, 1)) {
 +      dim->floats[0] = display.extraDim;
 +    }
-+    if (fx_uniform* warm = fx_parameters_add_uniform(&parameters, "alba_warm", FX_UNIFORM_FLOAT, 1)) {
++    if (fx_uniform* warm = fx_parameters_add_uniform(&parameters, "shell_warm", FX_UNIFORM_FLOAT, 1)) {
 +      warm->floats[0] = display.warm;
 +    }
 +  }
@@ -2574,7 +2630,7 @@ index e4303532..be8c58e3 100644
      const double distance = value.target() - value.from();
      const auto progress = static_cast<float>(
 diff --git a/src/scene/effect_registry.h b/src/scene/effect_registry.h
-index 9b42b181..130c9c2f 100644
+index 9b42b181..0e0b26b2 100644
 --- a/src/scene/effect_registry.h
 +++ b/src/scene/effect_registry.h
 @@ -53,6 +53,13 @@ namespace umbriel {
@@ -2586,7 +2642,7 @@ index 9b42b181..130c9c2f 100644
 +    // Built-in blur for the window under the pointer while Mod is held. Applies to the client content only, so the
 +    // native title bar and its buttons stay sharp.
 +    fx_effect_shader* modHoverBlurShader() const { return m_hoverBlur.get(); }
-+    // Adds alba_brightness, alba_extra_dim, and alba_warm for displayFilterEffect().
++    // Adds shell_brightness, shell_extra_dim, and shell_warm for displayFilterEffect().
 +    void fillDisplayUniforms(fx_animation_parameters& parameters) const;
      // The preset bound to an animation event through `effect =`, or null (also null for the built-in fade).
      const EffectPreset* animationPreset(AnimationEvent event) const;
@@ -4998,7 +5054,7 @@ index 11f0d54d..63e72175 100644
      if (m_scratchpadManager != nullptr) {
        m_scratchpadManager->remove(view);
 diff --git a/src/server/server_keybinds.cpp b/src/server/server_keybinds.cpp
-index 504a98c3..dc246b04 100644
+index 504a98c3..7ce9f0e0 100644
 --- a/src/server/server_keybinds.cpp
 +++ b/src/server/server_keybinds.cpp
 @@ -9,6 +9,7 @@
@@ -5156,7 +5212,7 @@ index 504a98c3..dc246b04 100644
 +    auto* self = static_cast<Server*>(data);
 +    if ((self->keyboardModifiers() & self->modKey()) != 0 && !self->m_sessionLocked) {
 +      self->setModHoldActive(true);
-+      // ALBA may have just missed the modifier event while starting up, so
++      // Shell may have just missed the modifier event while starting up, so
 +      // publish the settled hold state for any shell listening for it.
 +      if (Ipc* ipc = self->ipc(); ipc != nullptr) {
 +        ipc->notifyModifiersChanged();

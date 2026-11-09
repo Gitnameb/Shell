@@ -2,7 +2,7 @@
 
 Guía para reconstruir el shell + Umbriel en el mismo equipo, partiendo de un
 Debian limpio. Está pensada para no depender de esta sesión ni de la memoria:
-incluye repositorios, paquetes, compilación del fork, archivos de usuario,
+incluye repositorios, paquetes, compilación del edit, archivos de usuario,
 servicios y comprobaciones.
 
 > **Estado:** el sistema actual funciona para uso diario en este equipo, pero
@@ -37,13 +37,13 @@ El instalador:
 5. Copia la configuración del shell y Umbriel **sin sobrescribir** la que ya
    exista. Con `--force-config` la reemplaza y guarda una copia `.bak`.
 6. Crea la regla de sudoers de `ddcutil` y activa la unidad de alarmas.
-7. Compila e instala el fork de Umbriel con `scripts/install-umbriel-fork.sh`.
+7. Compila e instala el edit de Umbriel con `scripts/install-umbriel-edit.sh`.
 8. Añade los discos internos NTFS a `/etc/fstab` con `scripts/mount-disks.sh`
    y deja `udiskie` activo para montar las unidades USB.
 
 `install.sh` solo orquesta; cada paso vive en su módulo y se puede revisar o
 ejecutar por separado: `scripts/install-packages.sh`, `scripts/network.sh`,
-`scripts/install-user-config.sh`, `scripts/install-umbriel-fork.sh` y
+`scripts/install-user-config.sh`, `scripts/install-umbriel-edit.sh` y
 `scripts/mount-disks.sh`.
 
 Los discos internos NTFS se montan al arrancar sin volver a pedir contraseña.
@@ -53,7 +53,7 @@ Las unidades USB las monta `udiskie` al conectarlas. Para excluir un disco:
 sudo ./scripts/mount-disks.sh --exclude "New Volume" --apply
 ```
 
-Opciones: `--dry-run`, `--skip-packages`, `--skip-fork`, `--skip-config`,
+Opciones: `--dry-run`, `--skip-packages`, `--skip-edit`, `--skip-config`,
 `--skip-network`, `--skip-disks`, `--force-config`, `--with-firmware` y
 `--help`.
 
@@ -110,7 +110,7 @@ dar por hecho que los nombres serán los mismos tras una instalación limpia.
 | wvkbd | 0.15 |
 | fonts-inter-variable | 4.1 |
 
-El binario del fork instalado en `/usr/bin/umbriel` es
+El binario del edit instalado en `/usr/bin/umbriel` es
 `d3f5effaad771b37`; `umbriel --version` puede imprimir una cadena de versión
 anterior por cómo se compila. El binario original del paquete está en
 `/usr/bin/umbriel.stock-0.1.0`.
@@ -160,11 +160,6 @@ La contrapartida es que las apps KDE usarán Breeze claro/oscuro, pero no
 heredarán el acento personalizado del shell; eso queda pendiente de una
 alternativa ligera.
 
-> **Si quieres el modo ligero de verdad**, instala Debian **sin** el task de KDE
-> (sistema estándar, sin escritorio) y deja que `install.sh` ponga SDDM, Breeze
-> y las librerías. Si ya instalaste KDE, el script no añadirá
-> `plasma-workspace`, pero tampoco lo quitará: vendrá con el escritorio.
-
 Después, instalar lo específico:
 
 ```sh
@@ -174,7 +169,7 @@ sudo apt install -t trixie-backports umbriel xdg-desktop-portal-umbriel
 sudo apt install \
   ddcutil qrencode libnotify-bin fonts-inter-variable wvkbd swayidle foot \
   network-manager-openvpn power-profiles-daemon \
-  iputils-ping wl-clipboard \
+  iputils-ping wl-clipboard cliphist udiskie udisks2 ntfs-3g exfatprogs \
   qml6-module-qtquick-effects \
   qml6-module-qt-labs-folderlistmodel \
   xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-kde \
@@ -268,10 +263,10 @@ sudo apt install -t trixie-backports wayland-protocols libwayland-dev
 
 ---
 
-## 4. Compilar e instalar el fork de Umbriel
+## 4. Compilar e instalar el edit de Umbriel
 
 El paquete `umbriel` instala el binario original, la sesión de SDDM,
-`start-umbriel`, la configuración de ejemplo y el portal. El fork del shell
+`start-umbriel`, la configuración de ejemplo y el portal. El edit del shell
 sustituye solo `/usr/bin/umbriel` para añadir la barra nativa con seis botones,
 icono, subtítulo y otras mejoras.
 
@@ -291,8 +286,8 @@ sudo apt install -t trixie-backports \
   libeis-dev libseat-dev nlohmann-json3-dev
 ```
 
-El fork está basado en Umbriel `b6c4b7d` y acumula un conjunto de cambios
-propios. El parche reproducible es `umbriel-fork.patch` (50 archivos). Entre
+El edit está basado en Umbriel `b6c4b7d` y acumula un conjunto de cambios
+propios. El parche reproducible es `umbriel-edit.patch` (50 archivos). Entre
 esos cambios está el desenfoque del contenido de la ventana bajo el puntero al
 mantener Super; no necesita configuración adicional.
 
@@ -302,21 +297,21 @@ versión exacta de la librería de runtime.
 
 ### 4.2 Obtener el código
 
-Opción A, restaurar la copia del fork (recomendada si se conserva):
+Opción A, restaurar la copia del edit (recomendada si se conserva):
 
 ```sh
-# Copiar ~/umbriel-fork desde la copia de seguridad a ~/umbriel-fork
-cd ~/umbriel-fork
+# Copiar ~/umbriel-edit desde la copia de seguridad a ~/umbriel-edit
+cd ~/umbriel-edit
 git status
 ```
 
 Opción B, partir de Umbriel upstream y aplicar el parche:
 
 ```sh
-git clone https://github.com/noctalia-dev/umbriel.git ~/umbriel-fork
-cd ~/umbriel-fork
+git clone https://github.com/noctalia-dev/umbriel.git ~/umbriel-edit
+cd ~/umbriel-edit
 git checkout b6c4b7d
-git apply ~/Shell/umbriel-fork.patch
+git apply ~/Shell/umbriel-edit.patch
 ```
 
 ### 4.3 Compilar e instalar
@@ -326,17 +321,17 @@ falta, aplica el parche, compila, guarda el binario original e instala con `mv`
 atómico:
 
 ```sh
-./scripts/install-umbriel-fork.sh
+./scripts/install-umbriel-edit.sh
 ```
 
 Opciones: `--build-only` (compila sin instalar), `--dry-run`, `--source DIR`,
-`--build-dir DIR`, `--no-backup` y `--yes`. Si el árbol `~/umbriel-fork` no
-existe, lo clona desde upstream y aplica `umbriel-fork.patch`.
+`--build-dir DIR`, `--no-backup` y `--yes`. Si el árbol `~/umbriel-edit` no
+existe, lo clona desde upstream y aplica `umbriel-edit.patch`.
 
 También se puede hacer a mano:
 
 ```sh
-cd ~/umbriel-fork
+cd ~/umbriel-edit
 meson setup build --prefix=/usr --buildtype=release
 ninja -C build
 
@@ -347,8 +342,8 @@ sudo cp /usr/bin/umbriel /usr/bin/umbriel.stock-0.1.0
 sudo cp build/umbriel /usr/bin/umbriel.new
 sudo mv -f /usr/bin/umbriel.new /usr/bin/umbriel
 
-# Regenerar el parche si se tocó el fork
-git diff b6c4b7d > ~/Shell/umbriel-fork.patch
+# Regenerar el parche si se tocó el edit
+git diff b6c4b7d > ~/Shell/umbriel-edit.patch
 ```
 
 Después hay que **cerrar sesión y volver a entrar** para que el compositor use
@@ -361,7 +356,7 @@ arrancado después de instalar el binario.
 > `ldd build/umbriel | grep display-info` que no falta ninguna; si Umbriel
 > arranca, el aviso es benigno.
 
-> Si un `apt upgrade` reemplaza `/usr/bin/umbriel`, hay que recompilar el fork o
+> Si un `apt upgrade` reemplaza `/usr/bin/umbriel`, hay que recompilar el edit o
 > restaurar la copia. El parche habrá que rebasarlo si upstream cambia.
 
 ### 4.4 Revertir al Umbriel original
@@ -371,7 +366,7 @@ sudo cp /usr/bin/umbriel.stock-0.1.0 /usr/bin/umbriel.restore
 sudo mv -f /usr/bin/umbriel.restore /usr/bin/umbriel
 ```
 
-Cerrar sesión y volver a entrar. Esto elimina la barra nativa del fork, pero
+Cerrar sesión y volver a entrar. Esto elimina la barra nativa del edit, pero
 El shell sigue funcionando con el binario estándar.
 
 ---
@@ -730,11 +725,11 @@ sigue pendiente de probar.
 
 ## 8. Datos que hay que conservar
 
-### 8.1 Proyecto y fork
+### 8.1 Proyecto y edit
 
 - `~/Shell/` completo, incluido `.git` si se quiere conservar la historia.
-- `~/umbriel-fork/` completo, incluido `.git` si se quiere conservar la historia.
-- `~/Shell/umbriel-fork.patch`.
+- `~/umbriel-edit/` completo, incluido `.git` si se quiere conservar la historia.
+- `~/Shell/umbriel-edit.patch`.
 - `/usr/bin/umbriel.stock-0.1.0` (binario original del paquete).
 
 ### 8.2 Configuración de usuario
@@ -791,7 +786,7 @@ Revisar que el archivo de red no se comparte sin protección.
    `./install.sh --dry-run`, revisa la lista y después `./install.sh`. Confirma
    que el shell arranca antes de tocar el disco principal.
 6. **Anotar la contraseña de sudo** o tenerla a mano; el instalador la pedirá
-   para apt, el fork y la regla de `ddcutil`.
+   para apt, el edit y la regla de `ddcutil`.
 7. **Comprobar el disco**: no confundir la raíz Debian con las particiones
    Windows/NTFS.
 8. **No ejecutar `umbriel config-replace`** sin querer: borra los layouts por
@@ -856,10 +851,10 @@ Comprobar a mano:
   `platform_profile`.
 - **Escritorios automáticos:** sustituir la sección manual por un script que
   detecte los conectores y ajuste `workspaces` por salida.
-- **E1:** hecho. `install.sh` y `scripts/install-umbriel-fork.sh` automatizan
-  paquetes, configuración, sudoers, alarmas y compilación del fork. Probados con
+- **E1:** hecho. `install.sh` y `scripts/install-umbriel-edit.sh` automatizan
+  paquetes, configuración, sudoers, alarmas y compilación del edit. Probados con
   `--dry-run` y con una compilación completa desde un clon limpio; falta la
   prueba definitiva en un Debian recién instalado.
 - **E4:** la reversión está documentada en la sección 4.4, pero todavía no se ha
   probado en una instalación limpia.
-- **Fork:** cada actualización de Umbriel puede requerir rebase y recompilación.
+- **Edit:** cada actualización de Umbriel puede requerir rebase y recompilación.

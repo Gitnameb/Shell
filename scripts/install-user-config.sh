@@ -153,7 +153,7 @@ else
     # Copia de referencia con la que reparar un archivo que pierda
     # [general] autostart. Si la configuración actual parece completa y tiene
     # autostart, se conserva tal cual, con los ajustes del usuario. La
-    # validación semántica completa se hace después de instalar el fork.
+    # validación semántica completa se hace después de instalar el edit.
     if [[ ! -s "$good_file" ]]; then
         if [[ -s "$config_file" ]] \
             && awk '

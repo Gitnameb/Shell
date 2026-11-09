@@ -12,7 +12,8 @@ Shell de escritorio personal para [Umbriel](https://noctalia.dev/umbriel/)
 > El compositor es `umbriel-edit`, un **edit personal** de Umbriel para este
 > equipo. No es una versión oficial ni una versión mejorada del proyecto
 > original. Si alguien lo usa, que sea consciente de que está hecho para mis
-> necesidades.
+> necesidades. Los detalles están en [`EDIT-PERSONAL.md`](EDIT-PERSONAL.md) y
+> [`UMBRIEL-EDIT.md`](UMBRIEL-EDIT.md).
 
 ## Qué incluye
 
@@ -50,17 +51,9 @@ falta o está en pruebas está en `PENDIENTES.md`. Lo más relevante:
 - Qt 6, KDE/Breeze, NetworkManager (con `wpasupplicant`), BlueZ,
   UPower y Polkit.
 - Para el brillo: `ddcutil` y una regla de sudoers.
-- Para el fork de Umbriel: las dependencias de compilación de `meson`.
+- Para el edit de Umbriel: las dependencias de compilación de `meson`.
 
 La lista completa, por capas, está en `install/packages.txt`.
-
-### Modo ligero
-
-El instalador **no instala `plasma-workspace` ni el escritorio Plasma**. Solo
-instala las librerías y herramientas de KDE que el shell necesita (`plasma-integration`,
-Breeze, `kdialog`, `kwriteconfig6` y SDDM). Las apps KDE seguirán usando Breeze
-claro/oscuro, pero no heredarán el acento personalizado del shell; eso queda como
-mejora pendiente. El shell, Umbriel y las apps GTK no dependen de Plasma.
 
 ## Instalación
 
@@ -75,38 +68,28 @@ cd ~/Shell
 
 El instalador añade los repositorios, instala los paquetes, copia la
 configuración de usuario, crea la regla de sudoers, activa las alarmas y compila
-el fork de Umbriel. **No sobrescribe configuraciones existentes** salvo que se
+el edit de Umbriel. **No sobrescribe configuraciones existentes** salvo que se
 use `--force-config`; en ese caso guarda una copia `.bak`.
 
 `install.sh` es el punto de entrada y delega en módulos que también puedes
 ejecutar por separado:
 
 ```sh
-./scripts/install-packages.sh --dry-run   # repositorios y paquetes (instala el Umbriel oficial; después hay que reinstalar el fork)
+./scripts/install-packages.sh --dry-run   # repositorios y paquetes (instala el Umbriel oficial; después hay que reinstalar el edit)
 ./scripts/network.sh --dry-run            # red, Wi-Fi, hotspot, VPN y Bluetooth
 ./scripts/install-user-config.sh --dry-run # enlaces y configuración del HOME
-./scripts/install-umbriel-fork.sh --dry-run # compositor parcheado
+./scripts/install-umbriel-edit.sh --dry-run # Umbriel propio (edit personal)
 ```
 
-`scripts/network.sh` reinicia Quickshell al terminar si estaba abierto, para
-que vuelva a enumerar las interfaces después de reiniciar NetworkManager. Usa
-`--no-restart-shell` si prefieres reiniciarlo tú. El instalador `install.sh`
-lo ejecuta con esa opción: en una Debian limpia no hay shell abierto y la
-instalación no debe depender de que exista. El script instala también
-`dnsmasq-base` (DHCP del punto de acceso), `libspa-0.2-bluetooth` (audio
-Bluetooth), `qrencode` (QR del hotspot),
-`bluez`/`bluez-obexd` (Bluetooth) y `network-manager-openvpn` (VPN), además
-de `wpasupplicant` y `rfkill`. También detiene los servicios
-`ifup@<interfaz>` y `dhcpcd` heredados de Debian, que si no se
-detienen pueden volver a activar la Ethernet después de desconectarla. La
-vista Red solo muestra quién controla la Ethernet; si vuelve a activarse sola,
-se ejecuta otra vez `sudo ./scripts/network.sh`.
+`scripts/network.sh` instala y configura NetworkManager, Wi-Fi, hotspot, VPN y
+Bluetooth. `install.sh` lo ejecuta sin reiniciar el shell; si lo lanzas a mano,
+puedes usar `--no-restart-shell` para controlar tú el reinicio.
 
 Opciones útiles:
 
 - `--dry-run`: enseña los comandos sin ejecutarlos.
 - `--skip-packages`: solo configura y compila.
-- `--skip-fork`: no toca el compositor.
+- `--skip-edit`: no toca el compositor.
 - `--skip-disks`: no añade los discos internos NTFS a `/etc/fstab`.
 - `--skip-network`: no configura la red ni instala NetworkManager, Wi-Fi,
   hotspot, VPN ni Bluetooth.
@@ -134,9 +117,10 @@ La guía manual, con el detalle de cada paso, sigue estando en
 | `scripts/install-packages.sh` | Módulo de repositorios, paquetes y servicios. |
 | `scripts/network.sh` | Módulo de NetworkManager, Ethernet y Wi-Fi. |
 | `scripts/install-user-config.sh` | Módulo de enlaces y configuración del HOME. |
-| `scripts/install-umbriel-fork.sh` | Compila e instala el edit personal de Umbriel. |
-| `umbriel-fork.patch` | Parche del fork de Umbriel sobre `b6c4b7d`. |
-| `UMBRIEL-EDIT.md` | Qué es el edit personal, cómo publicarlo y protegerlo de `apt`. |
+| `scripts/install-umbriel-edit.sh` | Compila e instala el edit personal de Umbriel. |
+| `umbriel-edit.patch` | Parche del edit de Umbriel sobre `b6c4b7d`. |
+| `EDIT-PERSONAL.md` | Qué es este proyecto personal y cuáles son sus límites. |
+| `UMBRIEL-EDIT.md` | Qué es el edit de Umbriel, cómo publicarlo y protegerlo de `apt`. |
 | `INSTALACION.md` | Guía de instalación. |
 | `PLAN.md`, `PENDIENTES.md`, `CONTEXTO.md` | Plan, tareas e historial. |
 
@@ -152,7 +136,7 @@ No es un fork de GitHub ni una versión oficial. Es una copia modificada para
 este escritorio, con historia propia y sin relación de pull request con
 `noctalia-dev/umbriel`.
 
-`umbriel-fork.patch` se conserva como respaldo reproducible: se aplica sobre
+`umbriel-edit.patch` se conserva como respaldo reproducible: se aplica sobre
 Umbriel `b6c4b7d` y añade la barra de ventanas ampliada y el resto de cambios.
 Si el clon del edit falla, el instalador usa ese parche.
 
@@ -165,7 +149,7 @@ El shell se distribuye bajo **GNU GPL v3.0** (ver [`LICENSE`](LICENSE)). Si
 distribuyes una versión modificada, tiene que seguir siendo GPL-3.0 y con el
 código disponible.
 
-Umbriel es MIT; el parche de `umbriel-fork.patch` conserva esa licencia y su
+Umbriel es MIT; el parche de `umbriel-edit.patch` conserva esa licencia y su
 aviso de copyright. El shell no incluye binarios de `wl-clipboard`: el
 instalador usa el paquete del sistema.
 

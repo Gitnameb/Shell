@@ -1,8 +1,5 @@
 # Shell · Traspaso para la siguiente sesión
 
-> Las menciones a «ALBA» en el texto histórico se conservan como registro del
-> nombre anterior; el código y la documentación nuevos usan «shell».
-
 Documento corto para continuar sin reexplicar el proyecto. El detalle largo está
 en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
 `CONTEXTO.md` entero**: busca solo la sección que necesites.
@@ -13,7 +10,7 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   compilación del edit e incluye tamaño flotante en cambios rápidos, foco al pasar por la
   barra de título, `[animation] speed` y desenfoque «Fondo» al arrastrar. Si se
   vuelve a cambiar el parche, reinstalar con
-  `cd ~/Shell && ./scripts/install-umbriel-fork.sh --yes` y reiniciar sesión.
+  `cd ~/Shell && ./scripts/install-umbriel-edit.sh --yes` y reiniciar sesión.
 - **Animaciones, cristal, DNS y calendario (2026-11-09).** La velocidad de las
   animaciones se puede ajustar en Ajustes del shell; por defecto es 2× y el
   script escribe `[animation] speed`. El interruptor «Animaciones» escribe
@@ -40,12 +37,12 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   edit por defecto y ejecuta `mount-disks.sh --apply`; las instalaciones
   nuevas dejan los NTFS internos en `fstab` y `udiskie` monta los USB.
   `--skip-disks` lo omite. `mount-disks.sh` acepta `--only` y `--exclude`.
-- **Umbriel-edit independiente (2026-11-09).** En `~/umbriel-fork` está la
-  rama `standalone`, un único commit sin ancestros del Umbriel original, ya
-  publicada como `main` en `Gitnameb/umbriel-edit`. El repositorio se presenta
+- **Umbriel-edit independiente (2026-11-09).** En `~/umbriel-edit` está la
+  rama `main`, un único commit sin ancestros del Umbriel original, ya
+  publicada en `Gitnameb/umbriel-edit`. El repositorio se presenta
   como edit personal, no como versión oficial ni mejorada. El instalador usa
-  ese repositorio por defecto y acepta `--fork-repo`/`--fork-branch`. La rama
-  `shell-fork` se conserva solo como historial local. El binario oficial queda
+  ese repositorio por defecto y acepta `--edit-repo`/`--edit-branch`. La rama
+  `shell-edit` se conserva solo como historial local. El binario oficial queda
   protegido con `dpkg-divert`.
 - **Discos internos y USB (2026-11-09).** `scripts/mount-disks.sh` prepara
   las entradas de `/etc/fstab` para los NTFS internos, con `--dry-run` y
@@ -104,18 +101,18 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   pueden sonar con el aviso corto del sistema o con el `sound-file`/`sound-name`
   que pida la app, y se puede desactivar en Ajustes.
 
-- **Falta instalar el fork actual.** `/usr/bin/umbriel` es del 2026-11-07 y no
+- **Falta instalar el edit actual.** `/usr/bin/umbriel` es del 2026-11-07 y no
   incluye el botón de volumen de la barra de título ni los últimos cambios
-  nativos; el binario compilado está en `~/umbriel-fork/build/umbriel`
+  nativos; el binario compilado está en `~/umbriel-edit/build/umbriel`
   (2026-11-09). Ejecuta
-  `cd ~/Shell && ./scripts/install-umbriel-fork.sh --yes` y cierra sesión.
+  `cd ~/Shell && ./scripts/install-umbriel-edit.sh --yes` y cierra sesión.
   El instalador añade `"volume"` a la lista de botones si todavía tiene la
   lista por defecto. Hasta entonces, `~/.config/umbriel/config.toml` conserva
   la lista antigua para que el Umbriel instalado pueda validarla.
 - **C2 y C5 completados.** Perfiles de energía, importar/editar VPN, clima
   manual, demonio de alarmas y temporizador persistente. Se instaló
   `network-manager-openvpn` (necesario para `.ovpn`) y se habilitó
-  `shell-alarms.service`. No se tocó el fork; el binario nuevo ya está
+  `shell-alarms.service`. No se tocó el edit; el binario nuevo ya está
   cargado (ver el punto anterior).
 - El usuario confirmó que la restauración de A6 funciona. Si dudas, comprueba:
   `umbriel --version` y `ps -o etime= -p $(pgrep -x umbriel)`; si el proceso es
@@ -152,7 +149,7 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   entre mosaicos y cuatro puntos en las esquinas de la ventana flotante
   enfocada. Los dibuja Umbriel dentro del árbol de cada ventana
   (`NativeHandles`), así que se mueven y redimensionan con ella en el mismo
-  frame; el shell ya no superpone ninguna capa. En el fork, **solo la línea
+  frame; el shell ya no superpone ninguna capa. En el edit, **solo la línea
   entre mosaicos redimensiona**: la banda activa es el hueco más dos píxeles
   por lado, no los 16 px dentro de cada ventana, y los bordes exteriores no
   redimensionan. En una flotante, los cuatro puntos de esquina tienen una zona
@@ -241,10 +238,10 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   actúan sobre la que se señala y no sobre la última enfocada. La barra nativa
   y los botones quedan nítidos porque el shader se aplica
   al nodo del cliente, no al marco. Sustituye el velo del 28 % que se aplicaba
-  a todas las ventanas. El parche del fork está regenerado; falta instalar el
+  a todas las ventanas. El parche del edit está regenerado; falta instalar el
   binario nuevo (cerrar sesión) y probarlo con ratón real.
-- Fork en `~/umbriel-fork`, rama de trabajo sobre `b6c4b7d`.
-  Parche regenerable en `~/Shell/umbriel-fork.patch` (66 archivos).
+- Edit en `~/umbriel-edit`, rama de trabajo sobre `b6c4b7d`.
+  Parche regenerable en `~/Shell/umbriel-edit.patch` (66 archivos).
 - **Plataforma decidida: solo Umbriel sobre Debian.** Hyprland y cualquier otro
   compositor quedan descartados; no se mantiene ni se prueba ese backend. El
   backend antiguo de Hyprland y las capas de respaldo del shell ya se
@@ -254,14 +251,14 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   `~/.config/quickshell/shell`. Se recarga solo al guardar QML, salvo el pragma
   `UseQApplication` de `shell.qml`, que exige reiniciar el proceso.
 - **Guía de instalación limpia preparada.** `INSTALACION.md` reúne hardware,
-  repositorios, paquetes, compilación del fork, configuración de Umbriel,
+  repositorios, paquetes, compilación del edit, configuración de Umbriel,
   portales, sudoers, SDDM y copias de seguridad. Los archivos que vivían fuera
   del proyecto están guardados en `install/` (`bin/`, `config/`, `systemd/`,
   `sudoers/`, `apt/` y `packages.txt`).
 - **Instalador automático (E1).** `install.sh` es el punto de entrada y delega
   en `scripts/install-packages.sh`, `scripts/network.sh` y
-  `scripts/install-user-config.sh`; `scripts/install-umbriel-fork.sh` clona el
-  fork si hace falta, aplica el parche, compila e instala con `mv` atómico.
+  `scripts/install-user-config.sh`; `scripts/install-umbriel-edit.sh` clona el
+  edit si hace falta, aplica el parche, compila e instala con `mv` atómico.
   Instala repositorios, paquetes, configuración de usuario, sudoers y alarmas.
   Probado con `--dry-run` y con una compilación completa desde un clon limpio.
   Falta ejecutarlo de principio a fin en un Debian recién instalado.
@@ -312,9 +309,9 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   En este equipo se migraron los datos a `~/.config/shell` y
   `~/.local/state/shell`, se instalaron los `shell-*`, se creó el enlace
   `quickshell/shell` y la unidad `shell-alarms`, y la sesión se reinició con
-  `qs -c shell`. El repo ya no contiene `alba` en código ni configuración.
-  Solo quedan menciones históricas a «ALBA» en `CONTEXTO.md`, `PLAN.md` y
-  `PENDIENTES.md`, y el shader `screen.alba_display` del parche de Umbriel,
+  `qs -c shell`. El repo ya no contiene `shell` en código ni configuración.
+  Solo quedan menciones históricas a «Shell» en `CONTEXTO.md`, `PLAN.md` y
+  `PENDIENTES.md`, y el shader `screen.shell_display` del parche de Umbriel,
   que no se toca porque pertenece al compositor.
 - **Veredicto para uso principal:** sí en este equipo, con dos reservas: B3
   sigue sin probar y el instalador aún no se ha probado en limpio. B5 sí es
@@ -383,7 +380,7 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   ScreenCast abre el selector de Umbriel, deja elegir pantalla o ventana y
   `Start` devuelve un stream de HDMI-A-1 a 1920×1080. Falta la prueba final
   desde Firefox y desde una app X11. El selector y el diálogo de permiso son
-  de los portales (en inglés); el resto de ALBA sigue en castellano.
+  de los portales (en inglés); el resto de Shell sigue en castellano.
 - **B2 · No bloquear mientras hay reproducción.** La barra crea un
   `IdleInhibitor` sobre su propia superficie y lo activa con
   `MusicState.playing`, así que `swayidle` no bloquea mientras suena música o
@@ -472,10 +469,10 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   el OSD muestra el sol y el porcentaje. Verificado por IPC en anidado; falta
   la tecla física.
 - **C3 · El brillo también se lee del monitor.** `ddcutil` no avisa cuando el
-  brillo se cambia con los botones del monitor, así que ALBA relee el valor
+  brillo se cambia con los botones del monitor, así que Shell relee el valor
   cada 3 s y actualiza el deslizador. La lectura se salta mientras el shell
   escribe o está detectando. Verificado en real: se puso el monitor a 40 por
-  fuera, ALBA lo adoptó y la siguiente pulsación de brillo bajó a 35.
+  fuera, Shell lo adoptó y la siguiente pulsación de brillo bajó a 35.
 - **A7 · Cambiar la barra de ventanas no altera el mosaico.** La recarga por
   `[appearance.title_bar]` ya no borra el modo de escritorio elegido en tiempo
   de ejecución (`workspace-set-layout`): solo se rehace la disposición con el
@@ -492,7 +489,7 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   (seis muestras y `#RRGGBB`). Se guarda `wallpaperColor=` y sobrevive al
   reinicio. `shell-system-theme` verificado con GTK 3/4 y KDE.
 - **D3 · Vista general de Umbriel.** `Mod+Tab` abre/cierra la vista general;
-  los controles de ALBA pasan a `Mod+Shift+Tab`. ALBA escucha el evento
+  los controles de Shell pasan a `Mod+Shift+Tab`. Shell escucha el evento
   `overview` y cierra sus paneles al abrirse. Verificado con Alt+Tab en anidado.
 - **Puente XWayland desactivado.** `xwaylandvideobridge` servía para que las
   apps X11 (Discord, Zoom, etc.) pudieran capturar la pantalla por PipeWire;
@@ -502,7 +499,7 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   borrar ese archivo y lanzarlo.
 - **A5 · La ficha minimizada vuelve a su escritorio.** La causa era un índice en
   base 0: `scratchpad_return_index` devolvía `0` para el escritorio 1 (leído
-  como «sin origen») y `1` para el 2. Umbriel publica ahora base 1 y ALBA
+  como «sin origen») y `1` para el 2. Umbriel publica ahora base 1 y Shell
   resuelve también por nombre. No se persiste geometría por app: descartado
   como curiosidad.
 - **C1 · El orden de los controles ya se guarda.** `settings.conf` incluye
@@ -678,14 +675,14 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
 1. **No re-diagnostiques lo ya cerrado.** A6 (fichas minimizadas y
    restauración) está hecho y verificado. Si algo falla ahí, es una regresión
    nueva: revisa `ScratchpadManager::restoreView` en
-   `~/umbriel-fork/src/workspace/scratchpad.cpp`.
+   `~/umbriel-edit/src/workspace/scratchpad.cpp`.
 2. **Restaurar nunca con `window-focus`.** Enfocar una ventana del scratchpad
    muestra el pad completo. Usa siempre `umbriel restore-window <id>`
    (comando de primer nivel, **no** va dentro de `umbriel msg`).
 3. **Cambios del compositor: probar en Umbriel anidado** antes de instalar:
    ```sh
    sed 's#^autostart = .*#autostart = []#' ~/.config/umbriel/config.toml > /tmp/opencode/test.toml
-   cd /tmp/opencode && WAYLAND_DISPLAY=wayland-0 nohup ~/umbriel-fork/build/umbriel -c /tmp/opencode/test.toml -s kitty >/tmp/opencode/nested.log 2>&1 &
+   cd /tmp/opencode && WAYLAND_DISPLAY=wayland-0 nohup ~/umbriel-edit/build/umbriel -c /tmp/opencode/test.toml -s kitty >/tmp/opencode/nested.log 2>&1 &
    export UMBRIEL_SOCKET=/run/user/1000/umbriel-wayland-1.sock
    ```
    Captura con `WAYLAND_DISPLAY=wayland-1 grim /tmp/opencode/x.png`. Al
@@ -696,16 +693,16 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
    Para ver el cromo superpuesto, `wtype -M alt -s 2500 x` mantiene Alt
    pulsado durante 2,5 s; captura mientras duerme. Si sueltas antes, la barra
    desaparece y la captura sale sin ella.
-4. **El puntero virtual (`wlrctl`) no sirve para clics en capas de ALBA** en la
+4. **El puntero virtual (`wlrctl`) no sirve para clics en capas de Shell** en la
    sesión real: mueve el cursor y revela la barra, pero los clics no llegan a
    las layer surfaces. Los clics de barra/paneles se validan con ratón físico o
    con `qs ipc -c shell call ...`.
-5. **Instalar el fork solo con `mv` atómico** (no se puede sobrescribir el
+5. **Instalar el edit solo con `mv` atómico** (no se puede sobrescribir el
    binario en uso):
    ```sh
-   cd ~/umbriel-fork && ninja -C build
+   cd ~/umbriel-edit && ninja -C build
    sudo cp build/umbriel /usr/bin/umbriel.new && sudo mv -f /usr/bin/umbriel.new /usr/bin/umbriel
-   git diff b6c4b7d > ~/Shell/umbriel-fork.patch
+   git diff b6c4b7d > ~/Shell/umbriel-edit.patch
    ```
    La contraseña de sudo está en `~/.config/shell/credenciales` (modo 600).
    Tras instalar, **cerrar sesión y volver a entrar**: el compositor en marcha
@@ -735,7 +732,7 @@ adjunta captura. No abras una investigación larga sin evidencia.
 
 ### 1b. Verificar en real la barra de ventanas y el fondo (5 min)
 Tras cerrar sesión y volver a entrar:
-- Mantener Mod: la barra de ALBA aparece y, sobre cada ventana, dos píldoras
+- Mantener Mod: la barra de Shell aparece y, sobre cada ventana, dos píldoras
   nativas separadas: icono y título a la izquierda, botones a la derecha. El
   contenido no se desplaza. El botón de mover muestra `#`.
 - Soltar Mod: los controles desaparecen y la ventana recupera su contenido
@@ -762,7 +759,7 @@ Tras cerrar sesión y volver a entrar:
   «Flotante» e «Integrado» en Ajustes. La ventana debe seguir en mosaico y solo
   recolocarse. El binario nuevo ya está cargado.
 - **Brillo:** cambiar el brillo con los botones físicos del monitor y esperar
-  unos segundos; el deslizador de ALBA debe reflejar el valor. Después subir o
+  unos segundos; el deslizador de Shell debe reflejar el valor. Después subir o
   bajar desde el shell y comprobar que el monitor lo sigue.
 - **Escritorio:** arrastrar un archivo desde Dolphin a una zona libre del
   escritorio y comprobar que aparece. Arrastrar dos con el mismo nombre no debe
@@ -777,28 +774,28 @@ Tras cerrar sesión y volver a entrar:
   el nombre y el arranque automático, guardar y borrar el perfil.
 - Reloj → Clima → «Cambiar», escribir una ciudad y pulsar Aplicar; vaciar y
   aplicar para volver a la detección por IP.
-- Reloj → Alarmas: programar una para el minuto siguiente, cerrar ALBA
+- Reloj → Alarmas: programar una para el minuto siguiente, cerrar Shell
   (`qs -c shell kill`) y comprobar que el demonio avisa y suena. Arrancar un
-  temporizador, cerrar ALBA y volver a abrirla: debe seguir la cuenta atrás.
+  temporizador, cerrar Shell y volver a abrirla: debe seguir la cuenta atrás.
 
 ### 2. A5 · Persistencia de ventanas (hecho)
 - Causa real: Umbriel publicaba `scratchpad_return_index` en base 0 (la primera
-  ventana devolvía `0`, que ALBA interpretaba como «sin origen»; la del
-  escritorio 2 devolvía `1`, un escritorio antes). Al reiniciar ALBA se perdía
+  ventana devolvía `0`, que Shell interpretaba como «sin origen»; la del
+  escritorio 2 devolvía `1`, un escritorio antes). Al reiniciar Shell se perdía
   el mapa en memoria y la ficha desaparecía de la barra, aunque la ventana
   siguiera en el scratchpad y se pudiera restaurar desde Ajustes.
 - Arreglo en Umbriel: `ScratchpadManager::returnWorkspaceIndexFor` ya no trata
   el índice 0 como ausencia (usa el nombre vacío) y el IPC publica
   `scratchpad_return_index` en base 1, igual que el campo `index` de
   `workspaces`. Documentado en `docs/user/ipc.md`.
-- Respaldo en ALBA: `UmbrielBackend.qml` resuelve primero
+- Respaldo en Shell: `UmbrielBackend.qml` resuelve primero
   `scratchpad_return_name` a índice con `workspaceIndexByName`, así también
   funciona con binarios antiguos.
 - No se guarda `windows.json` ni geometría por app. **Curiosidad descartada:**
   recordar la geometría de cada app entre sesiones choca con el tamaño por
   defecto de A20 y con las reglas de ventana de Umbriel; no se hará.
 - Verificado en anidado y confirmado por el usuario en la sesión real: tras
-  minimizar, reiniciar ALBA y consultar `windows status`, la ventana aparece
+  minimizar, reiniciar Shell y consultar `windows status`, la ventana aparece
   con `origin=1` y la ficha sigue en su escritorio. Restaurar funciona.
 
 ### 3. C1 · Persistir el orden de controles (hecho)
@@ -807,7 +804,7 @@ Tras cerrar sesión y volver a entrar:
 - `SettingsState.qml` escribe `barControls=` y `centerOrder=` en
   `settings.conf`, los lee al arrancar y guarda cuando cambian.
 - Ajustes → «Orden de los controles» → «Restablecer» vuelve a los defaults.
-- Verificado en anidado con `barControls=cpu`: tras reiniciar ALBA, la barra
+- Verificado en anidado con `barControls=cpu`: tras reiniciar Shell, la barra
   mostró solo ese control y el centro recibió el resto. Falta probar en real
   el reordenado con ratón y «Restablecer».
 
@@ -819,8 +816,8 @@ Tras cerrar sesión y volver a entrar:
   en real con KDE Connect; al cerrar la app de prueba desaparece el chevron.
 - C3: OSD de brillo con paso del 5 %. Falta la tecla física.
 - C4: fondo por color con muestras y `#RRGGBB`; GTK/KDE verificados en real.
-- D3: `Mod+Tab` abre la vista general de Umbriel y ALBA cierra sus paneles al
-  recibir el evento `overview`; los controles de ALBA pasan a `Mod+Shift+Tab`.
+- D3: `Mod+Tab` abre la vista general de Umbriel y Shell cierra sus paneles al
+  recibir el evento `overview`; los controles de Shell pasan a `Mod+Shift+Tab`.
   Verificado en real con Super+Tab.
 
 ### 5. B1 · Pruebas físicas de teclado y ratón (S)
@@ -828,7 +825,7 @@ Tras cerrar sesión y volver a entrar:
 - Toque de `Mod` abre el lanzador; mantener `Mod` muestra controles; un atajo
   como `Mod+Return` **no** debe abrir el lanzador al soltar.
 - `Mod+Tab` abre la vista general de Umbriel; `Mod+Shift+Tab` fija los
-  controles de ALBA; `Mod+Shift+W`, `Mod+1..9`.
+  controles de Shell; `Mod+Shift+W`, `Mod+1..9`.
 - Teclas de volumen, brillo y silencio del micrófono.
 - Ratón físico en barra, menú contextual y centro de control.
 - Aceptación: cada punto probado y anotado como OK/fallo en `PLAN.md` (B1).
@@ -874,13 +871,13 @@ Tras cerrar sesión y volver a entrar:
 ### 8. Opcionales (no empezar sin pedirlo)
 - D1 fase 2 (recolocar iconos y persistir posiciones), D2 apps web, E3 prueba
   automática y E4 reversión.
-- **Instalación limpia:** `install.sh` y `scripts/install-umbriel-fork.sh`
+- **Instalación limpia:** `install.sh` y `scripts/install-umbriel-edit.sh`
   automatizan el proceso; la guía manual está en `INSTALACION.md` y los
   archivos de sistema en `install/`. Antes de formatear, seguir la sección de
   copias y comprobar B3/B5. Falta probar el instalador en una VM o disco
   aparte, y probar la reversión (E4).
 - **Acento de KDE sin `plasma-workspace`:** pendiente. Sin ese paquete, las
-  apps KDE usan Breeze pero no el acento de ALBA. Alternativas a estudiar:
+  apps KDE usan Breeze pero no el acento de Shell. Alternativas a estudiar:
   generar un `.colors` propio en `~/.local/share/color-schemes`, `matugen` o
   `wallust`. No instalar `plasma-workspace` solo por esto.
 - **D1 fase 2 aparcada por decisión del usuario (2026-11-05):** se retoma al
@@ -957,7 +954,7 @@ systemctl --user show umbriel.service -p ExecStartPre
 tail -20 ~/.local/state/shell/config-guard.log
 tail -20 ~/.local/state/shell/config-writer.log
 
-# log de ALBA
+# log de Shell
 L=$(ls -t /run/user/1000/quickshell/by-id/*/log.qslog | head -1); tail -50 "$L"
 ```
 
@@ -1006,12 +1003,12 @@ L=$(ls -t /run/user/1000/quickshell/by-id/*/log.qslog | head -1); tail -50 "$L"
   `extra_dim` y `warm`.
 - `~/Shell/WindowActions.qml` — lista única de acciones de ventana para la
   barra de título y el clic derecho.
-- `~/umbriel-fork/src/workspace/scratchpad.cpp` — ocultar/mostrar/restaurar.
-- `~/umbriel-fork/src/view/view_chrome.cpp` y `src/scene/ssd_frame.cpp` — barra
+- `~/umbriel-edit/src/workspace/scratchpad.cpp` — ocultar/mostrar/restaurar.
+- `~/umbriel-edit/src/view/view_chrome.cpp` y `src/scene/ssd_frame.cpp` — barra
   nativa flotante o integrada; al alternar se recoloca el espacio de trabajo.
 - `~/.config/umbriel/config.toml` — `[appearance.title_bar] overlay` guarda el
   estilo elegido (true = flotante, false = integrado).
-- `~/umbriel-fork/src/server/ipc_commands.cpp` — `restore-window` y campos
+- `~/umbriel-edit/src/server/ipc_commands.cpp` — `restore-window` y campos
   `scratchpad_return_*`.
 - `~/Documents/Desktop.html` — maqueta de referencia.
 
@@ -1022,7 +1019,7 @@ L=$(ls -t /run/user/1000/quickshell/by-id/*/log.qslog | head -1); tail -50 "$L"
    aceptación real.
 3. Añade una entrada breve al final de `CONTEXTO.md` solo si hubo un hallazgo
    o un fallo que convenga recordar.
-4. Si tocaste el fork: recompila, instala atómicamente, regenera el parche y
+4. Si tocaste el edit: recompila, instala atómicamente, regenera el parche y
    avisa de que hace falta cerrar sesión.
 5. Si tocaste la configuración de Umbriel o sus escritores, ejecuta
    `./scripts/test-config-set.sh`, `./scripts/test-config-writers.sh` y

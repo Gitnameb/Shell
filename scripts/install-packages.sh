@@ -2,7 +2,7 @@
 # Módulo de paquetes del instalador del shell.
 #
 # Añade los repositorios necesarios y instala todo lo que necesita el shell,
-# el compositor y el fork de Umbriel. Lo llama install.sh; también se puede
+# el compositor y el edit de Umbriel. Lo llama install.sh; también se puede
 # ejecutar solo:
 #
 #   ./scripts/install-packages.sh --dry-run
@@ -122,7 +122,7 @@ MESA_BACKPORTS_PKGS=(
 RUNTIME_PKGS=(
     ddcutil brightnessctl libnotify-bin fonts-inter-variable wvkbd swayidle foot
     power-profiles-daemon
-    iputils-ping wl-clipboard cliphist udiskie python3 curl
+    iputils-ping wl-clipboard cliphist udiskie udisks2 ntfs-3g exfatprogs usbutils python3 curl
     qml6-module-qtquick-effects
     qml6-module-qt-labs-folderlistmodel
     xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-kde
@@ -221,13 +221,13 @@ run_sudo systemctl enable --now power-profiles-daemon \
 # NetworkManager y bluetooth los activa scripts/network.sh después de
 # instalar sus paquetes.
 
-# El paquete oficial de Umbriel no trae el fork. Ejecutar este módulo solo
-# (en vez de install.sh) lo deja instalado y el fork desaparece hasta que se
-# vuelva a ejecutar install-umbriel-fork.sh.
+# El paquete oficial de Umbriel no trae el edit. Ejecutar este módulo solo
+# (en vez de install.sh) lo deja instalado y el edit desaparece hasta que se
+# vuelva a ejecutar install-umbriel-edit.sh.
 if command -v umbriel >/dev/null 2>&1 \
     && ! umbriel config schema --json 2>/dev/null | grep -q '"animation.speed"'; then
-    warn "El paquete oficial de Umbriel ha sustituido el fork."
-    warn "Ejecuta ./scripts/install-umbriel-fork.sh --yes antes de reiniciar."
+    warn "El paquete oficial de Umbriel ha sustituido el edit."
+    warn "Ejecuta ./scripts/install-umbriel-edit.sh --yes antes de reiniciar."
 fi
 
 log "Paquetes instalados."

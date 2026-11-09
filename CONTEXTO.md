@@ -1,22 +1,10 @@
 # Shell · Contexto del proyecto
 
-> Las menciones a «ALBA» en el texto histórico se conservan como registro del
-> nombre anterior; el código y la documentación nuevos usan «shell». La ruta
-> antigua `~/Shell` corresponde ahora a `~/Shell`.
->
-> Documento vivo. Si algo no está aquí, probablemente se nos olvidó.
-> Última actualización: 2026-11-05
->
-> **Plataforma decidida (2026-11-05):** solo Umbriel sobre Debian. Hyprland y
-> cualquier otro compositor quedan descartados y no se mantienen. Las
-> menciones históricas a Hyprland que aparecen más abajo se conservan solo como
-> registro; no son objetivos de trabajo.
-
 ## 1. Objetivo
 
-Construir **ALBA**, un escritorio Wayland con **Quickshell desde cero**, inspirado en el
+Construir **Shell**, un escritorio Wayland con **Quickshell desde cero**, inspirado en el
 mockup `~/Documents/Desktop.html` (“Noctalia OS — Mockup v0”), pero **sin** depender de
-Noctalia ni de la antigua barra ALBA en Rust/GTK4.
+Noctalia ni de la antigua barra Shell en Rust/GTK4.
 
 Prioridad acordada:
 
@@ -27,7 +15,7 @@ Prioridad acordada:
 ## 2. Decisiones tomadas
 
 - Shell: **Quickshell** (QML/Qt Quick) desde cero.
-- Compositor: **Umbriel sobre Debian** es el único objetivo. ALBA conserva un
+- Compositor: **Umbriel sobre Debian** es el único objetivo. Shell conserva un
   **`CompositorState.qml`** de fachada, pero ya no se mantiene ningún otro
   backend. Hyprland, KWin y SwayFX quedan descartados. La interfaz solo consulta
   capacidades (`nativeTitlebar`, `superHold`, `nativeMinimize`, `snapZones`,
@@ -46,7 +34,7 @@ Prioridad acordada:
   El shell no dibuja su contenido.
 - La barra de ventanas, el tiling, el pin, el movimiento entre escritorios y el
   minimizar son responsabilidad de **Hyprland** + scripts/overlays, no de Quickshell.
-- El proyecto viejo **ALBA en Rust/GTK4** (`~/alba`, `~/Documents/instalar-shell-completo.sh`)
+- El proyecto viejo **Shell en Rust/GTK4** (`~/shell`, `~/Documents/instalar-shell-completo.sh`)
   queda como referencia y respaldo. No se borra.
 - El mockup incluye una función de “apps web” solo para demos; no es prioridad.
 - Un control del centro de control solo puede estar en un sitio: si se arrastra a la
@@ -256,7 +244,7 @@ Prioridad acordada:
   - Barra de título nativa (`mode = "forced"`, 34 px) que **reserva espacio**: el
     contenido empieza debajo, no se superpone.
   - Layout por escritorio: `stacking` (Flotante) y `dwindle` (Mosaico).
-  - Autostart de ALBA mediante `~/.local/bin/shell-start`.
+  - Autostart de Shell mediante `~/.local/bin/shell-start`.
   - Teclado en español: `[input.keyboard] layout = "es"`.
 - Hyprland (respaldo): `0.55.2+ds-1~bpo13+1` desde `trixie-backports`.
   - Config actual: `~/.config/hypr/hyprland.conf` (valida: `config ok`).
@@ -296,22 +284,22 @@ Prioridad acordada:
 | Ruta | Qué es |
 |---|---|
 | `~/Documents/Desktop.html` | Mockup de referencia (541 KB). Barra inferior, paneles, launcher, centro de control, notificaciones, iconos, ventanas, ajustes. |
-| `~/Documents/instalar-shell-completo.sh` | Instalador de la ALBA vieja (Rust + GTK4 + gtk4-layer-shell). Referencia de funciones y atajos. |
-| `~/alba/` | Código viejo de la barra ALBA en Rust/GTK4. Respaldo, no se toca. |
+| `~/Documents/instalar-shell-completo.sh` | Instalador de la Shell vieja (Rust + GTK4 + gtk4-layer-shell). Referencia de funciones y atajos. |
+| `~/shell/` | Código viejo de la barra Shell en Rust/GTK4. Respaldo, no se toca. |
 | `~/.config/hypr/hyprland.conf` | Config actual de Hyprland. Tiene atajos y autostart de la barra vieja. |
 | `~/.config/shell/` | Scripts de la barra vieja (`alternar-autoocultar.sh`, etc.). Referencia. |
 | `~/Shell/` | **Este proyecto**: documentación + configuración de Quickshell. |
-| `~/Shell/INSTALACION.md` | Guía de instalación limpia: hardware, repos, paquetes, fork, configuración, portales, backups y verificación. |
+| `~/Shell/INSTALACION.md` | Guía de instalación limpia: hardware, repos, paquetes, edit, configuración, portales, backups y verificación. |
 | `~/Shell/install/` | Archivos de sistema guardados para la reinstalación: scripts de `~/.local/bin`, config de Umbriel, portales, unidad de alarmas, fuentes APT y sudoers. |
-| `~/.config/umbriel/config.toml` | Config de la sesión Umbriel: barra nativa, colores, teclado `es`, atajos y autostart de ALBA. |
+| `~/.config/umbriel/config.toml` | Config de la sesión Umbriel: barra nativa, colores, teclado `es`, atajos y autostart de Shell. |
 | `~/.local/bin/shell-start` | Arranca `qs -c shell -d` dentro de Umbriel con el tema Qt y el tema de iconos. |
 | `~/.local/bin/shell-keyboard-layout` | Cambia `[input.keyboard] layout` y recarga Umbriel. |
 | `~/.local/bin/shell-idle` | Arranca `swayidle` con el tiempo de bloqueo elegido y lanza `hyprlock`. |
-| `~/.local/bin/shell-umbriel-theme` | Sincroniza los colores de la barra nativa con el modo y el acento de ALBA. |
-| `~/umbriel-fork/` | Código de Umbriel con el fork de la barra (icono, subtítulo, seis botones). |
-| `~/Shell/umbriel-fork.patch` | Parche reproducible del fork sobre Umbriel `b6c4b7d`. |
+| `~/.local/bin/shell-umbriel-theme` | Sincroniza los colores de la barra nativa con el modo y el acento de Shell. |
+| `~/umbriel-edit/` | Código de Umbriel con el edit de la barra (icono, subtítulo, seis botones). |
+| `~/Shell/umbriel-edit.patch` | Parche reproducible del edit sobre Umbriel `b6c4b7d`. |
 | `~/Shell/PLAN.md` | Plan por fases de lo que queda por integrar. |
-| `/usr/bin/umbriel` | Binario del fork instalado; el original queda en `/usr/bin/umbriel.stock-0.1.0`. |
+| `/usr/bin/umbriel` | Binario del edit instalado; el original queda en `/usr/bin/umbriel.stock-0.1.0`. |
 
 ## 5. Arquitectura
 
@@ -675,7 +663,7 @@ compositor; si es el contenido de una app → la app.**
     los teclados conectados sin reiniciar. Se guarda en `settings.conf` y se vuelve a
     aplicar al arrancar el shell. Hay 12 distribuciones en la vista **Teclado** y un
     botón **Cambiar** en Ajustes. El `hyprland.conf` sigue con `es`; si se elige otra,
-    el cambio efectivo llega cuando ALBA arranca.
+    el cambio efectivo llega cuando Shell arranca.
 58. **Portapapeles**: Quickshell expone `clipboardText`, pero en Wayland se queda
     vacío si ninguna ventana de Quickshell tiene el foco, así que no sirve para
     vigilar lo que copian otras apps. Se incluyeron `wl-paste` y `wl-copy` de
@@ -745,7 +733,7 @@ qs kill -c shell   # o: pkill -f 'qs -c shell'
 
 ```bash
 qs list --all                                  # instancias vivas
-qs log -c shell                                 # logs de ALBA
+qs log -c shell                                 # logs de Shell
 qs ipc -c shell --any-display call launcher toggle
 qs ipc -c shell --any-display call notifications toggle
 qs ipc -c shell --any-display call calendar toggle
@@ -757,10 +745,10 @@ prueba anidada) pero `qs` se ejecuta desde la sesión KDE.
 ### Prueba aislada (sin cerrar la sesión principal)
 
 Para iterar sobre Umbriel sin reiniciar la sesión se arranca un Umbriel anidado
-dentro de la sesión actual y se lanza una copia de ALBA con su propio socket:
+dentro de la sesión actual y se lanza una copia de Shell con su propio socket:
 
 ```bash
-# Config de prueba sin autostart (el ALBA real ya corre en la sesión padre)
+# Config de prueba sin autostart (el Shell real ya corre en la sesión padre)
 python3 - <<'EOF'
 src = open('/home/username/.config/umbriel/config.toml').read()
 open('/tmp/opencode/umbriel-test.toml','w').write(
@@ -857,7 +845,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 - Symlink de configuración: `~/.config/quickshell/shell -> ~/Shell`.
 - `~/.config/hypr/hyprland.conf`: limpio, sin la barra vieja, con
   `env = QT_QPA_PLATFORMTHEME,kde`, `exec-once = env QS_ICON_THEME=breeze-dark qs -c shell`
-  y atajos de ALBA.
+  y atajos de Shell.
 - Barra, lanzador, notificaciones, calendario, menú de energía y bloqueo: **funcionando
   y verificados en la sesión Hyprland real**.
 - Panel del reloj: **calendario, clima, alarmas y temporizador** verificados con
@@ -1074,7 +1062,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 | `Pill.qml` | Contenedor de widgets de la barra, con relleno horizontal configurable y envío de la posición al arrastrar. |
 | `scripts/test-nested.sh` | Prueba aislada con Hyprland anidado y capturas. |
 | `~/.config/hypr/hyprlock.conf` | Pantalla de bloqueo. |
-| `~/.config/hypr/fecha-alba.sh` | Fecha en español para hyprlock. |
+| `~/.config/hypr/fecha-shell.sh` | Fecha en español para hyprlock. |
 
 ## 10. Preguntas abiertas
 
@@ -1647,7 +1635,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   visualmente con captura: el modal centra las dos tarjetas y el botón de elección.
 - **Barra de título.** `Automática` la muestra al mantener Super, `Siempre` la deja
   fija en ventanas flotantes y `Nunca` deja solo los controles de Super. Es una barra
-  de ALBA, no un plugin del compositor: cubre los primeros 32 px de la ventana, igual
+  de Shell, no un plugin del compositor: cubre los primeros 32 px de la ventana, igual
   que la cabecera flotante del mockup. Verificado en las tres opciones; no se probó
   todavía con ratón físico.
 - **Backend de Umbriel.** `UmbrielBackend.qml` usa el IPC documentado
@@ -1673,7 +1661,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 
 ### 2026-11-04 · Migración a Umbriel y barra de título nativa
 
-- **Motivo.** La barra de título de ALBA era una superficie encima de la ventana:
+- **Motivo.** La barra de título de Shell era una superficie encima de la ventana:
   tapaba los primeros píxeles del contenido. El requisito es que la decoración
   reserve su propio espacio, como en el mockup. Se cambia el foco a Umbriel y se
   conserva Hyprland como respaldo en SDDM.
@@ -1691,7 +1679,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 - **Barra nativa verificada.** `[appearance.title_bar]` con `mode = "forced"` y
   34 px dibuja título a la izquierda y minimizar/maximizar/cerrar a la derecha.
   La captura del Umbriel anidado confirma que el contenido empieza **debajo** de
-  la barra. Los colores siguen la paleta de ALBA.
+  la barra. Los colores siguen la paleta de Shell.
 - **Backend de Umbriel corregido.** `umbriel windows --json` y
   `umbriel workspaces --json` devuelven un array directo, no `{ "ok": [...] }`.
   También se aceptan las dos formas. Los identificadores de escritorio son
@@ -1700,7 +1688,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   maximizar, pantalla completa, fijar, mover a escritorio (silencioso), cambiar
   layout del escritorio, mover a scratchpad y restaurar.
 - **Minimizar en mosaico.** `window-minimize` solo acepta ventanas flotantes. Para
-  las mosaicadas, ALBA las enfoca y las mueve al scratchpad por defecto; al
+  las mosaicadas, Shell las enfoca y las mueve al scratchpad por defecto; al
   restaurar, las enfoca y las devuelve a su escritorio de origen. Se guarda el
   escritorio de origen en memoria hasta que la ventana vuelve.
 - **Modos por escritorio nativos.** `CompositorState.setWorkspaceMode()` traduce
@@ -1711,7 +1699,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   `dwindle`, con las ventanas pasando de flotantes a mosaicadas.
 - **Sin doble decoración.** Con `nativeTitlebar: true`, `WindowChrome.qml` no crea
   ninguna superficie y el centro de control y el modal de bienvenida ocultan los
-  ajustes de barra propia. La barra de ALBA y la nativa conviven.
+  ajustes de barra propia. La barra de Shell y la nativa conviven.
 - **Ventanas nuevas.** `scanNewWindows()` se desactiva cuando el compositor tiene
   layouts nativos (`autoFloatNewWindows: false`); el layout del escritorio decide.
 - **Teclado.** Umbriel no tiene una acción para fijar un layout concreto, solo
@@ -1727,12 +1715,12 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   `[keybinds]` de la config de Umbriel.
 - **Límites actuales.** Falta probar la sesión real desde SDDM, el ratón físico y
   el arranque automático fuera del entorno anidado. El botón de minimizar de la
-  barra nativa no aparece en ventanas mosaicadas; ALBA ofrece esa ruta desde la
+  barra nativa no aparece en ventanas mosaicadas; Shell ofrece esa ruta desde la
   ficha de la app. El mapa de minimizadas sigue en memoria. La barra nativa
   estándar no muestra icono de app, subtítulo ni los seis botones del mockup:
-  eso requiere el fork del decorado.
+  eso requiere el edit del decorado.
 
-### 2026-11-04 · Fork del decorado nativo (icono, subtítulo y seis botones)
+### 2026-11-04 · Edit del decorado nativo (icono, subtítulo y seis botones)
 
 - **Qué se modificó.** Sobre Umbriel `b6c4b7d` se parcheó el decorado del
   servidor (`src/scene/ssd_frame.*`, `ssd_frame_geometry.*`,
@@ -1747,7 +1735,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   - **Minimizar en mosaico.** El botón ya no se oculta en ventanas mosaicadas:
     si Umbriel no puede minimizar de forma nativa, la ventana se mueve al
     scratchpad por defecto. Se restaura con `window-focus` +
-    `window-restore-from-scratchpad`, igual que desde ALBA.
+    `window-restore-from-scratchpad`, igual que desde Shell.
   - **Subtítulo** a la derecha del título, en la misma línea, con
     `app_id · escritorio`, como el `.win-sub` del mockup.
   - **Icono real de la app**: `.desktop` → `Icon=` → tema de iconos
@@ -1765,7 +1753,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   `nlohmann-json3-dev`, `libgdk-pixbuf-2.0-dev`.
 - **Compilar e instalar.**
   ```sh
-  cd ~/umbriel-fork
+  cd ~/umbriel-edit
   meson setup build --prefix=/usr --buildtype=release
   ninja -C build
   sudo cp build/umbriel /usr/bin/umbriel   # el original está en umbriel.stock-0.1.0
@@ -1774,7 +1762,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   flotar, fijar, mover (abre la vista general) y minimizar una ventana
   mosaicada (se va al scratchpad y vuelve a su escritorio). El icono se probó
   con `kitty` y `KCalc`; el subtítulo cambia con la app y el escritorio.
-- **Adaptaciones de ALBA al backend.** Las píldoras de escritorio leían
+- **Adaptaciones de Shell al backend.** Las píldoras de escritorio leían
   `Hyprland.workspaces` directamente; ahora usan `CompositorState.workspaces`, así
   los iconos de las ventanas aparecen también en Umbriel. El menú contextual de las
   fichas ya no depende de `HyprlandFocusGrab`: en Umbriel ocupa la pantalla con un
@@ -1783,19 +1771,19 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   camino. Verificado con clic derecho real: el menú abre y cierra al pulsar fuera.
 - **Tema de la barra nativa.** `~/.local/bin/shell-umbriel-theme` reescribe
   `[colors]`, `[colors.border]` y `[colors.title_bar]` con los colores del modo
-  claro/oscuro y el acento de ALBA, y ejecuta `umbriel msg config-reload`.
+  claro/oscuro y el acento de Shell, y ejecuta `umbriel msg config-reload`.
   `SettingsState.requestShellTheme()` lo llama al arrancar y al cambiar de modo o
   acento (con 220 ms de retardo). Verificado en Umbriel anidado: el modo claro
   deja la barra clara con texto oscuro y el oscuro la devuelve a gris muy oscuro.
-- **Límites del fork.**
+- **Límites del edit.**
   - `move` abre la vista general, no un menú de escritorios; mover a un
-    escritorio concreto sigue en el menú contextual de la ficha de ALBA.
+    escritorio concreto sigue en el menú contextual de la ficha de Shell.
   - No hay botón de volumen por ventana (el mockup lo tiene para apps web).
   - La lista de temas de iconos es fija; si un icono vive en otro tema, no se
     encuentra.
   - `apt upgrade` puede sobrescribir `/usr/bin/umbriel`. Tras actualizar el
-    paquete hay que recompilar el fork o restaurar el binario original.
-  - El fork está sobre `main` de Umbriel, no sobre la etiqueta exacta del
+    paquete hay que recompilar el edit o restaurar el binario original.
+  - El edit está sobre `main` de Umbriel, no sobre la etiqueta exacta del
     paquete; al actualizar Umbriel habrá que rebasar el parche.
 
 ### 2026-11-04 · Menú contextual anclado a la barra
@@ -1834,9 +1822,9 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   movió al scratchpad por IPC.
 - **Plan.** Se creó `PLAN.md` con el estado real, las fases A–E y las
   decisiones pendientes (estilo de botones, volumen por ventana, bloqueo
-  automático, iconos de escritorio y mantenimiento del fork).
-- **Parche.** `umbriel-fork.patch` se regeneró como diff completo desde
-  `b6c4b7d` e incluye los dos commits del fork. El binario instalado es
+  automático, iconos de escritorio y mantenimiento del edit).
+- **Parche.** `umbriel-edit.patch` se regeneró como diff completo desde
+  `b6c4b7d` e incluye los dos commits del edit. El binario instalado es
   `3ec9f65cc368`. Los cambios de iconos y tamaños requieren reiniciar la
   sesión (el compositor no puede recargar su propio binario).
 
@@ -1873,9 +1861,9 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   `tap`.
 - **`tap` sin falsos positivos.** Umbriel marca el gesto como limpio solo si
   Mod se pulsó sin otros modificadores y no se pulsó ninguna otra tecla ni el
-  ratón después. Al soltar, ALBA abre el lanzador únicamente si el gesto sigue
+  ratón después. Al soltar, Shell abre el lanzador únicamente si el gesto sigue
   siendo limpio. `Super+Return`, `Super+1` y compañía no abren el lanzador.
-- **ALBA se suscribe** a `umbriel subscribe modifiers` desde `UmbrielBackend`
+- **Shell se suscribe** a `umbriel subscribe modifiers` desde `UmbrielBackend`
   y traduce el evento a `SuperState.press()` / `release(tap)`. Al mantener
   Super, la píldora del escritorio activo muestra el cambio de modo; si la
   barra está en autoocultar, también se revela. `Mod+Tab` sigue fijando los
@@ -1886,7 +1874,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   lanzador como antes. `Mod+Space` no cambia.
 - **Robustez.** Si desaparece el teclado que mantenía Mod (por ejemplo, un
   teclado virtual que se desconecta), el compositor emite el estado nuevo para
-  que el overlay no se quede pegado. También hay reintentos limitados si ALBA
+  que el overlay no se quede pegado. También hay reintentos limitados si Shell
   arranca antes de que exista el socket del compositor.
 - **Hoja de atajos.** `show_cheatsheet = false`; se abre a demanda con
   `Mod+F1`. Así el escritorio no arranca con una capa de teclas encima.
@@ -1938,7 +1926,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 - **Botón «Mover».** Ya no abre la vista general. Umbriel emite el evento
   `move_menu` (nuevo bit de suscripción, nombre incluido en
   `umbriel subscribe`), con `window`, `x`, `y` y un `serial` que evita que el
-  filtro de eventos duplicados descarte dos aperturas iguales. ALBA lo escucha
+  filtro de eventos duplicados descarte dos aperturas iguales. Shell lo escucha
   en `UmbrielBackend` y `MoveMenuState` abre `WorkspacePicker`: tarjeta de
   46 px con los escritorios 1–9, el actual resaltado con el acento y el mismo
   tamaño de fila y número que el mockup. Elegir otro escritorio desancla si
@@ -1961,16 +1949,16 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 - **Nota de mantenimiento.** `umbriel config-replace` borra los overrides de
   layout de los escritorios. Tras usarlo para una prueba, hay que volver a
   aplicar los modos con `qs ipc -c shell call windows mode <n> <modo>` o
-  reiniciar ALBA. Esta vez se restauró la configuración real y se reaplicaron
+  reiniciar Shell. Esta vez se restauró la configuración real y se reaplicaron
   los nueve modos.
 
 ### 2026-11-05 · Fichas minimizadas y restauración exacta
 
 - **La ficha ya no desaparece.** Al minimizar una ventana mosaicada, Umbriel
-  la aparca en el scratchpad y su `workspace` queda vacío; antes ALBA perdía el
+  la aparca en el scratchpad y su `workspace` queda vacío; antes Shell perdía el
   escritorio de origen y la ficha se iba de la barra. Ahora Umbriel publica
   `scratchpad_return_index` y `scratchpad_return_name` en `windows --json`, y
-  ALBA usa ese destino como origen. Como respaldo guarda el último escritorio
+  Shell usa ese destino como origen. Como respaldo guarda el último escritorio
   real visto para cada ventana, así también funciona con binarios anteriores.
   La ficha se queda en la barra al 40 % de opacidad (85 % al pasar el ratón,
   como el mockup).
@@ -1983,7 +1971,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   También desminimiza las ventanas flotantes nativas.
 - **Todo usa el mismo camino.** La barra, el centro de control y «Enfocar»
   sobre una minimizada llaman a `restore-window`; si el compositor aún no tiene
-  el comando, ALBA cae al camino anterior. En el backend, toda ventana del
+  el comando, Shell cae al camino anterior. En el backend, toda ventana del
   scratchpad cuenta como minimizada, incluso si el compositor la está mostrando
   temporalmente, para que se pueda restaurar y la ficha siga atenuada.
 - **Verificación.** En Umbriel anidado con dos kitty en el escritorio 1: una
@@ -1994,7 +1982,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   deshizo sin dejar ventanas sueltas.
 - **Instalado.** `/usr/bin/umbriel` es ahora `f0d803b0e1e2`. La sesión abierta
   sigue con el proceso anterior hasta cerrar sesión; el respaldo de stock está
-  en `/usr/bin/umbriel.stock-0.1.0`. El parche del fork incluye ahora 21
+  en `/usr/bin/umbriel.stock-0.1.0`. El parche del edit incluye ahora 21
   archivos.
 
 ### 2026-11-05 · La ventana restaurada vuelve a dibujarse
@@ -2023,7 +2011,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   recuperaron en caliente con el camino antiguo (enfocar, mover al
   scratchpad, enfocar para mostrarlo y restaurar), sin cerrar sesión.
 - **Instalado.** `/usr/bin/umbriel` es ahora `cb8c75ec5f21`; el parche del
-  fork sigue con 21 archivos. Para que el compositor en marcha use el arreglo
+  edit sigue con 21 archivos. Para que el compositor en marcha use el arreglo
   hay que cerrar sesión y volver a entrar.
 
 ### 2026-11-05 · Cromo nativo con Mod, iconos de escritorio y volumen por app
@@ -2032,7 +2020,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   resto de ideas, y pidió tres cosas: iconos/carpetas en el escritorio como
   Windows, volumen por ventana y, como prioridad, barra oculta con las opciones
   visibles al mantener Mod. También dejó claro que los controles de ventana
-  deben ser nativos del compositor, no capas de ALBA.
+  deben ser nativos del compositor, no capas de Shell.
 - **Cromo superpuesto en Umbriel.** Nueva clave
   `[appearance.title_bar] overlay = true`. `View::titleBarChromeHeight()` mide
   el cromo y `View::titleBarHeight()` devuelve 0 cuando es superpuesto, así
@@ -2065,7 +2053,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   vídeo: apareció su flujo al 100 %. Queda pendiente el arrastre con ratón
   físico y, si se quiere, un botón nativo de volumen en la barra de título.
 - **Instalado.** `/usr/bin/umbriel` es ahora `7d8c7aa0e5c2` y el parche del
-  fork tiene 27 archivos. La sesión abierta sigue con el binario anterior y
+  edit tiene 27 archivos. La sesión abierta sigue con el binario anterior y
   muestra un aviso de clave desconocida hasta cerrar sesión; el aviso
   desaparece con el binario nuevo.
 
@@ -2101,7 +2089,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 - **Pruebas.** En la sesión real se comprobó la capa de fondo, el selector
   KDE y el guardado. En Umbriel anidado se comprobó el cambio de estilo con
   `UMBRIEL_CONFIG` apuntando a la copia de prueba y capturas con `grim`.
-- **Instalado.** `/usr/bin/umbriel` = `fdf05109f9de`; el fork tiene 7 commits
+- **Instalado.** `/usr/bin/umbriel` = `fdf05109f9de`; el edit tiene 7 commits
   sobre `b6c4b7d` y el parche 27 archivos. Sigue haciendo falta cerrar sesión
   para estrenar el compositor nuevo.
 - **Nota de desarrollo.** Quickshell recarga el QML en cada guardado, así que
@@ -2133,7 +2121,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 - **Icono de mover.** El botón que abre el selector de escritorio dibuja `#`
   (dos verticales levemente inclinadas y dos horizontales), como el
   `.wc-glyph` del ejemplo web, en lugar de la cruz de flechas. La barra de
-  respaldo de ALBA (`WindowChrome.qml`) usa el mismo `#`.
+  respaldo de Shell (`WindowChrome.qml`) usa el mismo `#`.
 - **Barra de tareas.** `Pill.qml` ya no pinta `Theme.accentSoft` cuando el
   widget está activo; solo usa `Theme.hover` al pasar el ratón. Los iconos
   siguen comunicando el estado con su color, igual que el botón de energía.
@@ -2148,10 +2136,10 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 ### 2026-11-05 · Filtro de pantalla nativo y barra uniforme
 
 - **Luz nocturna y atenuación extra.** El problema era doble: `DisplayFilter`
-  es una capa `Top` que no cubre la barra/paneles de ALBA (otra capa `Top`), y
+  es una capa `Top` que no cubre la barra/paneles de Shell (otra capa `Top`), y
   la luz nocturna superponía un naranja translúcido que levantaba el negro y
   lavaba el contraste. Umbriel ahora tiene `[display]` (`brightness`,
-  `extra_dim`, `warm`) y un shader de salida `screen.alba_display` en
+  `extra_dim`, `warm`) y un shader de salida `screen.shell_display` en
   `EffectRegistry`, aplicado por `Output::applyOutputEffects` después de todas
   las superficies. `DisplayState.qml` escribe esos valores con
   `scripts/shell-display-filter` y recarga; la capa QML queda como respaldo para
@@ -2214,7 +2202,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   el mismo instante en que se pulsaba Mod. Ahora `Server::refreshModTapState`
   arma un temporizador de 320 ms (`kModHoldDelayMs`) y solo entonces llama a
   `setModHoldActive`, que enciende a la vez el escudo, el velo y las píldoras
-  nativas. Al soltar antes de tiempo se cancela sin efectos. ALBA usa el mismo
+  nativas. Al soltar antes de tiempo se cancela sin efectos. Shell usa el mismo
   retardo en `SuperState.holdDelay` para que su overlay no parpadee en un
   toque.
 - **Prueba del retardo.** En Umbriel anidado, con una kitty de fondo claro y
@@ -2244,7 +2232,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 ### 2026-11-05 · Retardo ajustable, música y reloj
 
 - **Retardo de Mod configurable.** `[input] mod_hold_delay_ms` sustituye a la
-  constante de 320 ms. Umbriel lo lee en cada evento de modificadores; ALBA lo
+  constante de 320 ms. Umbriel lo lee en cada evento de modificadores; Shell lo
   expone en Ajustes → «Retardo al mantener Super» (pasos de 50 ms), lo guarda
   como `superHoldMs` y `scripts/shell-mod-hold` lo escribe en la configuración
   del compositor y recarga. Verificado en anidado: con 600 ms, una pulsación de
@@ -2348,7 +2336,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   viaja a otro escritorio ni sobrevive al cierre. Durante un cambio de modo se
   desactiva con `m_switchingLayoutMode` para no competir con la memoria por
   modo de A14.
-- **Prueba.** En Umbriel anidado con ALBA real aislada: pulsar el botón de modo
+- **Prueba.** En Umbriel anidado con Shell real aislada: pulsar el botón de modo
   con Alt pulsado cambia a stacking y vuelve a dwindle con geometría idéntica.
   Flotar y devolver `dos` en dwindle la deja otra vez en 645,9; `cuatro` en
   master vuelve a 708,9; `tres` en scrolling vuelve a 9,9. Con una ventana
@@ -2406,14 +2394,14 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 ### 2026-11-05 · A5 (fichas minimizadas) y C1 (orden persistente)
 
 - **A5 · Causa real.** Las fichas minimizadas desaparecían de la barra al
-  reiniciar ALBA, aunque la ventana siguiera en el scratchpad y se pudiera
+  reiniciar Shell, aunque la ventana siguiera en el scratchpad y se pudiera
   restaurar desde Ajustes. Umbriel publicaba `scratchpad_return_index` en base
-  0: la ventana del escritorio 1 devolvía `0`, que ALBA interpretaba como «sin
+  0: la ventana del escritorio 1 devolvía `0`, que Shell interpretaba como «sin
   origen», y la del escritorio 2 devolvía `1`, un escritorio antes. Además, el
   índice 0 se usaba como centinela de «sin retorno».
 - **Arreglo.** `ScratchpadManager::returnWorkspaceIndexFor` distingue la
   ausencia por el nombre vacío, no por el índice, y el IPC publica
-  `scratchpad_return_index` en base 1, igual que `workspaces`. ALBA resuelve
+  `scratchpad_return_index` en base 1, igual que `workspaces`. Shell resuelve
   primero `scratchpad_return_name` a índice con `workspaceIndexByName`, así
   también funciona con binarios antiguos. Documentado en `docs/user/ipc.md`.
 - **Descartado como curiosidad.** Recordar la geometría de cada app entre
@@ -2459,7 +2447,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   `shell-system-theme` se verificó con GTK 3/4 (`gtk.css`) y KDE
   (`kdeglobals`, `BreezeDark`, mismo acento).
 - **D3 · Vista general.** `Mod+Tab` pasa a `overview-toggle` y los controles de
-  ALBA a `Mod+Shift+Tab`. `UmbrielBackend` se suscribe al evento `overview` y
+  Shell a `Mod+Shift+Tab`. `UmbrielBackend` se suscribe al evento `overview` y
   `CompositorState.overviewOpen` permite que `shell.qml` cierre lanzador,
   notificaciones, calendario, energía, selector de movimiento y controles de
   ventana. Verificado en anidado con Alt+Tab y en real con Super+Tab.
@@ -2552,12 +2540,12 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   activo se distingue además por el fondo de la píldora.
 - **Guía de instalación limpia.** `INSTALACION.md` documenta el equipo, los
   repositorios (`trixie-backports` y Noctalia), los paquetes, la compilación del
-  fork de Umbriel, la configuración de ALBA/Umbriel, portales, sudoers, SDDM,
+  edit de Umbriel, la configuración de Shell/Umbriel, portales, sudoers, SDDM,
   copias y verificación. Los archivos de sistema que vivían fuera del proyecto
   se guardaron en `install/`: scripts de `~/.local/bin`, configuración de
   Umbriel, `portals.conf`, unidad de alarmas, fuentes de APT y regla de sudoers.
   La instalación está automatizada con `install.sh` y
-  `scripts/install-umbriel-fork.sh`; falta probarla de principio a fin en un
+  `scripts/install-umbriel-edit.sh`; falta probarla de principio a fin en un
   Debian limpio y probar la reversión (E4).
 - **Veredicto de uso principal.** El sistema está listo para el día a día en
   este equipo salvo B3 (captura/uso compartido) sin probar y el instalador sin
@@ -2587,8 +2575,8 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   la regla de sudoers usa `USUARIO`.
 - **Instalador general.** `install.sh` añade repositorios, instala paquetes,
   copia configuración sin sobrescribir, crea la regla de sudoers, activa las
-  alarmas y llama al script del fork. Tiene `--dry-run`, `--skip-packages`,
-  `--skip-fork`, `--skip-config`, `--force-config` y `--with-firmware`.
+  alarmas y llama al script del edit. Tiene `--dry-run`, `--skip-packages`,
+  `--skip-edit`, `--skip-config`, `--force-config` y `--with-firmware`.
 - **Módulos sin duplicar paquetes.** `install-packages.sh` instala la base del
   shell, KDE/Qt, audio, portales, compilación y firmware. `network.sh` es el
   único que instala y configura NetworkManager, Wi-Fi, punto de acceso,
@@ -2604,11 +2592,11 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   Mesa y Wayland. `network.sh` instala el plugin Bluetooth junto con el stack
   completo si necesita actualizar PipeWire, y reinicia `pipewire` y
   `wireplumber` al terminar.
-- **Fork automatizado.** `scripts/install-umbriel-fork.sh` reutiliza
-  `~/umbriel-fork` o clona upstream, hace checkout de `b6c4b7d`, aplica
-  `umbriel-fork.patch`, compila con meson/ninja, guarda el binario original e
+- **Edit automatizado.** `scripts/install-umbriel-edit.sh` reutiliza
+  `~/umbriel-edit` o clona upstream, hace checkout de `b6c4b7d`, aplica
+  `umbriel-edit.patch`, compila con meson/ninja, guarda el binario original e
   instala con `mv` atómico. Valida el hash y detecta si el binario ya es el
-  fork.
+  edit.
 - **Rutas de usuario.** Se quitaron las rutas `/home/username` de los comandos
   de `shell-idle`, `shell-keyboard-layout` y `shell-umbriel-theme`; ahora usan
   `Quickshell.env("HOME")`, así que el shell funciona con cualquier usuario.
@@ -2620,7 +2608,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   alternativa ligera para el acento en apps KDE (generar un `.colors` propio,
   matugen, wallust, etc.). Para SDDM se usa `sddm-theme-maya` cuando no hay
   tema Breeze.
-- **Pruebas.** Se verificó que el parche reproduce exactamente el árbol del fork
+- **Pruebas.** Se verificó que el parche reproduce exactamente el árbol del edit
   y que una compilación desde un clon limpio termina correctamente
   (`umbriel 0.1.0 (b6c4b7ddfb03-dirty)`). También se probó `install.sh
   --dry-run`. Falta la instalación completa en una VM o disco aparte y la

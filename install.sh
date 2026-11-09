@@ -10,7 +10,7 @@
 #   scripts/install-packages.sh     repositorios, paquetes y servicios
 #   scripts/network.sh              red, Wi-Fi, hotspot, VPN y Bluetooth
 #   scripts/install-user-config.sh  enlaces y configuración del HOME
-#   scripts/install-umbriel-fork.sh compilación e instalación del fork
+#   scripts/install-umbriel-edit.sh compilación e instalación del edit
 #
 # Uso:
 #   ./install.sh [opciones]
@@ -19,7 +19,7 @@
 #   --dry-run         Muestra los comandos sin ejecutar nada
 #   --yes             No pide confirmación al empezar
 #   --skip-packages   No instala paquetes (solo configura y compila)
-#   --skip-fork       No compila ni instala el fork de Umbriel
+#   --skip-edit       No compila ni instala el edit personal de Umbriel
 #   --skip-config     No copia la configuración de usuario
 #   --skip-network    No configura ni instala la red, VPN ni Bluetooth
 #   --skip-disks      No añade los discos internos NTFS a /etc/fstab
@@ -36,7 +36,7 @@ source "$REPO_DIR/scripts/lib/common.sh"
 DRY_RUN=0
 ASSUME_YES=0
 SKIP_PACKAGES=0
-SKIP_FORK=0
+SKIP_EDIT=0
 SKIP_CONFIG=0
 SKIP_NETWORK=0
 SKIP_DISKS=0
@@ -54,7 +54,7 @@ Opciones:
   --dry-run         Muestra los comandos sin ejecutar nada
   --yes             No pide confirmación al empezar
   --skip-packages   No instala paquetes (solo configura y compila)
-  --skip-fork       No compila ni instala el fork de Umbriel
+  --skip-edit       No compila ni instala el edit personal de Umbriel
   --skip-config     No copia la configuración de usuario
   --skip-network    No configura ni instala la red, VPN ni Bluetooth
   --skip-disks      No añade los discos internos NTFS a /etc/fstab
@@ -69,7 +69,7 @@ while (( $# > 0 )); do
         --dry-run) DRY_RUN=1; shift ;;
         --yes) ASSUME_YES=1; shift ;;
         --skip-packages) SKIP_PACKAGES=1; shift ;;
-        --skip-fork) SKIP_FORK=1; shift ;;
+        --skip-edit) SKIP_EDIT=1; shift ;;
         --skip-config) SKIP_CONFIG=1; shift ;;
         --skip-network) SKIP_NETWORK=1; shift ;;
         --skip-disks) SKIP_DISKS=1; shift ;;
@@ -100,7 +100,7 @@ Se va a preparar el shell en este equipo:
   Proyecto:  $REPO_DIR
 
 Se instalarán paquetes con apt, se copiará configuración (sin sobrescribir la
-existente salvo --force-config) y se compilará el fork de Umbriel. La sesión
+existente salvo --force-config) y se compilará el edit personal de Umbriel. La sesión
 actual no se reinicia sola.
 
 EOF
@@ -165,17 +165,17 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Fork de Umbriel
+# Edit de Umbriel
 # ---------------------------------------------------------------------------
-if (( ! SKIP_FORK )); then
-    log "Compilando e instalando el fork de Umbriel."
+if (( ! SKIP_EDIT )); then
+    log "Compilando e instalando el edit personal de Umbriel."
     if (( DRY_RUN )); then
-        "$REPO_DIR/scripts/install-umbriel-fork.sh" --dry-run
+        "$REPO_DIR/scripts/install-umbriel-edit.sh" --dry-run
     else
-        "$REPO_DIR/scripts/install-umbriel-fork.sh" --yes
+        "$REPO_DIR/scripts/install-umbriel-edit.sh" --yes
     fi
 else
-    log "Se omite el fork de Umbriel (--skip-fork)."
+    log "Se omite el edit personal de Umbriel (--skip-edit)."
 fi
 
 # ---------------------------------------------------------------------------
@@ -195,7 +195,7 @@ else
     log "Se omite el montaje de discos internos (--skip-disks)."
 fi
 
-# La validación va después del fork: la plantilla usa los seis botones del
+# La validación va después del edit: la plantilla usa los seis botones del
 # binario parcheado, que el Umbriel estándar no conoce.
 if [[ -f "$TARGET_HOME/.config/umbriel/config.toml" ]] \
     && command -v umbriel >/dev/null 2>&1; then
@@ -204,7 +204,7 @@ if [[ -f "$TARGET_HOME/.config/umbriel/config.toml" ]] \
         || warn "Umbriel no aceptó la configuración; revisa $TARGET_HOME/.config/umbriel/config.toml."
 fi
 
-# La copia buena se actualiza después del fork: la plantilla usa claves que el
+# La copia buena se actualiza después del edit: la plantilla usa claves que el
 # Umbriel estándar todavía no conoce.
 if [[ -x "$TARGET_HOME/.local/bin/umbriel-config-guard" ]] \
     && [[ -f "$TARGET_HOME/.config/umbriel/config.toml" ]]; then
@@ -268,9 +268,9 @@ Siguientes pasos:
   2. Comprueba la barra, los escritorios, el brillo y las alarmas.
   3. Si algo falla, revisa INSTALACION.md y PENDIENTES.md.
 
-El fork de Umbriel requiere cerrar sesión para cargarse. El instalador aparta
+El edit personal de Umbriel requiere cerrar sesión para cargarse. El instalador aparta
 el binario oficial con dpkg-divert, así que 'apt upgrade' no debería pisarlo.
 Si alguna vez quitas esa diversión, vuelve a ejecutar:
 
-  ./scripts/install-umbriel-fork.sh
+  ./scripts/install-umbriel-edit.sh
 EOF

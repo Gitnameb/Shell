@@ -1,8 +1,5 @@
 # Shell · Plan para completar la integración
 
-> Las menciones a «ALBA» en el texto histórico se conservan como registro del
-> nombre anterior; el código y la documentación nuevos usan «shell».
-
 Actualizado: 2026-11-05, ya dentro de la sesión real de Umbriel.
 
 > **Plataforma decidida:** solo Umbriel sobre Debian. Hyprland y cualquier otro
@@ -13,7 +10,7 @@ Actualizado: 2026-11-05, ya dentro de la sesión real de Umbriel.
 > **Para retomar:** empieza por `PENDIENTES.md` (traspaso corto, estado actual,
 > orden de tareas y errores que no hay que repetir).
 
-La base funciona: ALBA arranca con Umbriel, la barra nativa reserva su espacio,
+La base funciona: Shell arranca con Umbriel, la barra nativa reserva su espacio,
 los seis botones actúan y los paneles responden. Lo que queda se ordena por
 impacto en el uso diario, no por lucimiento.
 
@@ -28,9 +25,9 @@ impacto en el uso diario, no por lucimiento.
 
 - Backend de Umbriel en `CompositorState` (ventanas, escritorios, foco, layouts,
   minimizar/restaurar, tema, teclado).
-- Barra nativa propia (fork): icono real, subtítulo, seis botones, minimizar en
-  mosaico, colores sincronizados con ALBA.
-- Barra de ALBA con autoocultar, controles reordenables, fichas por ventana,
+- Barra nativa propia (edit): icono real, subtítulo, seis botones, minimizar en
+  mosaico, colores sincronizados con Shell.
+- Barra de Shell con autoocultar, controles reordenables, fichas por ventana,
   anillo de progreso, bandeja, notificaciones, calendario, clima, alarmas,
   temporizador, música, portapapeles y teclado en pantalla.
 - Centro de control 2×5 con Wi-Fi, Bluetooth, red, audio, brillo, luz nocturna,
@@ -40,7 +37,7 @@ impacto en el uso diario, no por lucimiento.
 - Los paneles y menús se cierran al pulsar fuera, sin cerrar la barra.
 - Al mantener Super, la píldora del escritorio activo permite cambiar entre
   Flotante y Mosaico con las fichas atenuadas debajo.
-- Sesión Umbriel preseleccionada en SDDM, teclado `es`, ALBA en autostart.
+- Sesión Umbriel preseleccionada en SDDM, teclado `es`, Shell en autostart.
 - Puente X11 (`xwaylandvideobridge`) oculto en el scratchpad.
 
 ---
@@ -63,7 +60,7 @@ impacto en el uso diario, no por lucimiento.
 - Umbriel ya conocía el estado de Mod mientras se mantiene: lo usa para
   arrastrar ventanas y cambiar el cursor. Ahora lo publica también por IPC con
   el evento `modifiers` (`mod`, `modifiers` y `tap`).
-- ALBA se suscribe a ese evento y muestra los controles de ventana durante el
+- Shell se suscribe a ese evento y muestra los controles de ventana durante el
   gesto, sin esperar al bind de modificador que llega al soltar. Si la barra
   está en autoocultar, también se revela mientras Super está pulsada.
 - Un toque limpio abre el lanzador; un atajo (Super+Return, Super+1…) no lo
@@ -105,7 +102,7 @@ impacto en el uso diario, no por lucimiento.
 ### A3. Botón «Mover» con selector (hecho)
 - El mockup abre un selector 1–9 junto al botón. Umbriel ya no abre la vista
   general: emite un evento `move_menu` con la ventana, el puntero y un serial.
-- ALBA se suscribe desde `UmbrielBackend` y dibuja `WorkspacePicker`, una
+- Shell se suscribe desde `UmbrielBackend` y dibuja `WorkspacePicker`, una
   tarjeta de 46 px con el escritorio actual resaltado. Elegir otro escritorio
   desancla la ventana si estaba fijada y la mueve con
   `window-move-to-workspace-silent`; elegir el actual solo cierra.
@@ -130,12 +127,12 @@ impacto en el uso diario, no por lucimiento.
   el botón nativo en la barra de título.
 
 ### A5. Persistencia de ventanas (hecho)
-- La ficha minimizada desaparecía al reiniciar ALBA porque Umbriel publicaba
-  `scratchpad_return_index` en base 0: el escritorio 1 devolvía `0` (que ALBA
+- La ficha minimizada desaparecía al reiniciar Shell porque Umbriel publicaba
+  `scratchpad_return_index` en base 0: el escritorio 1 devolvía `0` (que Shell
   leía como «sin origen») y el 2 devolvía `1`. La ventana seguía en el
   scratchpad y se podía restaurar desde Ajustes, pero la barra no sabía dónde
   ponerla.
-- Umbriel publica ahora el índice en base 1, igual que `workspaces`, y ALBA
+- Umbriel publica ahora el índice en base 1, igual que `workspaces`, y Shell
   resuelve el nombre de retorno como respaldo. No se guarda `windows.json`.
 - **Curiosidad descartada:** recordar la geometría de cada app entre sesiones.
   Choca con el tamaño por defecto de A20 y con las reglas de ventana; no se
@@ -148,13 +145,13 @@ impacto en el uso diario, no por lucimiento.
   al pasar el ratón), en vez de desaparecer. La ficha va al escritorio de origen
   aunque Umbriel la haya movido al scratchpad y su `workspace` esté vacío.
 - Umbriel publica `scratchpad_return_index` y `scratchpad_return_name` en
-  `windows --json`; ALBA los usa como origen y guarda además el último
+  `windows --json`; Shell los usa como origen y guarda además el último
   escritorio visto por si el compositor es anterior a esos campos.
 - `umbriel restore-window <id>` devuelve la ventana exacta a su escritorio sin
   mostrar el resto del scratchpad. Antes se enfocaba primero y eso revelaba
   todas las ventanas aparcadas, que quedaban flotando sin poder usarse como
   ventanas normales. La barra, el centro de control y «Enfocar» sobre una
-  minimizada usan ese comando; si el binario no lo tiene, ALBA cae al camino
+  minimizada usan ese comando; si el binario no lo tiene, Shell cae al camino
   anterior.
 - Restaurar sin revelar el pad dejaba la ventana **invisible**: al ocultarse,
   el scratchpad la desvanece a opacidad 0 y apaga su nodo de escena, y solo
@@ -172,11 +169,11 @@ impacto en el uso diario, no por lucimiento.
 ### A7. Cromo nativo con dos estilos (hecho)
 - Umbriel gana `[appearance.title_bar] overlay`: dibuja su barra de título
   **dentro** del contenido y solo mientras se mantiene Mod. No reserva
-  espacio, no desplaza la ventana y los botones siguen siendo nativos; ALBA no
+  espacio, no desplaza la ventana y los botones siguen siendo nativos; Shell no
   crea ninguna capa para esto.
 - El ajuste público es «Barra de ventanas» con dos opciones, como el mockup:
   **Flotante** (`overlay = true`; aparece con Mod) e **Integrado**
-  (`overlay = false`; siempre visible y el contenido empieza debajo). ALBA lo
+  (`overlay = false`; siempre visible y el contenido empieza debajo). Shell lo
   guarda en `settings.conf` y aplica el cambio en caliente escribiendo la
   configuración de Umbriel y recargándola.
 - **Flotante son dos píldoras separadas**, como el `chrome-floating` del
@@ -188,7 +185,7 @@ impacto en el uso diario, no por lucimiento.
   ancho completo con el subtítulo y los botones dentro.
 - El botón «Mover a otro escritorio» usa el glifo `#` del ejemplo web, no la
   cruz de flechas.
-- La barra oculta de ALBA ya se revelaba con Mod. Con este cambio también
+- La barra oculta de Shell ya se revelaba con Mod. Con este cambio también
   aparecen los controles de cada ventana, como el `chrome-floating` del mockup.
 - La barra vive en el árbol de contenido de la vista; en modo flotante se
   eleva sobre la superficie del cliente y los diálogos adjuntos siguen por
@@ -264,7 +261,7 @@ impacto en el uso diario, no por lucimiento.
   Sigue instalado y conserva su regla de scratchpad por si hace falta compartir
   pantalla desde una app X11: basta reactivarlo y lanzarlo.
 - Nota: el selector de Umbriel y el diálogo de GTK están en inglés (son de los
-  portales, no de ALBA); el resto de la interfaz sigue en castellano. Con
+  portales, no de Shell); el resto de la interfaz sigue en castellano. Con
   PipeWire 1.4.2 el portal oculta el cursor en las capturas compartidas
   (pide 1.4.8 para los metadatos); no impide compartir.
 
@@ -281,7 +278,7 @@ impacto en el uso diario, no por lucimiento.
   barra o al quedarse sin iconos.
 - `shell.qml` lleva `//@ pragma UseQApplication`: sin él, Quickshell no puede
   mostrar menús de plataforma y el menú de la bandeja no aparece. Exige
-  reiniciar el proceso de ALBA, no solo recargar QML.
+  reiniciar el proceso de Shell, no solo recargar QML.
 - Verificado en anidado y en la sesión real con KDE Connect: chevron visible,
   panel desplegado y menú «Configure…» con clic derecho. Al cerrar la app de
   prueba, el chevron desaparece.
@@ -350,7 +347,7 @@ impacto en el uso diario, no por lucimiento.
   por IPC con `appearance wallpaperColor`.
 - `shell-system-theme` verificado en la sesión real: GTK 3/4 reciben el acento
   en `gtk.css`, y KDE recibe `BreezeDark` y el mismo acento en `kdeglobals`.
-- Verificado en anidado: el color sobrevive al reinicio de ALBA y se ve en la
+- Verificado en anidado: el color sobrevive al reinicio de Shell y se ve en la
   capa de fondo.
 
 ### C5. Extras del panel del reloj (hecho)
@@ -401,8 +398,8 @@ impacto en el uso diario, no por lucimiento.
 
 ### D3. Vista general (hecho)
 - `Mod+Tab` abre o cierra la vista general de Umbriel (`overview-toggle`).
-- La barra de controles de ALBA que estaba en `Mod+Tab` pasa a `Mod+Shift+Tab`.
-- ALBA escucha el evento `overview` y, al abrirse la vista, retira lanzador,
+- La barra de controles de Shell que estaba en `Mod+Tab` pasa a `Mod+Shift+Tab`.
+- Shell escucha el evento `overview` y, al abrirse la vista, retira lanzador,
   notificaciones, calendario, energía, selector de movimiento y controles de
   ventana para no quedar flotando encima.
 - Verificado en anidado con Alt+Tab y en la sesión real con Super+Tab:
@@ -413,23 +410,23 @@ impacto en el uso diario, no por lucimiento.
 ## Fase E · Mantenimiento y robustez
 
 ### E1. Script de compilación (S)
-- `scripts/install-umbriel-fork.sh`: clona Umbriel si no existe, aplica
-  `umbriel-fork.patch`, compila, instala con `mv` atómico, guarda copia del
+- `scripts/install-umbriel-edit.sh`: clona Umbriel si no existe, aplica
+  `umbriel-edit.patch`, compila, instala con `mv` atómico, guarda copia del
   binario original y valida el hash.
 - `install.sh`: instala repositorios, paquetes, configuración, sudoers y
-  alarmas, y llama al script del fork.
+  alarmas, y llama al script del edit.
 - **Hecho.** Probado con `--dry-run` y con una compilación completa desde un
   clon limpio de Umbriel (`b6c4b7d` + parche). Falta la prueba definitiva en un
   Debian recién instalado.
 
-### E2. Rebase del fork (M, recurrente)
+### E2. Rebase del edit (M, recurrente)
 - El parche está sobre `b6c4b7d`. Cada actualización de Umbriel exige rebasar
   y volver a probar los seis botones.
 - Alternativa a valorar: enviar los cambios a Umbriel upstream para dejar de
-  mantener el fork.
+  mantener el edit.
 
 ### E3. Prueba automática (M)
-- Script que arranca un Umbriel anidado, lanza ALBA, comprueba que no hay
+- Script que arranca un Umbriel anidado, lanza Shell, comprueba que no hay
   errores QML, abre el menú y guarda capturas.
 
 ### E4. Reversión (S)
@@ -475,7 +472,7 @@ impacto en el uso diario, no por lucimiento.
    un fondo de pantalla y quitarlo.
 4. **También:** probar el volumen por aplicación con el centro de control →
    Volumen y el ratón físico, y abrir iconos del escritorio con doble clic.
-5. **Hecho:** A5 (fichas minimizadas tras reiniciar ALBA, confirmado en real)
+5. **Hecho:** A5 (fichas minimizadas tras reiniciar Shell, confirmado en real)
    y C1 (orden de los controles). Falta el reordenado con ratón y
    «Restablecer».
 6. **Hecho:** arreglos rápidos: menú de la bandeja (B4), OSD de brillo (C3),
@@ -490,7 +487,7 @@ impacto en el uso diario, no por lucimiento.
    (recolocar iconos, renombrar, papelera y menú contextual).
 10. **Antes de la instalación limpia:** E1 (script único de compilación e
     instalación), E4 (reversión documentada) y una copia de `~/Shell`,
-    `~/.config/shell`, `~/.config/umbriel` y el parche del fork.
+    `~/.config/shell`, `~/.config/umbriel` y el parche del edit.
 11. **Opcional / aparcado:** botón nativo de volumen por ventana, D2 y E3.
 
 ## Decisiones tomadas
@@ -504,20 +501,20 @@ impacto en el uso diario, no por lucimiento.
   contextual quedan para la fase 2.
 - **Cromo de ventana:** nativo y con dos estilos, «Flotante» (aparece con Mod,
   superpuesto) e «Integrado» (siempre visible, con el contenido debajo). Lo
-  dibuja Umbriel; ALBA solo guarda la preferencia y la aplica.
+  dibuja Umbriel; Shell solo guarda la preferencia y la aplica.
 - **Fondo de pantalla:** imagen local elegida desde Ajustes, en capa
   `Background` por pantalla; sin imagen se mantiene el fondo del compositor.
 - **Super:** mantenerlo muestra el cambio de modo en la píldora del escritorio
   activo y revela la barra; un toque limpio abre el lanzador; un atajo no lo
   abre. `Mod+Tab` sigue fijando los controles como camino alternativo.
 - **Hoja de atajos:** oculta al arrancar; se abre con `Mod+F1`.
-- **Fork:** se mantiene el fork y se avanza con los cambios hasta dejar el
+- **Edit:** se mantiene el edit y se avanza con los cambios hasta dejar el
   escritorio como se quiere. La opción de subir cambios a Umbriel queda para
   más adelante.
 
 ### A9. Filtro de pantalla nativo (hecho)
 - Umbriel gana la tabla `[display]` (`brightness`, `extra_dim`, `warm`) y un
-  shader de salida integrado, `screen.alba_display`, que se aplica después de
+  shader de salida integrado, `screen.shell_display`, que se aplica después de
   todas las superficies. Cubre por igual ventanas, escritorio, barra, paneles,
   lanzador y OSD; el cursor hardware queda fuera, como en cualquier efecto de
   pantalla.
@@ -562,7 +559,7 @@ impacto en el uso diario, no por lucimiento.
   320 ms (hoy `[input] mod_hold_delay_ms`, ver A12) antes de activar el
   aislamiento del contenido, el velo y las píldoras nativas. Un toque corto
   sigue abriendo el lanzador sin atenuar la pantalla ni soltar el ratón de un
-  juego. ALBA usa el mismo valor en `SuperState.holdDelay`.
+  juego. Shell usa el mismo valor en `SuperState.holdDelay`.
 - La barra puede vivir arriba o abajo desde Ajustes → «Posición de la barra».
   Se guarda `barPosition` y se recolocan la barra, su franja de revelado, el
   panel lateral, el calendario, la energía, el OSD, la barra del modo ventanas
@@ -580,7 +577,7 @@ impacto en el uso diario, no por lucimiento.
 
 ### A12. Retardo ajustable, música estable y reloj más legible (hecho)
 - El retardo del gesto de mantener Mod ya no es una constante. Umbriel lee
-  `[input] mod_hold_delay_ms` (320 por defecto, 50–2000) y ALBA lo ajusta en
+  `[input] mod_hold_delay_ms` (320 por defecto, 50–2000) y Shell lo ajusta en
   Ajustes → «Retardo al mantener Super» con pasos de 50 ms. El valor se guarda
   como `superHoldMs` en `settings.conf` y el script `shell-mod-hold` lo escribe
   en la configuración del compositor y recarga. `SuperState.holdDelay` usa el
@@ -617,7 +614,7 @@ impacto en el uso diario, no por lucimiento.
   recordadas y coloca las ventanas en orden de cascada, para que no se apilen
   todas en el último sitio donde flotaron. Las que ya estaban flotando se
   quedan donde están.
-- ALBA lo ajusta en Ajustes → «Tamaño de ventanas flotantes» (40–80 %, pasos
+- Shell lo ajusta en Ajustes → «Tamaño de ventanas flotantes» (40–80 %, pasos
   de 5) y «Separación en cascada» (0 = automático, hasta 96 px, pasos de 8).
   Se guarda como `floatingSizePercent` y `floatingCascade` en `settings.conf`;
   `scripts/shell-floating-defaults` escribe la configuración de Umbriel y
@@ -665,7 +662,7 @@ impacto en el uso diario, no por lucimiento.
   `a13ce3462695372c…`); falta cerrar sesión para estrenarlo.
 
 ### Incidencia: configuración de Umbriel restaurada
-- Al recargar ALBA, `shell-mod-hold` y `shell-floating-defaults` podían correr a
+- Al recargar Shell, `shell-mod-hold` y `shell-floating-defaults` podían correr a
   la vez y compartían el temporal `config.toml.shell-tmp`; uno movía el archivo
   mientras el otro escribía y `config.toml` quedó reducido a 13 líneas. Se
   restauró la copia completa (180 líneas) y se guardó una copia en
