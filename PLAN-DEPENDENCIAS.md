@@ -1,8 +1,9 @@
 # Plan · Dependencias opcionales del centro de control
 
 Este documento separa lo que ya funciona con la instalación actual de lo que
-podría mejorar con paquetes extra. No se ha instalado nada nuevo: es el plan
-para decidir qué merece la pena y en qué orden.
+podría mejorar con paquetes extra. No se instaló nada nuevo en esta sesión;
+`brightnessctl` ya forma parte de la instalación por defecto para el brillo
+del panel interno.
 
 ## Criterio
 
@@ -22,8 +23,8 @@ romper el arranque ni mostrar errores raros.
 | Opción | Estado actual | Qué falta | Paquete o solución | Prioridad |
 | --- | --- | --- | --- | --- |
 | Teclado en pantalla | `wvkbd` instalado. Capas `full`, `cyrillic`, `simple`, `nav` y `emoji`. | Español, alemán y portugués no tienen capa nativa; el chino necesita IME, no solo teclas. | Capas propias de `wvkbd` o cambiar a `squeekboard` (1.43) para es/de/pt. Chino: `fcitx5` + `fcitx5-chinese-addons`. | Alta |
-| Portapapeles | Solo texto, con `wl-clipboard` y un JSON propio. | Imágenes, archivos y miniaturas. | `cliphist` (0.5) guarda el portapapeles con su tipo MIME y los binarios como archivos. Mantener `wl-clipboard`. | Alta |
-| Brillo | `ddcutil` para monitores externos y filtro nativo de Umbriel como respaldo. | El panel interno de un portátil no suele responder a DDC/CI. | `brightnessctl` (0.5) como segundo intento para `backlight` antes de caer al shader. | Alta |
+| Portapapeles | Ya guarda texto, listas de archivos e imágenes con `wl-clipboard` y miniaturas propias. | Nada para lo pedido; funciones extra (abrir archivo, pegar como archivo) serían otro paso. | Ninguno. | Hecho |
+| Brillo | `ddcutil` para monitores externos, panel interno por `brightnessctl`/sysfs y filtro nativo como respaldo. | Nada; el panel interno necesita la regla de sudo que instala el instalador. | `brightnessctl` ya incluido en la instalación. | Hecho |
 | Luz nocturna y atenuación extra | Ya son nativas: Umbriel aplica `[display]` como shader de salida. | Nada. | Ninguno. | Hecho |
 | VPN | OpenVPN instalado (`network-manager-openvpn`). | WireGuard, OpenConnect, StrongSwan, PPTP y VPNC no aparecen si su plugin no está. | `network-manager-openconnect`, `network-manager-strongswan`, `network-manager-vpnc`, `network-manager-pptp` y `wireguard-tools`. | Media |
 | Audio Bluetooth | `bluez`, `bluez-obexd` y `libspa-0.2-bluetooth` instalados. | Códecs propietarios (aptX/LDAC) dependen de la versión de PipeWire y del firmware del auricular. | No hace falta paquete para SBC/AAC; valorar `libfreeaptx0`/`libldacbt-abr2` solo si el equipo lo pide. | Baja |
@@ -48,18 +49,17 @@ romper el arranque ni mostrar errores raros.
      con `fcitx5` y `fcitx5-chinese-addons`, y solo si Umbriel expone el
      protocolo `zwp_input_method_manager_v2` de forma estable.
 
-2. **Portapapeles con imágenes.**
-   - Sustituir el vigilante propio por `cliphist` o ampliar
-     `shell-clipboard-watch` para guardar también `image/png`, `text/uri-list`
-     y archivos.
-   - Añadir miniaturas y un botón «abrir archivo» en la vista.
-   - Mantener el modo texto actual como respaldo si `cliphist` no está.
-   - Limitar el tamaño por entrada y seguir borrando todo desde el panel.
+2. **Portapapeles con imágenes. Hecho.**
+   - Se amplió el vigilante propio: guarda `image/png` (y JPEG, WebP, GIF,
+     BMP), `text/uri-list` y texto sin añadir `cliphist`.
+   - La vista muestra miniaturas y el recorte de tamaño se hace por entrada.
+     Queda como mejora futura abrir el archivo o pegarlo como archivo.
 
-3. **Brillo de portátiles.**
-   - Orden de intentos: `ddcutil` → `brightnessctl` → filtro nativo.
-   - `brightnessctl` necesita permiso de `video` o una regla `udev`; se puede
-     usar `pkexec` para una lectura puntual, pero es mejor el grupo `video`.
+3. **Brillo de portátiles. Hecho.**
+   - Orden de intentos: `ddcutil` → `brightnessctl`/sysfs → filtro nativo.
+   - El instalador añade `brightnessctl` y lo autoriza en la misma regla de
+     sudo que `ddcutil`; si el permiso falla, el filtro nativo recupera el
+     control sin bloquear el deslizador.
    - No cambia la interfaz: el mismo deslizador y el mismo OSD.
 
 ### Fase 2 · Red y VPN

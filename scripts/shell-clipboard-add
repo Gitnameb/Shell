@@ -1,74 +1,217 @@
 #!/usr/bin/env python3
-"""Añade al historial el texto que recibe por la entrada estándar.
+"""Añade al historial lo que haya ahora mismo en el portapapeles.
 
-Lo ejecuta `wl-paste --watch` cada vez que cambia el portapapeles. Se guarda
-solo texto, se eliminan duplicados y se conservan las 50 entradas más
-recientes en ~/.local/state/shell/clipboard.json.
+`wl-paste --watch` lo ejecuta en cada cambio. En lugar de leer solo el texto
+que llega por la entrada estándar, consulta los tipos disponibles para poder
+guardar también imágenes. Los textos se quedan en el JSON; las imágenes se
+copian a ~/.local/state/shell/clipboard/images para que la miniatura siga
+funcionando aunque la aplicación de origen cierre.
 """
 
+import hashlib
 import json
 import os
+import subprocess
 import sys
 import time
 from pathlib import Path
 
 MAX_ENTRIES = 50
-MAX_BYTES = 400000
+MAX_TEXT_BYTES = 400_000
+MAX_IMAGE_BYTES = 12_000_000
 
-path = Path.home() / ".local/state/shell/clipboard.json"
-first_flag = Path.home() / ".local/state/shell/clipboard-first"
+STATE = Path.home() / ".local/state/shell"
+PATH = STATE / "clipboard.json"
+IMAGE_DIR = STATE / "clipboard" / "images"
+FIRST_FLAG = STATE / "clipboard-first"
+
+IMAGE_TYPES = ("image/png", "image/jpeg", "image/webp", "image/gif", "image/bmp")
+TEXT_TYPES = (
+    "text/plain;charset=utf-8",
+    "text/plain",
+    "UTF8_STRING",
+    "STRING",
+    "TEXT",
+)
+EXTENSIONS = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "image/bmp": "bmp",
+}
+
+
+def wl_paste(*args):
+    return subprocess.run(["wl-paste", *args], capture_output=True)
+
+
+def available_types():
+    result = wl_paste("--list-types")
+    if result.returncode != 0:
+        return []
+    return [
+        line.strip()
+        for line in result.stdout.decode("utf-8", "replace").splitlines()
+        if line.strip()
+    ]
+
+
+def pick_type(types):
+    for kind in IMAGE_TYPES:
+        if kind in types:
+            return kind
+    if "text/uri-list" in types:
+        return "text/uri-list"
+    for kind in TEXT_TYPES:
+        if kind in types:
+            return kind
+    for kind in types:
+        if kind.startswith("text/"):
+            return kind
+    return ""
+
+
+def load_entries():
+    entries = []
+    try:
+        loaded = json.loads(PATH.read_text(encoding="utf-8"))
+        if not isinstance(loaded, list):
+            return entries
+        for item in loaded:
+            if isinstance(item, str):
+                entries.append({"kind": "text", "text": item, "time": 0})
+            elif isinstance(item, dict) and isinstance(item.get("text"), str):
+                entry = {
+                    "kind": str(item.get("kind") or "text"),
+                    "text": item["text"],
+                    "time": int(item.get("time") or 0),
+                }
+                if isinstance(item.get("image"), str) and item["image"]:
+                    entry["image"] = item["image"]
+                    entry["mime"] = str(item.get("mime") or "image/png")
+                if isinstance(item.get("display"), str) and item["display"]:
+                    entry["display"] = item["display"]
+                entries.append(entry)
+    except (OSError, ValueError):
+        return []
+    return entries
+
+
+def entry_key(entry):
+    if entry.get("image"):
+        return "image:" + str(entry["image"])
+    return str(entry.get("kind") or "text") + ":" + str(entry.get("text") or "")
+
+
+def save_entries(entries):
+    PATH.parent.mkdir(parents=True, exist_ok=True)
+    os.umask(0o077)
+    with open(PATH, "w", encoding="utf-8") as handle:
+        json.dump(entries, handle, ensure_ascii=False)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.chmod(PATH, 0o600)
+
+
+def clean_images(entries):
+    keep = {entry.get("image") for entry in entries if entry.get("image")}
+    try:
+        for file in IMAGE_DIR.iterdir():
+            if str(file) not in keep:
+                file.unlink()
+    except OSError:
+        pass
+
+
+def read_image(mime):
+    result = wl_paste("--type", mime)
+    if result.returncode != 0:
+        return None
+    raw = result.stdout
+    if not raw or len(raw) > MAX_IMAGE_BYTES:
+        return None
+    digest = hashlib.sha256(raw).hexdigest()[:20]
+    extension = EXTENSIONS.get(mime, "bin")
+    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+    os.umask(0o077)
+    file = IMAGE_DIR / (digest + "." + extension)
+    if not file.exists() or file.stat().st_size != len(raw):
+        file.write_bytes(raw)
+        os.chmod(file, 0o600)
+    return {
+        "kind": "image",
+        "text": "Imagen " + mime.split("/")[-1].upper(),
+        "image": str(file),
+        "mime": mime,
+        "time": int(time.time() * 1000),
+    }
+
+
+def read_text(mime):
+    result = wl_paste("--no-newline", "--type", mime)
+    if result.returncode != 0:
+        return None
+    raw = result.stdout
+    if not raw or len(raw) > MAX_TEXT_BYTES:
+        return None
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        text = raw.decode("utf-8", "replace")
+    if not text.strip():
+        return None
+    if mime == "text/uri-list":
+        paths = [line for line in text.splitlines() if line and not line.startswith("#")]
+        label = paths[0].rsplit("/", 1)[-1] if paths else "Archivos"
+        display = (str(len(paths)) + " archivo" if len(paths) == 1
+                   else str(len(paths)) + " archivos") if paths else label
+        return {
+            "kind": "files",
+            "text": text,
+            "display": display + " · " + label,
+            "time": int(time.time() * 1000),
+        }
+    return {
+        "kind": "text",
+        "text": text,
+        "time": int(time.time() * 1000),
+    }
 
 
 def main():
     # La primera ejecución de wl-paste --watch entrega el portapapeles actual.
-    if first_flag.exists():
+    if FIRST_FLAG.exists():
         try:
-            first_flag.unlink()
+            FIRST_FLAG.unlink()
         except OSError:
             pass
         return
 
+    # wl-paste --watch pasa el contenido por la entrada estándar; se descarta
+    # porque el tipo real se consulta aparte.
     try:
-        raw = sys.stdin.buffer.read()
+        sys.stdin.buffer.read(1 << 20)
     except OSError:
-        return
-    if not raw or len(raw) > MAX_BYTES:
-        return
-    try:
-        text = raw.decode("utf-8")
-    except UnicodeDecodeError:
-        return
-    if not text.strip():
+        pass
+
+    types = available_types()
+    mime = pick_type(types)
+    if not mime:
         return
 
-    entries = []
-    try:
-        loaded = json.loads(path.read_text(encoding="utf-8"))
-        if isinstance(loaded, list):
-            for item in loaded:
-                if isinstance(item, str):
-                    entries.append({"text": item, "time": 0})
-                elif isinstance(item, dict) and isinstance(item.get("text"), str):
-                    entries.append({
-                        "text": item["text"],
-                        "time": int(item.get("time") or 0),
-                    })
-    except (OSError, ValueError):
-        entries = []
+    if mime in IMAGE_TYPES:
+        entry = read_image(mime)
+    else:
+        entry = read_text(mime)
+    if entry is None:
+        return
 
-    entries = [entry for entry in entries if entry["text"] != text]
-    entries.insert(0, {"text": text, "time": int(time.time() * 1000)})
+    entries = [item for item in load_entries() if entry_key(item) != entry_key(entry)]
+    entries.insert(0, entry)
     entries = entries[:MAX_ENTRIES]
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    os.umask(0o077)
-    # Se escribe en el mismo archivo (sin renombrar) para que el vigilante de
-    # FileView en Quickshell siga viendo los cambios.
-    with open(path, "w", encoding="utf-8") as handle:
-        json.dump(entries, handle, ensure_ascii=False)
-        handle.flush()
-        os.fsync(handle.fileno())
-    os.chmod(path, 0o600)
+    save_entries(entries)
+    clean_images(entries)
 
 
 if __name__ == "__main__":

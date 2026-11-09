@@ -557,6 +557,8 @@ PanelWindow {
     }
 
     Rectangle {
+        id: card
+
         anchors.fill: parent
         radius: 16
         color: Theme.glassCard
@@ -928,66 +930,6 @@ PanelWindow {
                     font.pixelSize: 8
                 }
 
-                // Editor de nota del día. Solo aparece al pulsar dos veces
-                // el día ya seleccionado; así el calendario queda limpio.
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 4
-                    visible: root.noteEditorOpen
-
-                    TextField {
-                        id: noteField
-
-                        Layout.fillWidth: true
-                        implicitHeight: 26
-                        text: root.noteDraft
-                        placeholderText: "Nota para el día "
-                            + Qt.formatDate(root.selectedDate, "d MMM") + "…"
-                        placeholderTextColor: Theme.faint
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 9
-                        selectByMouse: true
-                        onTextEdited: root.noteDraft = text
-                        onAccepted: root.addNoteFromDraft()
-                        Keys.onEscapePressed: root.closeNoteEditor()
-                        background: Rectangle {
-                            radius: 7
-                            color: Theme.surfaceAlt
-                            border.width: 1
-                            border.color: noteField.activeFocus
-                                ? Theme.accent : Theme.border
-                        }
-                    }
-
-                    Rectangle {
-                        implicitWidth: 28
-                        implicitHeight: 26
-                        radius: 7
-                        color: addNoteMouse.containsMouse
-                            ? Theme.accent : Theme.accentSoft
-                        border.width: 1
-                        border.color: Theme.accentLine
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "+"
-                            color: addNoteMouse.containsMouse
-                                ? Theme.accentInk : Theme.accent
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 14
-                            font.weight: Font.DemiBold
-                        }
-
-                        MouseArea {
-                            id: addNoteMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.addNoteFromDraft()
-                        }
-                    }
-                }
             }
 
             // ------------------------------------------------------------ clima
@@ -1594,6 +1536,171 @@ PanelWindow {
 
                 Item {
                     Layout.fillHeight: true
+                }
+            }
+        }
+
+        // Opciones avanzadas del día. El calendario solo selecciona días; el
+        // editor de notas vive en este apartado aparte, como las opciones
+        // avanzadas de los demás controles, y se abre con el segundo clic.
+        Item {
+            id: noteOverlay
+
+            anchors.fill: parent
+            visible: root.noteEditorOpen
+            z: 50
+
+            Rectangle {
+                anchors.fill: parent
+                color: Qt.rgba(0, 0, 0, 0.42)
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: root.closeNoteEditor()
+                }
+            }
+
+            Rectangle {
+                id: noteCard
+
+                width: Math.min(300, parent.width - 36)
+                height: noteCardColumn.implicitHeight + 24
+                anchors.centerIn: parent
+                radius: 14
+                color: Theme.glassCard
+                border.width: 1
+                border.color: Theme.borderStrong
+
+                // Absorbe los clics del interior para que no cierren el panel.
+                MouseArea {
+                    anchors.fill: parent
+                }
+
+                ColumnLayout {
+                    id: noteCardColumn
+
+                    anchors {
+                        fill: parent
+                        margins: 12
+                    }
+                    spacing: 8
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: Fechas.longDate(root.selectedDate)
+                            color: Theme.text
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                            font.weight: Font.DemiBold
+                            elide: Text.ElideRight
+                        }
+
+                        Rectangle {
+                            implicitWidth: 22
+                            implicitHeight: 22
+                            radius: 6
+                            color: noteCloseMouse.containsMouse
+                                ? Theme.hover : "transparent"
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "×"
+                                color: noteCloseMouse.containsMouse
+                                    ? Theme.danger : Theme.faint
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 14
+                            }
+
+                            MouseArea {
+                                id: noteCloseMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.closeNoteEditor()
+                            }
+                        }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: root.dayEvents().length === 0
+                            ? "Este día no tiene eventos ni notas."
+                            : "Las notas existentes se pueden borrar con la × "
+                                + "de la lista del día."
+                        color: Theme.faint
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 8
+                        wrapMode: Text.Wrap
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 5
+
+                        TextField {
+                            id: noteField
+
+                            Layout.fillWidth: true
+                            implicitHeight: 28
+                            text: root.noteDraft
+                            placeholderText: "Nueva nota para este día…"
+                            placeholderTextColor: Theme.faint
+                            color: Theme.text
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 9
+                            selectByMouse: true
+                            onTextEdited: root.noteDraft = text
+                            onAccepted: root.addNoteFromDraft()
+                            Keys.onEscapePressed: root.closeNoteEditor()
+                            background: Rectangle {
+                                radius: 7
+                                color: Theme.surfaceAlt
+                                border.width: 1
+                                border.color: noteField.activeFocus
+                                    ? Theme.accent : Theme.border
+                            }
+                        }
+
+                        Rectangle {
+                            implicitWidth: 30
+                            implicitHeight: 28
+                            radius: 7
+                            color: addNoteMouse.containsMouse
+                                ? Theme.accent : Theme.accentSoft
+                            border.width: 1
+                            border.color: Theme.accentLine
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "+"
+                                color: addNoteMouse.containsMouse
+                                    ? Theme.accentInk : Theme.accent
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 14
+                                font.weight: Font.DemiBold
+                            }
+
+                            MouseArea {
+                                id: addNoteMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.addNoteFromDraft()
+                            }
+                        }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Intro guarda · Esc cierra"
+                        color: Theme.faint
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 8
+                    }
                 }
             }
         }

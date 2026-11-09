@@ -1392,10 +1392,7 @@ ColumnLayout {
             label: "Portapapeles"
             dragKey: "clipboard"
             toggleEnabled: false
-            meta: ClipboardState.count === 0
-                ? "Vacío"
-                : (ClipboardState.count === 1
-                    ? "1 texto" : ClipboardState.count + " textos")
+            meta: ClipboardState.summary
             active: ClipboardState.count > 0
             onOpened: root.setView("clipboard")
         }
@@ -4762,7 +4759,7 @@ ColumnLayout {
                     required property int index
 
                     Layout.fillWidth: true
-                    implicitHeight: 42
+                    implicitHeight: clipRow.modelData.kind === "image" ? 64 : 42
                     radius: 8
                     color: ClipboardState.copiedIndex === clipRow.index
                         ? Theme.accentSoft
@@ -4789,7 +4786,33 @@ ColumnLayout {
                         }
                         spacing: 8
 
+                        Rectangle {
+                            visible: clipRow.modelData.kind === "image"
+                            Layout.alignment: Qt.AlignVCenter
+                            Layout.preferredWidth: 52
+                            Layout.preferredHeight: 44
+                            radius: 6
+                            color: Theme.surface
+                            border.width: 1
+                            border.color: Theme.border
+                            clip: true
+
+                            Image {
+                                anchors.fill: parent
+                                anchors.margins: 1
+                                source: clipRow.modelData.kind === "image"
+                                    ? "file://" + clipRow.modelData.image : ""
+                                sourceSize.width: 104
+                                sourceSize.height: 88
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                                cache: true
+                                smooth: true
+                            }
+                        }
+
                         ShellIcon {
+                            visible: clipRow.modelData.kind !== "image"
                             Layout.alignment: Qt.AlignVCenter
                             name: "edit-paste"
                             fallbackName: "edit-copy"
@@ -4805,7 +4828,8 @@ ColumnLayout {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: String(clipRow.modelData.text)
+                                text: String(clipRow.modelData.display
+                                    || clipRow.modelData.text)
                                     .replace(/\n/g, " ")
                                 color: Theme.text
                                 font.family: Theme.fontFamily
@@ -4880,7 +4904,7 @@ ColumnLayout {
 
                 Text {
                     Layout.fillWidth: true
-                    text: "Sin textos copiados"
+                    text: "Sin elementos copiados"
                     color: Theme.faint
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
@@ -5179,7 +5203,28 @@ ColumnLayout {
 
             RowLayout {
                 Layout.fillWidth: true
+                spacing: 8
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Animaciones"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                ShellSwitch {
+                    checked: SettingsState.animationsEnabled
+                    onToggled: SettingsState.setAnimationsEnabled(
+                        !SettingsState.animationsEnabled)
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
                 spacing: 6
+                enabled: SettingsState.animationsEnabled
+                opacity: SettingsState.animationsEnabled ? 1 : 0.45
 
                 Text {
                     Layout.fillWidth: true

@@ -114,13 +114,25 @@ Singleton {
         root.lastWorkspaceMode = root.modeFor(root.focusedWorkspaceId);
     }
 
+    // El botón de modo de la píldora y la vista de configuración pueden
+    // disparar el mismo cambio en el mismo clic. Además de comprobar el modo,
+    // se ignora un segundo cambio para el mismo escritorio en 300 ms.
+    property double lastSetStamp: 0
+    property int lastSetWorkspace: 0
+
     function setMode(workspaceId, mode): void {
         const id = Number(workspaceId);
         if (!isFinite(id) || id <= 0)
             return;
-        if (root.modeFor(id) === SettingsState.normalizeWorkspaceMode(mode))
+        const value = SettingsState.normalizeWorkspaceMode(mode);
+        if (root.modeFor(id) === value)
             return;
-        SettingsState.setWorkspaceMode(id, mode);
+        const now = Date.now();
+        if (id === root.lastSetWorkspace && now - root.lastSetStamp < 300)
+            return;
+        root.lastSetWorkspace = id;
+        root.lastSetStamp = now;
+        SettingsState.setWorkspaceMode(id, value);
         Qt.callLater(() => root.applyWorkspace(id));
     }
 

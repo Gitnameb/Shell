@@ -360,6 +360,28 @@ PanelWindow {
             ClipboardState.clear();
         }
 
+        // Diagnóstico del historial: recuento por tipo y resumen de la ficha.
+        function clipboardStatus(): string {
+            return "count=" + ClipboardState.count
+                + " images=" + ClipboardState.imageCount
+                + " texts=" + ClipboardState.textCount
+                + " summary=" + ClipboardState.summary;
+        }
+
+        // Diagnóstico del brillo: fuente real que está mandando.
+        function displayStatus(): string {
+            let source = "filter";
+            if (DisplayState.hardwareAvailable)
+                source = "ddc";
+            else if (DisplayState.backlightAvailable)
+                source = "backlight";
+            return "source=" + source
+                + " available=" + (DisplayState.hardwareAvailable
+                    || DisplayState.backlightAvailable ? "1" : "0")
+                + " brightness=" + DisplayState.brightness.toFixed(2)
+                + " backlight=" + DisplayState.backlightDevice;
+        }
+
         function systemTheme(value: bool): void {
             SettingsState.setSystemTheme(value);
         }

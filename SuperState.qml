@@ -56,8 +56,14 @@ Singleton {
         }
         const opensLauncher = tapped === undefined
             ? root.tapAllowed : tapped === true;
-        if (!root.pinned && opensLauncher)
-            LauncherState.toggle();
+        if (!root.pinned && opensLauncher) {
+            // Un toque limpio de Super siempre alterna el cajón: si ya está
+            // abierto, el segundo toque lo cierra.
+            if (LauncherState.open)
+                LauncherState.hide();
+            else
+                LauncherState.show();
+        }
     }
 
     // Respaldo para compositores que solo avisan del toque al soltar (el bind

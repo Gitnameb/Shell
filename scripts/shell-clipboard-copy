@@ -20,21 +20,35 @@ def main():
         entries = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(entries, list) or index < 0 or index >= len(entries):
             return 1
-        text = entries[index]["text"]
-    except (IndexError, KeyError, OSError, ValueError):
+        entry = entries[index]
+        if not isinstance(entry, dict):
+            return 1
+        kind = str(entry.get("kind") or "text")
+        image = str(entry.get("image") or "")
+        text = str(entry.get("text") or "")
+    except (IndexError, OSError, ValueError):
         return 1
 
     if not wl_copy:
         return 1
     try:
-        subprocess.run([wl_copy], input=text.encode("utf-8"), check=False)
+        if kind == "image" and image:
+            data = Path(image).read_bytes()
+            mime = str(entry.get("mime") or "image/png")
+            subprocess.run([wl_copy, "--type", mime], input=data, check=False)
+        elif kind == "files":
+            subprocess.run([wl_copy, "--type", "text/uri-list"],
+                           input=text.encode("utf-8"), check=False)
+        else:
+            subprocess.run([wl_copy, "--type", "text/plain;charset=utf-8"],
+                           input=text.encode("utf-8"), check=False)
     except OSError:
         return 1
 
     # El vigilante también lo moverá al principio, pero adelantarlo aquí evita
     # un parpadeo en la lista.
-    entry = entries.pop(index)
-    entries.insert(0, entry)
+    selected = entries.pop(index)
+    entries.insert(0, selected)
     entries = entries[:MAX_ENTRIES]
 
     try:

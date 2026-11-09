@@ -533,10 +533,11 @@ antes aparecía al pie («viernes, 6 de noviembre de 2026») se eliminó.
 
 - Archivo: `~/.config/shell/calendar-notes.conf`, una línea por nota con el
   formato `id|AAAA-MM-DD|texto`.
-- El campo de nota ya no está siempre visible. El primer clic elige el día;
-  el segundo clic sobre ese mismo día abre el editor de nota. La nota se
-  guarda con Intro o con el botón +, y Escape cierra el editor. Se borran con
-  la × de la lista.
+- El editor de nota no vive entre los días. El primer clic elige el día; el
+  segundo clic sobre ese mismo día abre un apartado aparte, como las opciones
+  avanzadas de los demás controles, con la fecha y el campo de nota. La nota
+  se guarda con Intro o con el botón +; Escape, la × o un clic fuera lo
+  cierran. Las notas existentes se borran con la × de la lista del día.
 - `scripts/shell-calendar` administra el archivo (`list`, `note add`,
   `note remove`) y solo usa la biblioteca estándar. `CalendarEvents.qml` le
   pide el mes visible al abrir el panel o cambiar de mes.
@@ -891,6 +892,10 @@ mayoría son resortes, y un resorte no usa `duration_ms`: su duración sale de
 - `scripts/shell-animation-speed` lo escribe con `shell-config-set` y pide
   `config-reload`; si el valor no cambia, no toca el archivo. Los ajustes se
   guardan en `settings.conf` como `animationSpeed`.
+- El interruptor **Animaciones** escribe `[animation] enabled` con
+  `scripts/shell-animations`. Al apagarlo, la fila de velocidad se atenúa y
+  deja de tener efecto; las ventanas se mueven sin transición. Se guarda como
+  `animationsEnabled` en `settings.conf`.
 - No afecta a la física del arrastre (`[animation.windows_drag]`): esa responde
   al puntero y se siente mal si se escala como una transición.
 
@@ -925,10 +930,46 @@ Para que no se sumen cambios accidentales:
 - Pulsar el modo que ya está elegido en «Configuración de ventanas» no hace
   nada: `SettingsState.setWorkspaceMode` y `WorkspaceModeState.setMode`
   comprueban el valor antes de escribir.
-- El botón de modo de la ficha del escritorio ignora un segundo clic en los
-  220 ms siguientes, para que un doble clic no cambie dos veces.
+- El botón de modo de la ficha del escritorio ya no comparte el cambio con el
+  área grande de la píldora: solo el botón dedicado lo dispara, así un mismo
+  clic no puede ejecutar dos veces el cambio.
+- `WorkspaceModeState.setMode` ignora un segundo cambio para el mismo
+  escritorio en 300 ms, aunque llegue por otra ruta de la interfaz.
 - `applyWorkspaceModes` recuerda la última firma escrita y no repite la
   recarga si el backend vuelve a pedir lo mismo al arrancar.
 
 Comprobado en sesión anidada con tres ventanas y tres clics: cada clic produjo
 un único `set_floating` y una recarga posterior sin movimiento adicional.
+
+## 26. Portapapeles con imágenes
+
+`ClipboardState.qml` y los scripts de `scripts/shell-clipboard-*` guardan ahora
+texto, listas de archivos e imágenes.
+
+- `wl-paste --watch` avisa de cada cambio. `scripts/shell-clipboard-add`
+  consulta `wl-paste --list-types` y elige el mejor tipo: primero `image/png`
+  (o JPEG, WebP, GIF, BMP), luego `text/uri-list` y por último texto.
+- Las imágenes se copian a `~/.local/state/shell/clipboard/images` con un
+  nombre basado en SHA-256, así la miniatura sigue viéndose aunque la
+  aplicación de origen cierre. Se limitan a 12 MB y se borran las que ya no
+  referencia el historial.
+- La vista muestra una miniatura de 52×44 y el recuento pasa a «N elementos».
+  Al pulsar una entrada, `scripts/shell-clipboard-copy` la devuelve con su
+  tipo MIME original.
+- No hace falta `cliphist`: se sigue usando `wl-clipboard`, que ya instala el
+  instalador.
+
+## 27. Brillo del panel interno
+
+`scripts/shell-brightness` lee `/sys/class/backlight` sin permisos especiales.
+Para escribir usa, en este orden:
+
+1. El archivo `brightness` si el usuario puede escribirlo.
+2. `brightnessctl`, instalado por el instalador y autorizado en
+   `/etc/sudoers.d/shell-ddcutil` junto a `ddcutil`.
+3. Si nada funciona, `DisplayState` mantiene el brillo por el filtro nativo.
+
+`DisplayState.qml` prefiere DDC/CI para monitores externos y usa el panel
+interno cuando DDC/CI no responde. Las teclas de brillo del portátil también
+se detectan: el valor se relee cada 3 s. El deslizador y el OSD son los
+mismos; no hay una vista nueva.

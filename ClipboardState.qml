@@ -21,6 +21,22 @@ Singleton {
     property int copiedIndex: -1
 
     readonly property int count: root.entries.length
+    readonly property int imageCount: {
+        let total = 0;
+        for (let i = 0; i < root.entries.length; i++) {
+            if (root.entries[i].kind === "image")
+                total++;
+        }
+        return total;
+    }
+    readonly property int textCount: root.count - root.imageCount
+    readonly property string summary: {
+        if (root.count === 0)
+            return "Vacío";
+        if (root.count === 1)
+            return root.imageCount === 1 ? "1 imagen" : "1 elemento";
+        return root.count + " elementos";
+    }
     readonly property string path: (Quickshell.env("HOME") || "/home/username")
         + "/.local/state/shell/clipboard.json"
 
@@ -35,17 +51,32 @@ Singleton {
             return result;
         for (let i = 0; i < list.length; i++) {
             const item = list[i];
-            let text = "";
-            let time = 0;
             if (typeof item === "string") {
-                text = item;
+                if (item.trim().length > 0)
+                    result.push({ kind: "text", text: item, time: 0 });
             } else if (item && typeof item.text === "string") {
-                text = item.text;
-                time = Number(item.time) || 0;
+                const kind = String(item.kind || "text");
+                const time = Number(item.time) || 0;
+                if (kind === "image"
+                        && typeof item.image === "string"
+                        && item.image.length > 0) {
+                    result.push({
+                        kind: "image",
+                        text: item.text,
+                        display: String(item.display || item.text),
+                        image: item.image,
+                        mime: String(item.mime || "image/png"),
+                        time: time
+                    });
+                } else if (item.text.trim().length > 0) {
+                    result.push({
+                        kind: kind === "files" ? "files" : "text",
+                        text: item.text,
+                        display: String(item.display || item.text),
+                        time: time
+                    });
+                }
             }
-            if (text.length === 0 || text.trim().length === 0)
-                continue;
-            result.push({ text: text, time: time });
             if (result.length >= root.maxEntries)
                 break;
         }

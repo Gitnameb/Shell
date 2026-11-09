@@ -120,7 +120,7 @@ MESA_BACKPORTS_PKGS=(
 )
 
 RUNTIME_PKGS=(
-    ddcutil libnotify-bin fonts-inter-variable wvkbd swayidle foot
+    ddcutil brightnessctl libnotify-bin fonts-inter-variable wvkbd swayidle foot
     power-profiles-daemon
     iputils-ping wl-clipboard python3 curl
     qml6-module-qtquick-effects

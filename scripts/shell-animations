@@ -1,0 +1,38 @@
+#!/bin/sh
+# Interruptor maestro de las animaciones de Umbriel ([animation] enabled).
+#
+# Uso: shell-animations on|off
+set -eu
+# El valor se escribe en TOML; la locale no debe alterar la representación.
+LC_ALL=C
+export LC_ALL
+
+value=""
+case "${1:-}" in
+    on | 1 | true) value=true ;;
+    off | 0 | false) value=false ;;
+    *)
+        echo "shell-animations: usa on u off" >&2
+        exit 2
+        ;;
+esac
+
+repo_dir=$(cd "$(dirname "$0")/.." && pwd)
+config_set="${SHELL_CONFIG_SET:-}"
+if [ -z "$config_set" ] || [ ! -x "$config_set" ]; then
+    config_set="${repo_dir}/install/bin/shell-config-set"
+fi
+if [ ! -x "$config_set" ]; then
+    echo "shell-animations: no se encontró shell-config-set" >&2
+    exit 1
+fi
+
+result=$("$config_set" --section animation "enabled=$value")
+if [ "$result" != "changed" ]; then
+    exit 0
+fi
+
+umbriel=$(command -v umbriel 2>/dev/null || true)
+if [ -n "$umbriel" ]; then
+    "$umbriel" msg config-reload >/dev/null 2>&1 || true
+fi

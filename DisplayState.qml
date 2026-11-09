@@ -40,9 +40,21 @@ Singleton {
     property bool applyingRead: false
     property int detectAttempts: 0
 
+    // Brillo del panel interno (portátiles). Se lee de /sys/class/backlight;
+    // se escribe con brightnessctl cuando haga falta permiso. Si falla, el
+    // filtro nativo sigue funcionando como respaldo.
+    property bool backlightAvailable: false
+    property bool backlightChecked: false
+    property string backlightDevice: ""
+    property int backlightMax: 100
+    property int backlightValue: 100
+    property bool writingBacklight: false
+    property bool backlightWritePending: false
+
     readonly property bool filterActive: root.extraDim > 0.005
         || root.nightLight
-        || (!root.hardwareAvailable && root.brightness < 0.995)
+        || (!root.hardwareAvailable && !root.backlightAvailable
+            && root.brightness < 0.995)
 
     // Filtro nativo de Umbriel: cubre toda la salida, incluida la barra, y
     // multiplica el color en vez de superponer un velo.
@@ -50,6 +62,8 @@ Singleton {
         CompositorState.supports("displayFilter")
     readonly property string displayFilterScript: (Quickshell.shellDir || "")
         + "/scripts/shell-display-filter"
+    readonly property string brightnessScript: (Quickshell.shellDir || "")
+        + "/scripts/shell-brightness"
 
     onBrightnessChanged: {
         // Al leer el valor real del monitor no se devuelve la escritura.
@@ -57,6 +71,8 @@ Singleton {
             return;
         if (root.hardwareAvailable)
             writeTimer.restart();
+        else if (root.backlightAvailable)
+            backlightWriteTimer.restart();
         else
             root.schedule();
     }
@@ -74,6 +90,7 @@ Singleton {
         stateSaveTimer.restart();
     }
     onHardwareAvailableChanged: root.schedule()
+    onBacklightAvailableChanged: root.schedule()
 
     // En los singletons de Quickshell no se usa Component.onCompleted: un
     // temporizador corto arranca la detección y limpia filtros viejos.
@@ -81,7 +98,10 @@ Singleton {
         interval: 80
         running: true
         repeat: false
-        onTriggered: root.detectHardware()
+        onTriggered: {
+            root.detectHardware();
+            root.detectBacklight();
+        }
     }
 
     function setBrightness(value: real): void {
@@ -221,6 +241,7 @@ Singleton {
         if (isNaN(current) || isNaN(max) || max <= 0)
             return;
         root.hardwareAvailable = true;
+        root.backlightAvailable = false;
         root.hardwareMax = max;
         root.hardwareValue = current;
         root.applyingRead = true;
@@ -271,6 +292,7 @@ Singleton {
             }
             if (!root.hardwareAvailable) {
                 root.hardwareAvailable = false;
+                root.detectBacklight();
                 root.schedule();
                 return;
             }
@@ -349,6 +371,134 @@ Singleton {
         }
     }
 
+    // ------------------------------------------------------- panel interno
+    function detectBacklight(): void {
+        if (root.hardwareAvailable || root.backlightAvailable
+                || backlightProc.running)
+            return;
+        backlightProc.command = ["sh", root.brightnessScript, "status"];
+        backlightProc.running = true;
+    }
+
+    function parseBacklight(line: string): void {
+        if (root.hardwareAvailable)
+            return;
+        const parts = String(line).trim().split(/\s+/);
+        if (parts.length < 3)
+            return;
+        const value = parseInt(parts[1], 10);
+        const max = parseInt(parts[2], 10);
+        if (isNaN(value) || isNaN(max) || max <= 0)
+            return;
+        root.backlightDevice = String(parts[0]);
+        root.backlightMax = max;
+        root.backlightValue = value;
+        root.backlightAvailable = true;
+        root.backlightChecked = true;
+        root.applyingRead = true;
+        root.brightness = Math.max(0.0, Math.min(1.0, value / max));
+        root.applyingRead = false;
+        root.applyNow();
+    }
+
+    function writeBacklight(): void {
+        if (!root.backlightAvailable)
+            return;
+        if (backlightWriteProc.running) {
+            root.backlightWritePending = true;
+            return;
+        }
+        root.writingBacklight = true;
+        backlightWriteProc.command = ["sh", root.brightnessScript, "set",
+            String(Math.round(root.brightness * 100))];
+        backlightWriteProc.running = true;
+    }
+
+    Timer {
+        id: backlightWriteTimer
+        interval: 160
+        repeat: false
+        onTriggered: root.writeBacklight()
+    }
+
+    Process {
+        id: backlightProc
+
+        stdout: SplitParser {
+            onRead: (line) => root.parseBacklight(line)
+        }
+
+        onExited: (code) => {
+            root.backlightChecked = true;
+            if (code !== 0) {
+                root.backlightAvailable = false;
+                root.schedule();
+            }
+        }
+    }
+
+    Process {
+        id: backlightWriteProc
+
+        onExited: (code) => {
+            root.writingBacklight = false;
+            if (code === 0) {
+                root.backlightValue = Math.round(
+                    root.brightness * root.backlightMax);
+            } else {
+                // brightnessctl no está o falta el permiso: el filtro nativo
+                // recupera el control sin dejar el brillo bloqueado.
+                root.backlightAvailable = false;
+                root.schedule();
+            }
+            if (root.backlightWritePending) {
+                root.backlightWritePending = false;
+                Qt.callLater(root.writeBacklight);
+            }
+        }
+    }
+
+    // El brillo puede cambiar con las teclas del portátil; se relee igual que
+    // el monitor externo, sin pisar el deslizador mientras se escribe.
+    Timer {
+        id: backlightReadTimer
+        interval: 3000
+        repeat: true
+        running: root.backlightAvailable
+        onTriggered: {
+            if (root.writingBacklight || backlightWriteTimer.running
+                    || root.applyingRead || backlightProc.running)
+                return;
+            backlightReadProc.running = true;
+        }
+    }
+
+    Process {
+        id: backlightReadProc
+
+        command: ["sh", root.brightnessScript, "status"]
+
+        stdout: SplitParser {
+            onRead: (line) => {
+                const parts = String(line).trim().split(/\s+/);
+                if (parts.length < 3)
+                    return;
+                const value = parseInt(parts[1], 10);
+                const max = parseInt(parts[2], 10);
+                if (isNaN(value) || isNaN(max) || max <= 0)
+                    return;
+                if (Math.abs(value - root.backlightValue) < 1)
+                    return;
+                root.backlightMax = max;
+                root.backlightValue = value;
+                root.applyingRead = true;
+                root.brightness = Math.max(0.0,
+                    Math.min(1.0, value / max));
+                root.applyingRead = false;
+            }
+        }
+    }
+
     function applyNow(): void {
         if (root.nativeDisplayFilter)
             root.applyNativeFilter();
@@ -363,7 +513,7 @@ Singleton {
             root.nativePending = true;
             return;
         }
-        const brightness = root.hardwareAvailable
+        const brightness = root.hardwareAvailable || root.backlightAvailable
             ? "1.000" : root.brightness.toFixed(3);
         const dim = root.extraDim.toFixed(3);
         const warm = root.nightLight

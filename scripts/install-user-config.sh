@@ -248,7 +248,8 @@ if (( DRY_RUN )); then
     printf '\033[2m[dry-run]\033[0m instalar /etc/sudoers.d/shell-ddcutil para %s\n' "$USER_NAME"
 else
     tmp=$(mktemp)
-    printf '%s ALL=(ALL) NOPASSWD: /usr/bin/ddcutil\n' "$USER_NAME" >"$tmp"
+    printf '%s ALL=(ALL) NOPASSWD: /usr/bin/ddcutil, /usr/bin/brightnessctl\n' \
+        "$USER_NAME" >"$tmp"
     run_sudo visudo -cf "$tmp"
     run_sudo install -m440 -o root -g root "$tmp" /etc/sudoers.d/shell-ddcutil
     rm -f "$tmp"

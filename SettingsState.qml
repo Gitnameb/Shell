@@ -46,6 +46,8 @@ Singleton {
     // Velocidad global de las animaciones nativas. 2.0 = el doble de rápido;
     // se escribe en [animation] speed de Umbriel.
     property real animationSpeed: 2.0
+    // Interruptor maestro de las transiciones nativas ([animation] enabled).
+    property bool animationsEnabled: true
     // Cada vista decide si su valor se muestra como porcentaje en la barra y
     // en las fichas del centro de control. Por defecto, todos desactivados.
     property bool showVolumePercent: false
@@ -186,6 +188,7 @@ Singleton {
     property bool holdApplyPending: false
     property bool floatingApplyPending: false
     property bool animationApplyPending: false
+    property bool animationsEnabledApplyPending: false
     property bool glassApplyPending: false
 
     readonly property string path: (Quickshell.env("HOME") || "/home/username")
@@ -202,6 +205,8 @@ Singleton {
         + "/scripts/shell-floating-defaults"
     readonly property string animationScript: (Quickshell.shellDir || "")
         + "/scripts/shell-animation-speed"
+    readonly property string animationsScript: (Quickshell.shellDir || "")
+        + "/scripts/shell-animations"
     readonly property string glassScript: (Quickshell.shellDir || "")
         + "/scripts/shell-glass"
     readonly property string wallpaperPickScript: (Quickshell.shellDir || "")
@@ -267,6 +272,27 @@ Singleton {
         const speed = Math.round(value * 4) / 4;
         root.animationSpeed = Math.max(0.5, Math.min(4.0, speed));
         animationApplyTimer.restart();
+    }
+
+    function setAnimationsEnabled(value: bool): void {
+        root.animationsEnabled = value === true;
+        animationsEnabledApplyTimer.restart();
+    }
+
+    // Escribe [animation] enabled y recarga la configuración.
+    function applyAnimationsEnabled(): void {
+        if (!root.ready)
+            return;
+        if (animationsEnabledProc.running) {
+            root.animationsEnabledApplyPending = true;
+            return;
+        }
+        root.animationsEnabledApplyPending = false;
+        animationsEnabledProc.command = [
+            "sh", root.animationsScript,
+            root.animationsEnabled ? "on" : "off"
+        ];
+        animationsEnabledProc.running = true;
     }
 
     // Escribe la velocidad en [animation] speed y recarga la configuración.
@@ -737,6 +763,7 @@ Singleton {
             + "floatingSizePercent=%s\\n"
             + "floatingCascade=%s\\n"
             + "animationSpeed=%s\\n"
+            + "animationsEnabled=%s\\n"
             + "barControls=%s\\n"
             + "centerOrder=%s\\n"
             + "wallpaperColor=%s\\n"
@@ -790,6 +817,7 @@ Singleton {
             root.floatingSizePercent,
             root.floatingCascade,
             root.animationSpeed.toFixed(2),
+            root.animationsEnabled ? "1" : "0",
             BarState.controls.join(","),
             BarState.centerOrder.join(","),
             root.wallpaperColor,
@@ -850,6 +878,10 @@ Singleton {
     onAnimationSpeedChanged: {
         saveTimer.restart();
         animationApplyTimer.restart();
+    }
+    onAnimationsEnabledChanged: {
+        saveTimer.restart();
+        animationsEnabledApplyTimer.restart();
     }
     onShowVolumePercentChanged: saveTimer.restart()
     onShowBrightnessPercentChanged: saveTimer.restart()
@@ -1019,6 +1051,7 @@ Singleton {
             let floatingSize = root.floatingSizePercent;
             let floatingStep = root.floatingCascade;
             let animSpeed = root.animationSpeed;
+            let animationsOn = root.animationsEnabled;
             let pctVolume = root.showVolumePercent;
             let pctBrightness = root.showBrightnessPercent;
             let pctExtraDim = root.showExtraDimPercent;
@@ -1122,6 +1155,8 @@ Singleton {
                     if (!isNaN(parsed))
                         animSpeed = Math.max(0.5, Math.min(4.0,
                             Math.round(parsed * 4) / 4));
+                } else if (key === "animationsEnabled") {
+                    animationsOn = value === "1" || value === "true";
                 } else if (key === "micShortcut") {
                     shortcut = value;
                 } else if (key === "showTemps") {
@@ -1239,6 +1274,7 @@ Singleton {
             root.floatingSizePercent = floatingSize;
             root.floatingCascade = floatingStep;
             root.animationSpeed = animSpeed;
+            root.animationsEnabled = animationsOn;
             root.showVolumePercent = pctVolume;
             root.showBrightnessPercent = pctBrightness;
             root.showExtraDimPercent = pctExtraDim;
@@ -1287,6 +1323,7 @@ Singleton {
             root.applySuperHoldDelay();
             root.applyFloatingDefaults();
             root.applyAnimationSpeed();
+            root.applyAnimationsEnabled();
             root.applyGlassAll();
             root.applyMicShortcut();
             root.applyKeyboardLayout();
@@ -1321,6 +1358,13 @@ Singleton {
     }
 
     Timer {
+        id: animationsEnabledApplyTimer
+        interval: 220
+        repeat: false
+        onTriggered: root.applyAnimationsEnabled()
+    }
+
+    Timer {
         id: workspaceModesTimer
         interval: 260
         repeat: false
@@ -1334,6 +1378,17 @@ Singleton {
             if (root.animationApplyPending) {
                 root.animationApplyPending = false;
                 root.applyAnimationSpeed();
+            }
+        }
+    }
+
+    Process {
+        id: animationsEnabledProc
+
+        onExited: {
+            if (root.animationsEnabledApplyPending) {
+                root.animationsEnabledApplyPending = false;
+                root.applyAnimationsEnabled();
             }
         }
     }

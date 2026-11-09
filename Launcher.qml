@@ -94,6 +94,12 @@ PanelWindow {
         function close(): void {
             LauncherState.hide();
         }
+
+        // Diagnóstico: permite comprobar que un segundo toque de Super
+        // cierra el cajón sin abrirlo otra vez.
+        function status(): string {
+            return "open=" + (LauncherState.open ? "1" : "0");
+        }
     }
 
     Rectangle {

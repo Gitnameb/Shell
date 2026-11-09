@@ -1,0 +1,86 @@
+#!/bin/sh
+# Brillo del panel interno del portátil.
+#
+# Uso:
+#   shell-brightness status     → «dispositivo valor máximo»
+#   shell-brightness set <0-100>
+#   shell-brightness available  → 0 si hay un panel con brillo controlable
+#
+# Se lee siempre /sys/class/backlight, que no necesita permisos. Para escribir
+# se usa el archivo si el usuario puede, o brightnessctl con la regla de sudo
+# que instala el instalador. Si nada de eso funciona, el shell cae al filtro
+# nativo de Umbriel.
+set -u
+LC_ALL=C
+export LC_ALL
+
+backlight_root="${SHELL_BACKLIGHT_ROOT:-/sys/class/backlight}"
+
+pick_backlight() {
+    best=""
+    best_max=0
+    for dir in "$backlight_root"/*; do
+        [ -r "$dir/brightness" ] || continue
+        [ -r "$dir/max_brightness" ] || continue
+        max=$(cat "$dir/max_brightness" 2>/dev/null) || continue
+        case "$max" in
+            '' | *[!0-9]*) continue ;;
+        esac
+        [ "$max" -gt 0 ] || continue
+        name=${dir##*/}
+        # acpi_video suele ser un duplicado del control real; se prefiere
+        # cualquier otro dispositivo si existe.
+        case "$name" in
+            acpi_video*)
+                if [ -n "$best" ]; then
+                    continue
+                fi
+                ;;
+        esac
+        if [ -z "$best" ] || [ "$max" -gt "$best_max" ]; then
+            best=$dir
+            best_max=$max
+        fi
+    done
+    [ -n "$best" ] || return 1
+    printf '%s\n' "$best"
+}
+
+backlight_dir=$(pick_backlight) || exit 1
+name=${backlight_dir##*/}
+max=$(cat "$backlight_dir/max_brightness" 2>/dev/null) || exit 1
+
+case "${1:-status}" in
+    status)
+        value=$(cat "$backlight_dir/brightness" 2>/dev/null) || exit 1
+        printf '%s %s %s\n' "$name" "$value" "$max"
+        ;;
+    available)
+        [ -w "$backlight_dir/brightness" ] && exit 0
+        command -v brightnessctl >/dev/null 2>&1 && exit 0
+        exit 1
+        ;;
+    set)
+        percent="${2:-}"
+        case "$percent" in
+            '' | *[!0-9]*) exit 2 ;;
+        esac
+        [ "$percent" -le 100 ] || percent=100
+        target=$(( (max * percent + 50) / 100 ))
+        [ "$target" -ge 1 ] || target=1
+        if [ -w "$backlight_dir/brightness" ]; then
+            printf '%s\n' "$target" > "$backlight_dir/brightness"
+            exit 0
+        fi
+        if command -v brightnessctl >/dev/null 2>&1; then
+            sudo -n brightnessctl --device="$name" set "$target" >/dev/null 2>&1 \
+                && exit 0
+            sudo -n brightnessctl set "$target" >/dev/null 2>&1 && exit 0
+        fi
+        exit 1
+        ;;
+    *)
+        echo "shell-brightness: usa status, available o set <0-100>" >&2
+        exit 2
+        ;;
+esac

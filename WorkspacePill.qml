@@ -452,10 +452,10 @@ Rectangle {
         cursorShape: Qt.PointingHandCursor
         onClicked: {
             root.interacted();
-            if (root.modeSwitch) {
-                root.toggleMode();
-                return;
-            }
+            // El cambio de modo lo hace solo el botón dedicado (z: 20).
+            // Tenerlo también aquí hacía que un mismo clic pudiera disparar
+            // dos cambios cuando el pulsador del botón y el de la píldora se
+            // solapaban.
             CompositorState.focusWorkspace(root.workspaceId);
         }
     }
