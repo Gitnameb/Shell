@@ -40,12 +40,13 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   fork por defecto y ejecuta `mount-disks.sh --apply`; las instalaciones
   nuevas dejan los NTFS internos en `fstab` y `udiskie` monta los USB.
   `--skip-disks` lo omite. `mount-disks.sh` acepta `--only` y `--exclude`.
-- **Fork real de Umbriel (2026-11-09).** La rama local `shell-fork` de
-  `~/umbriel-fork` está commiteada y el instalador acepta `--fork-repo` y
-  `--fork-branch`. Falta crear el repositorio en GitHub y subir la rama; los
-  pasos están en `FORK-UMBRIEL.md`. El instalador ahora usa `dpkg-divert` para
-  que `apt upgrade` escriba en `/usr/bin/umbriel.distrib` y no sustituya el
-  fork.
+- **Umbriel independiente (2026-11-09).** En `~/umbriel-fork` está la rama
+  `standalone`, un único commit sin ancestros del Umbriel original. Falta crear
+  el repositorio vacío `Gitnameb/umbriel-shell` y subirla como `main`; los
+  pasos están en `FORK-UMBRIEL.md`. El instalador usa ese repositorio por
+  defecto y acepta `--fork-repo`/`--fork-branch`. La rama `shell-fork` se
+  conserva solo como historial local. El binario oficial queda protegido con
+  `dpkg-divert`.
 - **Discos internos y USB (2026-11-09).** `scripts/mount-disks.sh` prepara
   las entradas de `/etc/fstab` para los NTFS internos, con `--dry-run` y
   `--uninstall`. El instalador añade `udiskie` para montar USB al conectarlos.

@@ -1,121 +1,122 @@
-# Fork real de Umbriel
+# Umbriel independiente
 
-El shell usa un Umbriel parcheado. Mantenerlo como parche sobre un commit del
-repositorio original funciona, pero cualquier `apt upgrade` o instalación del
-paquete oficial puede sustituir `/usr/bin/umbriel` y dejar la sesión a medias.
+El shell usa un Umbriel propio. No conviene mantenerlo como fork del
+repositorio original: un `apt upgrade` puede pisar el binario y un fork puede
+acabar relacionado con el proyecto original sin querer.
 
-La solución definitiva tiene dos partes:
+La solución es un **repositorio nuevo y vacío**, sin botón «Fork», con una
+historia independiente.
 
-1. Un repositorio propio en GitHub con la rama del fork.
-2. Una diversión de `dpkg` para que el paquete oficial no pueda pisar el
-   binario compilado.
+## Estado actual
 
-## Estado local
+En `~/umbriel-fork` hay dos ramas locales:
 
-En `~/umbriel-fork` ya existe la rama `shell-fork` con los cambios del shell
-commiteados. El remoto `origin` sigue apuntando al Umbriel original y hay un
-remoto `fork` preparado:
+| Rama | Contenido |
+| --- | --- |
+| `shell-fork` | Historial completo con el parche del shell. |
+| `standalone` | Un único commit con el árbol actual, sin ancestros del Umbriel original. |
+
+La rama `standalone` ya está preparada. El remoto `standalone` apunta a:
 
 ```text
-origin  https://github.com/noctalia-dev/umbriel.git
-fork    git@github.com:Gitnameb/umbriel.git
+git@github.com:Gitnameb/umbriel-shell.git
 ```
 
 Todavía no se ha subido nada: el repositorio de GitHub debe existir primero.
 
-## Crear el fork en GitHub
+## Crear el repositorio independiente
 
-1. Entra en `https://github.com/noctalia-dev/umbriel`.
-2. Pulsa **Fork** y crea el repositorio en tu cuenta, por ejemplo
-   `Gitnameb/umbriel`.
-3. Si el nombre es distinto, cambia la URL del remoto:
+1. En GitHub, pulsa **New repository**.
+2. Nombre: `umbriel-shell`.
+3. **No** pulses Fork. Déjalo vacío: sin README, sin licencia, sin `.gitignore`.
+4. Si usas otro nombre, cambia la URL:
 
    ```sh
    cd ~/umbriel-fork
-   git remote set-url fork git@github.com:Gitnameb/TU-REPO.git
+   git remote set-url standalone git@github.com:Gitnameb/TU-REPO.git
    ```
 
-4. Sube la rama del fork:
+## Subir el código
 
-   ```sh
-   git push -u fork shell-fork
-   ```
+```sh
+cd ~/umbriel-fork
+git push -u standalone standalone:main
+```
 
-A partir de ahí el código vive en tu cuenta. No hace falta volver a aplicar
-`umbriel-fork.patch` para instalar.
+Eso crea una rama `main` con **un solo commit**, sin relación de fork con
+`noctalia-dev/umbriel`. No aparecerá como «forked from» ni permitirá abrir una
+pull request contra el original desde este repositorio.
 
-## Instalar desde el fork
+Conserva `LICENSE` y la atribución del proyecto original; el historial
+independiente no elimina la licencia.
 
-El instalador ya usa el fork por defecto:
+## Instalar desde el repositorio independiente
+
+El instalador ya usa ese repositorio por defecto:
 
 ```sh
 cd ~/Shell
 ./scripts/install-umbriel-fork.sh --yes
 ```
 
-Si el repositorio se llama distinto o quieres forzar otra rama:
+Valores por defecto:
+
+```text
+https://github.com/Gitnameb/umbriel-shell.git
+rama: main
+```
+
+Si usas otro nombre o rama:
 
 ```sh
 ./scripts/install-umbriel-fork.sh \
-  --fork-repo git@github.com:Gitnameb/OTRO-REPO.git \
-  --fork-branch shell-fork \
+  --fork-repo https://github.com/Gitnameb/TU-REPO.git \
+  --fork-branch main \
   --yes
 ```
 
-También se puede dejar fijo con variables de entorno:
-
-```sh
-export UMBRIEL_FORK_REPO=git@github.com:Gitnameb/umbriel.git
-export UMBRIEL_FORK_BRANCH=shell-fork
-```
-
-Una instalación limpia con `./install.sh` clona ese fork, no el Umbriel
-original. Si el clon falla, cae al modo antiguo: Umbriel original + parche.
+Si el clon falla, el instalador cae al modo antiguo: Umbriel original + parche.
 
 ## Protección contra apt
 
-El instalador aparta el binario del paquete con `dpkg-divert`:
+El instalador aparta el binario oficial con `dpkg-divert`:
 
 ```text
-/usr/bin/umbriel          → fork compilado
+/usr/bin/umbriel          → Umbriel propio
 /usr/bin/umbriel.distrib  → binario del paquete oficial
 ```
 
-Así, un `apt upgrade` del paquete `umbriel` escribe en
-`/usr/bin/umbriel.distrib` y no toca el fork. `install-packages.sh` puede
-seguir instalando o actualizando el paquete oficial sin romper la sesión.
-
-Si alguna vez quieres volver al Umbriel oficial:
+Así, `apt upgrade` e `install-packages.sh` pueden actualizar el paquete sin
+sustituir el binario compilado. Si quieres volver al oficial:
 
 ```sh
 sudo dpkg-divert --local --rename --remove /usr/bin/umbriel
-```
-
-Después reinstala el paquete:
-
-```sh
 sudo apt install --reinstall umbriel
 ```
 
-## Actualizar el fork
+## Actualizar desde el original
 
-No hay actualización automática desde el original. Cuando quieras traer
-cambios de Noctalia:
+Al no compartir historia, no hay `git merge` automático. Si algún día quieres
+traer un cambio de Noctalia:
 
 ```sh
 cd ~/umbriel-fork
-git fetch origin
-git merge origin/main        # o el commit que quieras
+git remote add upstream https://github.com/noctalia-dev/umbriel.git
+git fetch upstream
+git cherry-pick <commit>
 # resolver conflictos, compilar y probar
-git push fork shell-fork
+git push standalone HEAD:main
 ```
 
-Eso convierte la actualización en una decisión explícita, no en algo que un
-`apt upgrade` pueda hacer por sorpresa.
+Eso convierte la actualización en una decisión manual. Es el precio de que el
+repositorio sea independiente.
 
-## Si no se crea el fork todavía
+## Comprobar que no hay PR abierta
 
-El instalador sigue funcionando con el árbol local `~/umbriel-fork`, que ya
-tiene la rama `shell-fork` commiteada. La diversión de `dpkg` también protege
-el binario. El fork en GitHub sirve para conservar el historial y poder
-reinstalar desde cualquier equipo, no para que la sesión actual funcione.
+La cuenta `Gitnameb` no tiene pull requests ni issues abiertos en
+`noctalia-dev/umbriel` según la búsqueda pública. Si quieres confirmarlo:
+
+- `https://github.com/noctalia-dev/umbriel/pulls?q=is%3Apr+author%3AGitnameb`
+- `https://github.com/noctalia-dev/umbriel/issues?q=is%3Aissue+author%3AGitnameb`
+
+Borrar el fork fue suficiente.
