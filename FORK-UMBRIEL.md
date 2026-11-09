@@ -101,8 +101,7 @@ traer un cambio de Noctalia:
 
 ```sh
 cd ~/umbriel-fork
-git remote add upstream https://github.com/noctalia-dev/umbriel.git
-git fetch upstream
+git fetch upstream   # el remoto original ya se llama upstream
 git cherry-pick <commit>
 # resolver conflictos, compilar y probar
 git push standalone HEAD:main
