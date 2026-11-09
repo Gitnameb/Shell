@@ -221,4 +221,13 @@ run_sudo systemctl enable --now power-profiles-daemon \
 # NetworkManager y bluetooth los activa scripts/network.sh después de
 # instalar sus paquetes.
 
+# El paquete oficial de Umbriel no trae el fork. Ejecutar este módulo solo
+# (en vez de install.sh) lo deja instalado y el fork desaparece hasta que se
+# vuelva a ejecutar install-umbriel-fork.sh.
+if command -v umbriel >/dev/null 2>&1 \
+    && ! umbriel config schema --json 2>/dev/null | grep -q '"animation.speed"'; then
+    warn "El paquete oficial de Umbriel ha sustituido el fork."
+    warn "Ejecuta ./scripts/install-umbriel-fork.sh --yes antes de reiniciar."
+fi
+
 log "Paquetes instalados."

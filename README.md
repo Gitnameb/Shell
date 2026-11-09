@@ -77,7 +77,7 @@ use `--force-config`; en ese caso guarda una copia `.bak`.
 ejecutar por separado:
 
 ```sh
-./scripts/install-packages.sh --dry-run   # repositorios y paquetes
+./scripts/install-packages.sh --dry-run   # repositorios y paquetes (instala el Umbriel oficial; después hay que reinstalar el fork)
 ./scripts/network.sh --dry-run            # red, Wi-Fi, hotspot, VPN y Bluetooth
 ./scripts/install-user-config.sh --dry-run # enlaces y configuración del HOME
 ./scripts/install-umbriel-fork.sh --dry-run # compositor parcheado
