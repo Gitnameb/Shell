@@ -8,6 +8,11 @@ Shell de escritorio personal para [Umbriel](https://noctalia.dev/umbriel/)
 > monitor HDMI-A-1) y varias funciones siguen en pruebas o pendientes. Si lo
 > pruebas, hazlo en una máquina virtual o en una sesión aparte, y lee antes
 > `INSTALACION.md`.
+>
+> El compositor es `umbriel-edit`, un **edit personal** de Umbriel para este
+> equipo. No es una versión oficial ni una versión mejorada del proyecto
+> original. Si alguien lo usa, que sea consciente de que está hecho para mis
+> necesidades.
 
 ## Qué incluye
 
@@ -17,7 +22,7 @@ Shell de escritorio personal para [Umbriel](https://noctalia.dev/umbriel/)
 - Notificaciones, historial del portapapeles, calendario, alarmas y temporizador.
 - Clima, estadísticas del sistema y menú de apagado.
 - Escritorios con modo por escritorio (flotante, mosaico, pila) y vista general.
-- Barra de ventanas nativa de Umbriel ampliada mediante un fork: icono de la
+- Barra de ventanas nativa de Umbriel ampliada mediante un edit personal: icono de la
   app, subtítulo y seis botones (flotar, fijar, mover, minimizar, maximizar,
   cerrar).
 - Integración con portales (captura y uso compartido), tema de apps GTK/KDE y
@@ -129,21 +134,30 @@ La guía manual, con el detalle de cada paso, sigue estando en
 | `scripts/install-packages.sh` | Módulo de repositorios, paquetes y servicios. |
 | `scripts/network.sh` | Módulo de NetworkManager, Ethernet y Wi-Fi. |
 | `scripts/install-user-config.sh` | Módulo de enlaces y configuración del HOME. |
-| `scripts/install-umbriel-fork.sh` | Compila e instala el fork de Umbriel. |
+| `scripts/install-umbriel-fork.sh` | Compila e instala el edit personal de Umbriel. |
 | `umbriel-fork.patch` | Parche del fork de Umbriel sobre `b6c4b7d`. |
-| `FORK-UMBRIEL.md` | Cómo publicar el fork en GitHub y protegerlo de `apt`. |
+| `UMBRIEL-EDIT.md` | Qué es el edit personal, cómo publicarlo y protegerlo de `apt`. |
 | `INSTALACION.md` | Guía de instalación. |
 | `PLAN.md`, `PENDIENTES.md`, `CONTEXTO.md` | Plan, tareas e historial. |
 
-## Fork de Umbriel
+## Edit personal de Umbriel
 
-`umbriel-fork.patch` se aplica sobre Umbriel `b6c4b7d` y añade la barra de
-ventanas ampliada. El resto del shell funciona con el Umbriel estándar, pero sin
-esa barra nativa.
+El compositor propio vive en un repositorio independiente:
 
-Si actualizas Umbriel con `apt`, el binario del fork puede quedar reemplazado.
-En ese caso hay que recompilarlo o restaurar la copia. Los detalles están en
-`INSTALACION.md`.
+```text
+https://github.com/Gitnameb/umbriel-edit
+```
+
+No es un fork de GitHub ni una versión oficial. Es una copia modificada para
+este escritorio, con historia propia y sin relación de pull request con
+`noctalia-dev/umbriel`.
+
+`umbriel-fork.patch` se conserva como respaldo reproducible: se aplica sobre
+Umbriel `b6c4b7d` y añade la barra de ventanas ampliada y el resto de cambios.
+Si el clon del edit falla, el instalador usa ese parche.
+
+El binario oficial se aparta con `dpkg-divert`, así que `apt upgrade` no
+debería sustituir el edit. Los detalles están en `UMBRIEL-EDIT.md`.
 
 ## Licencia
 

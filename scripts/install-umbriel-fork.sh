@@ -26,7 +26,7 @@ BASE_COMMIT="${UMBRIEL_BASE_COMMIT:-b6c4b7d}"
 SOURCE_DIR="${UMBRIEL_FORK_DIR:-$HOME/umbriel-fork}"
 # Por defecto se instala el fork propio, sin depender del Umbriel original.
 # UMBRIEL_FORK_REPO= (vacío) fuerza el modo antiguo: upstream + parche.
-FORK_REPO="${UMBRIEL_FORK_REPO-https://github.com/Gitnameb/umbriel-shell.git}"
+FORK_REPO="${UMBRIEL_FORK_REPO-https://github.com/Gitnameb/umbriel-edit.git}"
 FORK_BRANCH="${UMBRIEL_FORK_BRANCH:-main}"
 BUILD_DIR=""
 INSTALLED_BIN="/usr/bin/umbriel"

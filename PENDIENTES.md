@@ -9,8 +9,8 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
 
 ## Estado al cerrar esta sesión
 
-- **Fork nativo instalado (2026-11-09).** `/usr/bin/umbriel` ya es la compilación
-  del fork e incluye tamaño flotante en cambios rápidos, foco al pasar por la
+- **Edit personal instalado (2026-11-09).** `/usr/bin/umbriel` ya es la
+  compilación del edit e incluye tamaño flotante en cambios rápidos, foco al pasar por la
   barra de título, `[animation] speed` y desenfoque «Fondo» al arrastrar. Si se
   vuelve a cambiar el parche, reinstalar con
   `cd ~/Shell && ./scripts/install-umbriel-fork.sh --yes` y reiniciar sesión.
@@ -36,17 +36,17 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   transición medida pasó de ~541 a ~407 ms. Maximizar usa
   `window-toggle-maximize-to-edges`: en mosaico ya ocupa todo el área útil en
   vez de dejar una franja de la ventana vecina.
-- **Instalación desde el fork y discos (2026-11-09).** `install.sh` clona el
-  fork por defecto y ejecuta `mount-disks.sh --apply`; las instalaciones
+- **Instalación desde el edit y discos (2026-11-09).** `install.sh` clona el
+  edit por defecto y ejecuta `mount-disks.sh --apply`; las instalaciones
   nuevas dejan los NTFS internos en `fstab` y `udiskie` monta los USB.
   `--skip-disks` lo omite. `mount-disks.sh` acepta `--only` y `--exclude`.
-- **Umbriel independiente (2026-11-09).** En `~/umbriel-fork` está la rama
-  `standalone`, un único commit sin ancestros del Umbriel original. Falta crear
-  el repositorio vacío `Gitnameb/umbriel-shell` y subirla como `main`; los
-  pasos están en `FORK-UMBRIEL.md`. El instalador usa ese repositorio por
-  defecto y acepta `--fork-repo`/`--fork-branch`. La rama `shell-fork` se
-  conserva solo como historial local. El binario oficial queda protegido con
-  `dpkg-divert`.
+- **Umbriel-edit independiente (2026-11-09).** En `~/umbriel-fork` está la
+  rama `standalone`, un único commit sin ancestros del Umbriel original, ya
+  publicada como `main` en `Gitnameb/umbriel-edit`. El repositorio se presenta
+  como edit personal, no como versión oficial ni mejorada. El instalador usa
+  ese repositorio por defecto y acepta `--fork-repo`/`--fork-branch`. La rama
+  `shell-fork` se conserva solo como historial local. El binario oficial queda
+  protegido con `dpkg-divert`.
 - **Discos internos y USB (2026-11-09).** `scripts/mount-disks.sh` prepara
   las entradas de `/etc/fstab` para los NTFS internos, con `--dry-run` y
   `--uninstall`. El instalador añade `udiskie` para montar USB al conectarlos.
@@ -54,7 +54,7 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   externo no reconocido. No se modificó `/etc/fstab` porque hace falta sudo.
 - **Atajos de una tecla y botones del ratón (2026-11-09).** El capturador
   acepta teclas multimedia, `F13`–`F24` y los botones laterales como
-  `MouseBack`/`MouseForward` sin modificador. El fork permite enlazar esos dos
+  `MouseBack`/`MouseForward` sin modificador. El edit permite enlazar esos dos
   botones solos; los botones principales siguen exigiendo modificador.
 - **Atajos de Super y micrófono (2026-11-09).** El segundo toque de Super
   cierra el lanzador; la pulsación ya no lo cierra antes de que la suelta lo
