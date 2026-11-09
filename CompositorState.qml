@@ -282,6 +282,10 @@ Singleton {
         return root.callBackend("setWorkspaceMode", workspaceId, mode);
     }
 
+    function toggleShortcutsInhibit(): bool {
+        return root.callBackend("toggleShortcutsInhibit");
+    }
+
     // Fija la presentación de ventanas (controles nativos y barras de título)
     // sin mantener Mod, como el antiguo «Mostrar con Super» del shell.
     function setOverlayPinned(pinned): bool {

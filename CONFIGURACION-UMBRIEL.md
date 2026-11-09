@@ -997,7 +997,30 @@ ejemplo `Mod+Shift+M`, y `scripts/shell-mic-shortcut` la escribe en
 - Al recargar, Umbriel aplica el cambio sin reiniciar la sesión.
 - El capturador de la interfaz exige al menos un modificador y convierte
   `Ctrl`, `Alt`, `Shift` y `Super` a `Ctrl`, `Alt`, `Shift` y `Mod`.
+- Mientras se captura, el shell activa `shortcuts-inhibit-toggle`. Así Umbriel
+  entrega también las combinaciones con Super al panel en vez de ejecutar el
+  atajo global; al terminar se desactiva.
+- La pulsación de Super no cierra el panel durante la captura. Sin esa regla,
+  asignar `Mod+M` maximizaba una ventana y cerraba el editor.
 
-Comprobado en sesión anidada: `micStatus` muestra el atajo cargado, el cambio
-a `Mod+Ctrl+M` deja una sola línea en `[keybinds]`, y volver al valor de
-fábrica restaura `Mod+Shift+M` sin duplicados.
+Comprobado con clics reales en el chip: `Ctrl+M`, `Mod+M` y combinaciones con
+Super se asignan, no maximizan la ventana y dejan una sola línea en
+`[keybinds]`. Volver al valor de fábrica restaura `Mod+Shift+M` sin duplicados.
+
+## 29. Super abre y cierra el cajón
+
+Un toque limpio de Super abre el lanzador; otro toque lo cierra. Mantener Super
+sigue mostrando los controles de ventanas.
+
+La causa de que no cerrara era que `shell.qml` cerraba todos los paneles al
+detectar `CompositorState.modHeld`, incluido el lanzador. Al pulsar Super por
+segunda vez, el lanzador se cerraba en la pulsación y la suelta lo volvía a
+abrir. Ahora:
+
+- La pulsación de Super cierra los demás paneles, pero no el lanzador.
+- Mantener Super de verdad (`SuperState.active`) sí retira el lanzador.
+- El bind suelto `"Mod"` se eliminó de `[keybinds]`: competía con el evento
+  `modifiers` y podía abrir o cerrar dos veces.
+
+Comprobado con un teclado virtual: `open=0 → open=1 → open=0`, y mantener
+Super con el lanzador abierto lo cierra sin reabrirlo al soltar.

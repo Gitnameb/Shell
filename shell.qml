@@ -11,8 +11,17 @@ ShellRoot {
     // Cierra todo lo que el usuario haya desplegado desde la barra. Se usa al
     // enfocar una ventana o al mantener Super: ambas cosas son interacción con
     // algo distinto del propio panel.
-    function closeShellPanels(): void {
-        LauncherState.hide();
+    //
+    // Al pulsar Super no se cierra el lanzador, porque ese mismo gesto puede
+    // ser un toque que lo abre o lo cierra. Se cierra cuando Super se mantiene
+    // de verdad, en la conexión con SuperState.active.
+    function closeShellPanels(includeLauncher): void {
+        // Mientras se captura un atajo, Super forma parte de la combinación y
+        // no debe cerrar el panel que está escuchando.
+        if (QuickPanelState.micCapturing)
+            return;
+        if (includeLauncher !== false)
+            LauncherState.hide();
         NotificationState.hidePanel();
         QuickPanelState.hide();
         CalendarState.hide();
@@ -67,7 +76,7 @@ ShellRoot {
         // foco no queda retenido por el teclado del panel.
         function onModHeldChanged(): void {
             if (CompositorState.modHeld)
-                shellRoot.closeShellPanels();
+                shellRoot.closeShellPanels(false);
         }
 
         // La vista general de Umbriel ocupa toda la pantalla. Al abrirse se
@@ -78,6 +87,17 @@ ShellRoot {
             NotificationState.clearBanners();
             SuperState.hide();
             shellRoot.closeShellPanels();
+        }
+    }
+
+    // Mantener Super sí retira el lanzador: ya no es un toque para abrirlo,
+    // sino el gesto de gestión de ventanas.
+    Connections {
+        target: SuperState
+
+        function onActiveChanged(): void {
+            if (SuperState.active)
+                LauncherState.hide();
         }
     }
 
@@ -364,11 +384,6 @@ ShellRoot {
 
         function superRelease(): void {
             SuperState.release();
-        }
-
-        // Respaldo de Umbriel para sesiones sin el evento `modifiers`.
-        function superTap(): void {
-            SuperState.externalTap();
         }
 
         function superCancel(): void {

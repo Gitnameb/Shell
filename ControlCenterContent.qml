@@ -76,6 +76,8 @@ ColumnLayout {
     property string btError: ""
     // Captura de teclas para el atajo del micrófono.
     property bool micShortcutCapture: false
+    // Se activa junto con la captura y se desactiva al terminar.
+    property bool micShortcutInhibited: false
 
     Component.onCompleted: {
         root.syncWifiNetworks();
@@ -525,8 +527,8 @@ ColumnLayout {
             ClipboardState.refresh();
         WifiState.watching = root.active && root.view === "wifi";
         CompositorState.watching = root.active && root.view === "compositor";
-        if (root.view !== "mic")
-            root.micShortcutCapture = false;
+        if (root.view !== "mic" && root.micShortcutCapture)
+            root.endMicShortcut();
         if (root.view === "wifi" && root.active) {
             root.startWifiScan();
             root.refreshWired();
@@ -558,6 +560,8 @@ ColumnLayout {
         }
     }
     onActiveChanged: {
+        if (!root.active && root.micShortcutCapture)
+            root.endMicShortcut();
         root.updateStatsMode();
         ClipboardState.monitoring = root.active && root.view === "clipboard";
         if (ClipboardState.monitoring)
@@ -576,6 +580,9 @@ ColumnLayout {
             root.btAdapter.discovering = false;
         }
     }
+
+    onMicShortcutCaptureChanged: QuickPanelState.micCapturing
+        = root.micShortcutCapture
 
     readonly property bool airplaneActive: AirplaneState.active
 
@@ -661,8 +668,22 @@ ColumnLayout {
     }
 
     function beginMicShortcut(): void {
+        if (root.micShortcutCapture)
+            return;
         root.micShortcutCapture = true;
+        // Mientras se captura, Umbriel deja pasar los atajos globales a este
+        // panel; si no, Super+M maximizaría una ventana en vez de asignarse.
+        root.micShortcutInhibited = true;
+        Qt.callLater(() => CompositorState.toggleShortcutsInhibit());
         Qt.callLater(() => shortcutCapture.forceActiveFocus());
+    }
+
+    function endMicShortcut(): void {
+        if (root.micShortcutInhibited) {
+            root.micShortcutInhibited = false;
+            CompositorState.toggleShortcutsInhibit();
+        }
+        root.micShortcutCapture = false;
     }
 
     function handleMicShortcutKey(event): void {
@@ -672,14 +693,14 @@ ColumnLayout {
             return;
         // Escape sin modificadores cancela; Retroceso borra el atajo.
         if (event.key === Qt.Key_Escape && event.modifiers === Qt.NoModifier) {
-            root.micShortcutCapture = false;
+            root.endMicShortcut();
             event.accepted = true;
             return;
         }
         if (event.key === Qt.Key_Backspace
                 && event.modifiers === Qt.NoModifier) {
             SettingsState.setMicShortcut("");
-            root.micShortcutCapture = false;
+            root.endMicShortcut();
             event.accepted = true;
             return;
         }
@@ -707,7 +728,7 @@ ColumnLayout {
             return;
 
         SettingsState.setMicShortcut(mods.join("+") + "+" + key);
-        root.micShortcutCapture = false;
+        root.endMicShortcut();
         event.accepted = true;
     }
 

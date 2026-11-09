@@ -20,6 +20,9 @@ Singleton {
     property real anchorY: -1
 
     signal opened()
+    // Verdadero mientras el panel del micrófono está capturando un atajo.
+    // Super forma parte de la combinación y no debe cerrar el panel.
+    property bool micCapturing: false
 
     function isOpen(value): bool {
         return root.open && root.key === String(value || "");
@@ -63,6 +66,7 @@ Singleton {
     function hide(): void {
         root.open = false;
     }
+
 
     // Cualquier otro panel que se abra retira el rápido para no apilar
     // paneles. La campana sigue abriendo SidePanel con notificaciones y
@@ -125,7 +129,7 @@ Singleton {
         target: SuperState
 
         function onActiveChanged(): void {
-            if (SuperState.active)
+            if (SuperState.active && !root.micCapturing)
                 root.hide();
         }
     }

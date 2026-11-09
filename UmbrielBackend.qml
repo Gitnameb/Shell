@@ -63,6 +63,7 @@ Scope {
         nativeMinimize: false,     // Umbriel solo minimiza ventanas flotantes
         minimize: true,            // en mosaico se emula con scratchpad
         nativeWorkspaceModes: true,
+        shortcutsInhibit: true,     // permite capturar atajos con Super
         autoFloatNewWindows: false, // el layout del escritorio ya decide
         snapZones: false,
         windowSnap: false,
@@ -468,6 +469,13 @@ Scope {
             + (pinned === true ? "on" : "off"), "setOverlayPinned");
     }
 
+    // Pasa los atajos globales a la superficie enfocada mientras se captura
+    // uno nuevo. Se vuelve a llamar al terminar para desactivarlo.
+    function toggleShortcutsInhibit(): bool {
+        return root.run("umbriel msg shortcuts-inhibit-toggle",
+            "toggleShortcutsInhibit");
+    }
+
     // Umbriel no tiene una acción para fijar un layout concreto: se escribe en
     // su configuración y se recarga. El ayudante conserva el resto del archivo.
     function setKeyboardLayout(layout): bool {
@@ -644,7 +652,6 @@ Scope {
                     const held = message.data.mod === true;
                     const tapped = message.data.tap === true;
                     root.modFailures = 0;
-                    SuperState.externalHold = true;
                     if (held === root.modHeld) {
                         if (held)
                             root.modTapAllowed = root.modTapAllowed && tapped;
@@ -666,7 +673,6 @@ Scope {
         onExited: {
             if (root.modHeld)
                 SuperState.cancel();
-            SuperState.externalHold = false;
             root.modHeld = false;
             if (root.available && root.modFailures < 4) {
                 root.modFailures++;

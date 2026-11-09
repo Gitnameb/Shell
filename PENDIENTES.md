@@ -31,6 +31,11 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   entre comillas y `--remove-key`. El cambio se aplica con una recarga.
 - **Calendario (2026-11-09).** Se quitó el texto «Sin eventos ni notas para
   este día»; el editor de notas sigue en el apartado del segundo clic.
+- **Atajos de Super y micrófono (2026-11-09).** El segundo toque de Super
+  cierra el lanzador; la pulsación ya no lo cierra antes de que la suelta lo
+  vuelva a abrir. El capturador de atajos del micrófono usa
+  `shortcuts-inhibit-toggle` y no se cierra al pulsar Super, así que acepta
+  combinaciones como `Mod+M`.
 - **Cambio de modo sin doble animación (2026-11-09).** Se eliminó el segundo
   camino: el modo ya no se aplica con `workspace-set-layout` y con una recarga
   de configuración a la vez. El shell solo guarda la preferencia y escribe la

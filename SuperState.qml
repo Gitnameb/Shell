@@ -22,11 +22,6 @@ Singleton {
     // Si el gesto terminó siendo un toque limpio. Un atajo como Super+Return
     // no debe abrir el lanzador al soltar Super.
     property bool tapAllowed: true
-    // Verdadero cuando el backend recibe el estado real de Mod. Si no, el
-    // bind suelto de Umbriel sigue funcionando como respaldo en sesiones
-    // antiguas que aún no publican ese evento.
-    property bool externalHold: false
-
     readonly property bool active: root.pinned || root.heldOverlay
     // Mientras se elige el modo inicial, Super no debe abrir el lanzador ni
     // los controles por encima del modal de bienvenida.
@@ -64,16 +59,6 @@ Singleton {
             else
                 LauncherState.show();
         }
-    }
-
-    // Respaldo para compositores que solo avisan del toque al soltar (el bind
-    // `Mod` de Umbriel). Con el evento `modifiers` activo, el gesto ya se
-    // resolvió y este camino no hace nada para no abrir dos veces.
-    function externalTap(): void {
-        if (root.externalHold)
-            return;
-        root.press(true);
-        root.release(true);
     }
 
     // Algunos atajos de Hyprland cancelan el gesto para que el overlay no

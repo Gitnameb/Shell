@@ -109,10 +109,9 @@ minimize_glyph_hover = "#141519FF"
 [keybinds]
 
 # Shell
-# El shell decide con el evento `modifiers` si el gesto fue un toque limpio. Este
-# bind sigue como respaldo para compositores antiguos; con el evento activo,
-# `superTap` no hace nada y evita abrir el lanzador dos veces.
-"Mod" = { action = "spawn qs ipc -c shell call windows superTap", repeat = false }
+# El shell decide con el evento `modifiers` si el gesto fue un toque limpio.
+# No se añade un bind suelto para `Mod`: ese bind y el evento se ejecutaban a
+# la vez y podían abrir o cerrar el cajón dos veces.
 "Mod+Space" = { action = "spawn qs ipc -c shell call launcher toggle", repeat = false }
 "Mod+N" = { action = "spawn qs ipc -c shell call notifications toggle", repeat = false }
 "Mod+Shift+N" = { action = "spawn qs ipc -c shell call notifications dnd", repeat = false }
