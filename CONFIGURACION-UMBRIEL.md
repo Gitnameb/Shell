@@ -680,7 +680,8 @@ Thunar aporta «Home», «Computer» y «Trash».
 Las opciones de ventana del menú y las de la barra de título salen de la misma
 lista, `WindowActions.qml`. Así no pueden desincronizarse: mismo orden, mismas
 etiquetas, mismos iconos y mismos atajos. El orden imita los botones nativos
-(flotar, fijar, pantalla completa, mover, minimizar, maximizar y cerrar).
+(volumen, flotar, fijar, pantalla completa, mover, minimizar, maximizar y
+cerrar).
 
 - Se eliminó «Enfocar ventana»; para eso ya sirve pulsar la ficha de la app.
 - La opción de flotar solo aparece cuando puede hacer algo. En un escritorio
@@ -695,10 +696,12 @@ etiquetas, mismos iconos y mismos atajos. El orden imita los botones nativos
   fijar» con el icono `window-unpin` cuando la ventana ya está fijada.
 - «Mover a escritorio» muestra los nueve botones solo al pulsar la fila; por
   defecto el menú abre con esa lista plegada.
-- «Volumen» controla el flujo de PipeWire de esa app: el altavoz silencia y el
-  deslizador ajusta el nivel. Si la app no tiene audio activo, la fila queda
-  desactivada. Se identifica por el PID de la ventana y, si falta, por el id o
-  el nombre de la aplicación.
+- El altavoz de la barra de título nativa abre una tarjeta de volumen para esa
+  ventana. Controla el flujo de PipeWire de la app: el altavoz silencia y el
+  deslizador ajusta el nivel. Si no hay audio activo, la tarjeta lo indica y
+  deja el control desactivado. Se identifica por el PID de la ventana y, si
+  falta, por el id o el nombre de la aplicación. El menú del icono de la app
+  conserva la misma opción.
 - Cada opción lleva un icono de teclado a la derecha (`ShortcutKey.qml`). Al
   pasar el ratón por ese icono aparece un tooltip con el atajo: `Super+T`
   flotar, `Super+P` fijar, `Super+Shift+1…9` mover, `Super+Shift+H` minimizar,
@@ -755,7 +758,7 @@ La barra que dibuja Umbriel comparte la misma lista de acciones. En
 `[appearance.title_bar] buttons` se añadió `"fullscreen"`:
 
 ```toml
-buttons = ["float", "pin", "fullscreen", "move", "minimize", "maximize", "close"]
+buttons = ["volume", "float", "pin", "fullscreen", "move", "minimize", "maximize", "close"]
 ```
 
 - El botón de pantalla completa va después de fijar y antes de mover, igual

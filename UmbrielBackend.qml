@@ -48,6 +48,12 @@ Scope {
     // Vista general de Umbriel. El shell la usa para cerrar sus paneles cuando
     // aparece, de modo que no queden flotando encima de las miniaturas.
     property bool overviewOpen: false
+    // El botón de volumen de la barra de título nativa pide al shell una
+    // tarjeta junto al puntero. Un serial distingue dos pulsaciones seguidas.
+    property int windowVolumeSerial: 0
+    property string windowVolumeId: ""
+    property real windowVolumeX: 0
+    property real windowVolumeY: 0
 
     readonly property var capabilities: ({
         nativeTitlebar: true,      // barra de título del propio Umbriel
@@ -577,7 +583,7 @@ Scope {
     Process {
         id: eventsProc
 
-        command: ["umbriel", "subscribe", "workspaces,windows"]
+        command: ["umbriel", "subscribe", "workspaces,windows,window_volume"]
         running: root.available
 
         stdout: SplitParser {
@@ -590,6 +596,13 @@ Scope {
                         root.applyWindows(message.data);
                     else if (message.event === "workspaces")
                         root.applyWorkspaces(message.data);
+                    else if (message.event === "window_volume") {
+                        const data = message.data || ({});
+                        root.windowVolumeId = String(data.id || "");
+                        root.windowVolumeX = Number(data.x) || 0;
+                        root.windowVolumeY = Number(data.y) || 0;
+                        root.windowVolumeSerial = Number(data.serial) || 0;
+                    }
                 } catch (error) {
                 }
             }

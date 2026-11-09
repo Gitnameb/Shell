@@ -1,5 +1,5 @@
 diff --git a/docs/user/appearance.md b/docs/user/appearance.md
-index 1146a02c..53233b54 100644
+index 1146a02c..f713076f 100644
 --- a/docs/user/appearance.md
 +++ b/docs/user/appearance.md
 @@ -129,6 +129,9 @@ buttons = ["minimize", "maximize", "close"]
@@ -12,6 +12,15 @@ index 1146a02c..53233b54 100644
  
  [colors.title_bar]
  background = "#292933FF"
+@@ -155,7 +158,7 @@ Choose a title bar mode:
+ | `"on"`         | Follow client decoration preferences; show when no preference is known.                    |
+ | `"forced"`     | Show regardless of client preference.                                                      |
+ 
+-`height` is 16 to 128 logical pixels, and `font` is a Pango font description. `button_position` accepts `"left"` or `"right"`. `buttons` lists the buttons to show, from the title outward: the last one sits at the bar's edge, so the default puts close outermost on either side. Leave a name out to hide that button, or use `[]` for a bar without buttons; each of `"minimize"`, `"maximize"`, and `"close"` may appear once.
++`height` is 16 to 128 logical pixels, and `font` is a Pango font description. `button_position` accepts `"left"` or `"right"`. `buttons` lists the buttons to show, from the title outward: the last one sits at the bar's edge, so the default puts close outermost on either side. Leave a name out to hide that button, or use `[]` for a bar without buttons; each of `"minimize"`, `"maximize"`, and `"close"` may appear once. This fork also accepts `"pin"`, `"float"`, `"fullscreen"`, `"move"`, and `"volume"`. The volume button asks the shell to show the per-window volume panel; the other four toggle the window state or open the native workspace picker.
+ 
+ Buttons show a drawn X for close, an outlined square for maximize, and an underscore for minimize. `button_glyph` controls when those symbols appear:
+ 
 diff --git a/docs/user/input.md b/docs/user/input.md
 index 47c4faa4..3cb53409 100644
 --- a/docs/user/input.md
@@ -69,7 +78,7 @@ index 47c4faa4..3cb53409 100644
  | Key            | Range or values | Description                                                                              |
  | -------------- | --------------- | ---------------------------------------------------------------------------------------- |
 diff --git a/docs/user/ipc.md b/docs/user/ipc.md
-index 4f1a7644..0f05fa0f 100644
+index 4f1a7644..af55ee02 100644
 --- a/docs/user/ipc.md
 +++ b/docs/user/ipc.md
 @@ -71,7 +71,7 @@ Programs run an [action](actions.md) with a typed request instead of the words p
@@ -81,6 +90,37 @@ index 4f1a7644..0f05fa0f 100644
  
  `{"cmd":"focused-window"}` answers with the focused window's listing entry: the window the window actions act on. The seat's focused window wins (for a modal dialog, the dialog itself; for a visible scratchpad window holding the keyboard, that window); while a layer surface or the overview holds the keyboard, the answer falls back to the pointer output's active workspace's remembered focus; and the reply is `{"err": "no focused window"}` while a scratchpad owns the seat with no window focused, or when nothing is focused. The entry is exactly a `windows` entry for that window; its `focused` member stays the workspace-local remembered focus and does not select which window the query answers about.
  
+@@ -153,6 +153,7 @@ The connection first receives the current state of each family, then a new snaps
+ | `screencast`      | Manual target and focus-following screencast commands                                                                                             |
+ | `layers`          | Layer-shell surfaces appearing, mapping, closing, moving, resizing, or taking and losing the keyboard                                             |
+ | `outputs`         | Outputs appearing or leaving, enablement, power, mode, position, scale, transform, variable refresh, HDR, usable area, focus, or active workspace |
++| `window_volume`   | The native title bar volume button was pressed, with the window id, pointer position, and serial                                                      |
+ 
+ Payloads are full snapshots rather than deltas. Replace local state with the newest event instead of trying to merge increments. Identical consecutive payloads are omitted.
+ 
+@@ -175,6 +176,14 @@ The `screencast` event carries a monotonically increasing serial and one of six
+ 
+ Every command advances the serial, even when it selects the same source or mode again. Portal backends use that edge so a newly authorized manual stream stays empty until the user performs another target action.
+ 
++### Window volume payload
++
++The `window_volume` event is one-shot: the native title bar volume button sends the window id and the pointer position, and the serial distinguishes two presses at the same spot.
++
++```json
++{"event":"window_volume","data":{"id":"window-id","x":792.0,"y":160.0,"serial":1}}
++```
++
+ ### Theme payload
+ 
+ The `theme` event mirrors `[colors]`, `[colors.border]`, `[colors.overview]`, and `appearance.corner_radius`:
+@@ -219,6 +228,7 @@ umbriel subscribe workspaces
+ umbriel subscribe workspaces,windows
+ umbriel subscribe submap
+ umbriel subscribe screencast
++umbriel subscribe window_volume
+ ```
+ 
+ It writes one JSON line per event until Umbriel exits or the reader closes:
 diff --git a/docs/user/layer-rules.md b/docs/user/layer-rules.md
 index 072687c7..14b91eee 100644
 --- a/docs/user/layer-rules.md
@@ -502,7 +542,7 @@ index 6f3d130c..c21867c8 100644
    registry::Field<Config> hotCornersTable();
    registry::Field<Config> generalTable();
 diff --git a/src/config/fields_general.cpp b/src/config/fields_general.cpp
-index 3e1a9910..985080f8 100644
+index 3e1a9910..a0eab967 100644
 --- a/src/config/fields_general.cpp
 +++ b/src/config/fields_general.cpp
 @@ -94,6 +94,7 @@ namespace umbriel {
@@ -531,7 +571,7 @@ index 3e1a9910..985080f8 100644
      // Overview badge keys: printable ASCII, unique ignoring case.
      std::optional<std::string> parseShortcutKeys(const toml::node& node, const std::string& path) {
        auto value = node.value<std::string>();
-@@ -390,6 +402,10 @@ namespace umbriel {
+@@ -390,6 +402,11 @@ namespace umbriel {
          {"minimize", TitleBarButton::Minimize},
          {"maximize", TitleBarButton::Maximize},
          {"close", TitleBarButton::Close},
@@ -539,10 +579,11 @@ index 3e1a9910..985080f8 100644
 +        {"float", TitleBarButton::Float},
 +        {"move", TitleBarButton::Move},
 +        {"fullscreen", TitleBarButton::Fullscreen},
++        {"volume", TitleBarButton::Volume},
      }};
    } // namespace
  
-@@ -437,6 +453,10 @@ namespace umbriel {
+@@ -437,6 +454,10 @@ namespace umbriel {
      return registry::table("appearance", &Config::appearance, appearanceFields());
    }
  
@@ -650,7 +691,7 @@ index 16a64d47..08cfa6a7 100644
      resolved.tabs.newTabPosition = config.layout.tabs.newTabPosition;
      resolved.tabs.wrapFocus = config.layout.tabs.wrapFocus;
 diff --git a/src/input/cursor.cpp b/src/input/cursor.cpp
-index 04ee05c5..30bc170a 100644
+index 04ee05c5..5a659def 100644
 --- a/src/input/cursor.cpp
 +++ b/src/input/cursor.cpp
 @@ -17,8 +17,10 @@
@@ -798,7 +839,7 @@ index 04ee05c5..30bc170a 100644
      // Config mouse binds win over the overview and the built-in Mod+drag / Mod+resize grabs. Presses consumed here
      // swallow their paired release so clients never see an unmatched release.
      if (state == WL_POINTER_BUTTON_STATE_PRESSED && isPassthrough()) {
-@@ -1705,7 +1762,29 @@ namespace umbriel {
+@@ -1705,7 +1762,31 @@ namespace umbriel {
                press.view->maximizedToEdges() || press.view->scheduledMaximized() || press.view->floatingMaximized();
            press.view->setMaximizedLikeClientRequest(!maximized);
          } else if (press.part == SsdFramePart::Minimize) {
@@ -826,10 +867,12 @@ index 04ee05c5..30bc170a 100644
 +          m_server->showMoveMenu(press.view, m_cursor->x, m_cursor->y);
 +        } else if (press.part == SsdFramePart::Fullscreen) {
 +          press.view->toggleFullscreen();
++        } else if (press.part == SsdFramePart::Volume) {
++          m_server->showWindowVolume(press.view, m_cursor->x, m_cursor->y);
          }
        }
      }
-@@ -1739,7 +1818,13 @@ namespace umbriel {
+@@ -1739,7 +1820,13 @@ namespace umbriel {
      }
  
      if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
@@ -844,7 +887,7 @@ index 04ee05c5..30bc170a 100644
          if (button == grab->button) {
            m_server->gestures()->endPointerScroll(m_server->sessionLocked(), timeMsec);
            resetMode();
-@@ -1767,7 +1852,7 @@ namespace umbriel {
+@@ -1767,7 +1854,7 @@ namespace umbriel {
        LayerSurface* layer = nullptr;
        m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
        wlr_seat* seat = m_server->seat()->wlr();
@@ -853,7 +896,7 @@ index 04ee05c5..30bc170a 100644
          if (surface != nullptr) {
            setPointerFocus(surface, sx, sy, timeMsec);
          }
-@@ -1785,6 +1870,10 @@ namespace umbriel {
+@@ -1785,6 +1872,10 @@ namespace umbriel {
      }
  
      if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
@@ -864,7 +907,7 @@ index 04ee05c5..30bc170a 100644
        if (auto* grab = std::get_if<MoveGrab>(&m_grab)) {
          if (grab->pending) {
            resetMode();
-@@ -1890,6 +1979,10 @@ namespace umbriel {
+@@ -1890,6 +1981,11 @@ namespace umbriel {
              && !target->blocked()
              && (hit->part == SsdFramePart::Close
                  || hit->part == SsdFramePart::Minimize
@@ -872,10 +915,11 @@ index 04ee05c5..30bc170a 100644
 +                || hit->part == SsdFramePart::Float
 +                || hit->part == SsdFramePart::Move
 +                || hit->part == SsdFramePart::Fullscreen
++                || hit->part == SsdFramePart::Volume
                  || (hit->part == SsdFramePart::Maximize && target->ssdFrame()->maximizeEnabled()))
          ) {
            m_server->focusView(target, FocusReason::PointerPress);
-@@ -1928,15 +2021,63 @@ namespace umbriel {
+@@ -1928,15 +2024,63 @@ namespace umbriel {
      }
  
      const bool modHeld = (m_server->keyboardModifiers() & m_server->modKey()) != 0;
@@ -943,7 +987,7 @@ index 04ee05c5..30bc170a 100644
        if (config().input.modRightDoubleClick == ModRightDoubleClick::None) {
          beginResize(view, view->tiled() ? 0 : floatResizeEdges(view), button);
          return;
-@@ -1960,25 +2101,44 @@ namespace umbriel {
+@@ -1960,25 +2104,44 @@ namespace umbriel {
        // Defer the grab until the pointer leaves the slop: a grab would drop the
        // maximize state the second click reads. Edges are snapshotted at the
        // press point; a press proposing none is a plain click.
@@ -994,7 +1038,7 @@ index 04ee05c5..30bc170a 100644
      // Pointer focus must match the surface under the cursor before the button
      // event so wl_data_device drag serial validation succeeds.
      wlr_seat* seat = m_server->seat()->wlr();
-@@ -2055,7 +2215,7 @@ namespace umbriel {
+@@ -2055,7 +2218,7 @@ namespace umbriel {
        wlr_surface* surface = nullptr;
        LayerSurface* layer = nullptr;
        m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -1003,7 +1047,7 @@ index 04ee05c5..30bc170a 100644
          if (!overview->interactive()) {
            return;
          }
-@@ -2108,6 +2268,18 @@ namespace umbriel {
+@@ -2108,6 +2271,18 @@ namespace umbriel {
      }
      if (!armed) {
        m_wheelAccum[orientation] = 0;
@@ -1022,7 +1066,7 @@ index 04ee05c5..30bc170a 100644
        const double scale = touchpadScrollFactor(event->pointer, isVertical);
        wlr_seat_pointer_notify_axis(
            m_server->seat()->wlr(), event->time_msec, event->orientation, event->delta * scale, event->delta_discrete,
-@@ -2224,7 +2396,7 @@ namespace umbriel {
+@@ -2224,7 +2399,7 @@ namespace umbriel {
  
      // A tap in overview activates like a left click; panels keep their touch.
      if (Overview* overview = m_server->overview();
@@ -1031,7 +1075,7 @@ index 04ee05c5..30bc170a 100644
        if (overview->interactive()) {
          overview->handleButton(BTN_LEFT, true, lx, ly, event->time_msec);
          overview->handleButton(BTN_LEFT, false, lx, ly, event->time_msec);
-@@ -2249,6 +2421,11 @@ namespace umbriel {
+@@ -2249,6 +2424,11 @@ namespace umbriel {
        }
      }
  
@@ -1043,7 +1087,7 @@ index 04ee05c5..30bc170a 100644
      if (surface != nullptr) {
        // Focus the touched view (click-to-focus equivalent).
        if (!m_server->sessionLocked() && m_server->exclusiveKeyboardLayer() == nullptr) {
-@@ -2360,7 +2537,7 @@ namespace umbriel {
+@@ -2360,7 +2540,7 @@ namespace umbriel {
        wlr_surface* surface = nullptr;
        LayerSurface* layer = nullptr;
        m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -1052,7 +1096,7 @@ index 04ee05c5..30bc170a 100644
          setPointerFocus(surface, sx, sy, timeMsec);
          wlr_seat_pointer_notify_motion(m_server->seat()->wlr(), timeMsec, sx, sy);
          return;
-@@ -2396,6 +2573,14 @@ namespace umbriel {
+@@ -2396,6 +2576,14 @@ namespace umbriel {
          }
        }
      }
@@ -1067,7 +1111,7 @@ index 04ee05c5..30bc170a 100644
      if (std::holds_alternative<FloatingResizeGrab>(m_grab)) {
        if (m_server->sessionLocked()) {
          resetMode();
-@@ -2421,6 +2606,48 @@ namespace umbriel {
+@@ -2421,6 +2609,48 @@ namespace umbriel {
        resetMode();
      }
  
@@ -1116,7 +1160,7 @@ index 04ee05c5..30bc170a 100644
      wlr_seat* seat = m_server->seat()->wlr();
      updateDataDragEdgeScroll();
      if (seat->drag == nullptr
-@@ -2443,6 +2670,9 @@ namespace umbriel {
+@@ -2443,6 +2673,9 @@ namespace umbriel {
      wlr_surface* surface = nullptr;
      LayerSurface* layer = nullptr;
      View* view = m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -1126,7 +1170,7 @@ index 04ee05c5..30bc170a 100644
  
      if (allowFocusChange
          && config().input.focus.followsMouse
-@@ -2694,6 +2924,7 @@ namespace umbriel {
+@@ -2694,6 +2927,7 @@ namespace umbriel {
      wlr_surface* surface = nullptr;
      LayerSurface* layer = nullptr;
      View* view = m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -1134,7 +1178,7 @@ index 04ee05c5..30bc170a 100644
      if (surface == nullptr || !wlr_surface_accepts_tablet_v2(surface, v2tablet)) {
        setToolEmulating(state, true);
        processMotion(timeMsec, oldX, oldY);
-@@ -3362,13 +3593,41 @@ namespace umbriel {
+@@ -3362,13 +3596,41 @@ namespace umbriel {
      if (workspace == nullptr || workspace->group() == nullptr || workspace->group()->output() == nullptr) {
        return 0;
      }
@@ -1181,7 +1225,7 @@ index 04ee05c5..30bc170a 100644
    }
  
    void Cursor::forgetView(const View* view) {
-@@ -3383,11 +3642,22 @@ namespace umbriel {
+@@ -3383,11 +3645,22 @@ namespace umbriel {
      if (auto* grab = std::get_if<MoveGrab>(&m_grab); grab != nullptr && grab->view != view) {
        std::erase(grab->tabGroup.tabs, view);
      }
@@ -1204,7 +1248,7 @@ index 04ee05c5..30bc170a 100644
    }
  
    uint32_t Cursor::floatResizeEdges(View* view) const {
-@@ -3401,70 +3671,92 @@ namespace umbriel {
+@@ -3401,70 +3674,92 @@ namespace umbriel {
      return resizeEdgesForPoint(box, m_cursor->x, m_cursor->y);
    }
  
@@ -1344,7 +1388,7 @@ index 04ee05c5..30bc170a 100644
    }
  
    void Cursor::setCompositorCursor(const char* name) {
-@@ -3548,10 +3840,13 @@ namespace umbriel {
+@@ -3548,10 +3843,13 @@ namespace umbriel {
      wlr_surface* surface = nullptr;
      LayerSurface* layer = nullptr;
      m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -1359,7 +1403,7 @@ index 04ee05c5..30bc170a 100644
        surface = nullptr;
      }
      const bool stale = !pointerFocusPinned() && pointerContentsStale(surface, sx, sy);
-@@ -3615,27 +3910,42 @@ namespace umbriel {
+@@ -3615,27 +3913,42 @@ namespace umbriel {
      wlr_surface* surface = nullptr;
      LayerSurface* layer = nullptr;
      View* view = m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -1413,7 +1457,7 @@ index 04ee05c5..30bc170a 100644
  
      uint32_t resizeEdges = 0;
      if (const auto* grab = std::get_if<FloatingResizeGrab>(&m_grab)) {
-@@ -3650,7 +3960,13 @@ namespace umbriel {
+@@ -3650,7 +3963,13 @@ namespace umbriel {
        setCompositorCursor(name != nullptr ? name : "default");
        return;
      }
@@ -1427,7 +1471,7 @@ index 04ee05c5..30bc170a 100644
        if (!grab->pending) {
          setCompositorCursor("grabbing");
        }
-@@ -3658,14 +3974,36 @@ namespace umbriel {
+@@ -3658,14 +3977,36 @@ namespace umbriel {
      }
  
      const bool modHeld = (m_server->keyboardModifiers() & m_server->modKey()) != 0;
@@ -1467,7 +1511,7 @@ index 04ee05c5..30bc170a 100644
        return;
      }
  
-@@ -3678,6 +4016,10 @@ namespace umbriel {
+@@ -3678,6 +4019,11 @@ namespace umbriel {
              !hit->view->blocked()
              && (hit->part == SsdFramePart::Close
                  || hit->part == SsdFramePart::Minimize
@@ -1475,10 +1519,11 @@ index 04ee05c5..30bc170a 100644
 +                || hit->part == SsdFramePart::Float
 +                || hit->part == SsdFramePart::Move
 +                || hit->part == SsdFramePart::Fullscreen
++                || hit->part == SsdFramePart::Volume
                  || (hit->part == SsdFramePart::Maximize && hit->view->ssdFrame()->maximizeEnabled()))
          ) {
            name = "pointer";
-@@ -3697,8 +4039,9 @@ namespace umbriel {
+@@ -3697,8 +4043,9 @@ namespace umbriel {
      double sx = 0;
      double sy = 0;
      wlr_surface* surface = nullptr;
@@ -1490,7 +1535,7 @@ index 04ee05c5..30bc170a 100644
    }
  
    void Cursor::processResizeTile() {
-@@ -3722,4 +4065,78 @@ namespace umbriel {
+@@ -3722,4 +4069,78 @@ namespace umbriel {
      grab->workspace->markArrange(false);
    }
  
@@ -3160,7 +3205,7 @@ index 00000000..6aa20119
 +
 +} // namespace umbriel
 diff --git a/src/scene/ssd_frame.cpp b/src/scene/ssd_frame.cpp
-index 213d2361..da413f28 100644
+index 213d2361..47ecb0a2 100644
 --- a/src/scene/ssd_frame.cpp
 +++ b/src/scene/ssd_frame.cpp
 @@ -1,6 +1,7 @@
@@ -3192,7 +3237,7 @@ index 213d2361..da413f28 100644
    } // namespace
  
    SsdFrame::SsdFrame(wlr_scene_tree* parent, std::shared_ptr<TabLabelCache> labels, wlr_scene_tree* inputParent)
-@@ -24,10 +39,17 @@ namespace umbriel {
+@@ -24,10 +39,18 @@ namespace umbriel {
        wlr_scene_node_place_below(&m_gripTree->node, &parent->node);
      }
      const float clear[4]{};
@@ -3207,10 +3252,11 @@ index 213d2361..da413f28 100644
 +    m_float = wlr_scene_rect_create(m_tree, 1, 1, clear);
 +    m_move = wlr_scene_rect_create(m_tree, 1, 1, clear);
 +    m_fullscreenButton = wlr_scene_rect_create(m_tree, 1, 1, clear);
++    m_volume = wlr_scene_rect_create(m_tree, 1, 1, clear);
      for (auto*& grip : m_grips)
        grip = wlr_scene_rect_create(m_gripTree, 1, 1, clear);
      wlr_scene_node_set_enabled(&m_tree->node, false);
-@@ -37,6 +59,8 @@ namespace umbriel {
+@@ -37,6 +60,8 @@ namespace umbriel {
    SsdFrame::~SsdFrame() {
      if (m_blur != nullptr)
        wlr_scene_node_destroy(&m_blur->node);
@@ -3219,7 +3265,7 @@ index 213d2361..da413f28 100644
      wlr_scene_node_destroy(&m_gripTree->node);
      wlr_scene_node_destroy(&m_tree->node);
      for (auto* buffer : m_iconBuffers) {
-@@ -58,6 +82,13 @@ namespace umbriel {
+@@ -58,6 +83,13 @@ namespace umbriel {
      redraw();
    }
    void SsdFrame::setAlpha(float alpha) { setAlphas(alpha, alpha); }
@@ -3233,7 +3279,7 @@ index 213d2361..da413f28 100644
    void SsdFrame::setAlphas(float chromeAlpha, float blurAlpha) {
      chromeAlpha = std::clamp(chromeAlpha, 0.0F, 1.0F);
      blurAlpha = std::clamp(blurAlpha, 0.0F, 1.0F);
-@@ -74,6 +105,19 @@ namespace umbriel {
+@@ -74,6 +106,19 @@ namespace umbriel {
      m_title = title;
      redraw();
    }
@@ -3253,7 +3299,7 @@ index 213d2361..da413f28 100644
    void SsdFrame::setResizable(bool resizable) {
      if (m_resizable == resizable)
        return;
-@@ -92,7 +136,30 @@ namespace umbriel {
+@@ -92,7 +137,30 @@ namespace umbriel {
      m_buttons.assign(buttons.begin(), buttons.end());
      redraw();
    }
@@ -3285,7 +3331,7 @@ index 213d2361..da413f28 100644
    void SsdFrame::setHovered(SsdFramePart part) {
      if (m_hovered == part)
        return;
-@@ -125,28 +192,35 @@ namespace umbriel {
+@@ -125,28 +193,35 @@ namespace umbriel {
          && m_blurOptions.enabled.value_or(false)
          && backgroundAlpha * m_alpha < 1.0F
          && backgroundAlpha >= m_blurOptions.ignoreAlpha;
@@ -3342,13 +3388,13 @@ index 213d2361..da413f28 100644
    }
  
    int SsdFrame::zoomed(int value) const { return static_cast<int>(std::lround(value * m_geometry.zoom)); }
-@@ -161,14 +235,16 @@ namespace umbriel {
+@@ -161,14 +236,16 @@ namespace umbriel {
    void SsdFrame::updateButtonIcon(TitleBarButton button, const std::array<float, 4>& color, float alpha, bool visible) {
      const auto index = static_cast<size_t>(button);
      auto*& icon = m_icons[index];
 -    const std::array<wlr_scene_rect*, kTitleBarButtonCount> backgrounds{m_minimize, m_maximize, m_close};
 +    const std::array<wlr_scene_rect*, kTitleBarButtonCount> backgrounds{
-+        m_minimize, m_maximize, m_close, m_pin, m_float, m_move, m_fullscreenButton
++        m_minimize, m_maximize, m_close, m_pin, m_float, m_move, m_fullscreenButton, m_volume
 +    };
      const auto* background = backgrounds[index];
      if (!visible || !background->node.enabled) {
@@ -3361,7 +3407,7 @@ index 213d2361..da413f28 100644
      const float scale = std::max(1.0F, m_geometry.scale);
      // At integer scales the symbol maps 1:1 onto the button. At fractional scales the button's physical size depends
      // on its position, and the renderer copies a buffer within one pixel of that size texel for texel, leaving the
-@@ -207,52 +283,88 @@ namespace umbriel {
+@@ -207,52 +284,92 @@ namespace umbriel {
      const auto& background = m_focused ? colors.background : colors.backgroundUnfocused;
      premultiplied(color, background, m_alpha);
      wlr_scene_rect_set_color(m_background, color);
@@ -3451,6 +3497,10 @@ index 213d2361..da413f28 100644
 +        m_fullscreenButton, false, idleGlyph, colors.text, SsdFramePart::Fullscreen, true,
 +        m_fullscreen, TitleBarButton::Fullscreen
 +    );
++    button(
++        m_volume, false, idleGlyph, colors.text, SsdFramePart::Volume, true, false,
++        TitleBarButton::Volume
++    );
      if (m_label != nullptr)
        wlr_scene_buffer_set_opacity(m_label, m_alpha);
 +    if (m_subtitleLabel != nullptr)
@@ -3468,7 +3518,7 @@ index 213d2361..da413f28 100644
      wlr_scene_node_set_enabled(&m_tree->node, shown);
      wlr_scene_node_set_enabled(&m_gripTree->node, available && m_resizable && !m_preview);
      if (!available) {
-@@ -270,11 +382,13 @@ namespace umbriel {
+@@ -270,11 +387,13 @@ namespace umbriel {
        rect->accepts_input = !m_preview;
      };
      const int band = g.borderInset + kSsdResizeBand;
@@ -3485,7 +3535,7 @@ index 213d2361..da413f28 100644
      }};
      for (size_t i = 0; i < m_grips.size(); ++i) {
        place(m_grips[i], grips[i]);
-@@ -284,18 +398,53 @@ namespace umbriel {
+@@ -284,18 +403,53 @@ namespace umbriel {
        updateBlur();
        return;
      }
@@ -3544,7 +3594,7 @@ index 213d2361..da413f28 100644
        place(button, box);
        const int buttonRadius = style.buttonCornerRadius >= 0 ? style.buttonCornerRadius : g.cornerRadius;
        wlr_scene_rect_set_corner_radius(button, std::min(zoomed(box.width) / 2, zoomed(buttonRadius)));
-@@ -304,14 +453,95 @@ namespace umbriel {
+@@ -304,14 +458,96 @@ namespace umbriel {
      drawButton(m_close, parts.button(TitleBarButton::Close));
      drawButton(m_maximize, parts.button(TitleBarButton::Maximize));
      drawButton(m_minimize, parts.button(TitleBarButton::Minimize));
@@ -3552,6 +3602,7 @@ index 213d2361..da413f28 100644
 +    drawButton(m_float, parts.button(TitleBarButton::Float));
 +    drawButton(m_move, parts.button(TitleBarButton::Move));
 +    drawButton(m_fullscreenButton, parts.button(TitleBarButton::Fullscreen));
++    drawButton(m_volume, parts.button(TitleBarButton::Volume));
      const auto& colors = config().colors.titleBar;
 +    // Icono real de la app, a la izquierda del título.
 +    const int iconSize = std::clamp((overlay ? layoutHeight : h) - 16, 12, 20);
@@ -3643,7 +3694,7 @@ index 213d2361..da413f28 100644
      if (label == nullptr) {
        if (m_label != nullptr) {
          wlr_scene_node_destroy(&m_label->node);
-@@ -326,7 +556,46 @@ namespace umbriel {
+@@ -326,7 +562,46 @@ namespace umbriel {
          wlr_scene_buffer_set_buffer(m_label, label->buffer);
        }
        wlr_scene_buffer_set_dest_size(m_label, std::max(1, zoomed(label->width)), std::max(1, zoomed(label->height)));
@@ -3691,7 +3742,7 @@ index 213d2361..da413f28 100644
      }
      updateColors();
    }
-@@ -342,9 +611,17 @@ namespace umbriel {
+@@ -342,9 +617,17 @@ namespace umbriel {
    SsdFramePoint SsdFrame::pointAt(double x, double y) const {
      if (m_preview || m_geometry.suppressed || (!m_tree->node.enabled && !m_gripTree->node.enabled))
        return {};
@@ -3710,7 +3761,7 @@ index 213d2361..da413f28 100644
      );
    }
  
-@@ -362,7 +639,20 @@ namespace umbriel {
+@@ -362,7 +645,20 @@ namespace umbriel {
          wlr_scene_node_set_position(&copy->node, m_blur->node.x, m_blur->node.y);
        }
      }
@@ -3732,7 +3783,7 @@ index 213d2361..da413f28 100644
        if (!source->node.enabled)
          continue;
        auto* copy = wlr_scene_rect_create(tree, source->width, source->height, source->color);
-@@ -380,6 +670,8 @@ namespace umbriel {
+@@ -380,6 +676,8 @@ namespace umbriel {
        wlr_scene_node_set_position(&copy->node, m_tree->node.x + source->node.x, m_tree->node.y + source->node.y);
      };
      copyBuffer(m_label);
@@ -3741,7 +3792,7 @@ index 213d2361..da413f28 100644
      for (const auto* icon : m_icons)
        copyBuffer(icon);
    }
-@@ -392,10 +684,13 @@ namespace umbriel {
+@@ -392,10 +690,13 @@ namespace umbriel {
    void SsdFrame::syncPreview(ViewChromeAttachment& preview) const {
      if (auto* frame = dynamic_cast<SsdFrame*>(&preview)) {
        frame->setTitle(m_title);
@@ -3756,7 +3807,7 @@ index 213d2361..da413f28 100644
        frame->setBlurOptions(m_blurOptions);
        frame->reloadConfig();
 diff --git a/src/scene/ssd_frame.h b/src/scene/ssd_frame.h
-index aad03159..5e544a96 100644
+index aad03159..294eec36 100644
 --- a/src/scene/ssd_frame.h
 +++ b/src/scene/ssd_frame.h
 @@ -31,17 +31,28 @@ namespace umbriel {
@@ -3788,7 +3839,7 @@ index aad03159..5e544a96 100644
      bool contains(const wlr_scene_node* node) const;
      SsdFramePoint pointAt(double x, double y) const;
      void snapshot(wlr_scene_tree* parent) const;
-@@ -58,14 +69,25 @@ namespace umbriel {
+@@ -58,14 +69,26 @@ namespace umbriel {
      wlr_scene_tree* m_tree = nullptr;
      // Invisible resize bands stay outside the window's animation capture bounds.
      wlr_scene_tree* m_gripTree = nullptr;
@@ -3811,10 +3862,11 @@ index aad03159..5e544a96 100644
 +    wlr_scene_rect* m_float = nullptr;
 +    wlr_scene_rect* m_move = nullptr;
 +    wlr_scene_rect* m_fullscreenButton = nullptr;
++    wlr_scene_rect* m_volume = nullptr;
      std::array<wlr_scene_buffer*, kTitleBarButtonCount> m_icons{};
      // Keep a consumer lock for snapshots and renderer recovery after the scene uploads an icon's texture.
      std::array<wlr_buffer*, kTitleBarButtonCount> m_iconBuffers{};
-@@ -76,11 +98,18 @@ namespace umbriel {
+@@ -76,11 +99,18 @@ namespace umbriel {
      std::shared_ptr<TabLabelCache> m_labels;
      ViewChromeGeometry m_geometry;
      std::string m_title;
@@ -3834,7 +3886,7 @@ index aad03159..5e544a96 100644
      float m_blurAlpha = 1.0F;
      SsdFramePart m_hovered = SsdFramePart::None;
 diff --git a/src/scene/ssd_frame_geometry.cpp b/src/scene/ssd_frame_geometry.cpp
-index 5e50faf4..9bf8ba36 100644
+index 5e50faf4..abe782e6 100644
 --- a/src/scene/ssd_frame_geometry.cpp
 +++ b/src/scene/ssd_frame_geometry.cpp
 @@ -9,7 +9,9 @@ extern "C" {
@@ -3902,7 +3954,7 @@ index 5e50faf4..9bf8ba36 100644
        };
        if (inButton(TitleBarButton::Close))
          return {SsdFramePart::Close, 0};
-@@ -62,6 +96,14 @@ namespace umbriel {
+@@ -62,6 +96,16 @@ namespace umbriel {
          return {SsdFramePart::Maximize, 0};
        if (inButton(TitleBarButton::Minimize))
          return {SsdFramePart::Minimize, 0};
@@ -3914,22 +3966,24 @@ index 5e50faf4..9bf8ba36 100644
 +        return {SsdFramePart::Pin, 0};
 +      if (inButton(TitleBarButton::Float))
 +        return {SsdFramePart::Float, 0};
++      if (inButton(TitleBarButton::Volume))
++        return {SsdFramePart::Volume, 0};
        return {SsdFramePart::TitleBar, 0};
      }
      if (!resizable
 diff --git a/src/scene/ssd_frame_geometry.h b/src/scene/ssd_frame_geometry.h
-index e42e5f84..0e33335d 100644
+index e42e5f84..d2d39d03 100644
 --- a/src/scene/ssd_frame_geometry.h
 +++ b/src/scene/ssd_frame_geometry.h
-@@ -12,12 +12,29 @@ extern "C" {
+@@ -12,12 +12,30 @@ extern "C" {
  
  namespace umbriel {
    enum class TitleBarButtonSide : uint8_t { Left, Right };
 -  enum class TitleBarButton : uint8_t { Minimize, Maximize, Close };
 -  inline constexpr size_t kTitleBarButtonCount = 3;
 -  enum class SsdFramePart : uint8_t { None, TitleBar, Close, Maximize, Minimize, Resize };
-+  enum class TitleBarButton : uint8_t { Minimize, Maximize, Close, Pin, Float, Move, Fullscreen };
-+  inline constexpr size_t kTitleBarButtonCount = 7;
++  enum class TitleBarButton : uint8_t { Minimize, Maximize, Close, Pin, Float, Move, Fullscreen, Volume };
++  inline constexpr size_t kTitleBarButtonCount = 8;
 +  enum class SsdFramePart : uint8_t {
 +    None,
 +    TitleBar,
@@ -3940,6 +3994,7 @@ index e42e5f84..0e33335d 100644
 +    Float,
 +    Move,
 +    Fullscreen,
++    Volume,
 +    Resize
 +  };
  
@@ -3955,7 +4010,7 @@ index e42e5f84..0e33335d 100644
    constexpr int kSsdResizeBand = 6;
    constexpr int kSsdResizeCorner = 20;
  
-@@ -27,6 +44,13 @@ namespace umbriel {
+@@ -27,6 +45,13 @@ namespace umbriel {
      wlr_box title{};
      const std::optional<wlr_box>& button(TitleBarButton which) const { return buttons[static_cast<size_t>(which)]; }
    };
@@ -3969,7 +4024,7 @@ index e42e5f84..0e33335d 100644
    struct SsdFramePoint {
      SsdFramePart part = SsdFramePart::None;
      uint32_t edges = 0;
-@@ -36,10 +60,17 @@ namespace umbriel {
+@@ -36,10 +61,17 @@ namespace umbriel {
    int titleBarButtonDiameter(int height);
    // `shown` lists the buttons from the title outward, so the last one sits at the bar's edge on `side`.
    TitleBarLayout titleBarLayout(int width, int height, TitleBarButtonSide side, std::span<const TitleBarButton> shown);
@@ -4016,10 +4071,10 @@ index d9059207..9f6ee24f 100644
  
    // True when the surface's opaque region does not cover surfaceBox, given in surface-local coordinates.
 diff --git a/src/scene/title_bar_icon.cpp b/src/scene/title_bar_icon.cpp
-index 80a6fd98..5eb6a5fe 100644
+index 80a6fd98..ddf30848 100644
 --- a/src/scene/title_bar_icon.cpp
 +++ b/src/scene/title_bar_icon.cpp
-@@ -3,33 +3,137 @@
+@@ -3,33 +3,156 @@
  #include "scene/cairo_buffer.h"
  
  #include <algorithm>
@@ -4160,6 +4215,25 @@ index 80a6fd98..5eb6a5fe 100644
 +      cairo_move_to(cr, 9, 20);
 +      cairo_line_to(cr, 4, 20);
 +      cairo_line_to(cr, 4, 15);
++      break;
++    case TitleBarButton::Volume:
++      // Altavoz y dos ondas, como el botón de volumen del mockup.
++      cairo_move_to(cr, 3.5, 10);
++      cairo_line_to(cr, 6.5, 10);
++      cairo_line_to(cr, 10.5, 6.5);
++      cairo_line_to(cr, 10.5, 17.5);
++      cairo_line_to(cr, 6.5, 14);
++      cairo_line_to(cr, 3.5, 14);
++      cairo_close_path(cr);
++      cairo_stroke(cr);
++      cairo_new_path(cr);
++      cairo_set_line_width(cr, 1.7);
++      cairo_arc(cr, 11.5, 12, 3.2, -0.85, 0.85);
++      cairo_stroke(cr);
++      cairo_new_path(cr);
++      cairo_arc(cr, 11.5, 12, 6.2, -0.75, 0.75);
++      cairo_stroke(cr);
++      cairo_new_path(cr);
        break;
      }
 +
@@ -4217,10 +4291,10 @@ index a90ca1d0..377da6ce 100644
    // dispatch table separate from `actionSpecs()` lets the parser stay free of any dependency on Server.
    ActionHandlerFn actionHandlerFor(KeybindAction action);
 diff --git a/src/server/ipc.cpp b/src/server/ipc.cpp
-index e59e7726..1d995c78 100644
+index e59e7726..00f48f12 100644
 --- a/src/server/ipc.cpp
 +++ b/src/server/ipc.cpp
-@@ -133,6 +133,23 @@ namespace umbriel {
+@@ -133,6 +133,30 @@ namespace umbriel {
        return nlohmann::json{{"event", "outputs"}, {"data", IpcCommands::outputs(server, {}).at("ok")}};
      }
  
@@ -4241,10 +4315,17 @@ index e59e7726..1d995c78 100644
 +    }
 +
 +
++    nlohmann::json windowVolumeEvent(std::string_view windowId, double x, double y, uint64_t serial) {
++      return nlohmann::json{
++          {"event", "window_volume"},
++          {"data", {{"id", windowId}, {"x", x}, {"y", y}, {"serial", serial}}},
++      };
++    }
++
      nlohmann::json screenCastEvent(Server& server) {
        const ScreenCastCommand& command = server.screenCastCommand();
        nlohmann::json data{{"serial", command.serial}};
-@@ -660,6 +677,9 @@ namespace umbriel {
+@@ -660,6 +684,9 @@ namespace umbriel {
        if ((requested & Ipc::kEventOutputs) != 0) {
          append(outputsEvent(*m_server));
        }
@@ -4254,47 +4335,65 @@ index e59e7726..1d995c78 100644
        return response;
      }
  #ifdef UMBRIEL_HARNESS
-@@ -775,4 +795,6 @@ namespace umbriel {
+@@ -775,4 +802,12 @@ namespace umbriel {
  
    void Ipc::notifyOutputsChanged() { broadcastEvent(kEventOutputs, outputsEvent(*m_server)); }
  
 +  void Ipc::notifyModifiersChanged() { broadcastEvent(kEventModifiers, modifiersEvent(*m_server)); }
 +
++  void Ipc::notifyWindowVolume(std::string_view windowId, double x, double y) {
++    broadcastEvent(
++        kEventWindowVolume, windowVolumeEvent(windowId, x, y, ++m_windowVolumeSerial)
++    );
++  }
++
  } // namespace umbriel
 diff --git a/src/server/ipc.h b/src/server/ipc.h
-index 7357ed75..ed344492 100644
+index 7357ed75..8e4998d8 100644
 --- a/src/server/ipc.h
 +++ b/src/server/ipc.h
-@@ -31,13 +31,15 @@ namespace umbriel {
+@@ -31,13 +31,16 @@ namespace umbriel {
        kEventScreenCast = 1 << 6,
        kEventLayers = 1 << 7,
        kEventOutputs = 1 << 8,
 +      kEventModifiers = 1 << 9,
++      kEventWindowVolume = 1 << 10,
      };
      // Number of bits above; sizes the last-broadcast cache.
 -    static constexpr size_t kEventCount = 9;
-+    static constexpr size_t kEventCount = 10;
++    static constexpr size_t kEventCount = 11;
      // Subscribable names in bit order: the subscribe handler matches against this table and `umbriel subscribe`
      // lists it, so a new family cannot be accepted by one and unknown to the other.
      static constexpr std::array<std::string_view, kEventCount> kEventNames = {
 -        "theme", "overview", "keyboard_layout", "windows", "workspaces", "submap", "screencast", "layers", "outputs"
 +        "theme", "overview", "keyboard_layout", "windows", "workspaces", "submap", "screencast", "layers", "outputs",
-+        "modifiers"
++        "modifiers", "window_volume"
      };
  
      Ipc(Server& server, const std::string& waylandSocketName);
-@@ -55,6 +57,9 @@ namespace umbriel {
+@@ -55,6 +58,12 @@ namespace umbriel {
      void notifyScreenCastChanged();
      void notifyLayersChanged();
      void notifyOutputsChanged();
 +    // The user pressed or released a modifier. Sent so a shell can react to a
 +    // held Super instead of waiting for a modifier-only bind on release.
 +    void notifyModifiersChanged();
++    // The native volume button asked the shell to show the per-window volume
++    // panel. One-shot: the serial keeps two presses at the same spot distinct.
++    void notifyWindowVolume(std::string_view windowId, double x, double y);
      // End of an output frame: answers frame waits (settle, clock-advance) once every output has drawn a frame.
      void notifyOutputFrame(const Output& output);
      // A window committed. A window off screen draws no frame when it commits its configure, so while a settle waits,
+@@ -113,6 +122,7 @@ namespace umbriel {
+     // same JSON is dropped rather than woken through to every subscriber; a fresh subscriber gets its own initial
+     // line from the subscribe handler, so skipping a no-op broadcast can never leave anyone behind.
+     std::array<std::string, kEventCount> m_lastBroadcast;
++    uint64_t m_windowVolumeSerial = 0;
+   };
+ 
+ } // namespace umbriel
 diff --git a/src/server/ipc_commands.cpp b/src/server/ipc_commands.cpp
-index 7e1bd5d9..6a05d130 100644
+index 7e1bd5d9..58b8f4a8 100644
 --- a/src/server/ipc_commands.cpp
 +++ b/src/server/ipc_commands.cpp
 @@ -11,6 +11,7 @@
@@ -4408,7 +4507,7 @@ index 7e1bd5d9..6a05d130 100644
 +    } else {
 +      return nlohmann::json{{"err", "overlay-pin: expected on, off or toggle"}};
 +    }
-+    return nlohmann::json{{"pinned", server.overlayPinned()}};
++    return nlohmann::json{{"ok", {{"pinned", server.overlayPinned()}}}};
 +  }
 +
    nlohmann::json IpcCommands::effects(Server& server, IpcArgs /*args*/) {
@@ -4442,7 +4541,7 @@ index 528e1371..c736b128 100644
      static nlohmann::json workspaces(Server& server, IpcArgs args);
      static nlohmann::json submap(Server& server, IpcArgs args);
 diff --git a/src/server/server.cpp b/src/server/server.cpp
-index 560eef66..80d2d1c5 100644
+index 560eef66..05256e8b 100644
 --- a/src/server/server.cpp
 +++ b/src/server/server.cpp
 @@ -26,6 +26,7 @@
@@ -4453,10 +4552,20 @@ index 560eef66..80d2d1c5 100644
  #include "scene/quit_confirm.h"
  #include "server/allocator.h"
  #include "server/backend_manager.h"
-@@ -363,6 +364,24 @@ namespace umbriel {
+@@ -363,6 +364,34 @@ namespace umbriel {
      }
    }
  
++  void Server::showWindowVolume(View* view, double x, double y) {
++    if (m_sessionLocked || m_ipc == nullptr || view == nullptr) {
++      return;
++    }
++    const char* id = view->extForeignIdentifier();
++    if (id != nullptr) {
++      m_ipc->notifyWindowVolume(id, x, y);
++    }
++  }
++
 +  void Server::showMoveMenu(View* view, double x, double y) {
 +    if (!m_sessionLocked && m_moveMenu != nullptr) {
 +      m_moveMenu->show(view, x, y);
@@ -4478,7 +4587,7 @@ index 560eef66..80d2d1c5 100644
    void Server::dismissConfirmation() {
      if (m_pendingCaptureId != 0 && m_inputCapture != nullptr) {
        const auto id = std::exchange(m_pendingCaptureId, 0);
-@@ -746,6 +765,7 @@ namespace umbriel {
+@@ -746,6 +775,7 @@ namespace umbriel {
      m_imPopupTree = wlr_scene_tree_create(&m_scene->tree);
      m_cheatsheetTree = wlr_scene_tree_create(&m_scene->tree);
      m_bannerTree = wlr_scene_tree_create(&m_scene->tree);
@@ -4486,7 +4595,7 @@ index 560eef66..80d2d1c5 100644
      m_quitConfirmTree = wlr_scene_tree_create(&m_scene->tree);
      m_lockTree = wlr_scene_tree_create(&m_scene->tree);
      m_lockBlank = wlr_scene_rect_create(m_lockTree, 0, 0, config().colors.backdrop.data());
-@@ -1029,6 +1049,7 @@ namespace umbriel {
+@@ -1029,6 +1059,7 @@ namespace umbriel {
      // Each snapshot destroys its own scene tree.
      m_closeSnapshots.clear();
      m_configBanner.reset();
@@ -4494,7 +4603,7 @@ index 560eef66..80d2d1c5 100644
      // Owns scene nodes under m_scene; must go before the scene teardown below.
      m_cheatsheet.reset();
      m_overview.reset();
-@@ -1086,6 +1107,10 @@ namespace umbriel {
+@@ -1086,6 +1117,10 @@ namespace umbriel {
        wl_event_source_remove(m_startupRulesTimer);
        m_startupRulesTimer = nullptr;
      }
@@ -4505,7 +4614,7 @@ index 560eef66..80d2d1c5 100644
      for (wl_event_source*& source : m_signalSources) {
        if (source != nullptr) {
          wl_event_source_remove(source);
-@@ -1101,6 +1126,7 @@ namespace umbriel {
+@@ -1101,6 +1136,7 @@ namespace umbriel {
      // Chrome components destroy scene nodes in their destructors, so they must go before the scene tree does; otherwise
      // the destructor body frees the nodes and the member destructors touch already-freed memory.
      m_quitConfirm.reset();
@@ -4513,7 +4622,7 @@ index 560eef66..80d2d1c5 100644
      m_cheatsheet.reset();
      m_configBanner.reset();
      m_scratchpadManager.reset();
-@@ -1331,6 +1357,7 @@ namespace umbriel {
+@@ -1331,6 +1367,7 @@ namespace umbriel {
      if (config().general.showCheatsheet) {
        m_cheatsheet->showOnStartup();
      }
@@ -4522,7 +4631,7 @@ index 560eef66..80d2d1c5 100644
      if (!notifyServiceReady(notifySocket)) {
        kLog.error("failed to report session readiness: {}", std::strerror(errno));
 diff --git a/src/server/server.h b/src/server/server.h
-index 03e10604..fbcf498a 100644
+index 03e10604..b7aa229d 100644
 --- a/src/server/server.h
 +++ b/src/server/server.h
 @@ -156,6 +156,7 @@ namespace umbriel {
@@ -4541,7 +4650,7 @@ index 03e10604..fbcf498a 100644
      // Above xdg windows, below layer-shell top/overlay (drag/drop insert hint).
      wlr_scene_tree* dragTree() const { return m_dragTree; }
      // Parent for wl_data_device drag icons; moved to the cursor while a drag is active.
-@@ -288,6 +290,12 @@ namespace umbriel {
+@@ -288,6 +290,14 @@ namespace umbriel {
      void confirmInputEmulation();
      void confirmInputCapture(bool remember = false);
      void dismissConfirmation();
@@ -4549,12 +4658,14 @@ index 03e10604..fbcf498a 100644
 +    // coordenadas globales del layout.
 +    void showMoveMenu(View* view, double x, double y);
 +    void hideMoveMenu();
++    // Pide al shell el panel de volumen de una ventana concreta.
++    void showWindowVolume(View* view, double x, double y);
 +    // Una ventana destruida no puede dejar el menú apuntando a memoria libre.
 +    void forgetMoveMenuView(const View* view);
      // Owners register themselves for the frame tick. The registry is kept in phase order, so the three traversals above
      // never re-state which owners exist or in what order they run.
      void registerAnimatable(Animatable* animatable);
-@@ -429,7 +437,35 @@ namespace umbriel {
+@@ -429,7 +439,35 @@ namespace umbriel {
      bool handleVtSwitch(uint32_t keysym, uint32_t modifiers);
      void armModifierTap(const void* source, uint32_t keycode, std::span<const uint32_t> keysyms, uint32_t modifiers);
      [[nodiscard]] std::optional<Keybind> releaseModifierTap(const void* source, uint32_t keycode);
@@ -4591,7 +4702,7 @@ index 03e10604..fbcf498a 100644
      void arrangeLayers(wlr_output* output);
      // Re-send every surface's output scale (views, layer surfaces, popups). Run after anything that changes an output's
      // scale or moves surfaces between outputs outside setWorkspace; the notifies dedup, so extra calls are cheap.
-@@ -476,6 +512,10 @@ namespace umbriel {
+@@ -476,6 +514,10 @@ namespace umbriel {
      bool syncingKeyboardLocks() const;
      void removeKeyboard(Keyboard* keyboard);
      void removeView(View* view);
@@ -4602,7 +4713,7 @@ index 03e10604..fbcf498a 100644
      void removeLayerSurface(LayerSurface* layerSurface, wlr_output* output);
      void removeSessionLock(SessionLock* lock);
      void activateSessionLock(SessionLock* lock);
-@@ -587,6 +627,8 @@ namespace umbriel {
+@@ -587,6 +629,8 @@ namespace umbriel {
      // when there are none.
      void armBackgroundRenderTimer();
      static int onStartupRulesTimer(void* data);
@@ -4611,7 +4722,7 @@ index 03e10604..fbcf498a 100644
      static int onTerminateSignal(int signal, void* data);
      static void onIpcWindowsIdle(void* data);
      static void onIpcWorkspacesIdle(void* data);
-@@ -918,6 +960,8 @@ namespace umbriel {
+@@ -918,6 +962,8 @@ namespace umbriel {
      std::unique_ptr<Cheatsheet> m_cheatsheet;
      wlr_scene_tree* m_quitConfirmTree = nullptr;
      std::unique_ptr<QuitConfirm> m_quitConfirm;
@@ -4620,7 +4731,7 @@ index 03e10604..fbcf498a 100644
  
      bool m_nested = false;
      bool m_stopping = false;
-@@ -950,6 +994,9 @@ namespace umbriel {
+@@ -950,6 +996,9 @@ namespace umbriel {
      wl_event_source* m_backgroundRenderTimer = nullptr;
      // One-shot refresh when dynamic startup rules expire.
      wl_event_source* m_startupRulesTimer = nullptr;
@@ -4630,7 +4741,7 @@ index 03e10604..fbcf498a 100644
      // Non-null while a windows-event idle callback is pending. The idle source
      // removes itself when it runs, so a non-null pointer means "already queued".
      wl_event_source* m_ipcWindowsIdle = nullptr;
-@@ -1020,6 +1067,17 @@ namespace umbriel {
+@@ -1020,6 +1069,17 @@ namespace umbriel {
      Keyboard* m_keyboardLayoutSource = nullptr;
      Keyboard* m_keyboardInputSource = nullptr;
      ModifierTapState m_modifierTap;
@@ -6531,7 +6642,7 @@ index f72069c0..c69e165a 100644
      // axis first. Called before per-workspace layout resolution.
      void refreshWorkspaceAxis();
 diff --git a/tests/unit/config_load.cpp b/tests/unit/config_load.cpp
-index 4e2e3612..1ed3ad63 100644
+index 4e2e3612..c2d20f26 100644
 --- a/tests/unit/config_load.cpp
 +++ b/tests/unit/config_load.cpp
 @@ -1441,6 +1441,25 @@ UMBRIEL_TEST(middleClickPasteLoadsAndDefaultsEnabled) {
@@ -6560,7 +6671,32 @@ index 4e2e3612..1ed3ad63 100644
  UMBRIEL_TEST(windowDragToggleReadsItsVocabularyAndDefaultsOff) {
    const TempConfig file;
    ConfigStore& store = umbriel::configStore();
-@@ -5109,6 +5128,48 @@ layout.stacking.drop_zones = false
+@@ -4976,6 +4995,10 @@ UMBRIEL_TEST(titleBarButtonsKeepOrderAndSkipBadEntries) {
+   const Buttons defaults{TitleBarButton::Minimize, TitleBarButton::Maximize, TitleBarButton::Close};
+   const Buttons reordered{TitleBarButton::Close, TitleBarButton::Minimize};
+   const Buttons cleaned{TitleBarButton::Maximize, TitleBarButton::Close};
++  const Buttons forkOrder{
++      TitleBarButton::Volume, TitleBarButton::Float, TitleBarButton::Pin, TitleBarButton::Fullscreen,
++      TitleBarButton::Move, TitleBarButton::Minimize, TitleBarButton::Maximize, TitleBarButton::Close
++  };
+   const TempConfig file;
+   auto& store = umbriel::configStore();
+   store.setRootPath(file.path(), true);
+@@ -4995,6 +5018,13 @@ UMBRIEL_TEST(titleBarButtonsKeepOrderAndSkipBadEntries) {
+   CHECK(store.config().appearance.titleBar.buttons == cleaned);
+   CHECK(containsDiagnostic(store, "ignoring repeated appearance.title_bar.buttons entry \"maximize\""));
+   CHECK(containsDiagnostic(store, "ignoring appearance.title_bar.buttons entry"));
++  file.write(
++      "[appearance.title_bar]\n"
++      "buttons = [\"volume\", \"float\", \"pin\", \"fullscreen\", \"move\", \"minimize\", \"maximize\", \"close\"]\n"
++  );
++  CHECK(store.reload().success);
++  CHECK(store.diagnostics().empty());
++  CHECK(store.config().appearance.titleBar.buttons == forkOrder);
+   file.write("[appearance.title_bar]\nbuttons = \"close\"\n");
+   CHECK(store.reload().success);
+   CHECK(store.config().appearance.titleBar.buttons == defaults);
+@@ -5109,6 +5139,48 @@ layout.stacking.drop_zones = false
    CHECK(!resolve("disabled").stacking.dropZones);
  }
  

@@ -90,6 +90,18 @@ Singleton {
     // `overview`; el shell la usa para retirar sus paneles.
     readonly property bool overviewOpen: root.backend
         ? root.backend.overviewOpen === true : false
+    readonly property int windowVolumeSerial: root.backend
+        ? Number(root.backend.windowVolumeSerial) || 0 : 0
+    readonly property string windowVolumeId: root.backend
+        ? String(root.backend.windowVolumeId || "") : ""
+    readonly property real windowVolumeX: root.backend
+        ? Number(root.backend.windowVolumeX) || 0 : 0
+    readonly property real windowVolumeY: root.backend
+        ? Number(root.backend.windowVolumeY) || 0 : 0
+
+    function windowById(windowId): var {
+        return root.backend ? root.backend.windowById(windowId) : null;
+    }
 
     readonly property int windowCount: root.windows ? root.windows.length : 0
     readonly property int workspaceCount:

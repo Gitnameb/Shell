@@ -21,11 +21,12 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   temperatura de CPU/GPU y el tráfico de la barra; carga, núcleos,
   frecuencias, potencia, VRAM e historial se consultan solo con la vista de
   rendimiento abierta.
-- **Volumen por ventana y sonido de avisos (2026-11-09).** El menú de
-  opciones de una app incluye «Volumen» con silencio y deslizador; se enlaza
-  al flujo de PipeWire por PID o por id de la app. Las notificaciones pueden
-  sonar con el aviso corto del sistema o con el `sound-file`/`sound-name` que
-  pida la app, y se puede desactivar en Ajustes.
+- **Volumen por ventana y sonido de avisos (2026-11-09).** El altavoz de la
+  barra de título nativa abre una tarjeta del shell con silencio y deslizador
+  para esa ventana; el menú de opciones de la app conserva la misma fila. Se
+  enlaza al flujo de PipeWire por PID o por id de la app. Las notificaciones
+  pueden sonar con el aviso corto del sistema o con el `sound-file`/`sound-name`
+  que pida la app, y se puede desactivar en Ajustes.
 
 - **Binario nuevo ya en uso.** `/usr/bin/umbriel` es `d3f5effaad771b37` y la
   sesión se reinició a las 17:49, así que el arreglo de A7 (cambiar la barra de

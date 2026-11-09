@@ -474,7 +474,7 @@ Copiar `install/config/umbriel-config.toml` a
 `~/.config/umbriel/config.toml` y revisar:
 
 - `[general] autostart` con la ruta correcta.
-- `[appearance.title_bar] buttons = ["float", "pin", "fullscreen", "move",
+- `[appearance.title_bar] buttons = ["volume", "float", "pin", "fullscreen", "move",
   "minimize", "maximize", "close"]`. Pantalla completa va después de fijar y
   antes de mover, tanto en la barra nativa como en el menú del clic derecho; el
   subtítulo «app · escritorio» ya no se dibuja.

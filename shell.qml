@@ -18,17 +18,44 @@ ShellRoot {
     TrayPanel {}
     Osd {}
     NotificationPopup {}
+    WindowVolumePopup {
+        id: windowVolumePopup
+    }
 
     // Fase 3: controles de ventana al mantener Super, barra de título por
     // ventana y elección inicial del modo de escritorio. El cambio de modo
     // vive en el icono del escritorio activo, no en una barra aparte.
     WelcomeMode {}
 
-    // La vista general de Umbriel ocupa toda la pantalla. Al abrirse se
-    // retiran los paneles del shell para no dejarlos flotando encima.
+    // El botón de volumen de la barra de título nativa abre su tarjeta.
     Connections {
         target: CompositorState
 
+        function onWindowVolumeSerialChanged(): void {
+            if (CompositorState.windowVolumeSerial <= 0)
+                return;
+            windowVolumePopup.show(CompositorState.windowVolumeId,
+                CompositorState.windowVolumeX, CompositorState.windowVolumeY);
+        }
+
+        // Respaldo del captador de clics: si una ventana recibe el foco
+        // mientras hay un panel abierto, el panel se retira. Cubre también los
+        // clics que llegan por una capa nativa en vez de por la barra.
+        function onFocusedWindowChanged(): void {
+            if (!CompositorState.focusedWindow)
+                return;
+            LauncherState.hide();
+            NotificationState.hidePanel();
+            QuickPanelState.hide();
+            CalendarState.hide();
+            PowerState.hide();
+            BatteryState.hide();
+            TrayState.hide();
+            windowVolumePopup.hide();
+        }
+
+        // La vista general de Umbriel ocupa toda la pantalla. Al abrirse se
+        // retiran los paneles del shell para no dejarlos flotando encima.
         function onOverviewOpenChanged(): void {
             if (!CompositorState.overviewOpen)
                 return;
@@ -41,6 +68,7 @@ ShellRoot {
             BatteryState.hide();
             TrayState.hide();
             SuperState.hide();
+            windowVolumePopup.hide();
         }
     }
 
