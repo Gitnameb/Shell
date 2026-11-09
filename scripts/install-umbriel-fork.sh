@@ -24,6 +24,8 @@ PATCH="${REPO_DIR}/umbriel-fork.patch"
 UPSTREAM="${UMBRIEL_UPSTREAM:-https://github.com/noctalia-dev/umbriel.git}"
 BASE_COMMIT="${UMBRIEL_BASE_COMMIT:-b6c4b7d}"
 SOURCE_DIR="${UMBRIEL_FORK_DIR:-$HOME/umbriel-fork}"
+FORK_REPO="${UMBRIEL_FORK_REPO:-}"
+FORK_BRANCH="${UMBRIEL_FORK_BRANCH:-shell-fork}"
 BUILD_DIR=""
 INSTALLED_BIN="/usr/bin/umbriel"
 
@@ -31,6 +33,7 @@ DRY_RUN=0
 ASSUME_YES=0
 BUILD_ONLY=0
 BACKUP=1
+DIVERT=1
 
 usage() {
     cat <<'EOF'
@@ -41,10 +44,13 @@ Uso:
 
 Opciones:
   --source DIR      Árbol de Umbriel (por defecto ~/umbriel-fork)
+  --fork-repo URL   Clonar un fork propio en vez de aplicar el parche
+  --fork-branch B   Rama del fork (por defecto shell-fork)
   --patch FILE      Parche para reconstruir el fork (por defecto el del repo)
   --build-dir DIR   Directorio de compilación (por defecto DIR/build)
   --build-only      Compila y valida, pero no instala
   --no-backup       No guarda copia del binario actual
+  --no-divert       No aparta /usr/bin/umbriel con dpkg-divert
   --dry-run         Muestra los comandos sin ejecutarlos
   --yes             No pide confirmación antes de instalar
   -h, --help        Muestra esta ayuda
@@ -88,6 +94,16 @@ while (( $# > 0 )); do
             SOURCE_DIR=$2
             shift 2
             ;;
+        --fork-repo)
+            [[ $# -ge 2 ]] || die "Falta el valor de --fork-repo"
+            FORK_REPO=$2
+            shift 2
+            ;;
+        --fork-branch)
+            [[ $# -ge 2 ]] || die "Falta el valor de --fork-branch"
+            FORK_BRANCH=$2
+            shift 2
+            ;;
         --patch)
             [[ $# -ge 2 ]] || die "Falta el valor de --patch"
             PATCH=$2
@@ -104,6 +120,10 @@ while (( $# > 0 )); do
             ;;
         --no-backup)
             BACKUP=0
+            shift
+            ;;
+        --no-divert)
+            DIVERT=0
             shift
             ;;
         --dry-run)
@@ -154,17 +174,31 @@ log "Compilación: $BUILD_DIR"
 # ---------------------------------------------------------------------------
 # 1. Preparar el código
 # ---------------------------------------------------------------------------
-if [[ -d "$SOURCE_DIR/.git" ]]; then
+if [[ -n "$FORK_REPO" ]]; then
+    if [[ -d "$SOURCE_DIR/.git" ]]; then
+        log "Usando el árbol del fork ya existente en $SOURCE_DIR."
+    elif [[ -e "$SOURCE_DIR" ]]; then
+        die "$SOURCE_DIR existe y no es un repositorio git."
+    else
+        log "Clonando el fork $FORK_REPO (rama $FORK_BRANCH)."
+        run git clone --branch "$FORK_BRANCH" "$FORK_REPO" "$SOURCE_DIR"
+    fi
+elif [[ -d "$SOURCE_DIR/.git" ]]; then
     if [[ -n "$(git -C "$SOURCE_DIR" status --porcelain 2>/dev/null)" ]]; then
         log "El árbol tiene cambios locales; se compila tal cual."
     else
         current=$(git -C "$SOURCE_DIR" rev-parse HEAD 2>/dev/null || true)
-        if [[ "$current" != "$(git -C "$SOURCE_DIR" rev-parse "$BASE_COMMIT" 2>/dev/null || true)" ]]; then
+        base=$(git -C "$SOURCE_DIR" rev-parse "$BASE_COMMIT" 2>/dev/null || true)
+        if [[ "$current" == "$base" ]]; then
+            log "Aplicando el parche del fork."
+            run git -C "$SOURCE_DIR" apply "$PATCH"
+        elif git -C "$SOURCE_DIR" merge-base --is-ancestor "$base" "$current"; then
+            log "El árbol ya contiene los commits del fork; se compila tal cual."
+        else
             log "Árbol limpio; se cambia a la base $BASE_COMMIT."
             run git -C "$SOURCE_DIR" checkout -B shell-fork "$BASE_COMMIT"
+            run git -C "$SOURCE_DIR" apply "$PATCH"
         fi
-        log "Aplicando el parche del fork."
-        run git -C "$SOURCE_DIR" apply "$PATCH"
     fi
 elif [[ -d "$SOURCE_DIR" ]]; then
     warn "El directorio no es un repositorio git; se compila tal cual."
@@ -261,7 +295,22 @@ if (( ! ASSUME_YES && ! DRY_RUN )); then
     [[ "$answer" =~ ^[sSyY]$ ]] || die "Cancelado."
 fi
 
-if (( BACKUP )); then
+# Un `apt upgrade` del paquete oficial escribe /usr/bin/umbriel y borraría el
+# fork. La diversión local hace que el paquete escriba en
+# /usr/bin/umbriel.distrib y deja intacto el binario compilado.
+if (( DIVERT )); then
+    if ! dpkg-divert --list /usr/bin/umbriel 2>/dev/null |
+            grep -q '^diversion of /usr/bin/umbriel '; then
+        log "Apartando el binario oficial con dpkg-divert."
+        run_sudo dpkg-divert --local --rename --add /usr/bin/umbriel
+    else
+        log "El binario oficial ya está apartado con dpkg-divert."
+    fi
+else
+    warn "Sin dpkg-divert, apt o install-packages pueden volver a sustituir el fork."
+fi
+
+if (( BACKUP )) && (( ! DIVERT )); then
     if compgen -G "/usr/bin/umbriel.stock-*" >/dev/null 2>&1; then
         log "Ya existe una copia del binario original; no se sobrescribe."
     elif dpkg -V umbriel 2>/dev/null | grep -q '/usr/bin/umbriel$'; then
@@ -304,5 +353,10 @@ ensure_volume_button
 cat <<'EOF'
 
 Cierra sesión y vuelve a entrar para que el compositor use el binario nuevo.
-Si un 'apt upgrade' reemplaza /usr/bin/umbriel, vuelve a ejecutar este script.
+El binario oficial queda en /usr/bin/umbriel.distrib y los futuros
+`apt upgrade` no deberían pisar el fork. Si alguna vez quieres volver al
+oficial, quita la diversión con:
+
+  sudo dpkg-divert --local --rename --remove /usr/bin/umbriel
+
 EOF

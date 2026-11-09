@@ -130,6 +130,7 @@ La guía manual, con el detalle de cada paso, sigue estando en
 | `scripts/install-user-config.sh` | Módulo de enlaces y configuración del HOME. |
 | `scripts/install-umbriel-fork.sh` | Compila e instala el fork de Umbriel. |
 | `umbriel-fork.patch` | Parche del fork de Umbriel sobre `b6c4b7d`. |
+| `FORK-UMBRIEL.md` | Cómo publicar el fork en GitHub y protegerlo de `apt`. |
 | `INSTALACION.md` | Guía de instalación. |
 | `PLAN.md`, `PENDIENTES.md`, `CONTEXTO.md` | Plan, tareas e historial. |
 
