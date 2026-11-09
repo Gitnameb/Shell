@@ -207,6 +207,42 @@ if (( BUILD_ONLY )); then
     exit 0
 fi
 
+# La plantilla ya incluye el botón de volumen, pero una instalación anterior
+# conserva su lista de botones. Solo se añade cuando sigue siendo exactamente
+# la lista por defecto del shell: una lista personalizada no se toca. Se llama
+# también cuando el binario ya está instalado, para completar la migración.
+ensure_volume_button() {
+    local config_toml="$HOME/.config/umbriel/config.toml"
+    local config_setter add_volume
+    config_setter=$(command -v shell-config-set 2>/dev/null || true)
+    if [[ -z "$config_setter" && -x "$HOME/.local/bin/shell-config-set" ]]; then
+        config_setter="$HOME/.local/bin/shell-config-set"
+    fi
+    [[ -f "$config_toml" && -n "$config_setter" ]] || return 0
+    add_volume=$(
+        python3 - "$config_toml" <<'PY' 2>/dev/null || echo no
+import sys
+import tomllib
+
+with open(sys.argv[1], "rb") as handle:
+    config = tomllib.load(handle)
+buttons = config.get("appearance", {}).get("title_bar", {}).get("buttons")
+legacy = ["float", "pin", "fullscreen", "move", "minimize", "maximize", "close"]
+print("yes" if buttons == legacy else "no")
+PY
+    )
+    [[ "$add_volume" == "yes" ]] || return 0
+    log "Añadiendo el botón de volumen a la barra de título."
+    run "$config_setter" --section appearance.title_bar \
+        buttons='["volume", "float", "pin", "fullscreen", "move", "minimize", "maximize", "close"]' \
+        || warn "No se pudo añadir el botón de volumen; revisa $config_toml."
+    if [[ -x "$HOME/.local/bin/umbriel-config-guard" ]]; then
+        run env UMBRIEL_CONFIG="$config_toml" \
+            "$HOME/.local/bin/umbriel-config-guard" save \
+            || warn "No se pudo actualizar config.toml.good."
+    fi
+}
+
 # ---------------------------------------------------------------------------
 # 3. Instalar
 # ---------------------------------------------------------------------------
@@ -215,6 +251,7 @@ current_hash=$(sha "$INSTALLED_BIN" 2>/dev/null || true)
 
 if [[ -n "$build_hash" && "$build_hash" == "$current_hash" ]]; then
     log "El binario instalado ya es este mismo fork. No hay nada que hacer."
+    ensure_volume_button
     exit 0
 fi
 
@@ -262,39 +299,7 @@ installed_hash=$(sha "$INSTALLED_BIN" 2>/dev/null || true)
 log "Fork instalado correctamente."
 "$INSTALLED_BIN" --version 2>/dev/null || warn "No se pudo comprobar 'umbriel --version'."
 
-# La plantilla ya incluye el botón de volumen, pero una instalación anterior
-# conserva su lista de botones. Solo se añade cuando sigue siendo exactamente
-# la lista por defecto del shell: una lista personalizada no se toca.
-CONFIG_TOML="$HOME/.config/umbriel/config.toml"
-CONFIG_SETTER=$(command -v shell-config-set 2>/dev/null || true)
-if [[ -z "$CONFIG_SETTER" && -x "$HOME/.local/bin/shell-config-set" ]]; then
-    CONFIG_SETTER="$HOME/.local/bin/shell-config-set"
-fi
-if [[ -f "$CONFIG_TOML" && -n "$CONFIG_SETTER" ]]; then
-    add_volume=$(
-        python3 - "$CONFIG_TOML" <<'PY' 2>/dev/null || echo no
-import sys
-import tomllib
-
-with open(sys.argv[1], "rb") as handle:
-    config = tomllib.load(handle)
-buttons = config.get("appearance", {}).get("title_bar", {}).get("buttons")
-legacy = ["float", "pin", "fullscreen", "move", "minimize", "maximize", "close"]
-print("yes" if buttons == legacy else "no")
-PY
-    )
-    if [[ "$add_volume" == "yes" ]]; then
-        log "Añadiendo el botón de volumen a la barra de título."
-        run "$CONFIG_SETTER" --section appearance.title_bar \
-            buttons='["volume", "float", "pin", "fullscreen", "move", "minimize", "maximize", "close"]' \
-            || warn "No se pudo añadir el botón de volumen; revisa $CONFIG_TOML."
-        if [[ -x "$HOME/.local/bin/umbriel-config-guard" ]]; then
-            run env UMBRIEL_CONFIG="$CONFIG_TOML" \
-                "$HOME/.local/bin/umbriel-config-guard" save \
-                || warn "No se pudo actualizar config.toml.good."
-        fi
-    fi
-fi
+ensure_volume_button
 
 cat <<'EOF'
 

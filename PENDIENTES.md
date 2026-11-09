@@ -28,11 +28,14 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   pueden sonar con el aviso corto del sistema o con el `sound-file`/`sound-name`
   que pida la app, y se puede desactivar en Ajustes.
 
-- **Binario nuevo ya en uso.** `/usr/bin/umbriel` es `d3f5effaad771b37` y la
-  sesión se reinició a las 17:49, así que el arreglo de A7 (cambiar la barra de
-  ventanas ya no devuelve los mosaicos al modo configurado) está cargado. A5
-  confirmado en real. La cadena de versión sigue diciendo `2ae0007635ec` por
-  cómo se compila, pero el proceso arrancó después del binario nuevo.
+- **Falta instalar el fork actual.** `/usr/bin/umbriel` es del 2026-11-07 y no
+  incluye el botón de volumen de la barra de título ni los últimos cambios
+  nativos; el binario compilado está en `~/umbriel-fork/build/umbriel`
+  (2026-11-09). Ejecuta
+  `cd ~/Shell && ./scripts/install-umbriel-fork.sh --yes` y cierra sesión.
+  El instalador añade `"volume"` a la lista de botones si todavía tiene la
+  lista por defecto. Hasta entonces, `~/.config/umbriel/config.toml` conserva
+  la lista antigua para que el Umbriel instalado pueda validarla.
 - **C2 y C5 completados.** Perfiles de energía, importar/editar VPN, clima
   manual, demonio de alarmas y temporizador persistente. Se instaló
   `network-manager-openvpn` (necesario para `.ovpn`) y se habilitó
