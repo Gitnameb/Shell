@@ -352,8 +352,12 @@ Scope {
         const win = root.windowById(windowId);
         if (!win)
             return root.noteAction("toggleMaximized", false);
+        // «Maximizar a los bordes» funciona tanto en mosaico como en flotante
+        // y ocupa toda el área útil. `window-toggle-maximize` en mosaico solo
+        // ensanchaba la columna y dejaba ver la ventana de al lado.
         return root.run("umbriel msg window-focus " + root.quote(win.address)
-            + " && umbriel msg window-toggle-maximize", "toggleMaximized");
+            + " && umbriel msg window-toggle-maximize-to-edges",
+            "toggleMaximized");
     }
 
     function togglePinned(windowId): bool {

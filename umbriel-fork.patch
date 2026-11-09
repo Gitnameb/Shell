@@ -156,6 +156,20 @@ index 4f1a7644..af55ee02 100644
  ```
  
  It writes one JSON line per event until Umbriel exits or the reader closes:
+diff --git a/docs/user/keybinds.md b/docs/user/keybinds.md
+index a8fbd615..1a0d5656 100644
+--- a/docs/user/keybinds.md
++++ b/docs/user/keybinds.md
+@@ -60,7 +60,8 @@ Modifier-only binds run on release when no other key, button, scroll, touch, or
+ - Wheel: `WheelUp`, `WheelDown`, `WheelLeft`, `WheelRight`
+ - Mouse: `MouseLeft`, `MouseRight`, `MouseMiddle`, `MouseBack`, `MouseForward`
+ 
+-Mouse and wheel binds require at least one modifier:
++Mouse and wheel binds require at least one modifier, except the side buttons
++`MouseBack` and `MouseForward`, which may be bound alone:
+ 
+ ```toml
+ "Mod+MouseMiddle" = "layout-scroll-drag"
 diff --git a/docs/user/layer-rules.md b/docs/user/layer-rules.md
 index 072687c7..14b91eee 100644
 --- a/docs/user/layer-rules.md
@@ -729,6 +743,28 @@ index 61dc5cf7..a2f1496e 100644
        };
        return fields;
      }
+diff --git a/src/config/keybind_parse.cpp b/src/config/keybind_parse.cpp
+index 7d1ae74c..c9dff2f3 100644
+--- a/src/config/keybind_parse.cpp
++++ b/src/config/keybind_parse.cpp
+@@ -773,9 +773,15 @@ namespace umbriel {
+     const uint32_t mouseButton = mouseButtonFromName(lastLower);
+ 
+     if (wheelDir != WheelDirection::None || mouseButton != 0) {
+-      // A bare wheel or mouse-button bind would hijack all client input.
++      // A bare wheel or primary-button bind would hijack all client input.
++      // The side buttons are different: they have no standard client action
++      // and are exactly what spare mouse buttons need. Allow only those bare.
+       if (tokens.size() < 2) {
+-        return false;
++        if (mouseButton != BTN_SIDE && mouseButton != BTN_EXTRA) {
++          return false;
++        }
++        output.mouseButton = mouseButton;
++        return true;
+       }
+       if (!applyModifiers(tokens, output)) {
+         return false;
 diff --git a/src/config/resolve.cpp b/src/config/resolve.cpp
 index 16a64d47..08cfa6a7 100644
 --- a/src/config/resolve.cpp
@@ -6977,3 +7013,21 @@ index 4e2e3612..c2d20f26 100644
  UMBRIEL_TEST(stackingConfigRejectsRemovedNamesWithoutChangingFloatingWindowVocabulary) {
    const TempConfig file;
    file.write(R"(
+diff --git a/tests/unit/keybind_parse.cpp b/tests/unit/keybind_parse.cpp
+index 956c86c0..b7b9eee5 100644
+--- a/tests/unit/keybind_parse.cpp
++++ b/tests/unit/keybind_parse.cpp
+@@ -164,6 +164,13 @@ UMBRIEL_TEST(rejectsBareWheelAndMouseBinds) {
+   Keybind bind;
+   CHECK(!parseChord("WheelUp", bind));
+   CHECK(!parseChord("MouseLeft", bind));
++  CHECK(!parseChord("MouseRight", bind));
++  CHECK(!parseChord("MouseMiddle", bind));
++  CHECK(parseChord("MouseBack", bind));
++  CHECK_EQ(bind.mouseButton, uint32_t{BTN_SIDE});
++  CHECK_EQ(bind.modifiers, uint32_t{0});
++  CHECK(parseChord("MouseForward", bind));
++  CHECK_EQ(bind.mouseButton, uint32_t{BTN_EXTRA});
+ }
+ 
+ // parseChord: submaps

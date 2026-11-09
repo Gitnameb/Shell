@@ -355,6 +355,13 @@ Singleton {
             return "Mod+Shift+M";
         if (raw.indexOf(",") === -1 && raw.indexOf("+") !== -1)
             return raw.replace(/\s+/g, "");
+        // Teclas que Umbriel admite sin modificador: multimedia, funciones
+        // extendidas y los botones laterales del ratón.
+        if (raw.indexOf(",") === -1
+                && (raw === "MouseBack" || raw === "MouseForward"
+                    || raw.indexOf("XF86") === 0
+                    || /^F(1[3-9]|2[0-4])$/.test(raw)))
+            return raw;
         const comma = raw.lastIndexOf(",");
         if (comma === -1)
             return "Mod+Shift+M";
@@ -1387,7 +1394,9 @@ Singleton {
 
     Timer {
         id: workspaceModesTimer
-        interval: 260
+        // Solo agrupa varios cambios seguidos del mismo ajuste. La aplicación
+        // sigue siendo la escritura de la regla nativa y su recarga.
+        interval: 80
         repeat: false
         onTriggered: root.applyWorkspaceModes()
     }

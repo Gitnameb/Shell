@@ -1094,6 +1094,17 @@ PanelWindow {
         }
     }
 
+    // Captura los botones laterales del ratón mientras se asigna el atajo
+    // del micrófono. Los botones principales no se capturan: siguen
+    // llegando a los controles del panel.
+    MouseArea {
+        anchors.fill: parent
+        z: 1000
+        visible: QuickPanelState.micCapturing
+        acceptedButtons: Qt.BackButton | Qt.ForwardButton
+        onPressed: (mouse) => QuickPanelState.micMouseButton(mouse.button)
+    }
+
     Shortcut {
         sequence: "Escape"
         enabled: root.visible

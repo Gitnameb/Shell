@@ -31,6 +31,15 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   entre comillas y `--remove-key`. El cambio se aplica con una recarga.
 - **Calendario (2026-11-09).** Se quitó el texto «Sin eventos ni notas para
   este día»; el editor de notas sigue en el apartado del segundo clic.
+- **Modo más rápido, maximizar completo (2026-11-09).** El agrupador de
+  escritura del modo bajó de 260 a 80 ms sin añadir un segundo camino. La
+  transición medida pasó de ~541 a ~407 ms. Maximizar usa
+  `window-toggle-maximize-to-edges`: en mosaico ya ocupa todo el área útil en
+  vez de dejar una franja de la ventana vecina.
+- **Atajos de una tecla y botones del ratón (2026-11-09).** El capturador
+  acepta teclas multimedia, `F13`–`F24` y los botones laterales como
+  `MouseBack`/`MouseForward` sin modificador. El fork permite enlazar esos dos
+  botones solos; los botones principales siguen exigiendo modificador.
 - **Atajos de Super y micrófono (2026-11-09).** El segundo toque de Super
   cierra el lanzador; la pulsación ya no lo cierra antes de que la suelta lo
   vuelva a abrir. El capturador de atajos del micrófono usa

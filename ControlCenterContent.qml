@@ -584,6 +584,14 @@ ColumnLayout {
     onMicShortcutCaptureChanged: QuickPanelState.micCapturing
         = root.micShortcutCapture
 
+    Connections {
+        target: QuickPanelState
+
+        function onMicMouseButton(button): void {
+            root.handleMicShortcutMouse(button);
+        }
+    }
+
     readonly property bool airplaneActive: AirplaneState.active
 
     function setAirplane(enabled): void {
@@ -664,7 +672,105 @@ ColumnLayout {
             return "SLASH";
         if (key === Qt.Key_QuoteLeft)
             return "GRAVE";
+        // Teclas multimedia y de funciones extendidas. Umbriel las recibe
+        // como cualquier otra tecla; solo hacía falta traducirlas.
+        if (key === Qt.Key_VolumeUp)
+            return "XF86AudioRaiseVolume";
+        if (key === Qt.Key_VolumeDown)
+            return "XF86AudioLowerVolume";
+        if (key === Qt.Key_VolumeMute)
+            return "XF86AudioMute";
+        if (key === Qt.Key_MediaPlay)
+            return "XF86AudioPlay";
+        if (key === Qt.Key_MediaStop)
+            return "XF86AudioStop";
+        if (key === Qt.Key_MediaPrevious)
+            return "XF86AudioPrev";
+        if (key === Qt.Key_MediaNext)
+            return "XF86AudioNext";
+        if (key === Qt.Key_MediaRecord)
+            return "XF86AudioRecord";
+        if (key === Qt.Key_MediaPause)
+            return "XF86AudioPause";
+        if (key === Qt.Key_MediaTogglePlayPause)
+            return "XF86AudioPlay";
+        if (key === Qt.Key_HomePage)
+            return "XF86HomePage";
+        if (key === Qt.Key_Favorites)
+            return "XF86Favorites";
+        if (key === Qt.Key_Search)
+            return "XF86Search";
+        if (key === Qt.Key_Refresh)
+            return "XF86Refresh";
+        if (key === Qt.Key_Back)
+            return "XF86Back";
+        if (key === Qt.Key_Forward)
+            return "XF86Forward";
+        if (key === Qt.Key_LaunchMail)
+            return "XF86Mail";
+        if (key === Qt.Key_LaunchMedia)
+            return "XF86AudioMedia";
+        if (key === Qt.Key_Calculator)
+            return "XF86Calculator";
+        if (key === Qt.Key_MonBrightnessUp)
+            return "XF86MonBrightnessUp";
+        if (key === Qt.Key_MonBrightnessDown)
+            return "XF86MonBrightnessDown";
+        if (key === Qt.Key_KeyboardBrightnessUp)
+            return "XF86KbdBrightnessUp";
+        if (key === Qt.Key_KeyboardBrightnessDown)
+            return "XF86KbdBrightnessDown";
+        if (key === Qt.Key_PowerOff)
+            return "XF86PowerOff";
+        if (key === Qt.Key_Standby)
+            return "XF86Standby";
+        if (key === Qt.Key_WakeUp)
+            return "XF86WakeUp";
+        if (key === Qt.Key_Sleep)
+            return "XF86Sleep";
+        if (key === Qt.Key_Display)
+            return "XF86Display";
+        if (key === Qt.Key_WLAN)
+            return "XF86WLAN";
+        if (key === Qt.Key_Bluetooth)
+            return "XF86Bluetooth";
+        if (key === Qt.Key_TouchpadToggle)
+            return "XF86TouchpadToggle";
+        if (key === Qt.Key_TouchpadOn)
+            return "XF86TouchpadOn";
+        if (key === Qt.Key_TouchpadOff)
+            return "XF86TouchpadOff";
+        if (key === Qt.Key_MicMute)
+            return "XF86AudioMicMute";
+        if (key >= Qt.Key_Launch0 && key <= Qt.Key_LaunchF)
+            return "XF86Launch"
+                + (key - Qt.Key_Launch0).toString(16).toUpperCase();
         return "";
+    }
+
+    // Teclas que se pueden asignar solas, sin modificador. No se aceptan
+    // letras, números ni signos: un atajo global sobre ellos quitaría la
+    // tecla a todas las aplicaciones.
+    function bareMicKey(name): bool {
+        if (name === "MouseBack" || name === "MouseForward")
+            return true;
+        if (name.indexOf("XF86") === 0)
+            return true;
+        return /^F(1[3-9]|2[0-4])$/.test(name);
+    }
+
+    function handleMicShortcutMouse(button): void {
+        if (!root.micShortcutCapture)
+            return;
+        let chord = "";
+        if (button === Qt.BackButton)
+            chord = "MouseBack";
+        else if (button === Qt.ForwardButton)
+            chord = "MouseForward";
+        if (chord.length === 0)
+            return;
+        SettingsState.setMicShortcut(chord);
+        root.endMicShortcut();
     }
 
     function beginMicShortcut(): void {
@@ -723,11 +829,14 @@ ColumnLayout {
             mods.push("Shift");
         if (event.modifiers & Qt.MetaModifier)
             mods.push("Mod");
-        // Umbriel exige al menos un modificador para los atajos normales.
-        if (mods.length === 0)
+        // Los atajos normales exigen modificador; las teclas multimedia y
+        // los botones laterales del ratón pueden ir solos.
+        if (mods.length === 0 && !root.bareMicKey(key))
             return;
 
-        SettingsState.setMicShortcut(mods.join("+") + "+" + key);
+        const chord = mods.length > 0
+            ? mods.join("+") + "+" + key : key;
+        SettingsState.setMicShortcut(chord);
         root.endMicShortcut();
         event.accepted = true;
     }
@@ -3923,6 +4032,16 @@ ColumnLayout {
                         onClicked: SettingsState.setMicShortcut("Mod+Shift+M")
                     }
                 }
+            }
+
+            Text {
+                Layout.fillWidth: true
+                visible: root.micShortcutCapture
+                text: "Combinación, tecla multimedia o botón lateral del ratón"
+                color: Theme.faint
+                font.family: Theme.fontFamily
+                font.pixelSize: 8
+                wrapMode: Text.Wrap
             }
 
             Item {

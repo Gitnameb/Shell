@@ -23,6 +23,8 @@ Singleton {
     // Verdadero mientras el panel del micrófono está capturando un atajo.
     // Super forma parte de la combinación y no debe cerrar el panel.
     property bool micCapturing: false
+    // Botón lateral del ratón pulsado mientras se captura un atajo.
+    signal micMouseButton(int button)
 
     function isOpen(value): bool {
         return root.open && root.key === String(value || "");

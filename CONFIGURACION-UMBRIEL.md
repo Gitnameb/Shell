@@ -705,6 +705,11 @@ cerrar).
   barra nativa (`window-maximize.svg` y `window-minimize.svg`), también en el
   estado restaurado. En pantalla completa se ocultan flotar y maximizar, pero
   aparece «Salir de pantalla completa» con el mismo icono de cuatro esquinas.
+- Maximizar usa `window-toggle-maximize-to-edges`, no
+  `window-toggle-maximize`. En mosaico, la segunda acción solo ensanchaba la
+  columna y dejaba una franja de la ventana vecina al lado; la primera ocupa
+  toda el área útil y funciona igual en flotante. `Mod+M` también apunta a la
+  acción de bordes.
 - Cerrar usa el mismo aspa que la barra nativa (`window-close.svg`) y mover el
   mismo `#` (`window-move.svg`). Fijar y volumen conservan los iconos del menú
   (`window-pin`/`window-unpin` y `volume-3`/`volume-off`).
@@ -941,6 +946,9 @@ Ahora el único camino en Umbriel es la configuración nativa:
   aplicar el layout al enfocar un escritorio.
 - En Umbriel no hay temporizador de 500 ms comprobando modos ni bloqueos de
   220/300 ms: el compositor ya aplicó la configuración al arrancar.
+- El único agrupador que queda es el de escritura: 80 ms para unir varios
+  cambios seguidos del mismo ajuste. No decide el modo ni vuelve a aplicar
+  nada; solo evita escribir dos veces si se pulsan dos chips muy rápido.
 - En Hyprland se conserva el camino de flotar/mosaicar ventanas, porque allí
   no existe la regla nativa.
 
@@ -995,17 +1003,30 @@ ejemplo `Mod+Shift+M`, y `scripts/shell-mic-shortcut` la escribe en
 - `shell-config-set` admite claves TOML entre comillas (`"Mod+Shift+M"`) y una
   opción `--remove-key` para reemplazar atajos sin duplicarlos.
 - Al recargar, Umbriel aplica el cambio sin reiniciar la sesión.
-- El capturador de la interfaz exige al menos un modificador y convierte
-  `Ctrl`, `Alt`, `Shift` y `Super` a `Ctrl`, `Alt`, `Shift` y `Mod`.
+- El capturador convierte `Ctrl`, `Alt`, `Shift` y `Super` a `Ctrl`, `Alt`,
+  `Shift` y `Mod`.
+- También acepta teclas multimedia (`XF86AudioPlay`, volumen, brillo,
+  navegador, etc.) y `F13`–`F24` sin modificador. No acepta letras, números ni
+  signos solos: un atajo global sobre ellos quitaría esa tecla a las
+  aplicaciones.
+- Los botones laterales del ratón se asignan solos como `MouseBack` y
+  `MouseForward`. Umbriel ahora permite esos dos botones sin modificador;
+  los botones principales y los botones con modificador siguen igual.
 - Mientras se captura, el shell activa `shortcuts-inhibit-toggle`. Así Umbriel
   entrega también las combinaciones con Super al panel en vez de ejecutar el
   atajo global; al terminar se desactiva.
 - La pulsación de Super no cierra el panel durante la captura. Sin esa regla,
   asignar `Mod+M` maximizaba una ventana y cerraba el editor.
 
-Comprobado con clics reales en el chip: `Ctrl+M`, `Mod+M` y combinaciones con
-Super se asignan, no maximizan la ventana y dejan una sola línea en
-`[keybinds]`. Volver al valor de fábrica restaura `Mod+Shift+M` sin duplicados.
+Comprobado con clics reales en el chip: `Ctrl+M`, `Mod+M`, `XF86AudioPlay` y
+`MouseBack` se asignan, no maximizan la ventana ni disparan otro atajo, y dejan
+una sola línea en `[keybinds]`. Volver al valor de fábrica restaura
+`Mod+Shift+M` sin duplicados.
+
+No hace falta un servicio para las teclas multimedia habituales ni para los
+botones laterales del ratón: libinput y Umbriel ya los entregan. Solo si una
+tecla de marca no aparece habría que identificarla con `wev` y remapearla con
+`keyd`; no se instala nada de eso por ahora.
 
 ## 29. Super abre y cierra el cajón
 
