@@ -9,6 +9,11 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
 
 ## Estado al cerrar esta sesión
 
+- **Pendiente inmediato (2026-11-09).** Los cambios nativos de esta sesión
+  (tamaño flotante en cambios rápidos y foco al pasar por la barra de título)
+  están en el parche y compilan, pero `/usr/bin/umbriel` todavía no los tiene.
+  Hay que ejecutar `cd ~/Shell && ./scripts/install-umbriel-fork.sh --yes` y
+  cerrar y volver a abrir la sesión.
 - **Ajustes de apariencia (2026-11-09).** «Controles de ventana» desapareció
   de Configuración de ventanas: el modo Super sigue funcionando, pero ya no
   hay una fila que lo duplique. «Cristal de ventanas» se movió a Temas, junto
