@@ -213,7 +213,8 @@ PY
     # Si el shell está abierto, se actualiza también su estado en memoria para
     # que un cambio de ajustes no vuelva a guardar la ruta antigua.
     if command -v qs >/dev/null 2>&1 \
-        && qs ipc -c shell call appearance wallpaper "$dest" >/dev/null 2>&1; then
+        && timeout 5 qs ipc -c shell call appearance wallpaper "$dest" \
+            >/dev/null 2>&1; then
         log "Fondo actualizado en la sesión abierta."
     fi
     log "Fondo actual copiado a $dest."
