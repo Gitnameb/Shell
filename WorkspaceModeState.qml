@@ -45,40 +45,19 @@ Singleton {
         return SettingsState.workspaceMode(workspaceId);
     }
 
-    // Aplica el modo al escritorio. En Hyprland se traduce a flotar/mosaicar
-    // cada ventana; en Umbriel se cambia el layout nativo del escritorio.
+    // En Umbriel el modo vive en la configuración nativa (`[[workspace]]`) y
+    // el compositor lo aplica al recargar. El shell no envía además una orden
+    // en caliente: dos caminos para el mismo cambio producían dos
+    // transiciones. En Hyprland, que no tiene esa configuración, sí se
+    // traduce a flotar/mosaicar cada ventana.
     function applyWorkspace(workspaceId): void {
+        if (CompositorState.supports("nativeWorkspaceModes"))
+            return;
         const id = Number(workspaceId);
-        if (!isFinite(id) || id <= 0 || !root.backendReady)
+        if (!isFinite(id) || id <= 0 || !root.backendReady
+                || !CompositorState.windowDataReady)
             return;
         const mode = root.modeFor(id);
-        if (CompositorState.supports("setWorkspaceMode")) {
-            // Umbriel cambia el layout del escritorio activo. Si el objetivo
-            // no está activo, el ajuste ya quedó guardado y se aplicará al
-            // entrar en él; saltar allí y volver provocaba que un cambio de
-            // escritorio rápido aplicara el modo al escritorio equivocado.
-            if (id !== root.focusedWorkspaceId)
-                return;
-            // Si el layout real ya coincide no se envía ninguna orden. Así el
-            // seguimiento periódico no compite con el usuario al cambiar de
-            // escritorio.
-            const desired = mode === "mosaic" ? "dwindle" : "stacking";
-            const list = CompositorState.workspaces || [];
-            for (let i = 0; i < list.length; i++) {
-                if (Number(list[i].id) === id) {
-                    if (String(list[i].layout) === desired)
-                        return;
-                    break;
-                }
-            }
-            // El layout nativo no necesita la lista de ventanas: se aplica
-            // aunque el primer `umbriel windows --json` todavía no haya
-            // llegado. Antes, el primer clic tras iniciar sesión se perdía.
-            CompositorState.setWorkspaceMode(id, mode);
-            return;
-        }
-        if (!CompositorState.windowDataReady)
-            return;
         const list = CompositorState.windowsForWorkspace(id);
         for (let i = 0; i < list.length; i++) {
             const win = list[i];
@@ -99,26 +78,15 @@ Singleton {
         if (!root.backendReady || !CompositorState.windowDataReady
                 || !SettingsState.workspaceModeChosen)
             return;
+        if (CompositorState.supports("nativeWorkspaceModes"))
+            return;
         root.applying = true;
-        if (CompositorState.supports("nativeWorkspaceModes")) {
-            // Umbriel cambia el layout del escritorio activo. Aplicar los
-            // nueve de golpe obligaría a saltar por todos al arrancar; el
-            // resto se aplica al entrar en cada uno.
-            root.applyWorkspace(root.focusedWorkspaceId);
-        } else {
-            for (let id = 1; id <= SettingsState.maxWorkspaces; id++)
-                root.applyWorkspace(id);
-        }
+        for (let id = 1; id <= SettingsState.maxWorkspaces; id++)
+            root.applyWorkspace(id);
         root.applying = false;
         root.lastFocusedWorkspace = root.focusedWorkspaceId;
         root.lastWorkspaceMode = root.modeFor(root.focusedWorkspaceId);
     }
-
-    // El botón de modo de la píldora y la vista de configuración pueden
-    // disparar el mismo cambio en el mismo clic. Además de comprobar el modo,
-    // se ignora un segundo cambio para el mismo escritorio en 300 ms.
-    property double lastSetStamp: 0
-    property int lastSetWorkspace: 0
 
     function setMode(workspaceId, mode): void {
         const id = Number(workspaceId);
@@ -127,13 +95,9 @@ Singleton {
         const value = SettingsState.normalizeWorkspaceMode(mode);
         if (root.modeFor(id) === value)
             return;
-        const now = Date.now();
-        if (id === root.lastSetWorkspace && now - root.lastSetStamp < 300)
-            return;
-        root.lastSetWorkspace = id;
-        root.lastSetStamp = now;
+        // Solo se guarda la preferencia. La escritura de la regla nativa y su
+        // recarga son el único camino que aplica el modo en Umbriel.
         SettingsState.setWorkspaceMode(id, value);
-        Qt.callLater(() => root.applyWorkspace(id));
     }
 
     function toggleFocused(): void {
@@ -163,8 +127,11 @@ Singleton {
 
     // Las ventanas nuevas de un escritorio flotante se sueltan solas. Solo se
     // hace una vez por dirección: si el usuario vuelve a mosaicar una ventana
-    // a mano, no se le discute.
+    // a mano, no se le discute. En Umbriel el propio layout stacking abre las
+    // ventanas flotantes, así que este camino solo existe para otros backends.
     function scanNewWindows(): void {
+        if (CompositorState.supports("nativeWorkspaceModes"))
+            return;
         if (!CompositorState.supports("autoFloatNewWindows"))
             return;
         if (!SettingsState.ready || !SettingsState.workspaceModeChosen
@@ -238,6 +205,10 @@ Singleton {
 
     // La primera pasada sí aplica el modo a las ventanas que ya existían.
     function initialize(): void {
+        // Umbriel ya aplicó los modos al cargar su configuración. No hay nada
+        // que sincronizar en caliente ni que vigilar cada medio segundo.
+        if (CompositorState.supports("nativeWorkspaceModes"))
+            return;
         if (root.applied || !SettingsState.ready
                 || !root.backendReady
                 || !CompositorState.windowDataReady
@@ -265,7 +236,7 @@ Singleton {
     Timer {
         interval: 500
         repeat: true
-        running: true
+        running: !CompositorState.supports("nativeWorkspaceModes")
         onTriggered: {
             if (!root.applied)
                 root.initialize();

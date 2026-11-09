@@ -919,29 +919,34 @@ excluye de la lista de DNS y de proxy. Así dejan de aparecer tres entradas y
 desaparece la que se llamaba «Desktop» con icono de Wi-Fi (era el SSID del
 punto de acceso, tomado del nombre del equipo).
 
-## 25. Cambio de modo: una sola transición
+## 25. Cambio de modo: un único camino
 
-Cambiar un escritorio de mosaico a ventana tiene dos partes: la orden
-inmediata (`workspace-set-layout`) y la escritura de la regla en
-`config.toml`, que dispara una recarga. La recarga no vuelve a cambiar el
-layout cuando el modo efectivo ya coincide, así que la ventana se mueve una
-sola vez; la recarga solo deja la regla guardada.
+El problema de la doble animación no era de tiempos ni de dobles clics: había
+dos fuentes de verdad para el mismo cambio.
 
-Para que no se sumen cambios accidentales:
+1. El shell enviaba `workspace-set-layout` en caliente.
+2. Después escribía `[[workspace]]` en `config.toml`, y Umbriel recargaba la
+   configuración y volvía a aplicar el layout.
 
-- Pulsar el modo que ya está elegido en «Configuración de ventanas» no hace
-  nada: `SettingsState.setWorkspaceMode` y `WorkspaceModeState.setMode`
-  comprueban el valor antes de escribir.
-- El botón de modo de la ficha del escritorio ya no comparte el cambio con el
-  área grande de la píldora: solo el botón dedicado lo dispara, así un mismo
-  clic no puede ejecutar dos veces el cambio.
-- `WorkspaceModeState.setMode` ignora un segundo cambio para el mismo
-  escritorio en 300 ms, aunque llegue por otra ruta de la interfaz.
-- `applyWorkspaceModes` recuerda la última firma escrita y no repite la
-  recarga si el backend vuelve a pedir lo mismo al arrancar.
+Aunque el modo final coincidiera, las dos órdenes podían llegar en momentos
+distintos y producir dos transiciones. Añadir comprobaciones y bloqueos solo
+tapaba el síntoma.
 
-Comprobado en sesión anidada con tres ventanas y tres clics: cada clic produjo
-un único `set_floating` y una recarga posterior sin movimiento adicional.
+Ahora el único camino en Umbriel es la configuración nativa:
+
+- `WorkspaceModeState.setMode` solo guarda la preferencia en `settings.conf`.
+- `SettingsState.applyWorkspaceModes` escribe el bloque `[[workspace]]` una
+  vez y Umbriel lo aplica al recargar.
+- El shell no llama a `workspace-set-layout` para cambiar de modo ni vuelve a
+  aplicar el layout al enfocar un escritorio.
+- En Umbriel no hay temporizador de 500 ms comprobando modos ni bloqueos de
+  220/300 ms: el compositor ya aplicó la configuración al arrancar.
+- En Hyprland se conserva el camino de flotar/mosaicar ventanas, porque allí
+  no existe la regla nativa.
+
+Comprobado en sesión anidada con tres ventanas y dos cambios: las posiciones
+muestran una sola transición por clic, una sola escritura de configuración y
+una sola recarga.
 
 ## 26. Portapapeles con cliphist
 

@@ -31,6 +31,11 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   entre comillas y `--remove-key`. El cambio se aplica con una recarga.
 - **Calendario (2026-11-09).** Se quitó el texto «Sin eventos ni notas para
   este día»; el editor de notas sigue en el apartado del segundo clic.
+- **Cambio de modo sin doble animación (2026-11-09).** Se eliminó el segundo
+  camino: el modo ya no se aplica con `workspace-set-layout` y con una recarga
+  de configuración a la vez. El shell solo guarda la preferencia y escribe la
+  regla nativa; Umbriel la aplica una vez. También se quitaron el temporizador
+  de comprobación de modos y los bloqueos de doble clic.
 - **Plan de dependencias opcionales.** `PLAN-DEPENDENCIAS.md` separa lo que ya
   funciona de lo que mejoraría con paquetes extra. Portapapeles con imágenes y
   brillo de portátil ya están hechos; quedan para después el teclado para
