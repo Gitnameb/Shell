@@ -22,7 +22,7 @@ index 1146a02c..f713076f 100644
  Buttons show a drawn X for close, an outlined square for maximize, and an underscore for minimize. `button_glyph` controls when those symbols appear:
  
 diff --git a/docs/user/input.md b/docs/user/input.md
-index 47c4faa4..d5edcd69 100644
+index 47c4faa4..67a9d1e4 100644
 --- a/docs/user/input.md
 +++ b/docs/user/input.md
 @@ -6,12 +6,15 @@ Configure keyboard, pointer, touchpad, tablet, cursor, and focus behavior under
@@ -36,7 +36,7 @@ index 47c4faa4..d5edcd69 100644
  mod_right_double_click = "none"
  ```
  
-+`mod_hold_delay_ms` is how long Mod must stay down before the desktop acts as if it is being held: window content becomes inert and the overlay title bars appear. A shorter press is treated as a tap and can open the shell launcher without dimming the screen or releasing a game's pointer. Raise it if a quick tap still feels like a hold; lower it if the hold feels sluggish. The value is clamped between 50 and 2000 ms and takes effect on the next config reload. While Mod is held, the window under the pointer takes focus even when a layer surface had the keyboard, including when the pointer returns to the same window; this lets a shell close its panels and hand the keyboard to that window.
++`mod_hold_delay_ms` is how long Mod must stay down before the desktop acts as if it is being held: window content becomes inert and the overlay title bars appear. A shorter press is treated as a tap and can open the shell launcher without dimming the screen or releasing a game's pointer. Raise it if a quick tap still feels like a hold; lower it if the hold feels sluggish. The value is clamped between 50 and 2000 ms and takes effect on the next config reload. While Mod is held, the window under the pointer takes focus even when a layer surface had the keyboard, including when the pointer returns to the same window; this lets a shell close its panels and hand the keyboard to that window. The hover covers the native title bar and its buttons too, not only the client content, so pointing at a window option focuses that window before the option is used.
 +
  `middle_click_paste = false` disables primary-selection paste, including Shift+Insert. The regular Ctrl+C and Ctrl+V clipboard is unaffected. Applications started while primary selection is disabled must be restarted after it is re-enabled.
  
@@ -134,7 +134,7 @@ index 072687c7..14b91eee 100644
  Layer-shell blur is off by default. Every matching rule contributes its settings, and later values take precedence.
  
 diff --git a/docs/user/layout.md b/docs/user/layout.md
-index 29a8e7b9..41001ed8 100644
+index 29a8e7b9..71d14beb 100644
 --- a/docs/user/layout.md
 +++ b/docs/user/layout.md
 @@ -28,12 +28,31 @@ mode = "stacking"
@@ -144,7 +144,7 @@ index 29a8e7b9..41001ed8 100644
 -Every ordinary window opens floating at its preferred size. Oversized automatic windows are reduced proportionally to fit the usable area, including title bars and margins. Client-driven size changes keep automatic placement centered until you move the window. New windows start at the center and shift diagonally when they would completely cover another window whose upper-left corner is visible. Placement includes title bars and borders. The offset clears the decorated title bar, with a minimum of 32 logical pixels, and wraps to fresh diagonals at the output boundary, including when several windows open simultaneously. Dialogs center over their parent; explicit position rules take precedence.
 +Every ordinary window opens floating at the configured default size, `default_width_fraction` by `default_height_fraction` of the usable area, and joins the cascade. That size is sent in the opening configure, so the first frame is already final and the window does not visibly resize after mapping. A window that opens directly in stacking looks the same as one that arrived when a tiled workspace switched to stacking. New windows start at the center and shift diagonally when they would completely cover another window whose upper-left corner is visible. Placement includes title bars and borders. The offset clears the decorated title bar, with a minimum of 32 logical pixels, and wraps to fresh diagonals at the output boundary, including when several windows open simultaneously. A size set by an explicit window rule, or remembered from an earlier floating episode, still wins. Dialogs keep their own size and center over their parent; explicit position rules take precedence.
 +
-+When a window leaves a tiling layout for floating, its first floating episode does not keep the tile size: a lone tile can fill the output, and floating it would stay full-screen. Instead it takes `default_width_fraction` by `default_height_fraction` of the usable area, then joins the cascade. A window that has floated before keeps the size and position you last gave it, including a manual resize. Switching a whole workspace from a tiling layout to stacking restores the position and size each window had during its last stacking episode. A window that has never floated takes the default size and joins the cascade, so windows new to stacking do not pile up. New windows open there with the same size and cascade.
++When a window leaves a tiling layout for floating, its first floating episode does not keep the tile size: a lone tile can fill the output, and floating it would stay full-screen. Instead it takes `default_width_fraction` by `default_height_fraction` of the usable area, then joins the cascade. A window that has floated before keeps the size and position you last gave it, including a manual resize. Switching a whole workspace from a tiling layout to stacking restores the position and size each window had during its last stacking episode. A window that has never floated takes the default size and joins the cascade, so windows new to stacking do not pile up. New windows open there with the same size and cascade. The size a window is floating toward is remembered as soon as the float starts, even before the client commits it. Switching back to tiling during that configure keeps the intended floating size instead of reading the still-tiled client geometry, so rapid mode changes cannot make window mode grow to the tiled size.
 +
 +```toml
 +[layout.stacking]
@@ -691,7 +691,7 @@ index 16a64d47..08cfa6a7 100644
      resolved.tabs.newTabPosition = config.layout.tabs.newTabPosition;
      resolved.tabs.wrapFocus = config.layout.tabs.wrapFocus;
 diff --git a/src/input/cursor.cpp b/src/input/cursor.cpp
-index 04ee05c5..5a659def 100644
+index 04ee05c5..7036cf50 100644
 --- a/src/input/cursor.cpp
 +++ b/src/input/cursor.cpp
 @@ -17,8 +17,10 @@
@@ -744,12 +744,10 @@ index 04ee05c5..5a659def 100644
      return nullptr;
    }
  
-@@ -1135,8 +1148,27 @@ namespace umbriel {
+@@ -1135,6 +1148,26 @@ namespace umbriel {
      return true;
    }
  
--  void Cursor::beginToplevelDrag(View* view, int x, int y, bool tileOnDrop) {
--    const uint32_t button = m_server->seat()->wlr()->pointer_state.grab_button;
 +  bool Cursor::beginSwap(View* view, uint32_t button) {
 +    if (view == nullptr || !view->mapped() || view->floating() || button == 0) {
 +      return false;
@@ -770,11 +768,10 @@ index 04ee05c5..5a659def 100644
 +    return true;
 +  }
 +
-+  void Cursor::beginToplevelDrag(View* view, int x, int y, bool tileOnDrop) {    const uint32_t button = m_server->seat()->wlr()->pointer_state.grab_button;
+   void Cursor::beginToplevelDrag(View* view, int x, int y, bool tileOnDrop) {
+     const uint32_t button = m_server->seat()->wlr()->pointer_state.grab_button;
      if (!beginMove(view, button)) {
-       return;
-     }
-@@ -1189,8 +1221,12 @@ namespace umbriel {
+@@ -1189,8 +1222,12 @@ namespace umbriel {
        uint32_t resolvedEdges = 0;
        if (edges != 0) {
          resolvedEdges = layout.resolveResizeEdges(view, edges, m_cursor->x, m_cursor->y);
@@ -789,7 +786,7 @@ index 04ee05c5..5a659def 100644
        }
        if (resolvedEdges == 0) {
          revealClickedTile(view);
-@@ -1378,6 +1414,9 @@ namespace umbriel {
+@@ -1378,6 +1415,9 @@ namespace umbriel {
      if (std::holds_alternative<FloatingResizeGrab>(m_grab) && view != nullptr) {
        view->finishFloatingResize();
      }
@@ -799,7 +796,7 @@ index 04ee05c5..5a659def 100644
      m_toplevelDrag = false;
      m_grab = PassthroughGrab{};
      m_grabButton = 0;
-@@ -1489,10 +1528,14 @@ namespace umbriel {
+@@ -1489,10 +1529,14 @@ namespace umbriel {
        }
      }
  
@@ -818,7 +815,7 @@ index 04ee05c5..5a659def 100644
  
      if (m_activeConstraint != nullptr && !constraintSurfaceActive()) {
        clearConstraint();
-@@ -1650,6 +1693,20 @@ namespace umbriel {
+@@ -1650,6 +1694,20 @@ namespace umbriel {
        }
      }
  
@@ -839,7 +836,7 @@ index 04ee05c5..5a659def 100644
      // Config mouse binds win over the overview and the built-in Mod+drag / Mod+resize grabs. Presses consumed here
      // swallow their paired release so clients never see an unmatched release.
      if (state == WL_POINTER_BUTTON_STATE_PRESSED && isPassthrough()) {
-@@ -1705,7 +1762,31 @@ namespace umbriel {
+@@ -1705,7 +1763,31 @@ namespace umbriel {
                press.view->maximizedToEdges() || press.view->scheduledMaximized() || press.view->floatingMaximized();
            press.view->setMaximizedLikeClientRequest(!maximized);
          } else if (press.part == SsdFramePart::Minimize) {
@@ -872,22 +869,20 @@ index 04ee05c5..5a659def 100644
          }
        }
      }
-@@ -1739,7 +1820,13 @@ namespace umbriel {
+@@ -1739,6 +1821,12 @@ namespace umbriel {
      }
  
      if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
--      if (auto* grab = std::get_if<ScrollDragGrab>(&m_grab)) {
 +      if (MoveMenu* menu = m_server->moveMenu(); menu != nullptr && menu->visible()) {
-+      clearPointerFocus();
-+      menu->updateHover(m_cursor->x, m_cursor->y);
-+      updateInteractiveCursor(nullptr);
-+      return;
-+    }
-+    if (auto* grab = std::get_if<ScrollDragGrab>(&m_grab)) {
++        clearPointerFocus();
++        menu->updateHover(m_cursor->x, m_cursor->y);
++        updateInteractiveCursor(nullptr);
++        return;
++      }
+       if (auto* grab = std::get_if<ScrollDragGrab>(&m_grab)) {
          if (button == grab->button) {
            m_server->gestures()->endPointerScroll(m_server->sessionLocked(), timeMsec);
-           resetMode();
-@@ -1767,7 +1854,7 @@ namespace umbriel {
+@@ -1767,7 +1855,7 @@ namespace umbriel {
        LayerSurface* layer = nullptr;
        m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
        wlr_seat* seat = m_server->seat()->wlr();
@@ -896,7 +891,7 @@ index 04ee05c5..5a659def 100644
          if (surface != nullptr) {
            setPointerFocus(surface, sx, sy, timeMsec);
          }
-@@ -1785,6 +1872,10 @@ namespace umbriel {
+@@ -1785,6 +1873,10 @@ namespace umbriel {
      }
  
      if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
@@ -907,7 +902,7 @@ index 04ee05c5..5a659def 100644
        if (auto* grab = std::get_if<MoveGrab>(&m_grab)) {
          if (grab->pending) {
            resetMode();
-@@ -1890,6 +1981,11 @@ namespace umbriel {
+@@ -1890,6 +1982,11 @@ namespace umbriel {
              && !target->blocked()
              && (hit->part == SsdFramePart::Close
                  || hit->part == SsdFramePart::Minimize
@@ -919,7 +914,7 @@ index 04ee05c5..5a659def 100644
                  || (hit->part == SsdFramePart::Maximize && target->ssdFrame()->maximizeEnabled()))
          ) {
            m_server->focusView(target, FocusReason::PointerPress);
-@@ -1928,15 +2024,63 @@ namespace umbriel {
+@@ -1928,15 +2025,63 @@ namespace umbriel {
      }
  
      const bool modHeld = (m_server->keyboardModifiers() & m_server->modKey()) != 0;
@@ -987,7 +982,7 @@ index 04ee05c5..5a659def 100644
        if (config().input.modRightDoubleClick == ModRightDoubleClick::None) {
          beginResize(view, view->tiled() ? 0 : floatResizeEdges(view), button);
          return;
-@@ -1960,25 +2104,44 @@ namespace umbriel {
+@@ -1960,25 +2105,44 @@ namespace umbriel {
        // Defer the grab until the pointer leaves the slop: a grab would drop the
        // maximize state the second click reads. Edges are snapshotted at the
        // press point; a press proposing none is a plain click.
@@ -1038,7 +1033,7 @@ index 04ee05c5..5a659def 100644
      // Pointer focus must match the surface under the cursor before the button
      // event so wl_data_device drag serial validation succeeds.
      wlr_seat* seat = m_server->seat()->wlr();
-@@ -2055,7 +2218,7 @@ namespace umbriel {
+@@ -2055,7 +2219,7 @@ namespace umbriel {
        wlr_surface* surface = nullptr;
        LayerSurface* layer = nullptr;
        m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -1047,7 +1042,7 @@ index 04ee05c5..5a659def 100644
          if (!overview->interactive()) {
            return;
          }
-@@ -2108,6 +2271,18 @@ namespace umbriel {
+@@ -2108,6 +2272,18 @@ namespace umbriel {
      }
      if (!armed) {
        m_wheelAccum[orientation] = 0;
@@ -1066,7 +1061,7 @@ index 04ee05c5..5a659def 100644
        const double scale = touchpadScrollFactor(event->pointer, isVertical);
        wlr_seat_pointer_notify_axis(
            m_server->seat()->wlr(), event->time_msec, event->orientation, event->delta * scale, event->delta_discrete,
-@@ -2224,7 +2399,7 @@ namespace umbriel {
+@@ -2224,7 +2400,7 @@ namespace umbriel {
  
      // A tap in overview activates like a left click; panels keep their touch.
      if (Overview* overview = m_server->overview();
@@ -1075,7 +1070,7 @@ index 04ee05c5..5a659def 100644
        if (overview->interactive()) {
          overview->handleButton(BTN_LEFT, true, lx, ly, event->time_msec);
          overview->handleButton(BTN_LEFT, false, lx, ly, event->time_msec);
-@@ -2249,6 +2424,11 @@ namespace umbriel {
+@@ -2249,6 +2425,11 @@ namespace umbriel {
        }
      }
  
@@ -1087,7 +1082,7 @@ index 04ee05c5..5a659def 100644
      if (surface != nullptr) {
        // Focus the touched view (click-to-focus equivalent).
        if (!m_server->sessionLocked() && m_server->exclusiveKeyboardLayer() == nullptr) {
-@@ -2360,7 +2540,7 @@ namespace umbriel {
+@@ -2360,7 +2541,7 @@ namespace umbriel {
        wlr_surface* surface = nullptr;
        LayerSurface* layer = nullptr;
        m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -1096,7 +1091,7 @@ index 04ee05c5..5a659def 100644
          setPointerFocus(surface, sx, sy, timeMsec);
          wlr_seat_pointer_notify_motion(m_server->seat()->wlr(), timeMsec, sx, sy);
          return;
-@@ -2396,6 +2576,14 @@ namespace umbriel {
+@@ -2396,6 +2577,14 @@ namespace umbriel {
          }
        }
      }
@@ -1111,7 +1106,7 @@ index 04ee05c5..5a659def 100644
      if (std::holds_alternative<FloatingResizeGrab>(m_grab)) {
        if (m_server->sessionLocked()) {
          resetMode();
-@@ -2421,6 +2609,48 @@ namespace umbriel {
+@@ -2421,6 +2610,56 @@ namespace umbriel {
        resetMode();
      }
  
@@ -1126,8 +1121,16 @@ index 04ee05c5..5a659def 100644
 +      LayerSurface* layer = nullptr;
 +      View* view = m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
 +      // The shield branch owns motion while Mod is held, so this is where the
-+      // hovered window is tracked.
-+      m_server->updateModHoverBlur(layer == nullptr ? view : nullptr);
++      // hovered window is tracked. Native chrome is not a client buffer, so
++      // the SSD hit test supplies the window when the pointer sits on the
++      // title bar or one of its option buttons.
++      View* hovered = view;
++      if (hovered == nullptr && layer == nullptr) {
++        if (const auto hit = m_server->ssdFrameAt(m_cursor->x, m_cursor->y); hit.has_value()) {
++          hovered = hit->view;
++        }
++      }
++      m_server->updateModHoverBlur(layer == nullptr ? hovered : nullptr);
 +      if (layer != nullptr && surface != nullptr) {
 +        setPointerFocus(surface, sx, sy, timeMsec);
 +        wlr_seat_pointer_notify_motion(m_server->seat()->wlr(), timeMsec, sx, sy);
@@ -1160,25 +1163,38 @@ index 04ee05c5..5a659def 100644
      wlr_seat* seat = m_server->seat()->wlr();
      updateDataDragEdgeScroll();
      if (seat->drag == nullptr
-@@ -2443,6 +2673,9 @@ namespace umbriel {
+@@ -2443,6 +2682,16 @@ namespace umbriel {
      wlr_surface* surface = nullptr;
      LayerSurface* layer = nullptr;
      View* view = m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
 +    // While Mod is held, only the window under the pointer is blurred. This
-+    // runs even when follow-mouse focus is off.
-+    m_server->updateModHoverBlur(layer == nullptr ? view : nullptr);
++    // runs even when follow-mouse focus is off. Over the native title bar
++    // there is no client surface, so consult the SSD frame too.
++    View* hovered = view;
++    if (hovered == nullptr && layer == nullptr) {
++      if (const auto hit = m_server->ssdFrameAt(m_cursor->x, m_cursor->y); hit.has_value()) {
++        hovered = hit->view;
++      }
++    }
++    m_server->updateModHoverBlur(layer == nullptr ? hovered : nullptr);
  
      if (allowFocusChange
          && config().input.focus.followsMouse
-@@ -2694,6 +2927,7 @@ namespace umbriel {
+@@ -2694,6 +2943,13 @@ namespace umbriel {
      wlr_surface* surface = nullptr;
      LayerSurface* layer = nullptr;
      View* view = m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
-+    m_server->updateModHoverBlur(layer == nullptr ? view : nullptr);
++    View* hovered = view;
++    if (hovered == nullptr && layer == nullptr) {
++      if (const auto hit = m_server->ssdFrameAt(m_cursor->x, m_cursor->y); hit.has_value()) {
++        hovered = hit->view;
++      }
++    }
++    m_server->updateModHoverBlur(layer == nullptr ? hovered : nullptr);
      if (surface == nullptr || !wlr_surface_accepts_tablet_v2(surface, v2tablet)) {
        setToolEmulating(state, true);
        processMotion(timeMsec, oldX, oldY);
-@@ -3362,13 +3596,41 @@ namespace umbriel {
+@@ -3362,13 +3618,41 @@ namespace umbriel {
      if (workspace == nullptr || workspace->group() == nullptr || workspace->group()->output() == nullptr) {
        return 0;
      }
@@ -1225,7 +1241,7 @@ index 04ee05c5..5a659def 100644
    }
  
    void Cursor::forgetView(const View* view) {
-@@ -3383,11 +3645,22 @@ namespace umbriel {
+@@ -3383,11 +3667,22 @@ namespace umbriel {
      if (auto* grab = std::get_if<MoveGrab>(&m_grab); grab != nullptr && grab->view != view) {
        std::erase(grab->tabGroup.tabs, view);
      }
@@ -1248,7 +1264,7 @@ index 04ee05c5..5a659def 100644
    }
  
    uint32_t Cursor::floatResizeEdges(View* view) const {
-@@ -3401,70 +3674,92 @@ namespace umbriel {
+@@ -3401,70 +3696,92 @@ namespace umbriel {
      return resizeEdgesForPoint(box, m_cursor->x, m_cursor->y);
    }
  
@@ -1388,7 +1404,7 @@ index 04ee05c5..5a659def 100644
    }
  
    void Cursor::setCompositorCursor(const char* name) {
-@@ -3548,10 +3843,13 @@ namespace umbriel {
+@@ -3548,10 +3865,13 @@ namespace umbriel {
      wlr_surface* surface = nullptr;
      LayerSurface* layer = nullptr;
      m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -1403,7 +1419,7 @@ index 04ee05c5..5a659def 100644
        surface = nullptr;
      }
      const bool stale = !pointerFocusPinned() && pointerContentsStale(surface, sx, sy);
-@@ -3615,27 +3913,42 @@ namespace umbriel {
+@@ -3615,27 +3935,42 @@ namespace umbriel {
      wlr_surface* surface = nullptr;
      LayerSurface* layer = nullptr;
      View* view = m_server->viewAt(m_cursor->x, m_cursor->y, &surface, &sx, &sy, &layer);
@@ -1457,7 +1473,7 @@ index 04ee05c5..5a659def 100644
  
      uint32_t resizeEdges = 0;
      if (const auto* grab = std::get_if<FloatingResizeGrab>(&m_grab)) {
-@@ -3650,7 +3963,13 @@ namespace umbriel {
+@@ -3650,7 +3985,13 @@ namespace umbriel {
        setCompositorCursor(name != nullptr ? name : "default");
        return;
      }
@@ -1471,7 +1487,7 @@ index 04ee05c5..5a659def 100644
        if (!grab->pending) {
          setCompositorCursor("grabbing");
        }
-@@ -3658,14 +3977,36 @@ namespace umbriel {
+@@ -3658,14 +3999,36 @@ namespace umbriel {
      }
  
      const bool modHeld = (m_server->keyboardModifiers() & m_server->modKey()) != 0;
@@ -1511,7 +1527,7 @@ index 04ee05c5..5a659def 100644
        return;
      }
  
-@@ -3678,6 +4019,11 @@ namespace umbriel {
+@@ -3678,6 +4041,11 @@ namespace umbriel {
              !hit->view->blocked()
              && (hit->part == SsdFramePart::Close
                  || hit->part == SsdFramePart::Minimize
@@ -1523,7 +1539,7 @@ index 04ee05c5..5a659def 100644
                  || (hit->part == SsdFramePart::Maximize && hit->view->ssdFrame()->maximizeEnabled()))
          ) {
            name = "pointer";
-@@ -3697,8 +4043,9 @@ namespace umbriel {
+@@ -3697,8 +4065,9 @@ namespace umbriel {
      double sx = 0;
      double sy = 0;
      wlr_surface* surface = nullptr;
@@ -1535,7 +1551,7 @@ index 04ee05c5..5a659def 100644
    }
  
    void Cursor::processResizeTile() {
-@@ -3722,4 +4069,78 @@ namespace umbriel {
+@@ -3722,4 +4091,78 @@ namespace umbriel {
      grab->workspace->markArrange(false);
    }
  
@@ -4631,7 +4647,7 @@ index 560eef66..05256e8b 100644
      if (!notifyServiceReady(notifySocket)) {
        kLog.error("failed to report session readiness: {}", std::strerror(errno));
 diff --git a/src/server/server.h b/src/server/server.h
-index 03e10604..b7aa229d 100644
+index 03e10604..0846651d 100644
 --- a/src/server/server.h
 +++ b/src/server/server.h
 @@ -156,6 +156,7 @@ namespace umbriel {
@@ -4665,7 +4681,19 @@ index 03e10604..b7aa229d 100644
      // Owners register themselves for the frame tick. The registry is kept in phase order, so the three traversals above
      // never re-state which owners exist or in what order they run.
      void registerAnimatable(Animatable* animatable);
-@@ -429,7 +439,35 @@ namespace umbriel {
+@@ -409,6 +419,11 @@ namespace umbriel {
+     View* viewAt(double lx, double ly, wlr_surface** surface, double* sx, double* sy, LayerSurface** layer = nullptr) {
+       return m_focus.viewAt(lx, ly, surface, sx, sy, layer);
+     }
++    // Window under the pointer for the Mod-held hover, including the native
++    // title bar and its buttons. `viewAt` only hits client buffers, so the
++    // chrome needs its own pass; without it hovering the option icons did not
++    // focus the window.
++    View* hoverViewAt(double lx, double ly, LayerSurface** layer = nullptr);
+     std::optional<SsdFrameHit> ssdFrameAt(double lx, double ly) const { return m_focus.ssdFrameAt(lx, ly); }
+     std::optional<Keybind> handleKeybind(uint32_t keysym, uint32_t rawKeysym, uint32_t modifiers);
+     // The bind this press would fire, without running it. Null when nothing
+@@ -429,7 +444,35 @@ namespace umbriel {
      bool handleVtSwitch(uint32_t keysym, uint32_t modifiers);
      void armModifierTap(const void* source, uint32_t keycode, std::span<const uint32_t> keysyms, uint32_t modifiers);
      [[nodiscard]] std::optional<Keybind> releaseModifierTap(const void* source, uint32_t keycode);
@@ -4702,7 +4730,7 @@ index 03e10604..b7aa229d 100644
      void arrangeLayers(wlr_output* output);
      // Re-send every surface's output scale (views, layer surfaces, popups). Run after anything that changes an output's
      // scale or moves surfaces between outputs outside setWorkspace; the notifies dedup, so extra calls are cheap.
-@@ -476,6 +514,10 @@ namespace umbriel {
+@@ -476,6 +519,10 @@ namespace umbriel {
      bool syncingKeyboardLocks() const;
      void removeKeyboard(Keyboard* keyboard);
      void removeView(View* view);
@@ -4713,7 +4741,7 @@ index 03e10604..b7aa229d 100644
      void removeLayerSurface(LayerSurface* layerSurface, wlr_output* output);
      void removeSessionLock(SessionLock* lock);
      void activateSessionLock(SessionLock* lock);
-@@ -587,6 +629,8 @@ namespace umbriel {
+@@ -587,6 +634,8 @@ namespace umbriel {
      // when there are none.
      void armBackgroundRenderTimer();
      static int onStartupRulesTimer(void* data);
@@ -4722,7 +4750,7 @@ index 03e10604..b7aa229d 100644
      static int onTerminateSignal(int signal, void* data);
      static void onIpcWindowsIdle(void* data);
      static void onIpcWorkspacesIdle(void* data);
-@@ -918,6 +962,8 @@ namespace umbriel {
+@@ -918,6 +967,8 @@ namespace umbriel {
      std::unique_ptr<Cheatsheet> m_cheatsheet;
      wlr_scene_tree* m_quitConfirmTree = nullptr;
      std::unique_ptr<QuitConfirm> m_quitConfirm;
@@ -4731,7 +4759,7 @@ index 03e10604..b7aa229d 100644
  
      bool m_nested = false;
      bool m_stopping = false;
-@@ -950,6 +996,9 @@ namespace umbriel {
+@@ -950,6 +1001,9 @@ namespace umbriel {
      wl_event_source* m_backgroundRenderTimer = nullptr;
      // One-shot refresh when dynamic startup rules expire.
      wl_event_source* m_startupRulesTimer = nullptr;
@@ -4741,7 +4769,7 @@ index 03e10604..b7aa229d 100644
      // Non-null while a windows-event idle callback is pending. The idle source
      // removes itself when it runs, so a non-null pointer means "already queued".
      wl_event_source* m_ipcWindowsIdle = nullptr;
-@@ -1020,6 +1069,17 @@ namespace umbriel {
+@@ -1020,6 +1074,17 @@ namespace umbriel {
      Keyboard* m_keyboardLayoutSource = nullptr;
      Keyboard* m_keyboardInputSource = nullptr;
      ModifierTapState m_modifierTap;
@@ -4845,7 +4873,7 @@ index 11f0d54d..63e72175 100644
      if (m_scratchpadManager != nullptr) {
        m_scratchpadManager->remove(view);
 diff --git a/src/server/server_keybinds.cpp b/src/server/server_keybinds.cpp
-index 504a98c3..9a598aca 100644
+index 504a98c3..dc246b04 100644
 --- a/src/server/server_keybinds.cpp
 +++ b/src/server/server_keybinds.cpp
 @@ -9,6 +9,7 @@
@@ -4864,7 +4892,7 @@ index 504a98c3..9a598aca 100644
    } // namespace
  
    bool Server::handleVtSwitch(uint32_t keysym, uint32_t modifiers) {
-@@ -317,6 +319,133 @@ namespace umbriel {
+@@ -317,6 +319,150 @@ namespace umbriel {
      return nullptr;
    }
  
@@ -4911,11 +4939,8 @@ index 504a98c3..9a598aca 100644
 +      return;
 +    }
 +    if (m_cursor != nullptr && !m_sessionLocked) {
-+      wlr_surface* surface = nullptr;
-+      double sx = 0;
-+      double sy = 0;
 +      LayerSurface* layer = nullptr;
-+      View* hovered = viewAt(m_cursor->wlr()->x, m_cursor->wlr()->y, &surface, &sx, &sy, &layer);
++      View* hovered = hoverViewAt(m_cursor->wlr()->x, m_cursor->wlr()->y, &layer);
 +      updateModHoverBlur(layer == nullptr ? hovered : nullptr);
 +    } else {
 +      updateModHoverBlur(nullptr);
@@ -4944,6 +4969,26 @@ index 504a98c3..9a598aca 100644
 +    }
 +    m_overlayPinned = pinned;
 +    updateOverlayChrome();
++  }
++
++  View* Server::hoverViewAt(double lx, double ly, LayerSurface** layer) {
++    wlr_surface* surface = nullptr;
++    double sx = 0;
++    double sy = 0;
++    LayerSurface* hitLayer = nullptr;
++    View* view = viewAt(lx, ly, &surface, &sx, &sy, &hitLayer);
++    // The title bar and its buttons are native cairo buffers, not a
++    // wlr_scene_surface, so viewAt cannot see them. The SSD hit test knows the
++    // whole frame; use it as a fallback for the focus-by-hover gesture.
++    if (view == nullptr && hitLayer == nullptr) {
++      if (const auto hit = ssdFrameAt(lx, ly); hit.has_value()) {
++        view = hit->view;
++      }
++    }
++    if (layer != nullptr) {
++      *layer = hitLayer;
++    }
++    return view;
 +  }
 +
 +  void Server::updateModHoverBlur(View* view) {
@@ -5854,7 +5899,7 @@ index c32740da..642b1374 100644
          }
  
 diff --git a/src/view/view_state.cpp b/src/view/view_state.cpp
-index c171665e..55f32d75 100644
+index c171665e..dcccc171 100644
 --- a/src/view/view_state.cpp
 +++ b/src/view/view_state.cpp
 @@ -550,7 +550,7 @@ namespace umbriel {
@@ -5986,9 +6031,18 @@ index c171665e..55f32d75 100644
        m_tiled = false;
        m_presentedTiledBox = {};
        if (m_workspace != nullptr) {
-@@ -852,8 +868,16 @@ namespace umbriel {
+@@ -851,9 +867,25 @@ namespace umbriel {
+           && (scheduledSize().width != keepWidth || scheduledSize().height != keepHeight)) {
          requestFloatingSize(keepWidth, keepHeight);
        }
++      // The target size is the floating identity even before the client
++      // commits it. Toggling back to tiling before that commit used to read
++      // the still-tiled client geometry and remember it as the floating size,
++      // which made window mode grow to the tiled size after a few quick
++      // switches.
++      if (keepWidth > 0 && keepHeight > 0) {
++        m_floating.rememberSize(keepWidth, keepHeight);
++      }
        beginResizeAnimation(keepWidth, keepHeight);
 -      int floatX = keepX + 50;
 -      int floatY = keepY + 50;
@@ -6005,7 +6059,7 @@ index c171665e..55f32d75 100644
        bool usedPendingPosition = false;
        if (m_pendingFloatingPosition) {
          if (const auto positioned =
-@@ -865,9 +889,17 @@ namespace umbriel {
+@@ -865,9 +897,17 @@ namespace umbriel {
          }
        }
        if (!usedPendingPosition) {
@@ -6026,6 +6080,23 @@ index c171665e..55f32d75 100644
          }
        }
        if (usable.width > 0 && usable.height > 0 && keepWidth > 0 && keepHeight > 0) {
+@@ -899,8 +939,14 @@ namespace umbriel {
+     const wlr_box& geo = geometryBox();
+     // A fullscreen geometry is not a floating size; remembering it would make
+     // the next float episode restore output-sized dimensions.
+-    if (!fullscreen && geo.width > 0 && geo.height > 0) {
+-      m_floating.rememberSize(geo.width, geo.height);
++    if (!fullscreen) {
++      // A requested float size that the client has not committed yet is still
++      // the size this window owns; the committed geometry may be the tiled
++      // one when the user switches back before the configure lands.
++      const auto size = m_floating.pendingSize().value_or(std::array{geo.width, geo.height});
++      if (size[0] > 0 && size[1] > 0) {
++        m_floating.rememberSize(size[0], size[1]);
++      }
+     }
+     m_floating.rememberPositionFraction({.x = layoutTargetX(), .y = layoutTargetY()}, usable);
+ 
 diff --git a/src/workspace/scratchpad.cpp b/src/workspace/scratchpad.cpp
 index 6c9db618..20c4e5e7 100644
 --- a/src/workspace/scratchpad.cpp

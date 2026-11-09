@@ -20,9 +20,13 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   aplican directamente. El menú del clic derecho usa los mismos iconos que la
   barra de título (salvo fijar y volumen, que conservan los del menú). Cambiar
   de mosaico a ventana ya conserva la posición y el tamaño que el usuario dejó
-  en modo ventana. Mantener Super cierra los paneles del shell y enfoca la
-  ventana bajo el puntero. Las ventanas nuevas en modo ventana se configuran
-  con su tamaño final antes de mapear, sin el redimensionado posterior.
+  en modo ventana. Al empezar a flotar se recuerda el tamaño objetivo aunque
+  la app todavía no lo haya confirmado; así, cambiar de modo varias veces
+  seguidas ya no adopta el tamaño del mosaico como tamaño flotante. Mantener
+  Super cierra los paneles del shell y enfoca la ventana bajo el puntero,
+  también cuando el puntero está sobre la barra de título nativa o sus iconos
+  de opciones. Las ventanas nuevas en modo ventana se configuran con su tamaño
+  final antes de mapear, sin el redimensionado posterior.
 - **Monitor de red y muestreo ligero (2026-11-09).** La vista se llama
   «Monitor de tráfico de red». `stats.py` ya no hace `ping` cada 10 s: la
   latencia se mide cada segundo solo mientras el monitor está abierto y se

@@ -516,10 +516,12 @@ Además, mantener Mod es un modo de **enfoque**: la ventana bajo el puntero
 pasa a ser la que recibe el teclado, aunque antes tuviera el foco otra. Así
 `Super+Q`, `Super+M` o `Super+Shift+H` actúan sobre la ventana que se está
 señalando y no sobre la última enfocada. Al mover el puntero con Mod pulsado,
-el foco cambia con él. Mantener Mod también cuenta como interactuar fuera de
-un panel del shell: el panel se cierra en cuanto se activa el gesto, aunque la
-ventana señalada ya tuviera el foco lógico, y se vuelve a reafirmar el foco
-aunque el puntero no haya cambiado de ventana.
+el foco cambia con él, incluso cuando el puntero está sobre la barra de título
+nativa o sus iconos de opciones y no sobre el contenido. Mantener Mod también
+cuenta como interactuar fuera de un panel del shell: el panel se cierra en
+cuanto se activa el gesto, aunque la ventana señalada ya tuviera el foco
+lógico, y se vuelve a reafirmar el foco aunque el puntero no haya cambiado de
+ventana.
 
 ## 12. Calendario simple
 
@@ -766,7 +768,9 @@ posición y tamaño que tenía en modo ventana si ya había flotado antes. Solo
 las que nunca flotaron usan el tamaño por defecto y entran en la cascada. Una
 ventana nueva en modo ventana recibe ese tamaño en el configure inicial, así
 que su primera imagen ya sale a tamaño definitivo y no se redimensiona unos
-instantes después.
+instantes después. El tamaño flotante queda anotado en cuanto empieza la
+flotación, antes de que la app lo confirme: cambiar de modo varias veces
+seguidas ya no toma el tamaño del mosaico como si fuera el de ventana.
 
 ### Barra de título nativa
 

@@ -176,6 +176,10 @@ Singleton {
     property bool themeApplyPending: false
     property bool chromeApplyPending: false
     property bool workspaceModesApplyPending: false
+    // Firma del último modo por escritorio escrito en la configuración
+    // nativa. Evita recargas repetidas cuando varias señales del backend
+    // piden aplicar lo mismo (arranque, datos de ventanas, etc.).
+    property string appliedWorkspaceModesSignature: ""
     property bool holdApplyPending: false
     property bool floatingApplyPending: false
     property bool glassApplyPending: false
@@ -421,11 +425,15 @@ Singleton {
         if (!root.ready || !root.workspaceModeChosen
                 || !CompositorState.supports("nativeWorkspaceModes"))
             return;
+        const signature = root.workspaceModeDefault + "|" + root.workspaceModes;
+        if (root.appliedWorkspaceModesSignature === signature)
+            return;
         if (workspaceModesProc.running) {
             root.workspaceModesApplyPending = true;
             return;
         }
         root.workspaceModesApplyPending = false;
+        root.appliedWorkspaceModesSignature = signature;
         workspaceModesProc.command = [
             "sh", root.workspaceModesScript,
             root.workspaceModeDefault, root.workspaceModes
@@ -1310,7 +1318,12 @@ Singleton {
     Process {
         id: workspaceModesProc
 
-        onExited: {
+        onExited: (code) => {
+            if (code !== 0) {
+                // Si el script falló, la firma no vale: el próximo intento
+                // debe volver a escribir las reglas.
+                root.appliedWorkspaceModesSignature = "";
+            }
             if (root.workspaceModesApplyPending) {
                 root.workspaceModesApplyPending = false;
                 root.applyWorkspaceModes();
