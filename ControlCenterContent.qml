@@ -520,6 +520,9 @@ ColumnLayout {
     // Al cambiar de vista se corta el escaneo para no dejar la radio ocupada.
     onViewChanged: {
         root.updateStatsMode();
+        ClipboardState.monitoring = root.active && root.view === "clipboard";
+        if (ClipboardState.monitoring)
+            ClipboardState.refresh();
         WifiState.watching = root.active && root.view === "wifi";
         CompositorState.watching = root.active && root.view === "compositor";
         if (root.view !== "mic")
@@ -556,6 +559,9 @@ ColumnLayout {
     }
     onActiveChanged: {
         root.updateStatsMode();
+        ClipboardState.monitoring = root.active && root.view === "clipboard";
+        if (ClipboardState.monitoring)
+            ClipboardState.refresh();
         WifiState.watching = root.active && root.view === "wifi";
         CompositorState.watching = root.active && root.view === "compositor";
         if (root.active && root.view === "wifi") {
@@ -587,8 +593,8 @@ ColumnLayout {
         return String(state);
     }
 
-    // Nombre de tecla que entiende Hyprland para los atajos.
-    function hyprKeyName(key): string {
+    // Nombre de tecla que entiende Umbriel (xkb_keysym) para los atajos.
+    function umbrielKeyName(key): string {
         if (key >= Qt.Key_A && key <= Qt.Key_Z)
             return String.fromCharCode(key).toUpperCase();
         if (key >= Qt.Key_0 && key <= Qt.Key_9)
@@ -603,6 +609,8 @@ ColumnLayout {
             return "RETURN";
         if (key === Qt.Key_Backspace)
             return "BACKSPACE";
+        if (key === Qt.Key_Escape)
+            return "Escape";
         if (key === Qt.Key_Delete)
             return "DELETE";
         if (key === Qt.Key_Insert)
@@ -681,22 +689,24 @@ ColumnLayout {
                 || event.key === Qt.Key_Super_R)
             return;
 
-        const key = root.hyprKeyName(event.key);
+        const key = root.umbrielKeyName(event.key);
         if (key.length === 0)
             return;
 
         const mods = [];
         if (event.modifiers & Qt.ControlModifier)
-            mods.push("CTRL");
+            mods.push("Ctrl");
         if (event.modifiers & Qt.AltModifier)
-            mods.push("ALT");
+            mods.push("Alt");
         if (event.modifiers & Qt.ShiftModifier)
-            mods.push("SHIFT");
+            mods.push("Shift");
         if (event.modifiers & Qt.MetaModifier)
-            mods.push("SUPER");
+            mods.push("Mod");
+        // Umbriel exige al menos un modificador para los atajos normales.
+        if (mods.length === 0)
+            return;
 
-        SettingsState.setMicShortcut(
-            (mods.length > 0 ? mods.join(" ") + ", " : ", ") + key);
+        SettingsState.setMicShortcut(mods.join("+") + "+" + key);
         root.micShortcutCapture = false;
         event.accepted = true;
     }
@@ -3889,7 +3899,7 @@ ColumnLayout {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: SettingsState.setMicShortcut("")
+                        onClicked: SettingsState.setMicShortcut("Mod+Shift+M")
                     }
                 }
             }
@@ -4759,7 +4769,7 @@ ColumnLayout {
                     required property int index
 
                     Layout.fillWidth: true
-                    implicitHeight: clipRow.modelData.kind === "image" ? 64 : 42
+                    implicitHeight: 42
                     radius: 8
                     color: ClipboardState.copiedIndex === clipRow.index
                         ? Theme.accentSoft
@@ -4786,40 +4796,17 @@ ColumnLayout {
                         }
                         spacing: 8
 
-                        Rectangle {
-                            visible: clipRow.modelData.kind === "image"
-                            Layout.alignment: Qt.AlignVCenter
-                            Layout.preferredWidth: 52
-                            Layout.preferredHeight: 44
-                            radius: 6
-                            color: Theme.surface
-                            border.width: 1
-                            border.color: Theme.border
-                            clip: true
-
-                            Image {
-                                anchors.fill: parent
-                                anchors.margins: 1
-                                source: clipRow.modelData.kind === "image"
-                                    ? "file://" + clipRow.modelData.image : ""
-                                sourceSize.width: 104
-                                sourceSize.height: 88
-                                fillMode: Image.PreserveAspectCrop
-                                asynchronous: true
-                                cache: true
-                                smooth: true
-                            }
-                        }
-
                         ShellIcon {
-                            visible: clipRow.modelData.kind !== "image"
                             Layout.alignment: Qt.AlignVCenter
-                            name: "edit-paste"
-                            fallbackName: "edit-copy"
+                            name: clipRow.modelData.kind === "image"
+                                ? "image-x-generic" : "edit-paste"
+                            fallbackName: clipRow.modelData.kind === "image"
+                                ? "image-x-generic-symbolic" : "edit-copy"
                             color: ClipboardState.copiedIndex === clipRow.index
                                 ? Theme.accent : Theme.muted
                             size: 14
-                            fallback: "▤"
+                            fallback: clipRow.modelData.kind === "image"
+                                ? "▧" : "▤"
                         }
 
                         ColumnLayout {

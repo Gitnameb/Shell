@@ -921,15 +921,6 @@ PanelWindow {
                     }
                 }
 
-                Text {
-                    Layout.fillWidth: true
-                    visible: root.dayEvents().length === 0
-                    text: "Sin eventos ni notas para este día."
-                    color: Theme.faint
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 8
-                }
-
             }
 
             // ------------------------------------------------------------ clima

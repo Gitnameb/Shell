@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Dependencias que usan las vistas de red y el audio Bluetooth del shell.
+# Dependencias que usan las vistas de red, el audio Bluetooth y el
+# portapapeles del shell.
 #
 # Salida: una línea por dependencia que falte, con el formato
 #   clave|nombre|paquete|comando de solución
@@ -49,6 +50,12 @@ check_package network-manager-openvpn "VPN OpenVPN" \
     network-manager-openvpn "$NET_FIX"
 check_package qrencode "QR del punto de acceso" \
     qrencode "$NET_FIX"
+
+# cliphist guarda el historial; wl-clipboard aporta wl-paste y wl-copy.
+check_package wl-clipboard "Portapapeles (wl-clipboard)" \
+    wl-clipboard "sudo apt install wl-clipboard"
+check_package cliphist "Historial del portapapeles (cliphist)" \
+    cliphist "sudo apt install cliphist"
 
 # python3 ejecuta los ayudantes de DNS y proxy; no lo instala network.sh.
 if ! command -v python3 >/dev/null 2>&1; then

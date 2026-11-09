@@ -1,68 +1,20 @@
-#!/usr/bin/env python3
-"""Copia al portapapeles la entrada del historial indicada por índice."""
+#!/bin/sh
+# Devuelve al portapapeles una entrada del historial de cliphist.
+#
+# Uso: shell-clipboard-copy <id>
+set -eu
 
-import json
-import os
-import shutil
-import subprocess
-import sys
-from pathlib import Path
+id="${1:-}"
+case "$id" in
+    '' | *[!0-9]*) exit 2 ;;
+esac
 
-MAX_ENTRIES = 50
+cliphist_bin=$(command -v cliphist 2>/dev/null || true)
+if [ -z "$cliphist_bin" ] && [ -x "$HOME/.local/bin/cliphist" ]; then
+    cliphist_bin="$HOME/.local/bin/cliphist"
+fi
+[ -n "$cliphist_bin" ] || exit 1
+command -v wl-copy >/dev/null 2>&1 || exit 1
 
-path = Path.home() / ".local/state/shell/clipboard.json"
-wl_copy = shutil.which("wl-copy")
-
-
-def main():
-    try:
-        index = int(sys.argv[1])
-        entries = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(entries, list) or index < 0 or index >= len(entries):
-            return 1
-        entry = entries[index]
-        if not isinstance(entry, dict):
-            return 1
-        kind = str(entry.get("kind") or "text")
-        image = str(entry.get("image") or "")
-        text = str(entry.get("text") or "")
-    except (IndexError, OSError, ValueError):
-        return 1
-
-    if not wl_copy:
-        return 1
-    try:
-        if kind == "image" and image:
-            data = Path(image).read_bytes()
-            mime = str(entry.get("mime") or "image/png")
-            subprocess.run([wl_copy, "--type", mime], input=data, check=False)
-        elif kind == "files":
-            subprocess.run([wl_copy, "--type", "text/uri-list"],
-                           input=text.encode("utf-8"), check=False)
-        else:
-            subprocess.run([wl_copy, "--type", "text/plain;charset=utf-8"],
-                           input=text.encode("utf-8"), check=False)
-    except OSError:
-        return 1
-
-    # El vigilante también lo moverá al principio, pero adelantarlo aquí evita
-    # un parpadeo en la lista.
-    selected = entries.pop(index)
-    entries.insert(0, selected)
-    entries = entries[:MAX_ENTRIES]
-
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        os.umask(0o077)
-        with open(path, "w", encoding="utf-8") as handle:
-            json.dump(entries, handle, ensure_ascii=False)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.chmod(path, 0o600)
-    except OSError:
-        pass
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+# wl-copy reconoce el tipo a partir del contenido que recibe.
+"$cliphist_bin" decode "$id" | wl-copy

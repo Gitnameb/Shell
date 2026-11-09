@@ -1,0 +1,18 @@
+#!/bin/sh
+# Borra una entrada del historial de cliphist.
+#
+# Uso: shell-clipboard-remove <id>
+set -eu
+
+id="${1:-}"
+case "$id" in
+    '' | *[!0-9]*) exit 2 ;;
+esac
+
+cliphist_bin=$(command -v cliphist 2>/dev/null || true)
+if [ -z "$cliphist_bin" ] && [ -x "$HOME/.local/bin/cliphist" ]; then
+    cliphist_bin="$HOME/.local/bin/cliphist"
+fi
+[ -n "$cliphist_bin" ] || exit 1
+
+printf '%s\n' "$id" | "$cliphist_bin" delete

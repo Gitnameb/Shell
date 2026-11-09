@@ -150,9 +150,9 @@ Singleton {
         return false;
     }
 
-    // Atajo global que silencia o reactiva el micrófono, en formato de
-    // Hyprland (por ejemplo "SUPER SHIFT, M"). Vacío = sin atajo.
-    property string micShortcut: ""
+    // Atajo global que silencia o reactiva el micrófono, en la sintaxis de
+    // Umbriel (por ejemplo "Mod+Shift+M").
+    property string micShortcut: "Mod+Shift+M"
     property string appliedMicShortcut: ""
 
     // Apagado automático: si nadie usa el punto de acceso o el Wi-Fi se queda
@@ -201,6 +201,8 @@ Singleton {
         + "/scripts/shell-workspace-modes"
     readonly property string superHoldScript: (Quickshell.shellDir || "")
         + "/scripts/shell-mod-hold"
+    readonly property string micShortcutScript: (Quickshell.shellDir || "")
+        + "/scripts/shell-mic-shortcut"
     readonly property string floatingScript: (Quickshell.shellDir || "")
         + "/scripts/shell-floating-defaults"
     readonly property string animationScript: (Quickshell.shellDir || "")
@@ -344,36 +346,55 @@ Singleton {
         superHoldProc.running = true;
     }
 
-    function setMicShortcut(value: string): void {
-        root.micShortcut = value;
+    // Convierte el formato antiguo de Hyprland («SUPER SHIFT, M») a la
+    // sintaxis de Umbriel («Mod+Shift+M»). Un atajo antiguo sin modificador
+    // no es válido en Umbriel y vuelve al valor de fábrica.
+    function normalizeMicShortcut(value): string {
+        const raw = String(value || "").trim();
+        if (raw.length === 0)
+            return "Mod+Shift+M";
+        if (raw.indexOf(",") === -1 && raw.indexOf("+") !== -1)
+            return raw.replace(/\s+/g, "");
+        const comma = raw.lastIndexOf(",");
+        if (comma === -1)
+            return "Mod+Shift+M";
+        const mods = [];
+        const words = raw.slice(0, comma).trim().split(/\s+/);
+        for (let i = 0; i < words.length; i++) {
+            const word = words[i].toUpperCase();
+            if (word === "SUPER" || word === "META" || word === "WIN")
+                mods.push("Mod");
+            else if (word === "CTRL" || word === "CONTROL")
+                mods.push("Ctrl");
+            else if (word === "ALT")
+                mods.push("Alt");
+            else if (word === "SHIFT")
+                mods.push("Shift");
+        }
+        const key = raw.slice(comma + 1).trim();
+        if (mods.length === 0 || key.length === 0)
+            return "Mod+Shift+M";
+        return mods.join("+") + "+" + key;
     }
 
-    // Registra el atajo en Hyprland sin tocar el archivo de configuración.
-    // Primero retira el anterior y después añade el nuevo.
+    function setMicShortcut(value: string): void {
+        root.micShortcut = root.normalizeMicShortcut(value);
+    }
+
+    // Escribe el atajo en [keybinds] de Umbriel. El script retira el anterior
+    // y el de fábrica si hace falta, y pide una recarga de configuración.
     function applyMicShortcut(): void {
         if (!root.ready)
             return;
         const previous = root.appliedMicShortcut;
         if (previous === root.micShortcut)
             return;
-        let script = "";
-        if (previous.length > 0)
-            script += "hyprctl keyword unbind '" + previous
-                + "' >/dev/null 2>&1\n";
-        if (root.micShortcut.length > 0) {
-            // Quitar una posible bind anterior del mismo atajo (por ejemplo,
-            // tras reiniciar el shell) evita que se ejecute dos veces.
-            script += "hyprctl keyword unbind '" + root.micShortcut
-                + "' >/dev/null 2>&1\n";
-            script += "hyprctl keyword bind '" + root.micShortcut
-                + ",exec,qs ipc -c shell call notifications micToggle'"
-                + " >/dev/null 2>&1\n";
-        }
         root.appliedMicShortcut = root.micShortcut;
-        if (script.length > 0) {
-            shortcutProc.command = ["sh", "-c", script];
-            shortcutProc.running = true;
-        }
+        shortcutProc.command = [
+            "sh", root.micShortcutScript,
+            root.micShortcut, previous
+        ];
+        shortcutProc.running = true;
     }
 
     function setShowTemps(value: bool): void {
@@ -1307,7 +1328,7 @@ Singleton {
             root.workspaceModeChosen = true;
             root.nativeTitlebar = titlebar;
             root.lockMinutes = lock;
-            root.micShortcut = shortcut;
+            root.micShortcut = root.normalizeMicShortcut(shortcut);
             root.windowChrome = chromeStyle;
             root.wallpaperPath = wallpaper;
             root.wallpaperColor = wallpaperColor;

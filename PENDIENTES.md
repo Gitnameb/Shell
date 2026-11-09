@@ -22,14 +22,22 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   y proxy, así que desaparece la entrada «Desktop» con icono Wi-Fi. El
   calendario ya no muestra el campo de nota entre los días: el segundo clic
   sobre el día seleccionado abre un apartado aparte con el editor.
-- **Portapapeles y brillo (2026-11-09).** El portapapeles guarda imágenes y
-  listas de archivos además de texto, con miniaturas, y el brillo usa el panel
+- **Portapapeles y brillo (2026-11-09).** El portapapeles se delega en
+  `cliphist` (texto, listas de archivos e imágenes) y el brillo usa el panel
   interno por `brightnessctl`/sysfs antes de caer al filtro nativo. El
-  instalador añade `brightnessctl` y su regla de sudo.
+  instalador añade `cliphist` y `brightnessctl` con su regla de sudo.
+- **Atajo del micrófono (2026-11-09).** Ya no usa `hyprctl`: se escribe en
+  `[keybinds]` de Umbriel con `shell-config-set`, que ahora admite claves
+  entre comillas y `--remove-key`. El cambio se aplica con una recarga.
+- **Calendario (2026-11-09).** Se quitó el texto «Sin eventos ni notas para
+  este día»; el editor de notas sigue en el apartado del segundo clic.
 - **Plan de dependencias opcionales.** `PLAN-DEPENDENCIAS.md` separa lo que ya
   funciona de lo que mejoraría con paquetes extra. Portapapeles con imágenes y
   brillo de portátil ya están hechos; quedan para después el teclado para
   es/de/pt, más tipos de VPN y los códecs Bluetooth.
+- **Alternativas ya hechas.** `PLAN-ALTERNATIVAS.md` lista qué partes del shell
+  ya delegan en herramientas del sistema y cuáles podrían hacerlo, con la
+  recomendación de mantener la barra, los paneles y la integración de Umbriel.
 - **Ajustes de apariencia (2026-11-09).** «Controles de ventana» desapareció
   de Configuración de ventanas: el modo Super sigue funcionando, pero ya no
   hay una fila que lo duplique. «Cristal de ventanas» se movió a Temas, junto

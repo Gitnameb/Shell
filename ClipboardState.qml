@@ -4,20 +4,22 @@ import Quickshell
 import Quickshell.Io
 import QtQuick
 
-// Historial de textos copiados. `wl-paste --watch` (paquete wl-clipboard)
-// escucha el portapapeles de Wayland y guarda cada texto en un JSON local.
-// La vista se actualiza sola al cambiar el archivo y los elementos se pueden
-// copiar o borrar sin depender de que el shell tenga el foco.
+// Historial del portapapeles delegado en cliphist. Este singleton solo lee
+// `cliphist list`, pide `cliphist decode` para pegar y borra con
+// `cliphist delete`/`wipe`; el almacenamiento y la deduplicación viven en
+// cliphist, no en el shell. `scripts/shell-clipboard-watch` mantiene el
+// vigilante `wl-paste --watch cliphist store`.
 Singleton {
     id: root
 
     property var entries: []
-    property int maxEntries: 50
     property bool ready: false
-    property bool fileReady: false
-    // Último JSON leído, para no reconstruir la lista en cada sondeo.
-    property string lastLoadedText: ""
-    // Índice que acaba de copiarse, para marcar la fila unos instantes.
+    property bool available: false
+    property string error: ""
+    // Solo se consulta mientras la vista del portapapeles está abierta.
+    property bool monitoring: false
+    property bool refreshPending: false
+    // Índice que acaba de copiarse, para marcarlo unos instantes.
     property int copiedIndex: -1
 
     readonly property int count: root.entries.length
@@ -31,88 +33,87 @@ Singleton {
     }
     readonly property int textCount: root.count - root.imageCount
     readonly property string summary: {
+        if (!root.available)
+            return "Sin cliphist";
         if (root.count === 0)
             return "Vacío";
         if (root.count === 1)
             return root.imageCount === 1 ? "1 imagen" : "1 elemento";
         return root.count + " elementos";
     }
-    readonly property string path: (Quickshell.env("HOME") || "/home/username")
-        + "/.local/state/shell/clipboard.json"
 
     readonly property string watchScript: (Quickshell.shellDir || "")
         + "/scripts/shell-clipboard-watch"
     readonly property string copyScript: (Quickshell.shellDir || "")
         + "/scripts/shell-clipboard-copy"
+    readonly property string removeScript: (Quickshell.shellDir || "")
+        + "/scripts/shell-clipboard-remove"
 
-    function normalize(list): var {
-        const result = [];
-        if (!Array.isArray(list))
-            return result;
-        for (let i = 0; i < list.length; i++) {
-            const item = list[i];
-            if (typeof item === "string") {
-                if (item.trim().length > 0)
-                    result.push({ kind: "text", text: item, time: 0 });
-            } else if (item && typeof item.text === "string") {
-                const kind = String(item.kind || "text");
-                const time = Number(item.time) || 0;
-                if (kind === "image"
-                        && typeof item.image === "string"
-                        && item.image.length > 0) {
-                    result.push({
-                        kind: "image",
-                        text: item.text,
-                        display: String(item.display || item.text),
-                        image: item.image,
-                        mime: String(item.mime || "image/png"),
-                        time: time
-                    });
-                } else if (item.text.trim().length > 0) {
-                    result.push({
-                        kind: kind === "files" ? "files" : "text",
-                        text: item.text,
-                        display: String(item.display || item.text),
-                        time: time
-                    });
-                }
-            }
-            if (result.length >= root.maxEntries)
-                break;
+    // Convierte una línea de `cliphist list` («id<TAB>vista previa») en una
+    // entrada del modelo. Las imágenes solo muestran su tipo y tamaño; el
+    // contenido binario sigue guardado dentro de cliphist.
+    function parseLine(line): var {
+        const tab = line.indexOf("\t");
+        if (tab <= 0)
+            return null;
+        const id = line.slice(0, tab).trim();
+        if (!/^[0-9]+$/.test(id))
+            return null;
+        const preview = line.slice(tab + 1);
+        const image = preview.match(
+            /^\[\[ binary data .*? ([A-Za-z0-9]+) (\d+)x(\d+) \]\]$/);
+        if (image) {
+            const mime = String(image[1]).toUpperCase();
+            const width = Number(image[2]) || 0;
+            const height = Number(image[3]) || 0;
+            return {
+                id: id,
+                kind: "image",
+                mime: mime.toLowerCase(),
+                width: width,
+                height: height,
+                text: "Imagen " + mime
+                    + (width > 0 && height > 0
+                        ? " · " + width + "×" + height : "")
+            };
         }
-        return result;
+        const files = preview.indexOf("file://") === 0;
+        return {
+            id: id,
+            kind: files ? "files" : "text",
+            text: preview,
+            display: preview
+        };
     }
 
-    function reloadEntries(): void {
-        const raw = fileView.text() || "";
-        if (raw === root.lastLoadedText && root.ready)
-            return;
-        root.lastLoadedText = raw;
-        let parsed = [];
-        try {
-            parsed = JSON.parse(raw || "[]");
-        } catch (error) {
-            parsed = [];
+    function parseList(raw): void {
+        const lines = String(raw || "").split("\n");
+        const list = [];
+        for (let i = 0; i < lines.length; i++) {
+            const entry = root.parseLine(lines[i]);
+            if (entry !== null)
+                list.push(entry);
         }
-        root.entries = root.normalize(parsed);
+        root.entries = list;
         root.ready = true;
+        if (root.copiedIndex >= list.length)
+            root.copiedIndex = -1;
     }
 
-    function writeEntries(): void {
-        if (!root.fileReady)
+    function refresh(): void {
+        if (listProc.running) {
+            root.refreshPending = true;
             return;
-        fileView.setText(JSON.stringify(root.entries));
+        }
+        root.refreshPending = false;
+        listProc.running = true;
     }
 
-    // El texto se copia con wl-copy desde un proceso aparte: funciona aunque
-    // el panel no tenga el foco y no importa si el texto es largo. El propio
-    // vigilante mueve la entrada al principio al detectar el nuevo contenido.
     function copy(index: int): void {
         if (index < 0 || index >= root.entries.length)
             return;
-        copyProc.command = [
-            "python3", root.copyScript, String(index)
-        ];
+        copyProc.command = ["sh", root.copyScript,
+            String(root.entries[index].id)];
         copyProc.running = true;
         root.copiedIndex = 0;
         copyTimer.restart();
@@ -121,24 +122,29 @@ Singleton {
     function remove(index: int): void {
         if (index < 0 || index >= root.entries.length)
             return;
-        const list = root.entries.slice();
-        list.splice(index, 1);
-        root.entries = list;
+        removeProc.command = ["sh", root.removeScript,
+            String(root.entries[index].id)];
+        removeProc.running = true;
         root.copiedIndex = -1;
-        root.writeEntries();
     }
 
     function clear(): void {
-        root.entries = [];
+        wipeProc.running = true;
         root.copiedIndex = -1;
-        root.writeEntries();
     }
 
     Timer {
         interval: 60
         running: true
         repeat: false
-        onTriggered: initProc.running = true
+        onTriggered: root.refresh()
+    }
+
+    Timer {
+        interval: 1800
+        running: root.monitoring
+        repeat: true
+        onTriggered: root.refresh()
     }
 
     Timer {
@@ -153,52 +159,43 @@ Singleton {
         interval: 1200
         repeat: false
         onTriggered: {
-            if (root.fileReady)
-                watchProc.running = true;
+            if (watchProc.running)
+                return;
+            watchProc.running = true;
         }
     }
 
-    // Crea el archivo antes de que FileView empiece a vigilarlo.
     Process {
-        id: initProc
+        id: listProc
 
-        command: [
-            "sh", "-c",
-            "umask 077; mkdir -p \"$(dirname \"$1\")\"; "
-                + "[ -f \"$1\" ] || printf '[]' > \"$1\"",
-            "shell", root.path
-        ]
+        // 127 significa que no hay cliphist; `list` sale con 1 mientras la
+        // base está vacía, que no es un error para la interfaz.
+        command: ["sh", "-c",
+            "if command -v cliphist >/dev/null 2>&1; then "
+                + "exec cliphist list; "
+                + "elif [ -x \"$HOME/.local/bin/cliphist\" ]; then "
+                + "exec \"$HOME/.local/bin/cliphist\" list; "
+                + "else exit 127; fi"]
 
-        onExited: {
-            root.fileReady = true;
-            root.reloadEntries();
+        stdout: StdioCollector {
+            id: listOut
         }
-    }
 
-    FileView {
-        id: fileView
-
-        path: root.fileReady ? root.path : ""
-        preload: true
-        watchChanges: true
-        blockWrites: false
-        atomicWrites: false
-
-        onTextChanged: root.reloadEntries()
-        onFileChanged: root.reloadEntries()
-        onLoaded: root.reloadEntries()
-    }
-
-    // Respaldo de lectura: algunos sistemas de archivos no avisan del cambio
-    // después de una escritura externa. El JSON es diminuto y se relee cada
-    // pocos segundos; así la ficha y la vista nunca se quedan desfasadas.
-    Timer {
-        interval: 2500
-        running: root.fileReady
-        repeat: true
-        onTriggered: {
-            fileView.reload();
-            root.reloadEntries();
+        onExited: (code) => {
+            if (code === 127) {
+                root.available = false;
+                root.error = "cliphist no está instalado.";
+                root.entries = [];
+                root.ready = true;
+            } else {
+                root.available = true;
+                root.error = "";
+                root.parseList(listOut.text);
+            }
+            if (root.refreshPending) {
+                root.refreshPending = false;
+                Qt.callLater(root.refresh);
+            }
         }
     }
 
@@ -206,11 +203,9 @@ Singleton {
         id: watchProc
 
         command: ["sh", root.watchScript]
-        running: root.fileReady
+        running: true
 
         onExited: (code) => {
-            // Sale con 0 si ya había otro vigilante. Se reintenta más tarde
-            // para recuperar el historial si el proceso antiguo desaparece.
             watchRestart.interval = code === 0 ? 15000 : 1200;
             watchRestart.restart();
         }
@@ -218,5 +213,24 @@ Singleton {
 
     Process {
         id: copyProc
+
+        onExited: {
+            // cliphist vuelve a guardar lo pegado como entrada nueva; se
+            // refresca para que el orden real mande sobre el índice local.
+            root.refresh();
+        }
+    }
+
+    Process {
+        id: removeProc
+
+        onExited: root.refresh()
+    }
+
+    Process {
+        id: wipeProc
+
+        command: ["cliphist", "wipe"]
+        onExited: root.refresh()
     }
 }

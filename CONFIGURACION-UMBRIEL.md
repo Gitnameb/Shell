@@ -541,6 +541,8 @@ antes aparecía al pie («viernes, 6 de noviembre de 2026») se eliminó.
 - `scripts/shell-calendar` administra el archivo (`list`, `note add`,
   `note remove`) y solo usa la biblioteca estándar. `CalendarEvents.qml` le
   pide el mes visible al abrir el panel o cambiar de mes.
+- Cuando el día no tiene nada, el calendario no muestra ningún texto vacío:
+  solo la lista de días y, si hay contenido, sus notas y eventos.
 - Las notas son **locales**. No se sincronizan con Google ni con otros
   dispositivos: no hay integración iCal, cuentas ni claves externas.
 - Pruebas: `./scripts/test-calendar.sh` (20 comprobaciones).
@@ -941,23 +943,24 @@ Para que no se sumen cambios accidentales:
 Comprobado en sesión anidada con tres ventanas y tres clics: cada clic produjo
 un único `set_floating` y una recarga posterior sin movimiento adicional.
 
-## 26. Portapapeles con imágenes
+## 26. Portapapeles con cliphist
 
-`ClipboardState.qml` y los scripts de `scripts/shell-clipboard-*` guardan ahora
+El historial ya no lo guarda el shell: lo administra `cliphist`, que entiende
 texto, listas de archivos e imágenes.
 
-- `wl-paste --watch` avisa de cada cambio. `scripts/shell-clipboard-add`
-  consulta `wl-paste --list-types` y elige el mejor tipo: primero `image/png`
-  (o JPEG, WebP, GIF, BMP), luego `text/uri-list` y por último texto.
-- Las imágenes se copian a `~/.local/state/shell/clipboard/images` con un
-  nombre basado en SHA-256, así la miniatura sigue viéndose aunque la
-  aplicación de origen cierre. Se limitan a 12 MB y se borran las que ya no
-  referencia el historial.
-- La vista muestra una miniatura de 52×44 y el recuento pasa a «N elementos».
-  Al pulsar una entrada, `scripts/shell-clipboard-copy` la devuelve con su
-  tipo MIME original.
-- No hace falta `cliphist`: se sigue usando `wl-clipboard`, que ya instala el
-  instalador.
+- `scripts/shell-clipboard-watch` ejecuta `wl-paste --watch cliphist store`.
+  El shell solo mantiene vivo ese vigilante.
+- `ClipboardState.qml` lee `cliphist list` cuando la vista del portapapeles
+  está abierta y traduce cada línea a una entrada. Las imágenes se muestran
+  como «Imagen PNG · 1920×1080»; el binario sigue dentro de la base de
+  cliphist, no en un directorio propio.
+- Pegar usa `scripts/shell-clipboard-copy` (`cliphist decode <id> | wl-copy`).
+  Borrar usa `cliphist delete` y limpiar todo, `cliphist wipe`.
+- El instalador añade el paquete `cliphist`. Si no está, la ficha muestra
+  «Sin cliphist» y el resto del centro de control sigue funcionando.
+- La base vive en la caché de cliphist (`~/.cache/cliphist/db`). Ya no se usa
+  `~/.local/state/shell/clipboard.json`; se conserva por si hace falta
+  recuperar algo de la versión anterior.
 
 ## 27. Brillo del panel interno
 
@@ -973,3 +976,23 @@ Para escribir usa, en este orden:
 interno cuando DDC/CI no responde. Las teclas de brillo del portátil también
 se detectan: el valor se relee cada 3 s. El deslizador y el OSD son los
 mismos; no hay una vista nueva.
+
+## 28. Atajo del micrófono
+
+El atajo global ya no usa `hyprctl` (Herramienta de Hyprland, ausente en
+Umbriel). `SettingsState` guarda la combinación en sintaxis de Umbriel, por
+ejemplo `Mod+Shift+M`, y `scripts/shell-mic-shortcut` la escribe en
+`[keybinds]` de `config.toml` con `shell-config-set`:
+
+- Si el atajo nuevo no es el de fábrica, retira `"Mod+Shift+M"` para que no
+  queden dos teclas haciendo lo mismo.
+- Retira el atajo anterior y añade el nuevo.
+- `shell-config-set` admite claves TOML entre comillas (`"Mod+Shift+M"`) y una
+  opción `--remove-key` para reemplazar atajos sin duplicarlos.
+- Al recargar, Umbriel aplica el cambio sin reiniciar la sesión.
+- El capturador de la interfaz exige al menos un modificador y convierte
+  `Ctrl`, `Alt`, `Shift` y `Super` a `Ctrl`, `Alt`, `Shift` y `Mod`.
+
+Comprobado en sesión anidada: `micStatus` muestra el atajo cargado, el cambio
+a `Mod+Ctrl+M` deja una sola línea en `[keybinds]`, y volver al valor de
+fábrica restaura `Mod+Shift+M` sin duplicados.

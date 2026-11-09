@@ -1,6 +1,6 @@
 #!/bin/sh
-# Vigilante único del portapapeles. Si ya hay otro proceso escuchando, sale
-# sin error para que Quickshell no acumule instancias al recargar.
+# Vigilante único del portapapeles. Delega el almacenamiento en cliphist:
+# `wl-paste` avisa de cada cambio y `cliphist store` guarda texto e imágenes.
 set -u
 
 dir="${XDG_STATE_HOME:-$HOME/.local/state}/shell"
@@ -11,14 +11,11 @@ if command -v flock >/dev/null 2>&1; then
     flock -n 9 || exit 0
 fi
 
-# El primer aviso de wl-paste trae lo que ya estuviera copiado. Se marca para
-# que shell-clipboard-add lo ignore y el historial empiece con copias nuevas.
-: > "$dir/clipboard-first"
-
-base=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-
-# wl-clipboard lo instala el instalador; no hay binarios empaquetados.
+cliphist_bin=$(command -v cliphist 2>/dev/null || true)
+if [ -z "$cliphist_bin" ] && [ -x "$HOME/.local/bin/cliphist" ]; then
+    cliphist_bin="$HOME/.local/bin/cliphist"
+fi
+[ -n "$cliphist_bin" ] || exit 0
 command -v wl-paste >/dev/null 2>&1 || exit 0
 
-exec wl-paste --no-newline --watch \
-    python3 "$base/shell-clipboard-add"
+exec wl-paste --watch "$cliphist_bin" store

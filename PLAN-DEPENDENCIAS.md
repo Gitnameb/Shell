@@ -1,9 +1,9 @@
 # Plan · Dependencias opcionales del centro de control
 
 Este documento separa lo que ya funciona con la instalación actual de lo que
-podría mejorar con paquetes extra. No se instaló nada nuevo en esta sesión;
-`brightnessctl` ya forma parte de la instalación por defecto para el brillo
-del panel interno.
+podría mejorar con paquetes extra. `cliphist` y `brightnessctl` ya forman parte
+de la instalación por defecto: el primero guarda el portapapeles y el segundo
+controla el brillo del panel interno.
 
 ## Criterio
 
@@ -23,7 +23,7 @@ romper el arranque ni mostrar errores raros.
 | Opción | Estado actual | Qué falta | Paquete o solución | Prioridad |
 | --- | --- | --- | --- | --- |
 | Teclado en pantalla | `wvkbd` instalado. Capas `full`, `cyrillic`, `simple`, `nav` y `emoji`. | Español, alemán y portugués no tienen capa nativa; el chino necesita IME, no solo teclas. | Capas propias de `wvkbd` o cambiar a `squeekboard` (1.43) para es/de/pt. Chino: `fcitx5` + `fcitx5-chinese-addons`. | Alta |
-| Portapapeles | Ya guarda texto, listas de archivos e imágenes con `wl-clipboard` y miniaturas propias. | Nada para lo pedido; funciones extra (abrir archivo, pegar como archivo) serían otro paso. | Ninguno. | Hecho |
+| Portapapeles | Delegado en `cliphist`: guarda texto, listas de archivos e imágenes y deduplica el historial. | Nada para lo pedido; funciones extra (abrir archivo, pegar como archivo) serían otro paso. | `cliphist` ya incluido en la instalación. | Hecho |
 | Brillo | `ddcutil` para monitores externos, panel interno por `brightnessctl`/sysfs y filtro nativo como respaldo. | Nada; el panel interno necesita la regla de sudo que instala el instalador. | `brightnessctl` ya incluido en la instalación. | Hecho |
 | Luz nocturna y atenuación extra | Ya son nativas: Umbriel aplica `[display]` como shader de salida. | Nada. | Ninguno. | Hecho |
 | VPN | OpenVPN instalado (`network-manager-openvpn`). | WireGuard, OpenConnect, StrongSwan, PPTP y VPNC no aparecen si su plugin no está. | `network-manager-openconnect`, `network-manager-strongswan`, `network-manager-vpnc`, `network-manager-pptp` y `wireguard-tools`. | Media |
@@ -49,11 +49,11 @@ romper el arranque ni mostrar errores raros.
      con `fcitx5` y `fcitx5-chinese-addons`, y solo si Umbriel expone el
      protocolo `zwp_input_method_manager_v2` de forma estable.
 
-2. **Portapapeles con imágenes. Hecho.**
-   - Se amplió el vigilante propio: guarda `image/png` (y JPEG, WebP, GIF,
-     BMP), `text/uri-list` y texto sin añadir `cliphist`.
-   - La vista muestra miniaturas y el recorte de tamaño se hace por entrada.
-     Queda como mejora futura abrir el archivo o pegarlo como archivo.
+2. **Portapapeles con imágenes. Hecho con cliphist.**
+   - `shell-clipboard-watch` mantiene `wl-paste --watch cliphist store`; la
+     vista lee `cliphist list` y pega con `cliphist decode`.
+   - Borrar y limpiar usan `cliphist delete` y `cliphist wipe`.
+   - Queda como mejora futura abrir el archivo o pegarlo como archivo.
 
 3. **Brillo de portátiles. Hecho.**
    - Orden de intentos: `ddcutil` → `brightnessctl`/sysfs → filtro nativo.
@@ -112,6 +112,6 @@ romper el arranque ni mostrar errores raros.
    (o se indica que hace falta reiniciar).
 3. El aviso de dependencias no muestra entradas opcionales como errores.
 4. Teclado: escribir `ñ`, `á`, `ä`, `ç` y `ã` en una ventana de texto.
-5. Portapapeles: copiar una imagen, verla en miniatura y volver a pegarla.
+5. Portapapeles: copiar una imagen, verla en el historial y volver a pegarla.
 6. Brillo: mover el deslizador en un portátil y en un monitor externo.
 7. VPN: importar y conectar un perfil de cada tipo instalado.

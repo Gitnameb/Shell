@@ -290,6 +290,27 @@ status=$("$WRITER" --insert-block-before '# shell-workspace-modes: inicio' \
 check "segunda vez no cambia" $([ "$status" = unchanged ]; echo $?)
 check "sin líneas de más" $([ "$(wc -l <"$UMBRIEL_CONFIG")" = "$lines" ]; echo $?)
 
+echo "== 18. escribe y retira una clave entre comillas =="
+fresh
+status=$("$WRITER" --section keybinds \
+    '"Mod+Ctrl+M"={ action = "spawn qs ipc -c shell call notifications micToggle", repeat = false }')
+check "sale 0" $?
+check "dice changed" $([ "$status" = changed ]; echo $?)
+check "escribe la clave" $(grep -q '^"Mod+Ctrl+M" = ' "$UMBRIEL_CONFIG"; echo $?)
+check "valida" $(umbriel config validate -c "$UMBRIEL_CONFIG" >/dev/null 2>&1; echo $?)
+status=$("$WRITER" --remove-key keybinds '"Mod+Ctrl+M"')
+check "retira la clave" $([ "$status" = changed ]; echo $?)
+check "ya no está" $(! grep -q 'Mod+Ctrl+M' "$UMBRIEL_CONFIG"; echo $?)
+check "valida tras retirar" $(umbriel config validate -c "$UMBRIEL_CONFIG" >/dev/null 2>&1; echo $?)
+
+echo "== 19. retirar una clave ausente no toca el archivo =="
+fresh
+before=$(head_sum "$UMBRIEL_CONFIG")
+status=$("$WRITER" --remove-key keybinds '"Mod+NoExiste"')
+check "sale 0" $?
+check "dice unchanged" $([ "$status" = unchanged ]; echo $?)
+check "mismo contenido" $([ "$(head_sum "$UMBRIEL_CONFIG")" = "$before" ]; echo $?)
+
 echo
 printf 'resultado: %d OK, %d fallos\n' "$pass" "$fail"
 [ "$fail" = 0 ]

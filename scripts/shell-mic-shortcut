@@ -1,0 +1,59 @@
+#!/bin/sh
+# Registra el atajo global del micrófono en [keybinds] de Umbriel.
+#
+# Uso: shell-mic-shortcut <atajo> [atajo anterior]
+#
+# El atajo usa la sintaxis de Umbriel («Mod+Shift+M»). Si se pasa vacío se
+# vuelve al valor por defecto. El atajo anterior se retira para no dejar dos
+# combinaciones activas. La configuración se recarga al terminar.
+set -eu
+LC_ALL=C
+export LC_ALL
+
+default="Mod+Shift+M"
+new="${1:-}"
+previous="${2:-}"
+[ -n "$new" ] || new="$default"
+
+valid_chord() {
+    case "$1" in
+        '' | *[!A-Za-z0-9_+-]*) return 1 ;;
+    esac
+    return 0
+}
+valid_chord "$new" || {
+    echo "shell-mic-shortcut: atajo inválido: $new" >&2
+    exit 2
+}
+
+repo_dir=$(cd "$(dirname "$0")/.." && pwd)
+config_set="${SHELL_CONFIG_SET:-}"
+if [ -z "$config_set" ] || [ ! -x "$config_set" ]; then
+    config_set="${repo_dir}/install/bin/shell-config-set"
+fi
+if [ ! -x "$config_set" ]; then
+    echo "shell-mic-shortcut: no se encontró shell-config-set" >&2
+    exit 1
+fi
+
+set -- 
+# Si el atajo nuevo no es el de fábrica, se retira el de fábrica para que no
+# queden dos teclas haciendo lo mismo.
+if [ "$new" != "$default" ]; then
+    set -- --remove-key keybinds "\"$default\""
+fi
+if [ -n "$previous" ] && [ "$previous" != "$new" ] && valid_chord "$previous"; then
+    set -- "$@" --remove-key keybinds "\"$previous\""
+fi
+set -- "$@" --section keybinds \
+    "\"$new\"={ action = \"spawn qs ipc -c shell call notifications micToggle\", repeat = false }"
+
+result=$("$config_set" "$@")
+if [ "$result" != "changed" ]; then
+    exit 0
+fi
+
+umbriel=$(command -v umbriel 2>/dev/null || true)
+if [ -n "$umbriel" ]; then
+    "$umbriel" msg config-reload >/dev/null 2>&1 || true
+fi

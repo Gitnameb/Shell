@@ -275,6 +275,18 @@ PanelWindow {
             Audio.toggleMicMute();
         }
 
+        // Diagnóstico del micrófono y de su atajo global.
+        function micStatus(): string {
+            return "available=" + (Audio.micAvailable ? "1" : "0")
+                + " muted=" + (Audio.micMuted ? "1" : "0")
+                + " shortcut=" + SettingsState.micShortcut;
+        }
+
+        // Permite probar el registro del atajo sin pasar por la interfaz.
+        function micShortcut(value: string): void {
+            SettingsState.setMicShortcut(value);
+        }
+
         function night(): void {
             QuickPanelState.show("night", -1);
         }
