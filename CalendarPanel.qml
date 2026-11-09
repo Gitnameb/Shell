@@ -1600,7 +1600,12 @@ PanelWindow {
     Shortcut {
         sequence: "Escape"
         enabled: CalendarState.open && !timerField.editing
-            && !root.alarmEditing && !root.noteEditorOpen
-        onActivated: CalendarState.hide()
+            && !root.alarmEditing
+        onActivated: {
+            if (root.noteEditorOpen)
+                root.closeNoteEditor();
+            else
+                CalendarState.hide();
+        }
     }
 }
