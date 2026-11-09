@@ -38,13 +38,24 @@ El instalador:
    exista. Con `--force-config` la reemplaza y guarda una copia `.bak`.
 6. Crea la regla de sudoers de `ddcutil` y activa la unidad de alarmas.
 7. Compila e instala el fork de Umbriel con `scripts/install-umbriel-fork.sh`.
+8. Añade los discos internos NTFS a `/etc/fstab` con `scripts/mount-disks.sh`
+   y deja `udiskie` activo para montar las unidades USB.
 
 `install.sh` solo orquesta; cada paso vive en su módulo y se puede revisar o
-ejecutar por separado: `scripts/install-packages.sh`, `scripts/network.sh` y
-`scripts/install-user-config.sh`.
+ejecutar por separado: `scripts/install-packages.sh`, `scripts/network.sh`,
+`scripts/install-user-config.sh`, `scripts/install-umbriel-fork.sh` y
+`scripts/mount-disks.sh`.
+
+Los discos internos NTFS se montan al arrancar sin volver a pedir contraseña.
+Las unidades USB las monta `udiskie` al conectarlas. Para excluir un disco:
+
+```sh
+sudo ./scripts/mount-disks.sh --exclude "New Volume" --apply
+```
 
 Opciones: `--dry-run`, `--skip-packages`, `--skip-fork`, `--skip-config`,
-`--skip-network`, `--force-config`, `--with-firmware` y `--help`.
+`--skip-network`, `--skip-disks`, `--force-config`, `--with-firmware` y
+`--help`.
 
 > Probado con `--dry-run` y con una compilación completa desde un clon limpio
 > de Umbriel. **Falta la prueba definitiva en un Debian recién instalado.**

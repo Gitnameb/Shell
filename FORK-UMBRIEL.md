@@ -46,10 +46,18 @@ A partir de ahí el código vive en tu cuenta. No hace falta volver a aplicar
 
 ## Instalar desde el fork
 
+El instalador ya usa el fork por defecto:
+
 ```sh
 cd ~/Shell
+./scripts/install-umbriel-fork.sh --yes
+```
+
+Si el repositorio se llama distinto o quieres forzar otra rama:
+
+```sh
 ./scripts/install-umbriel-fork.sh \
-  --fork-repo git@github.com:Gitnameb/umbriel.git \
+  --fork-repo git@github.com:Gitnameb/OTRO-REPO.git \
   --fork-branch shell-fork \
   --yes
 ```
@@ -60,6 +68,9 @@ También se puede dejar fijo con variables de entorno:
 export UMBRIEL_FORK_REPO=git@github.com:Gitnameb/umbriel.git
 export UMBRIEL_FORK_BRANCH=shell-fork
 ```
+
+Una instalación limpia con `./install.sh` clona ese fork, no el Umbriel
+original. Si el clon falla, cae al modo antiguo: Umbriel original + parche.
 
 ## Protección contra apt
 

@@ -22,6 +22,7 @@
 #   --skip-fork       No compila ni instala el fork de Umbriel
 #   --skip-config     No copia la configuración de usuario
 #   --skip-network    No configura ni instala la red, VPN ni Bluetooth
+#   --skip-disks      No añade los discos internos NTFS a /etc/fstab
 #   --force-config    Reemplaza configuraciones existentes (hace copia .bak)
 #   --with-firmware   Instala firmware y drivers de este equipo
 #   -h, --help        Muestra esta ayuda
@@ -38,6 +39,7 @@ SKIP_PACKAGES=0
 SKIP_FORK=0
 SKIP_CONFIG=0
 SKIP_NETWORK=0
+SKIP_DISKS=0
 FORCE_CONFIG=0
 WITH_FIRMWARE=0
 
@@ -55,6 +57,7 @@ Opciones:
   --skip-fork       No compila ni instala el fork de Umbriel
   --skip-config     No copia la configuración de usuario
   --skip-network    No configura ni instala la red, VPN ni Bluetooth
+  --skip-disks      No añade los discos internos NTFS a /etc/fstab
   --force-config    Reemplaza configuraciones existentes (hace copia .bak)
   --with-firmware   Instala firmware y drivers de este equipo
   -h, --help        Muestra esta ayuda
@@ -69,6 +72,7 @@ while (( $# > 0 )); do
         --skip-fork) SKIP_FORK=1; shift ;;
         --skip-config) SKIP_CONFIG=1; shift ;;
         --skip-network) SKIP_NETWORK=1; shift ;;
+        --skip-disks) SKIP_DISKS=1; shift ;;
         --force-config) FORCE_CONFIG=1; shift ;;
         --with-firmware) WITH_FIRMWARE=1; shift ;;
         -h | --help) usage; exit 0 ;;
@@ -174,6 +178,23 @@ else
     log "Se omite el fork de Umbriel (--skip-fork)."
 fi
 
+# ---------------------------------------------------------------------------
+# Discos internos
+# ---------------------------------------------------------------------------
+# Las unidades USB las monta udiskie. Aquí solo se preparan los NTFS internos
+# con /etc/fstab, una vez, para que no pidan contraseña en cada arranque.
+if (( ! SKIP_DISKS )); then
+    log "Preparando los discos internos NTFS."
+    if (( DRY_RUN )); then
+        "$REPO_DIR/scripts/mount-disks.sh" --dry-run
+    else
+        run_sudo "$REPO_DIR/scripts/mount-disks.sh" --apply \
+            || warn "No se pudieron montar todos los discos internos; revisa /etc/fstab."
+    fi
+else
+    log "Se omite el montaje de discos internos (--skip-disks)."
+fi
+
 # La validación va después del fork: la plantilla usa los seis botones del
 # binario parcheado, que el Umbriel estándar no conoce.
 if [[ -f "$TARGET_HOME/.config/umbriel/config.toml" ]] \
@@ -247,8 +268,9 @@ Siguientes pasos:
   2. Comprueba la barra, los escritorios, el brillo y las alarmas.
   3. Si algo falla, revisa INSTALACION.md y PENDIENTES.md.
 
-El fork de Umbriel requiere cerrar sesión para cargarse. Si un 'apt upgrade'
-reemplaza /usr/bin/umbriel, vuelve a ejecutar:
+El fork de Umbriel requiere cerrar sesión para cargarse. El instalador aparta
+el binario oficial con dpkg-divert, así que 'apt upgrade' no debería pisarlo.
+Si alguna vez quitas esa diversión, vuelve a ejecutar:
 
   ./scripts/install-umbriel-fork.sh
 EOF

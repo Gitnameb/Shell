@@ -36,6 +36,10 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   transición medida pasó de ~541 a ~407 ms. Maximizar usa
   `window-toggle-maximize-to-edges`: en mosaico ya ocupa todo el área útil en
   vez de dejar una franja de la ventana vecina.
+- **Instalación desde el fork y discos (2026-11-09).** `install.sh` clona el
+  fork por defecto y ejecuta `mount-disks.sh --apply`; las instalaciones
+  nuevas dejan los NTFS internos en `fstab` y `udiskie` monta los USB.
+  `--skip-disks` lo omite. `mount-disks.sh` acepta `--only` y `--exclude`.
 - **Fork real de Umbriel (2026-11-09).** La rama local `shell-fork` de
   `~/umbriel-fork` está commiteada y el instalador acepta `--fork-repo` y
   `--fork-branch`. Falta crear el repositorio en GitHub y subir la rama; los

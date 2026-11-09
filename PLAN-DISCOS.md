@@ -17,6 +17,10 @@ Hay dos discos NTFS internos además del disco del sistema:
 `udisks2` ya está instalado y activo. `ntfs-3g` y `exfatprogs` también están
 instalados. No hay ningún servicio que los monte solos al iniciar sesión.
 
+`install.sh` ya ejecuta `scripts/mount-disks.sh --apply` al final. En una
+instalación limpia deja los NTFS internos en `/etc/fstab` y no vuelven a pedir
+contraseña al arrancar. Las unidades USB las monta `udiskie`.
+
 ## Decisión de diseño
 
 Separar dos casos:
@@ -141,3 +145,21 @@ si el equipo no lo ve, primero hay que saber en qué capa falla.
    kernel sin tocar el automontaje.
 
 No se ha instalado nada para diagnosticar: los comandos son de solo lectura.
+
+## Añadir o quitar discos concretos
+
+El bloque de `fstab` se regenera entero, así que se puede cambiar la selección:
+
+```sh
+# Solo SSD1T
+sudo ./scripts/mount-disks.sh --only SSD1T --apply
+
+# Todos menos New Volume
+sudo ./scripts/mount-disks.sh --exclude "New Volume" --apply
+
+# Quitar todos los montajes gestionados
+sudo ./scripts/mount-disks.sh --uninstall
+```
+
+Después de añadir un disco interno nuevo basta con volver a ejecutar
+`--apply`; los que ya estaban se conservan y el nuevo se añade.

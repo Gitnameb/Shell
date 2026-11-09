@@ -15,6 +15,8 @@ PREFIX="/mnt"
 FSTYPE="ntfs-3g"
 MODE="dry-run"
 FSTAB="${SHELL_FSTAB:-/etc/fstab}"
+ONLY=()
+EXCLUDE=()
 BEGIN_MARK="# shell-disks: inicio"
 END_MARK="# shell-disks: fin"
 
@@ -28,6 +30,8 @@ Opciones:
   --uninstall        Quita el bloque gestionado y desmonta esos puntos
   --fs ntfs-3g|ntfs3 Sistema de archivos a usar (por defecto ntfs-3g)
   --prefix RUTA      Carpeta base de los puntos de montaje (/mnt)
+  --only ETIQUETA    Solo estos discos (UUID o etiqueta; repetible)
+  --exclude ETIQUETA No montar estos discos (UUID o etiqueta; repetible)
   -h, --help         Muestra esta ayuda
 EOF
 }
@@ -43,6 +47,14 @@ while (( $# > 0 )); do
             ;;
         --prefix)
             PREFIX="${2:-}"
+            shift 2
+            ;;
+        --only)
+            ONLY+=("${2:-}")
+            shift 2
+            ;;
+        --exclude)
+            EXCLUDE+=("${2:-}")
             shift 2
             ;;
         -h | --help)
@@ -183,8 +195,44 @@ PY
 fi
 
 mapfile -t disks < <(list_disks)
+
+filter_value() {
+    printf '%s' "$1" |
+        sed -E 's/[^A-Za-z0-9._-]+/-/g; s/^-+//; s/-+$//'
+}
+
+filter_disk() {
+    local uuid="$1" label="$2" item value selected=0
+    if (( ${#ONLY[@]} > 0 )); then
+        for item in "${ONLY[@]}"; do
+            value=$(filter_value "$item")
+            if [[ "$value" == "$uuid" || "$value" == "$label" ]]; then
+                selected=1
+                break
+            fi
+        done
+        (( selected )) || return 1
+    fi
+    for item in "${EXCLUDE[@]}"; do
+        value=$(filter_value "$item")
+        if [[ "$value" == "$uuid" || "$value" == "$label" ]]; then
+            return 1
+        fi
+    done
+    return 0
+}
+
+filtered=()
+for row in "${disks[@]}"; do
+    IFS=$'\t' read -r uuid label device mount <<<"$row"
+    if filter_disk "$uuid" "$label"; then
+        filtered+=("$row")
+    fi
+done
+disks=("${filtered[@]}")
+
 if (( ${#disks[@]} == 0 )); then
-    echo "No se encontraron discos internos NTFS sin montar."
+    echo "No se encontraron discos internos NTFS que coincidan con el filtro."
     exit 0
 fi
 

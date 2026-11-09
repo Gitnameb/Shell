@@ -24,7 +24,9 @@ PATCH="${REPO_DIR}/umbriel-fork.patch"
 UPSTREAM="${UMBRIEL_UPSTREAM:-https://github.com/noctalia-dev/umbriel.git}"
 BASE_COMMIT="${UMBRIEL_BASE_COMMIT:-b6c4b7d}"
 SOURCE_DIR="${UMBRIEL_FORK_DIR:-$HOME/umbriel-fork}"
-FORK_REPO="${UMBRIEL_FORK_REPO:-}"
+# Por defecto se instala el fork propio, sin depender del Umbriel original.
+# UMBRIEL_FORK_REPO= (vacío) fuerza el modo antiguo: upstream + parche.
+FORK_REPO="${UMBRIEL_FORK_REPO-https://github.com/Gitnameb/umbriel.git}"
 FORK_BRANCH="${UMBRIEL_FORK_BRANCH:-shell-fork}"
 BUILD_DIR=""
 INSTALLED_BIN="/usr/bin/umbriel"
@@ -179,34 +181,38 @@ if [[ -n "$FORK_REPO" ]]; then
         log "Usando el árbol del fork ya existente en $SOURCE_DIR."
     elif [[ -e "$SOURCE_DIR" ]]; then
         die "$SOURCE_DIR existe y no es un repositorio git."
-    else
-        log "Clonando el fork $FORK_REPO (rama $FORK_BRANCH)."
-        run git clone --branch "$FORK_BRANCH" "$FORK_REPO" "$SOURCE_DIR"
+    elif ! run git clone --branch "$FORK_BRANCH" "$FORK_REPO" "$SOURCE_DIR"; then
+        warn "No se pudo clonar el fork; se usará el Umbriel original con el parche."
+        FORK_REPO=""
     fi
-elif [[ -d "$SOURCE_DIR/.git" ]]; then
-    if [[ -n "$(git -C "$SOURCE_DIR" status --porcelain 2>/dev/null)" ]]; then
-        log "El árbol tiene cambios locales; se compila tal cual."
-    else
-        current=$(git -C "$SOURCE_DIR" rev-parse HEAD 2>/dev/null || true)
-        base=$(git -C "$SOURCE_DIR" rev-parse "$BASE_COMMIT" 2>/dev/null || true)
-        if [[ "$current" == "$base" ]]; then
-            log "Aplicando el parche del fork."
-            run git -C "$SOURCE_DIR" apply "$PATCH"
-        elif git -C "$SOURCE_DIR" merge-base --is-ancestor "$base" "$current"; then
-            log "El árbol ya contiene los commits del fork; se compila tal cual."
+fi
+
+if [[ -z "$FORK_REPO" ]]; then
+    if [[ -d "$SOURCE_DIR/.git" ]]; then
+        if [[ -n "$(git -C "$SOURCE_DIR" status --porcelain 2>/dev/null)" ]]; then
+            log "El árbol tiene cambios locales; se compila tal cual."
         else
-            log "Árbol limpio; se cambia a la base $BASE_COMMIT."
-            run git -C "$SOURCE_DIR" checkout -B shell-fork "$BASE_COMMIT"
-            run git -C "$SOURCE_DIR" apply "$PATCH"
+            current=$(git -C "$SOURCE_DIR" rev-parse HEAD 2>/dev/null || true)
+            base=$(git -C "$SOURCE_DIR" rev-parse "$BASE_COMMIT" 2>/dev/null || true)
+            if [[ "$current" == "$base" ]]; then
+                log "Aplicando el parche del fork."
+                run git -C "$SOURCE_DIR" apply "$PATCH"
+            elif git -C "$SOURCE_DIR" merge-base --is-ancestor "$base" "$current"; then
+                log "El árbol ya contiene los commits del fork; se compila tal cual."
+            else
+                log "Árbol limpio; se cambia a la base $BASE_COMMIT."
+                run git -C "$SOURCE_DIR" checkout -B shell-fork "$BASE_COMMIT"
+                run git -C "$SOURCE_DIR" apply "$PATCH"
+            fi
         fi
+    elif [[ -d "$SOURCE_DIR" ]]; then
+        warn "El directorio no es un repositorio git; se compila tal cual."
+    else
+        log "Clonando Umbriel desde $UPSTREAM."
+        run git clone "$UPSTREAM" "$SOURCE_DIR"
+        run git -C "$SOURCE_DIR" checkout -B shell-fork "$BASE_COMMIT"
+        run git -C "$SOURCE_DIR" apply "$PATCH"
     fi
-elif [[ -d "$SOURCE_DIR" ]]; then
-    warn "El directorio no es un repositorio git; se compila tal cual."
-else
-    log "Clonando Umbriel desde $UPSTREAM."
-    run git clone "$UPSTREAM" "$SOURCE_DIR"
-    run git -C "$SOURCE_DIR" checkout -B shell-fork "$BASE_COMMIT"
-    run git -C "$SOURCE_DIR" apply "$PATCH"
 fi
 
 # ---------------------------------------------------------------------------

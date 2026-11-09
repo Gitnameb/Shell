@@ -102,6 +102,7 @@ Opciones útiles:
 - `--dry-run`: enseña los comandos sin ejecutarlos.
 - `--skip-packages`: solo configura y compila.
 - `--skip-fork`: no toca el compositor.
+- `--skip-disks`: no añade los discos internos NTFS a `/etc/fstab`.
 - `--skip-network`: no configura la red ni instala NetworkManager, Wi-Fi,
   hotspot, VPN ni Bluetooth.
 - `--with-firmware`: instala también firmware y drivers de este equipo.
