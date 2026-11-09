@@ -1,5 +1,31 @@
+diff --git a/docs/user/animation.md b/docs/user/animation.md
+index fe8a5241..14426225 100644
+--- a/docs/user/animation.md
++++ b/docs/user/animation.md
+@@ -6,6 +6,7 @@ Animation settings live under `[animation]`. The top-level values provide defaul
+ [animation]
+ enabled = true
+ duration_ms = 250
++speed = 1.0
+ curve = "easeout"
+ 
+ [animation.windows_in]
+@@ -70,10 +71,13 @@ enabled = false
+ | ------------- | ----------- | --------------------------------------- |
+ | `enabled`     | `true`      | Master switch for every transition.     |
+ | `duration_ms` | `250`       | Default duration for non-spring curves. |
++| `speed`       | `1.0`       | Global speed multiplier, from 0.25 to 4. |
+ | `curve`       | `"easeout"` | Default easing curve.                   |
+ 
+ Each event other than `windows_drag` also accepts `enabled`, `duration_ms`, and `curve`. A spring curve chooses its own duration, so `duration_ms` has no effect on that event.
+ 
++`speed` scales the whole animation table: duration-based curves run `duration_ms / speed`, and springs multiply their stiffness by `speed²`, which halves their settle time at `2.0` while keeping the same damping shape. It is applied after every event override, so it also covers `workspace_curve` and the shared defaults. Interactive drag physics is not affected.
++
+ ## Event tables
+ 
+ | Table                         | Additional fields                                                   | Transition                                                 |
 diff --git a/docs/user/appearance.md b/docs/user/appearance.md
-index 1146a02c..f713076f 100644
+index 1146a02c..ef2b559e 100644
 --- a/docs/user/appearance.md
 +++ b/docs/user/appearance.md
 @@ -129,6 +129,9 @@ buttons = ["minimize", "maximize", "close"]
@@ -20,6 +46,15 @@ index 1146a02c..f713076f 100644
 +`height` is 16 to 128 logical pixels, and `font` is a Pango font description. `button_position` accepts `"left"` or `"right"`. `buttons` lists the buttons to show, from the title outward: the last one sits at the bar's edge, so the default puts close outermost on either side. Leave a name out to hide that button, or use `[]` for a bar without buttons; each of `"minimize"`, `"maximize"`, and `"close"` may appear once. This fork also accepts `"pin"`, `"float"`, `"fullscreen"`, `"move"`, and `"volume"`. The volume button asks the shell to show the per-window volume panel; the other four toggle the window state or open the native workspace picker.
  
  Buttons show a drawn X for close, an outlined square for maximize, and an underscore for minimize. `button_glyph` controls when those symbols appear:
+ 
+@@ -171,7 +174,7 @@ The `close`, `maximize`, and `minimize` colors control button backgrounds. Each
+ 
+ `button_corner_radius` uses logical pixels, from `0` to `100`. Its default, `-1`, follows the window's `corner_radius`, including window rules. Use `0` for square buttons or a small positive value for rounded squares. The radius is capped at half the button size, producing circles at larger values. Buttons and symbols scale with the output and overview zoom, and update on reload. The maximize button is disabled for fixed-size windows. The minimize button shows only while the window can [minimize](layout.md#minimize), so tiled and pinned windows do not have one. `background` and `text` apply to the focused window; their `_unfocused` variants apply to other windows. Colors and title bar settings reload live.
+ 
+-The title bar follows its window's `blur`, `blur_optimized`, and `blur_ignore_alpha` rules, together with the global [blur settings](#blur). Give `background` and `background_unfocused` some transparency, such as `"#292933CC"`, to see the blurred backdrop. The alpha threshold applies to the title bar's own background color, independently of the application's content. Opaque title bar backgrounds remain opaque with blur enabled, including after leaving overview or switching focus between windows. No layer rule is needed. Dragging, overview previews, and close animations keep the blur with the window.
++The title bar follows its window's `blur`, `blur_optimized`, and `blur_ignore_alpha` rules, together with the global [blur settings](#blur). Give `background` and `background_unfocused` some transparency, such as `"#292933CC"`, to see the blurred backdrop. The alpha threshold applies to the title bar's own background color, independently of the application's content. Opaque title bar backgrounds remain opaque with blur enabled, including after leaving overview or switching focus between windows. No layer rule is needed. Dragging, overview previews, and close animations keep the blur with the window. While a window is dragged, the configured source is respected: `optimized = true` keeps sampling the cached background, so windows and the insert hint below stay sharp, while `optimized = false` keeps blurring the live content behind. Setting `optimized = true` therefore no longer switches to a live blur during a move.
+ 
+ Rounded windows keep a straight join between the title bar and transparent content, including the content's blur and overview preview. The outer frame retains its rounded corners; hiding the title bar restores rounding to the top of the content.
  
 diff --git a/docs/user/input.md b/docs/user/input.md
 index 47c4faa4..67a9d1e4 100644
@@ -402,7 +437,7 @@ index 6e01dda1..f9f704b8 100644
            scratchpadTable(),
            hotCornersTable(),
 diff --git a/src/config/config.h b/src/config/config.h
-index 86a6825c..e8d20d1f 100644
+index 86a6825c..efe3eff5 100644
 --- a/src/config/config.h
 +++ b/src/config/config.h
 @@ -119,6 +119,9 @@ namespace umbriel {
@@ -485,7 +520,18 @@ index 86a6825c..e8d20d1f 100644
          int height = 28;
          std::string font = "sans 10";
          TitleBarButtonSide buttonPosition = TitleBarButtonSide::Right;
-@@ -969,6 +984,16 @@ namespace umbriel {
+@@ -804,6 +819,10 @@ namespace umbriel {
+     struct Animation {
+       bool enabled = true;
+       int durationMs = 250;
++      // Multiplicador de velocidad de todas las transiciones. Los tiempos se
++      // dividen y las resortes se aceleran con stiffness × speed², de modo que
++      // la forma (damping) no cambia. La shell lo escribe en [animation].
++      double speed = 1.0;
+       AnimationCurve curve{.easing = Easing::EaseOutCubic};
+       std::map<std::string, BezierCurve> beziers;
+       std::map<std::string, SpringConfig> springs;
+@@ -969,6 +988,16 @@ namespace umbriel {
        bool operator==(const Animation&) const = default;
      } animation;
      Effects effects;
@@ -502,7 +548,7 @@ index 86a6825c..e8d20d1f 100644
  
      struct Overview {
        // Workspace scale when fully zoomed out.
-@@ -1034,6 +1059,15 @@ namespace umbriel {
+@@ -1034,6 +1063,15 @@ namespace umbriel {
        } master;
        struct Stacking {
          bool dropZones = true;
@@ -518,7 +564,7 @@ index 86a6825c..e8d20d1f 100644
          bool operator==(const Stacking&) const = default;
        } stacking;
        struct Tabs {
-@@ -1116,6 +1150,10 @@ namespace umbriel {
+@@ -1116,6 +1154,10 @@ namespace umbriel {
      } events;
  
      struct Input {
@@ -541,6 +587,49 @@ index 6f3d130c..c21867c8 100644
    registry::Field<Config> overviewTable();
    registry::Field<Config> hotCornersTable();
    registry::Field<Config> generalTable();
+diff --git a/src/config/fields_animation.cpp b/src/config/fields_animation.cpp
+index d5f7dd9b..cd5f74fd 100644
+--- a/src/config/fields_animation.cpp
++++ b/src/config/fields_animation.cpp
+@@ -262,6 +262,7 @@ namespace umbriel {
+               }()
+           ),
+           registry::integer("duration_ms", 1, 10000, &A::durationMs),
++          real("speed", 0.25, 4.0, &A::speed),
+           registry::step<A>([](Section& s, A& animation, registry::ReadContext&) {
+             if (registry::configuredInteger(s, "duration_ms")) {
+               forEachTimeline(animation, [&](int& duration, AnimationCurve&) { duration = animation.durationMs; });
+@@ -289,6 +290,30 @@ namespace umbriel {
+           table("dim_unfocused", &A::dimUnfocused, dimUnfocused),
+           table("layers", &A::layers, layers),
+           table("windows_drag", &A::windowsDrag, windowsDrag),
++          // Applied last so it covers the shared defaults, every event table,
++          // and the extra curves resolved inside them. Duration-based curves
++          // get a shorter duration; springs get a stiffer one, which shortens
++          // their settle time while damping keeps the same shape.
++          registry::step<A>([](Section& /*s*/, A& animation, registry::ReadContext&) {
++            const double speed = std::clamp(animation.speed, 0.25, 4.0);
++            if (std::abs(speed - 1.0) < 0.001) {
++              return;
++            }
++            const double stiffnessScale = speed * speed;
++            const auto scale = [&](int& duration, AnimationCurve& curve) {
++              duration = std::max(1, static_cast<int>(std::lround(static_cast<double>(duration) / speed)));
++              if (curve.easing == Easing::Spring) {
++                curve.spring.stiffness *= stiffnessScale;
++              }
++            };
++            forEachTimeline(animation, scale);
++            if (animation.curve.easing == Easing::Spring) {
++              animation.curve.spring.stiffness *= stiffnessScale;
++            }
++            if (animation.overview.workspaceCurve.easing == Easing::Spring) {
++              animation.overview.workspaceCurve.spring.stiffness *= stiffnessScale;
++            }
++          }),
+           // The shared duration reaches nothing once every timeline it feeds derives its own length.
+           registry::step<A>([](Section& s, A& animation, registry::ReadContext&) {
+             if (!registry::configuredInteger(s, "duration_ms")
 diff --git a/src/config/fields_general.cpp b/src/config/fields_general.cpp
 index 3e1a9910..a0eab967 100644
 --- a/src/config/fields_general.cpp
@@ -5377,7 +5466,7 @@ index 52a43f63..9c10dd7b 100644
      bool m_hasMaximizeRestoreBox = false;
      wlr_box m_maximizeRestoreBox{};
 diff --git a/src/view/view_animation.cpp b/src/view/view_animation.cpp
-index 7d9615c7..30c8d16e 100644
+index 7d9615c7..352dbee2 100644
 --- a/src/view/view_animation.cpp
 +++ b/src/view/view_animation.cpp
 @@ -54,7 +54,9 @@ namespace umbriel {
@@ -5418,7 +5507,24 @@ index 7d9615c7..30c8d16e 100644
      if (!scheduledFullscreen()) {
        updateShadow(width, height);
      }
-@@ -1247,6 +1262,7 @@ namespace umbriel {
+@@ -352,10 +367,13 @@ namespace umbriel {
+   void View::enterDragPresentation() {
+     cancelPositionAnimation();
+     m_dragOpacity = config().appearance.dragOpacity;
+-    // The insert hint sits below the dragged window, out of reach of the cached background blur.
+-    m_decoration.setBlurLive(true);
++    // Keep the configured blur source while dragging. Forcing a live blur made
++    // an optimized («Fondo») setup look like a live («Simple») one as soon as
++    // the window moved. The insert hint stays visible; it simply is not blurred
++    // when the user chose the wallpaper cache.
++    m_decoration.setBlurLive(false);
+     if (m_ssdFrame != nullptr)
+-      m_ssdFrame->setBlurLive(true);
++      m_ssdFrame->setBlurLive(false);
+     setFadeAlpha(m_fadeAlpha);
+     if (m_pinned) {
+       wlr_scene_node_place_above(&m_server->dragTree()->node, &m_server->pinnedTree()->node);
+@@ -1247,6 +1265,7 @@ namespace umbriel {
        applyPresentedCrop(content, surfaceClip);
      }
      updateBorderGeometry(content.width, content.height);
@@ -5427,7 +5533,7 @@ index 7d9615c7..30c8d16e 100644
      updateBlur(content.width, content.height);
      syncModalShade();
 diff --git a/src/view/view_chrome.cpp b/src/view/view_chrome.cpp
-index 3d39675f..89702763 100644
+index 3d39675f..f8a89955 100644
 --- a/src/view/view_chrome.cpp
 +++ b/src/view/view_chrome.cpp
 @@ -18,6 +18,7 @@ extern "C" {
@@ -5533,7 +5639,7 @@ index 3d39675f..89702763 100644
      }
      if (m_ssdFrame == nullptr)
        return;
-@@ -105,10 +168,15 @@ namespace umbriel {
+@@ -105,17 +168,27 @@ namespace umbriel {
          && hints.maxHeight > 0
          && hints.maxHeight == hints.minHeight;
      m_ssdFrame->setTitle(title() != nullptr ? title() : "");
@@ -5549,7 +5655,9 @@ index 3d39675f..89702763 100644
      m_ssdFrame->setFocused(m_borderFocusedState);
      m_ssdFrame->setAlphas(chromeAlpha(), blurAlpha());
      m_ssdFrame->setBlurOptions(blurOptions());
-@@ -116,6 +184,10 @@ namespace umbriel {
+-    m_ssdFrame->setBlurLive(m_server->cursor() != nullptr && m_server->cursor()->isDraggingView(this));
++    // Honour the window blur mode while dragging too; see enterDragPresentation().
++    m_ssdFrame->setBlurLive(false);
      const wlr_box content =
          m_presentedBox.width > 0 && m_presentedBox.height > 0 ? m_presentedBox : committedContentBox();
      layoutChromeAttachment(content.width, content.height);
@@ -5560,7 +5668,7 @@ index 3d39675f..89702763 100644
      wlr_scene_node_raise_to_top(&m_attachmentTree->node);
    }
  
-@@ -124,11 +196,23 @@ namespace umbriel {
+@@ -124,11 +197,23 @@ namespace umbriel {
        return;
      const std::vector<TitleBarButton>& configured =
          m_titleBarButtons ? *m_titleBarButtons : config().appearance.titleBar.buttons;
@@ -5586,7 +5694,7 @@ index 3d39675f..89702763 100644
          shown[count++] = button;
        }
      }
-@@ -151,6 +235,8 @@ namespace umbriel {
+@@ -151,6 +236,8 @@ namespace umbriel {
      }
      if (m_ssdFrame != nullptr)
        m_ssdFrame->setFocused(focused);
@@ -5595,7 +5703,7 @@ index 3d39675f..89702763 100644
  
      const auto& animation = config().animation;
      const auto& dim = animation.dimUnfocused;
-@@ -383,6 +469,30 @@ namespace umbriel {
+@@ -383,6 +470,30 @@ namespace umbriel {
      wlr_scene_node_raise_to_top(&m_attachmentTree->node);
    }
  
@@ -5626,7 +5734,7 @@ index 3d39675f..89702763 100644
    void View::layoutChromeAttachment(int contentWidth, int contentHeight) {
      m_chromeContentWidth = contentWidth;
      m_chromeContentHeight = contentHeight;
-@@ -397,7 +507,8 @@ namespace umbriel {
+@@ -397,7 +508,8 @@ namespace umbriel {
          .contentHeight = contentHeight,
          .borderInset = borderInset(),
          .cornerRadius = m_maximizedToEdges ? 0 : decorationCornerRadius(),
@@ -5636,7 +5744,7 @@ index 3d39675f..89702763 100644
          .scale = output != nullptr ? output->wlr()->scale : 1.0F,
          .suppressed = !m_mapped || scheduledFullscreen() || currentFullscreen(),
      };
-@@ -406,9 +517,34 @@ namespace umbriel {
+@@ -406,9 +518,34 @@ namespace umbriel {
      geometry.suppressed = geometry.suppressed || m_maximizedToEdges;
      if (m_chromeAttachment != nullptr)
        m_chromeAttachment->layout(geometry);
@@ -5671,7 +5779,7 @@ index 3d39675f..89702763 100644
      syncSsdFrame();
      if (m_ssdFrame != nullptr)
        m_ssdFrame->reloadConfig();
-@@ -419,6 +555,13 @@ namespace umbriel {
+@@ -419,6 +556,13 @@ namespace umbriel {
      // Temporary unfocus would consume pool selections during an unrelated reload.
      setBorderFocused(m_borderFocusedState);
      updateBorderGeometry();

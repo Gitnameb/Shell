@@ -365,6 +365,7 @@ visible.
 | --- | --- |
 | `shell-mod-hold` | `[input] mod_hold_delay_ms` |
 | `shell-floating-defaults` | `[layout.stacking]` |
+| `shell-animation-speed` | `[animation] speed` |
 | `shell-window-chrome` | `[appearance.title_bar] overlay` |
 | `shell-display-filter` | `[display]` |
 | `shell-keyboard-layout` | `[input.keyboard] layout` |
@@ -532,7 +533,10 @@ antes aparecía al pie («viernes, 6 de noviembre de 2026») se eliminó.
 
 - Archivo: `~/.config/shell/calendar-notes.conf`, una línea por nota con el
   formato `id|AAAA-MM-DD|texto`.
-- Se añaden desde «Añadir nota a este día…» y se borran con la × de la lista.
+- El campo de nota ya no está siempre visible. El primer clic elige el día;
+  el segundo clic sobre ese mismo día abre el editor de nota. La nota se
+  guarda con Intro o con el botón +, y Escape cierra el editor. Se borran con
+  la × de la lista.
 - `scripts/shell-calendar` administra el archivo (`list`, `note add`,
   `note remove`) y solo usa la biblioteca estándar. `CalendarEvents.qml` le
   pide el mes visible al abrir el panel o cambiar de mes.
@@ -871,3 +875,60 @@ las notificaciones siguen guardándose en el historial hasta que se cierran.
 Probado en una sesión anidada con un bus D-Bus privado (el de la sesión real
 ya posee `org.freedesktop.Notifications`) y `notify-send`, incluyendo la
 expiración automática y un aviso crítico persistente.
+
+## 22. Animaciones y su velocidad
+
+Umbriel anima apertura, cierre, movimiento, redimensión, cambio de escritorio,
+vista general, scratchpad, diálogos, borde y capas con curvas propias. La
+mayoría son resortes, y un resorte no usa `duration_ms`: su duración sale de
+`stiffness`. Por eso bajar solo el tiempo no los acelera.
+
+- `[animation] speed` multiplica toda la tabla. Las curvas por tiempo dividen
+  su duración entre `speed`; los resortes multiplican `stiffness` por
+  `speed²`, con lo que a `2.0` tardan la mitad y conservan la forma (`damping`).
+- El valor por defecto del shell es `2.0`. Se ajusta en **Ajustes del shell →
+  Velocidad de animaciones**, de 0.5× a 4× en pasos de 0.25.
+- `scripts/shell-animation-speed` lo escribe con `shell-config-set` y pide
+  `config-reload`; si el valor no cambia, no toca el archivo. Los ajustes se
+  guardan en `settings.conf` como `animationSpeed`.
+- No afecta a la física del arrastre (`[animation.windows_drag]`): esa responde
+  al puntero y se siente mal si se escala como una transición.
+
+## 23. Desenfoque al arrastrar
+
+Con el cristal en «Fondo» (`optimized = true`) una ventana arrastrada ya no
+cambia a desenfoque en vivo. Antes se forzaba el modo «Simple» al empezar el
+arrastre, y por eso el fondo se veía distinto justo cuando movías la ventana.
+Ahora se respeta la elección durante todo el gesto: «Fondo» sigue muestreando
+la caché del fondo de pantalla y las ventanas de debajo quedan nítidas;
+«Simple» sigue desenfocando el contenido real. La pista de inserción se ve,
+pero no se desenfoca en modo «Fondo».
+
+## 24. DNS: el punto de acceso no es una red
+
+El perfil `shell-hotspot` que emite el punto de acceso también es de tipo
+Wi-Fi, pero su `802-11-wireless.mode` es `ap`. `scripts/network-settings.py` lo
+excluye de la lista de DNS y de proxy. Así dejan de aparecer tres entradas y
+desaparece la que se llamaba «Desktop» con icono de Wi-Fi (era el SSID del
+punto de acceso, tomado del nombre del equipo).
+
+## 25. Cambio de modo: una sola transición
+
+Cambiar un escritorio de mosaico a ventana tiene dos partes: la orden
+inmediata (`workspace-set-layout`) y la escritura de la regla en
+`config.toml`, que dispara una recarga. La recarga no vuelve a cambiar el
+layout cuando el modo efectivo ya coincide, así que la ventana se mueve una
+sola vez; la recarga solo deja la regla guardada.
+
+Para que no se sumen cambios accidentales:
+
+- Pulsar el modo que ya está elegido en «Configuración de ventanas» no hace
+  nada: `SettingsState.setWorkspaceMode` y `WorkspaceModeState.setMode`
+  comprueban el valor antes de escribir.
+- El botón de modo de la ficha del escritorio ignora un segundo clic en los
+  220 ms siguientes, para que un doble clic no cambie dos veces.
+- `applyWorkspaceModes` recuerda la última firma escrita y no repite la
+  recarga si el backend vuelve a pedir lo mismo al arrancar.
+
+Comprobado en sesión anidada con tres ventanas y tres clics: cada clic produjo
+un único `set_floating` y una recarga posterior sin movimiento adicional.

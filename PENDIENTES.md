@@ -10,10 +10,22 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
 ## Estado al cerrar esta sesión
 
 - **Pendiente inmediato (2026-11-09).** Los cambios nativos de esta sesión
-  (tamaño flotante en cambios rápidos y foco al pasar por la barra de título)
-  están en el parche y compilan, pero `/usr/bin/umbriel` todavía no los tiene.
-  Hay que ejecutar `cd ~/Shell && ./scripts/install-umbriel-fork.sh --yes` y
-  cerrar y volver a abrir la sesión.
+  (tamaño flotante en cambios rápidos, foco al pasar por la barra de título,
+  `[animation] speed` y desenfoque «Fondo» al arrastrar) están en el parche y
+  compilan, pero `/usr/bin/umbriel` todavía no los tiene. Hay que ejecutar
+  `cd ~/Shell && ./scripts/install-umbriel-fork.sh --yes` y cerrar y volver a
+  abrir la sesión.
+- **Animaciones, cristal, DNS y calendario (2026-11-09).** La velocidad de las
+  animaciones se puede ajustar en Ajustes del shell; por defecto es 2× y el
+  script escribe `[animation] speed`. Arrastrar una ventana ya no cambia el
+  cristal «Fondo» a «Simple». El perfil del punto de acceso (`mode = "ap"`) se
+  excluye de DNS y proxy, así que desaparece la entrada «Desktop» con icono
+  Wi-Fi. El calendario ya no muestra el campo de nota siempre: el segundo clic
+  sobre el día seleccionado abre el editor.
+- **Plan de dependencias opcionales.** `PLAN-DEPENDENCIAS.md` separa lo que ya
+  funciona de lo que mejoraría con paquetes extra: teclado para es/de/pt,
+  portapapeles con imágenes, brillo de portátil, más tipos de VPN y códecs
+  Bluetooth. No se instaló nada nuevo.
 - **Ajustes de apariencia (2026-11-09).** «Controles de ventana» desapareció
   de Configuración de ventanas: el modo Super sigue funcionando, pero ya no
   hay una fila que lo duplique. «Cristal de ventanas» se movió a Temas, junto

@@ -5179,6 +5179,77 @@ ColumnLayout {
 
             RowLayout {
                 Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Velocidad de animaciones"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                Rectangle {
+                    implicitWidth: 22
+                    implicitHeight: 22
+                    radius: 6
+                    color: animLess.containsMouse ? Theme.hover : Theme.surface
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "−"
+                        color: Theme.muted
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 12
+                    }
+
+                    MouseArea {
+                        id: animLess
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: SettingsState.setAnimationSpeed(
+                            SettingsState.animationSpeed - 0.25)
+                    }
+                }
+
+                Text {
+                    text: Number(SettingsState.animationSpeed.toFixed(2)) + "×"
+                    color: Theme.accent
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                    font.weight: Font.Bold
+                    horizontalAlignment: Text.AlignHCenter
+                    width: 38
+                }
+
+                Rectangle {
+                    implicitWidth: 22
+                    implicitHeight: 22
+                    radius: 6
+                    color: animMore.containsMouse ? Theme.hover : Theme.surface
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "+"
+                        color: Theme.muted
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 12
+                    }
+
+                    MouseArea {
+                        id: animMore
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: SettingsState.setAnimationSpeed(
+                            SettingsState.animationSpeed + 0.25)
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
                 spacing: 8
 
                 Text {
@@ -6468,9 +6539,12 @@ ColumnLayout {
                                         anchors.fill: parent
                                         hoverEnabled: true
                                         cursorShape: Qt.PointingHandCursor
-                                        onClicked: WorkspaceModeState.setMode(
-                                            wsModeRow.modelData,
-                                            rowChip.modelData.key)
+                                        onClicked: {
+                                            if (!rowChip.selected)
+                                                WorkspaceModeState.setMode(
+                                                    wsModeRow.modelData,
+                                                    rowChip.modelData.key);
+                                        }
                                     }
                                 }
                             }

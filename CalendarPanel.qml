@@ -64,6 +64,10 @@ PanelWindow {
 
     // Borrador del campo de notas del día.
     property string noteDraft: ""
+    // El campo de notas ya no está siempre visible: se abre al pulsar por
+    // segunda vez el día ya seleccionado.
+    property bool noteEditorOpen: false
+    property var lastClickedDate: null
 
     function applyWeatherPlace(): void {
         SettingsState.setWeatherPlace(root.placeDraft);
@@ -122,16 +126,37 @@ PanelWindow {
     }
 
     function selectDay(cell): void {
+        const again = root.lastClickedDate !== null
+            && root.sameDay(cell.date, root.lastClickedDate)
+            && root.sameDay(cell.date, root.selectedDate);
+        if (again) {
+            // Segundo clic sobre el día ya elegido: se abre la nota de ese
+            // día sin dejar un campo permanente en el calendario.
+            root.noteEditorOpen = true;
+            Qt.callLater(() => noteField.forceActiveFocus());
+            return;
+        }
         root.commitEditors();
+        root.noteEditorOpen = false;
+        root.noteDraft = "";
         root.selectedDate = cell.date;
+        root.lastClickedDate = cell.date;
         if (!cell.inMonth) {
             root.shownMonth = new Date(cell.date.getFullYear(),
                 cell.date.getMonth(), 1);
         }
     }
 
+    function closeNoteEditor(): void {
+        root.noteEditorOpen = false;
+        root.noteDraft = "";
+    }
+
     function goToday(): void {
         root.commitEditors();
+        root.noteEditorOpen = false;
+        root.noteDraft = "";
+        root.lastClickedDate = null;
         root.selectedDate = new Date();
         root.shownMonth = new Date(root.selectedDate.getFullYear(),
             root.selectedDate.getMonth(), 1);
@@ -184,6 +209,7 @@ PanelWindow {
             return;
         CalendarEvents.addNote(root.selectedDate, text);
         root.noteDraft = "";
+        root.noteEditorOpen = false;
     }
 
     function validTime(value): bool {
@@ -374,10 +400,12 @@ PanelWindow {
     // Al abrir el panel o cambiar de mes se recargan las notas. Con el panel
     // cerrado no se consulta nada; los calendarios remotos viven en caché.
     onVisibleChanged: {
-        if (visible)
+        if (visible) {
             CalendarEvents.refresh(root.shownMonth);
-        else
+        } else {
             root.commitEditors();
+            root.closeNoteEditor();
+        }
     }
 
     onShownMonthChanged: {
@@ -898,9 +926,12 @@ PanelWindow {
                     font.pixelSize: 8
                 }
 
+                // Editor de nota del día. Solo aparece al pulsar dos veces
+                // el día ya seleccionado; así el calendario queda limpio.
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 4
+                    visible: root.noteEditorOpen
 
                     TextField {
                         id: noteField
@@ -908,7 +939,8 @@ PanelWindow {
                         Layout.fillWidth: true
                         implicitHeight: 26
                         text: root.noteDraft
-                        placeholderText: "Añadir nota a este día…"
+                        placeholderText: "Nota para el día "
+                            + Qt.formatDate(root.selectedDate, "d MMM") + "…"
                         placeholderTextColor: Theme.faint
                         color: Theme.text
                         font.family: Theme.fontFamily
@@ -916,6 +948,7 @@ PanelWindow {
                         selectByMouse: true
                         onTextEdited: root.noteDraft = text
                         onAccepted: root.addNoteFromDraft()
+                        Keys.onEscapePressed: root.closeNoteEditor()
                         background: Rectangle {
                             radius: 7
                             color: Theme.surfaceAlt
@@ -1567,7 +1600,7 @@ PanelWindow {
     Shortcut {
         sequence: "Escape"
         enabled: CalendarState.open && !timerField.editing
-            && !root.alarmEditing
+            && !root.alarmEditing && !root.noteEditorOpen
         onActivated: CalendarState.hide()
     }
 }

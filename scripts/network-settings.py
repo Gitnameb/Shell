@@ -95,6 +95,12 @@ def snapshot():
         name, uuid, kind = parts[0], parts[1], parts[2]
         if kind not in (WIFI, WIRED):
             continue
+        # El perfil del punto de acceso que emite el shell también es
+        # 802-11-wireless, pero no es una red a la que se conecte el equipo.
+        # Sin este filtro aparecía en DNS como una red más (su SSID es el
+        # nombre del equipo, p. ej. «Desktop»).
+        if kind == WIFI and nm_get(uuid, "802-11-wireless.mode") == "ap":
+            continue
         label = nm_get(uuid, "802-11-wireless.ssid") if kind == WIFI else name
         device = nm_get(uuid, "connection.interface-name")
         if uuid in active:

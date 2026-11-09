@@ -29,6 +29,12 @@ drop_zones = true
 default_width_fraction = 0.60
 default_height_fraction = 0.60
 cascade_step = 0
+
+[animation]
+# Velocidad global de las transiciones nativas. 2.0 tarda la mitad; el shell
+# lo ajusta desde «Ajustes del shell» y lo mantiene al día.
+speed = 2.0
+
 [appearance]
 # Decoración del compositor, no una capa encima del contenido.
 prefer_no_csd = true

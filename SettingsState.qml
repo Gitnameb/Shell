@@ -43,6 +43,9 @@ Singleton {
     // Separación diagonal entre ventanas flotantes en cascada. 0 la calcula
     // a partir de la barra de título.
     property int floatingCascade: 0
+    // Velocidad global de las animaciones nativas. 2.0 = el doble de rápido;
+    // se escribe en [animation] speed de Umbriel.
+    property real animationSpeed: 2.0
     // Cada vista decide si su valor se muestra como porcentaje en la barra y
     // en las fichas del centro de control. Por defecto, todos desactivados.
     property bool showVolumePercent: false
@@ -182,6 +185,7 @@ Singleton {
     property string appliedWorkspaceModesSignature: ""
     property bool holdApplyPending: false
     property bool floatingApplyPending: false
+    property bool animationApplyPending: false
     property bool glassApplyPending: false
 
     readonly property string path: (Quickshell.env("HOME") || "/home/username")
@@ -196,6 +200,8 @@ Singleton {
         + "/scripts/shell-mod-hold"
     readonly property string floatingScript: (Quickshell.shellDir || "")
         + "/scripts/shell-floating-defaults"
+    readonly property string animationScript: (Quickshell.shellDir || "")
+        + "/scripts/shell-animation-speed"
     readonly property string glassScript: (Quickshell.shellDir || "")
         + "/scripts/shell-glass"
     readonly property string wallpaperPickScript: (Quickshell.shellDir || "")
@@ -255,6 +261,28 @@ Singleton {
         const step = Math.round(value);
         root.floatingCascade = Math.max(0, Math.min(96, step));
         floatingApplyTimer.restart();
+    }
+
+    function setAnimationSpeed(value: real): void {
+        const speed = Math.round(value * 4) / 4;
+        root.animationSpeed = Math.max(0.5, Math.min(4.0, speed));
+        animationApplyTimer.restart();
+    }
+
+    // Escribe la velocidad en [animation] speed y recarga la configuración.
+    // El script no toca el archivo si el valor ya coincide.
+    function applyAnimationSpeed(): void {
+        if (!root.ready)
+            return;
+        if (animationProc.running) {
+            root.animationApplyPending = true;
+            return;
+        }
+        root.animationApplyPending = false;
+        animationProc.command = [
+            "sh", root.animationScript, root.animationSpeed.toFixed(2)
+        ];
+        animationProc.running = true;
     }
 
     // Escribe el tamaño y la cascada en [layout.stacking] de Umbriel y
@@ -355,6 +383,10 @@ Singleton {
         if (!isFinite(id) || id <= 0)
             return;
         const value = root.normalizeWorkspaceMode(mode);
+        // Pulsar otra vez el modo ya elegido no debe reescribir la
+        // configuración ni provocar otra recarga del compositor.
+        if (root.workspaceMode(id) === value)
+            return;
         const pairs = [];
         const parts = String(root.workspaceModes || "").split(";");
         for (let i = 0; i < parts.length; i++) {
@@ -704,6 +736,7 @@ Singleton {
             + "superHoldMs=%s\\n"
             + "floatingSizePercent=%s\\n"
             + "floatingCascade=%s\\n"
+            + "animationSpeed=%s\\n"
             + "barControls=%s\\n"
             + "centerOrder=%s\\n"
             + "wallpaperColor=%s\\n"
@@ -756,6 +789,7 @@ Singleton {
             root.superHoldMs,
             root.floatingSizePercent,
             root.floatingCascade,
+            root.animationSpeed.toFixed(2),
             BarState.controls.join(","),
             BarState.centerOrder.join(","),
             root.wallpaperColor,
@@ -813,6 +847,10 @@ Singleton {
     onSuperHoldMsChanged: saveTimer.restart()
     onFloatingSizePercentChanged: saveTimer.restart()
     onFloatingCascadeChanged: saveTimer.restart()
+    onAnimationSpeedChanged: {
+        saveTimer.restart();
+        animationApplyTimer.restart();
+    }
     onShowVolumePercentChanged: saveTimer.restart()
     onShowBrightnessPercentChanged: saveTimer.restart()
     onShowExtraDimPercentChanged: saveTimer.restart()
@@ -980,6 +1018,7 @@ Singleton {
             let superHold = root.superHoldMs;
             let floatingSize = root.floatingSizePercent;
             let floatingStep = root.floatingCascade;
+            let animSpeed = root.animationSpeed;
             let pctVolume = root.showVolumePercent;
             let pctBrightness = root.showBrightnessPercent;
             let pctExtraDim = root.showExtraDimPercent;
@@ -1078,6 +1117,11 @@ Singleton {
                     const parsed = parseInt(value, 10);
                     if (!isNaN(parsed))
                         floatingStep = Math.max(0, Math.min(96, parsed));
+                } else if (key === "animationSpeed") {
+                    const parsed = parseFloat(value);
+                    if (!isNaN(parsed))
+                        animSpeed = Math.max(0.5, Math.min(4.0,
+                            Math.round(parsed * 4) / 4));
                 } else if (key === "micShortcut") {
                     shortcut = value;
                 } else if (key === "showTemps") {
@@ -1194,6 +1238,7 @@ Singleton {
             root.superHoldMs = superHold;
             root.floatingSizePercent = floatingSize;
             root.floatingCascade = floatingStep;
+            root.animationSpeed = animSpeed;
             root.showVolumePercent = pctVolume;
             root.showBrightnessPercent = pctBrightness;
             root.showExtraDimPercent = pctExtraDim;
@@ -1241,6 +1286,7 @@ Singleton {
             root.applyWorkspaceModes();
             root.applySuperHoldDelay();
             root.applyFloatingDefaults();
+            root.applyAnimationSpeed();
             root.applyGlassAll();
             root.applyMicShortcut();
             root.applyKeyboardLayout();
@@ -1268,10 +1314,28 @@ Singleton {
     }
 
     Timer {
+        id: animationApplyTimer
+        interval: 220
+        repeat: false
+        onTriggered: root.applyAnimationSpeed()
+    }
+
+    Timer {
         id: workspaceModesTimer
         interval: 260
         repeat: false
         onTriggered: root.applyWorkspaceModes()
+    }
+
+    Process {
+        id: animationProc
+
+        onExited: {
+            if (root.animationApplyPending) {
+                root.animationApplyPending = false;
+                root.applyAnimationSpeed();
+            }
+        }
     }
 
     Process {

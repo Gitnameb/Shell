@@ -207,7 +207,14 @@ Rectangle {
         return String(address || "").trim();
     }
 
+    // Un doble clic accidental en el botón no debe cambiar dos veces.
+    property double modeToggleStamp: 0
+
     function toggleMode(): void {
+        const now = Date.now();
+        if (now - root.modeToggleStamp < 220)
+            return;
+        root.modeToggleStamp = now;
         WorkspaceModeState.setMode(root.workspaceId,
             root.floatingMode ? "mosaic" : "floating");
     }

@@ -1,0 +1,37 @@
+#!/bin/sh
+# Escribe la velocidad global de las animaciones en [animation] de Umbriel y
+# recarga la configuración. El valor es un multiplicador: 2.0 dura la mitad.
+#
+# Uso: shell-animation-speed <0.25..4.0>
+set -eu
+# El valor se escribe en TOML con punto decimal; la locale del usuario no debe
+# convertirlo en coma.
+LC_ALL=C
+export LC_ALL
+
+speed="${1:-2.00}"
+if ! awk -v value="$speed" 'BEGIN { exit !(value + 0 == value && value >= 0.25 && value <= 4.0) }'; then
+    echo "shell-animation-speed: velocidad inválida: $speed" >&2
+    exit 2
+fi
+speed=$(printf '%.2f' "$speed")
+
+repo_dir=$(cd "$(dirname "$0")/.." && pwd)
+config_set="${SHELL_CONFIG_SET:-}"
+if [ -z "$config_set" ] || [ ! -x "$config_set" ]; then
+    config_set="${repo_dir}/install/bin/shell-config-set"
+fi
+if [ ! -x "$config_set" ]; then
+    echo "shell-animation-speed: no se encontró shell-config-set" >&2
+    exit 1
+fi
+
+result=$("$config_set" --section animation "speed=$speed")
+if [ "$result" != "changed" ]; then
+    exit 0
+fi
+
+umbriel=$(command -v umbriel 2>/dev/null || true)
+if [ -n "$umbriel" ]; then
+    "$umbriel" msg config-reload >/dev/null 2>&1 || true
+fi

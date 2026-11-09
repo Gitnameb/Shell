@@ -118,6 +118,8 @@ Singleton {
         const id = Number(workspaceId);
         if (!isFinite(id) || id <= 0)
             return;
+        if (root.modeFor(id) === SettingsState.normalizeWorkspaceMode(mode))
+            return;
         SettingsState.setWorkspaceMode(id, mode);
         Qt.callLater(() => root.applyWorkspace(id));
     }
