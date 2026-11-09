@@ -54,6 +54,9 @@ Singleton {
     // (frecuencias, potencia, VRAM e historial) se posponen.
     property bool detailed: false
     property bool latencyBusy: false
+    // Mientras el monitor de tráfico está abierto se mide la latencia cada
+    // segundo. Al cerrarse el panel se detiene por completo.
+    property bool latencyActive: false
     readonly property string detailPath:
         (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp")
             + "/shell-stats-detailed"
@@ -155,12 +158,22 @@ Singleton {
         root.writeDetailed();
     }
 
-    // La latencia se mide una sola vez al abrir el panel, no cada segundo.
+    // Mide la latencia ahora. El temporizador de abajo lo repite cada segundo
+    // solo mientras el monitor de tráfico está visible.
     function refreshLatency(): void {
         if (latencyProc.running)
             return;
         root.latencyBusy = true;
         latencyProc.running = true;
+    }
+
+    function setLatencyActive(value: bool): void {
+        const active = value === true;
+        if (root.latencyActive === active)
+            return;
+        root.latencyActive = active;
+        if (active)
+            root.refreshLatency();
     }
 
     function resetPerf(kind: string): void {
@@ -318,6 +331,18 @@ Singleton {
         running: true
         repeat: false
         onTriggered: root.writeDetailed()
+    }
+
+    Timer {
+        id: latencyTimer
+
+        interval: 1000
+        repeat: true
+        running: root.latencyActive
+        onTriggered: {
+            if (!root.latencyBusy)
+                root.refreshLatency();
+        }
     }
 
     Timer {

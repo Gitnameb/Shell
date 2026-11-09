@@ -90,6 +90,10 @@ Singleton {
     // `overview`; el shell la usa para retirar sus paneles.
     readonly property bool overviewOpen: root.backend
         ? root.backend.overviewOpen === true : false
+    // Super mantenida, tal como la publica el compositor. El shell lo usa para
+    // retirar sus paneles en cuanto el gesto pasa a interactuar con ventanas.
+    readonly property bool modHeld: root.backend
+        ? root.backend.modHeld === true : false
     readonly property int windowVolumeSerial: root.backend
         ? Number(root.backend.windowVolumeSerial) || 0 : 0
     readonly property string windowVolumeId: root.backend

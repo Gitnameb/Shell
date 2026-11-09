@@ -516,7 +516,10 @@ Además, mantener Mod es un modo de **enfoque**: la ventana bajo el puntero
 pasa a ser la que recibe el teclado, aunque antes tuviera el foco otra. Así
 `Super+Q`, `Super+M` o `Super+Shift+H` actúan sobre la ventana que se está
 señalando y no sobre la última enfocada. Al mover el puntero con Mod pulsado,
-el foco cambia con él.
+el foco cambia con él. Mantener Mod también cuenta como interactuar fuera de
+un panel del shell: el panel se cierra en cuanto se activa el gesto, aunque la
+ventana señalada ya tuviera el foco lógico, y se vuelve a reafirmar el foco
+aunque el puntero no haya cambiado de ventana.
 
 ## 12. Calendario simple
 
@@ -686,12 +689,16 @@ cerrar).
 - Se eliminó «Enfocar ventana»; para eso ya sirve pulsar la ficha de la app.
 - La opción de flotar solo aparece cuando puede hacer algo. En un escritorio
   en modo flotante Umbriel rechaza `window-toggle-floating`, así que se oculta.
-  En mosaico la etiqueta y el icono cambian: «Hacer flotante»
-  (`window-duplicate`) o «Volver al mosaico» (`view-grid`).
-- Maximizar cambia entre «Maximizar» (`window-maximize`) y «Restaurar tamaño»
-  (`window-restore`); minimizar entre «Minimizar» (`window-minimize`) y
-  «Restaurar ventana» (`window-restore`). En pantalla completa se ocultan
-  flotar y maximizar, pero aparece «Salir de pantalla completa».
+  En mosaico la etiqueta cambia a «Hacer flotante»; el icono es el mismo
+  `window-float.svg` de dos ventanas superpuestas que dibuja la barra nativa.
+- Maximizar cambia entre «Maximizar» y «Restaurar tamaño»; minimizar entre
+  «Minimizar» y «Restaurar ventana». Los dos usan los SVG equivalentes a la
+  barra nativa (`window-maximize.svg` y `window-minimize.svg`), también en el
+  estado restaurado. En pantalla completa se ocultan flotar y maximizar, pero
+  aparece «Salir de pantalla completa» con el mismo icono de cuatro esquinas.
+- Cerrar usa el mismo aspa que la barra nativa (`window-close.svg`) y mover el
+  mismo `#` (`window-move.svg`). Fijar y volumen conservan los iconos del menú
+  (`window-pin`/`window-unpin` y `volume-3`/`volume-off`).
 - «Fijar siempre encima» viene de la barra de título y cambia a «Dejar de
   fijar» con el icono `window-unpin` cuando la ventana ya está fijada.
 - «Mover a escritorio» muestra los nueve botones solo al pulsar la fila; por
@@ -752,6 +759,15 @@ anidada: el borde compartido redimensionó desde ambos lados, los indicadores
 siguieron a la ventana durante el arrastre y el redimensionado, y el centro
 izquierdo intercambió las dos ventanas mientras el derecho las reubicó.
 
+### Cambiar entre mosaico y ventana
+
+Al pasar un escritorio de mosaico a ventana, cada ventana vuelve a la última
+posición y tamaño que tenía en modo ventana si ya había flotado antes. Solo
+las que nunca flotaron usan el tamaño por defecto y entran en la cascada. Una
+ventana nueva en modo ventana recibe ese tamaño en el configure inicial, así
+que su primera imagen ya sale a tamaño definitivo y no se redimensiona unos
+instantes después.
+
 ### Barra de título nativa
 
 La barra que dibuja Umbriel comparte la misma lista de acciones. En
@@ -780,7 +796,10 @@ buttons = ["volume", "float", "pin", "fullscreen", "move", "minimize", "maximize
 calendario, energía, batería, bandeja y el menú de apps al pulsar fuera. La
 franja de la barra queda libre para que sus controles sigan funcionando, pero
 un clic en el fondo de la barra, en una ficha de escritorio o en una app
-también cierra el panel abierto. Pulsar el mismo control lo alterna.
+también cierra el panel abierto. Pulsar el mismo control lo alterna. Además,
+enfocar una ventana o mantener Super cierra cualquier panel abierto: el shell
+escucha el estado real de Mod y retira sus capas antes de aplicar el enfoque
+por hover.
 
 ## 19. Orden de las fichas de la barra
 

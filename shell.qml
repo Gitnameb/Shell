@@ -6,6 +6,22 @@ import Quickshell.Networking
 import QtQml
 
 ShellRoot {
+    id: shellRoot
+
+    // Cierra todo lo que el usuario haya desplegado desde la barra. Se usa al
+    // enfocar una ventana o al mantener Super: ambas cosas son interacción con
+    // algo distinto del propio panel.
+    function closeShellPanels(): void {
+        LauncherState.hide();
+        NotificationState.hidePanel();
+        QuickPanelState.hide();
+        CalendarState.hide();
+        PowerState.hide();
+        BatteryState.hide();
+        TrayState.hide();
+        windowVolumePopup.hide();
+    }
+
     // Va antes que la barra para quedar debajo de ella dentro de la misma capa.
     Wallpaper {}
     DesktopIcons {}
@@ -22,11 +38,10 @@ ShellRoot {
         id: windowVolumePopup
     }
 
-    // Fase 3: controles de ventana al mantener Super, barra de título por
-    // ventana y elección inicial del modo de escritorio. El cambio de modo
-    // vive en el icono del escritorio activo, no en una barra aparte.
-    WelcomeMode {}
-
+    // Fase 3: controles de ventana al mantener Super y barra de título por
+    // ventana. El cambio de modo vive en el icono del escritorio activo, no en
+    // una barra aparte.
+    //
     // El botón de volumen de la barra de título nativa abre su tarjeta.
     Connections {
         target: CompositorState
@@ -44,14 +59,15 @@ ShellRoot {
         function onFocusedWindowChanged(): void {
             if (!CompositorState.focusedWindow)
                 return;
-            LauncherState.hide();
-            NotificationState.hidePanel();
-            QuickPanelState.hide();
-            CalendarState.hide();
-            PowerState.hide();
-            BatteryState.hide();
-            TrayState.hide();
-            windowVolumePopup.hide();
+            shellRoot.closeShellPanels();
+        }
+
+        // Mantener Super para señalar una ventana es interactuar con otra cosa:
+        // el panel se cierra antes de que llegue el enfoque por hover. Así el
+        // foco no queda retenido por el teclado del panel.
+        function onModHeldChanged(): void {
+            if (CompositorState.modHeld)
+                shellRoot.closeShellPanels();
         }
 
         // La vista general de Umbriel ocupa toda la pantalla. Al abrirse se
@@ -59,16 +75,9 @@ ShellRoot {
         function onOverviewOpenChanged(): void {
             if (!CompositorState.overviewOpen)
                 return;
-            LauncherState.hide();
-            NotificationState.hidePanel();
             NotificationState.clearBanners();
-            QuickPanelState.hide();
-            CalendarState.hide();
-            PowerState.hide();
-            BatteryState.hide();
-            TrayState.hide();
             SuperState.hide();
-            windowVolumePopup.hide();
+            shellRoot.closeShellPanels();
         }
     }
 

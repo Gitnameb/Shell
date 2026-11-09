@@ -68,8 +68,9 @@ Singleton {
     property string workspaceModeDefault: "mosaic"
     // Excepciones por escritorio, codificadas como «1=mosaic;2=floating».
     property string workspaceModes: "2=floating"
-    // Falso hasta que el usuario elige en la pantalla de bienvenida.
-    property bool workspaceModeChosen: false
+    // Se conserva por compatibilidad con settings.conf, pero ya no hay
+    // pantalla de bienvenida: los modos de partida se aplican directamente.
+    property bool workspaceModeChosen: true
 
     // Barra de título del shell para ventanas flotantes en backends sin cromo
     // nativo (Hyprland). El valor público es windowChrome; este se deriva de
@@ -1002,7 +1003,6 @@ Singleton {
             let btMin = root.btMinutes;
             let wsModeDefault = root.workspaceModeDefault;
             let wsModes = root.workspaceModes;
-            let wsModeChosen = root.workspaceModeChosen;
             let titlebar = root.nativeTitlebar;
             let lock = root.lockMinutes;
             let chromeStyle = root.windowChrome;
@@ -1138,8 +1138,6 @@ Singleton {
                     wsModeDefault = value === "mosaic" ? "mosaic" : "floating";
                 } else if (key === "workspaceModes") {
                     wsModes = value;
-                } else if (key === "workspaceModeChosen") {
-                    wsModeChosen = value === "1" || value === "true";
                 } else if (key === "nativeTitlebar") {
                     if (value === "always" || value === "never"
                             || value === "auto")
@@ -1215,7 +1213,9 @@ Singleton {
             root.btMinutes = btMin;
             root.workspaceModeDefault = wsModeDefault;
             root.workspaceModes = wsModes;
-            root.workspaceModeChosen = wsModeChosen;
+            // La pantalla de bienvenida ya no existe; un archivo antiguo con
+            // el valor a 0 no debe bloquear los modos por escritorio.
+            root.workspaceModeChosen = true;
             root.nativeTitlebar = titlebar;
             root.lockMinutes = lock;
             root.micShortcut = shortcut;

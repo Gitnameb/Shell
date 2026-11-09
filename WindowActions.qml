@@ -7,9 +7,9 @@ import QtQuick
 // derecho. Una sola lista evita que ambos sitios se desincronicen: mismo
 // orden, mismas etiquetas, mismos iconos y mismos atajos.
 //
-// El orden imita los botones de la barra de título nativa de Umbriel
-// (flotar, fijar, mover, minimizar, maximizar y cerrar) y añade pantalla
-// completa antes de cerrar.
+// El orden y los iconos imitan los botones de la barra de título nativa de
+// Umbriel. Fijar y volumen conservan los iconos del menú del clic derecho,
+// que es lo que pidió el usuario.
 Singleton {
     id: root
 
@@ -50,9 +50,9 @@ Singleton {
             out.push({
                 key: "float",
                 label: floating ? "Volver al mosaico" : "Hacer flotante",
-                icon: floating ? "view-grid" : "",
-                source: floating ? "" : ShellIcons.src("window-float"),
-                glyph: floating ? "▦" : "❐",
+                icon: "",
+                source: ShellIcons.src("window-float"),
+                glyph: "❐",
                 shortcut: "Super+T",
                 active: floating,
                 danger: false
@@ -77,9 +77,9 @@ Singleton {
                 key: "fullscreen",
                 label: fullscreen
                     ? "Salir de pantalla completa" : "Pantalla completa",
-                icon: fullscreen ? "view-restore" : "",
-                source: fullscreen ? "" : ShellIcons.src("window-fullscreen"),
-                glyph: fullscreen ? "❐" : "⛶",
+                icon: "",
+                source: ShellIcons.src("window-fullscreen"),
+                glyph: "⛶",
                 shortcut: "Super+F",
                 active: fullscreen,
                 danger: false
@@ -90,7 +90,8 @@ Singleton {
             out.push({
                 key: "move",
                 label: "Mover a escritorio",
-                icon: "go-jump",
+                icon: "",
+                source: ShellIcons.src("window-move"),
                 glyph: "#",
                 shortcut: "Super+Shift+1…9",
                 active: false,
@@ -103,8 +104,9 @@ Singleton {
             out.push({
                 key: "minimize",
                 label: minimized ? "Restaurar ventana" : "Minimizar",
-                icon: minimized ? "window-restore" : "window-minimize",
-                glyph: minimized ? "❐" : "—",
+                icon: "",
+                source: ShellIcons.src("window-minimize"),
+                glyph: "—",
                 shortcut: "Super+Shift+H",
                 active: minimized,
                 danger: false
@@ -116,9 +118,9 @@ Singleton {
             out.push({
                 key: "maximize",
                 label: maximized ? "Restaurar tamaño" : "Maximizar",
-                icon: maximized ? "window-restore" : "",
-                source: maximized ? "" : ShellIcons.src("window-maximize"),
-                glyph: maximized ? "❐" : "▣",
+                icon: "",
+                source: ShellIcons.src("window-maximize"),
+                glyph: "▣",
                 shortcut: "Super+M",
                 active: maximized,
                 danger: false
@@ -129,7 +131,8 @@ Singleton {
             out.push({
                 key: "close",
                 label: "Cerrar ventana",
-                icon: "window-close",
+                icon: "",
+                source: ShellIcons.src("window-close"),
                 glyph: "×",
                 shortcut: "Super+Q",
                 active: false,

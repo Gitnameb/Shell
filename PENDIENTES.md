@@ -15,12 +15,20 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   al cristal del shell. Las paletas de acento y de fondo usan azul marino,
   vino, rosa, verde, arena, negro, blanco y el acento actual; las opciones ya
   no llevan descripciones.
+- **Ventanas, iconos y foco (2026-11-09).** Se eliminó la pantalla de
+  bienvenida que preguntaba el modo de ventanas; los modos de partida se
+  aplican directamente. El menú del clic derecho usa los mismos iconos que la
+  barra de título (salvo fijar y volumen, que conservan los del menú). Cambiar
+  de mosaico a ventana ya conserva la posición y el tamaño que el usuario dejó
+  en modo ventana. Mantener Super cierra los paneles del shell y enfoca la
+  ventana bajo el puntero. Las ventanas nuevas en modo ventana se configuran
+  con su tamaño final antes de mapear, sin el redimensionado posterior.
 - **Monitor de red y muestreo ligero (2026-11-09).** La vista se llama
   «Monitor de tráfico de red». `stats.py` ya no hace `ping` cada 10 s: la
-  latencia se mide una sola vez al abrir la vista. Fuera del panel solo lee la
-  temperatura de CPU/GPU y el tráfico de la barra; carga, núcleos,
-  frecuencias, potencia, VRAM e historial se consultan solo con la vista de
-  rendimiento abierta.
+  latencia se mide cada segundo solo mientras el monitor está abierto y se
+  detiene al cerrarlo. Fuera del panel solo lee la temperatura de CPU/GPU y el
+  tráfico de la barra; carga, núcleos, frecuencias, potencia, VRAM e historial
+  se consultan solo con la vista de rendimiento abierta.
 - **Volumen por ventana y sonido de avisos (2026-11-09).** El altavoz de la
   barra de título nativa abre una tarjeta del shell con silencio y deslizador
   para esa ventana; el menú de opciones de la app conserva la misma fila. Se
@@ -227,9 +235,8 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   - instancia `qs -c shell`;
   - cerrojos y temporales `config.toml.shell-lock` y `.shell-*`;
   - namespaces de capas (`shell-bar`, `shell-calendar`, `shell-osd`, etc.);
-  - cadenas visibles: bienvenida, autor de las notificaciones, nombre de
-    equipo por defecto, contraseña inicial y perfil del hotspot
-    (`shell-hotspot`);
+  - cadenas visibles: autor de las notificaciones, nombre de equipo por
+    defecto, contraseña inicial y perfil del hotspot (`shell-hotspot`);
   - marcadores internos: heredoc `SHELL`, `$0` de los `sh -c`, marcadores
     `SHELL-THEME` (con migración del bloque antiguo en `gtk.css`) y variables
     `SHELL_COMPOSITOR`, `SHELL_ALARMS_FILE` y `SHELL_TIMER_FILE`;
@@ -436,7 +443,9 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   (stacking), una app que se abre toma el mismo tamaño por defecto que tendría
   al cambiar el escritorio de Mosaico a Flotante (`default_width_fraction` ×
   `default_height_fraction`) y entra en la siguiente posición de la cascada.
-  Antes conservaba el tamaño que pedía la app y solo se colocaba en cascada.
+  Ese tamaño se envía ya en el configure inicial, así que la primera imagen
+  aparece con su tamaño definitivo y no se redimensiona después. Antes
+  conservaba el tamaño que pedía la app y solo se colocaba en cascada.
   Un tamaño explícito de regla o recordado de una flotación anterior sigue
   ganando; los diálogos mantienen su tamaño y se centran sobre su padre.
   Verificado en anidado: dos ventanas nuevas quedaron en 568×262 en 189,87 y
@@ -513,9 +522,10 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   `[layout.stacking]` gana `default_width_fraction`, `default_height_fraction`
   y `cascade_step`. Flotar una ventana de un mosaico ya no conserva el tamaño
   del mosaico: la primera vez usa el 60 % del área útil y se centra. Si la
-  ventana ya flotó o se redimensionó, conserva su tamaño. Cambiar un escritorio
-  entero de mosaico a flotante coloca las ventanas en cascada en vez de
-  apilarlas. Ajustes → «Tamaño de ventanas flotantes» (40–80 %, pasos de 5) y
+  ventana ya flotó o se redimensionó, conserva su tamaño y su posición.
+  Cambiar un escritorio entero de mosaico a flotante coloca en cascada solo
+  las ventanas que nunca flotaron; las demás vuelven a donde el usuario las
+  dejó. Ajustes → «Tamaño de ventanas flotantes» (40–80 %, pasos de 5) y
   «Separación en cascada» (Auto o 8–96 px); se guarda como
   `floatingSizePercent` y `floatingCascade` y lo aplica
   `scripts/shell-floating-defaults`. Verificado en anidado: 0,6 da 568×298 en

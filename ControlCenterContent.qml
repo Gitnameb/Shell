@@ -702,14 +702,14 @@ ColumnLayout {
     }
 
     // Solo se activa el muestreo detallado con una vista que lo use abierta.
-    // La latencia se mide una vez al abrir el monitor de red, no cada segundo.
+    // La latencia se mide cada segundo solo mientras el monitor de tráfico
+    // está abierto; al cerrar el panel se detiene por completo.
     function updateStatsMode(): void {
         const detailed = root.active
             && (root.view === "cpu" || root.view === "gpu"
                 || root.view === "net");
         SystemStats.setDetailed(detailed);
-        if (root.active && root.view === "net")
-            SystemStats.refreshLatency();
+        SystemStats.setLatencyActive(root.active && root.view === "net");
     }
 
     function viewTitle(): string {

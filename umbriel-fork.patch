@@ -22,7 +22,7 @@ index 1146a02c..f713076f 100644
  Buttons show a drawn X for close, an outlined square for maximize, and an underscore for minimize. `button_glyph` controls when those symbols appear:
  
 diff --git a/docs/user/input.md b/docs/user/input.md
-index 47c4faa4..3cb53409 100644
+index 47c4faa4..d5edcd69 100644
 --- a/docs/user/input.md
 +++ b/docs/user/input.md
 @@ -6,12 +6,15 @@ Configure keyboard, pointer, touchpad, tablet, cursor, and focus behavior under
@@ -36,7 +36,7 @@ index 47c4faa4..3cb53409 100644
  mod_right_double_click = "none"
  ```
  
-+`mod_hold_delay_ms` is how long Mod must stay down before the desktop acts as if it is being held: window content becomes inert and the overlay title bars appear. A shorter press is treated as a tap and can open the shell launcher without dimming the screen or releasing a game's pointer. Raise it if a quick tap still feels like a hold; lower it if the hold feels sluggish. The value is clamped between 50 and 2000 ms and takes effect on the next config reload.
++`mod_hold_delay_ms` is how long Mod must stay down before the desktop acts as if it is being held: window content becomes inert and the overlay title bars appear. A shorter press is treated as a tap and can open the shell launcher without dimming the screen or releasing a game's pointer. Raise it if a quick tap still feels like a hold; lower it if the hold feels sluggish. The value is clamped between 50 and 2000 ms and takes effect on the next config reload. While Mod is held, the window under the pointer takes focus even when a layer surface had the keyboard, including when the pointer returns to the same window; this lets a shell close its panels and hand the keyboard to that window.
 +
  `middle_click_paste = false` disables primary-selection paste, including Shift+Insert. The regular Ctrl+C and Ctrl+V clipboard is unaffected. Applications started while primary selection is disabled must be restarted after it is re-enabled.
  
@@ -134,7 +134,7 @@ index 072687c7..14b91eee 100644
  Layer-shell blur is off by default. Every matching rule contributes its settings, and later values take precedence.
  
 diff --git a/docs/user/layout.md b/docs/user/layout.md
-index 29a8e7b9..e0052468 100644
+index 29a8e7b9..41001ed8 100644
 --- a/docs/user/layout.md
 +++ b/docs/user/layout.md
 @@ -28,12 +28,31 @@ mode = "stacking"
@@ -142,9 +142,9 @@ index 29a8e7b9..e0052468 100644
  ```
  
 -Every ordinary window opens floating at its preferred size. Oversized automatic windows are reduced proportionally to fit the usable area, including title bars and margins. Client-driven size changes keep automatic placement centered until you move the window. New windows start at the center and shift diagonally when they would completely cover another window whose upper-left corner is visible. Placement includes title bars and borders. The offset clears the decorated title bar, with a minimum of 32 logical pixels, and wraps to fresh diagonals at the output boundary, including when several windows open simultaneously. Dialogs center over their parent; explicit position rules take precedence.
-+Every ordinary window opens floating at the configured default size, `default_width_fraction` by `default_height_fraction` of the usable area, and joins the cascade. A window that opens directly in stacking looks the same as one that arrived when a tiled workspace switched to stacking. New windows start at the center and shift diagonally when they would completely cover another window whose upper-left corner is visible. Placement includes title bars and borders. The offset clears the decorated title bar, with a minimum of 32 logical pixels, and wraps to fresh diagonals at the output boundary, including when several windows open simultaneously. A size set by an explicit window rule, or remembered from an earlier floating episode, still wins. Dialogs keep their own size and center over their parent; explicit position rules take precedence.
++Every ordinary window opens floating at the configured default size, `default_width_fraction` by `default_height_fraction` of the usable area, and joins the cascade. That size is sent in the opening configure, so the first frame is already final and the window does not visibly resize after mapping. A window that opens directly in stacking looks the same as one that arrived when a tiled workspace switched to stacking. New windows start at the center and shift diagonally when they would completely cover another window whose upper-left corner is visible. Placement includes title bars and borders. The offset clears the decorated title bar, with a minimum of 32 logical pixels, and wraps to fresh diagonals at the output boundary, including when several windows open simultaneously. A size set by an explicit window rule, or remembered from an earlier floating episode, still wins. Dialogs keep their own size and center over their parent; explicit position rules take precedence.
 +
-+When a window leaves a tiling layout for floating, its first floating episode does not keep the tile size: a lone tile can fill the output, and floating it would stay full-screen. Instead it takes `default_width_fraction` by `default_height_fraction` of the usable area, then joins the cascade. A window that has floated before keeps the size and position you last gave it, including a manual resize. Switching a whole workspace from a tiling layout to stacking lays its windows out in cascade order, so they do not pile up on top of each other, and new windows open there with the same size and cascade.
++When a window leaves a tiling layout for floating, its first floating episode does not keep the tile size: a lone tile can fill the output, and floating it would stay full-screen. Instead it takes `default_width_fraction` by `default_height_fraction` of the usable area, then joins the cascade. A window that has floated before keeps the size and position you last gave it, including a manual resize. Switching a whole workspace from a tiling layout to stacking restores the position and size each window had during its last stacking episode. A window that has never floated takes the default size and joins the cascade, so windows new to stacking do not pile up. New windows open there with the same size and cascade.
 +
 +```toml
 +[layout.stacking]
@@ -4845,7 +4845,7 @@ index 11f0d54d..63e72175 100644
      if (m_scratchpadManager != nullptr) {
        m_scratchpadManager->remove(view);
 diff --git a/src/server/server_keybinds.cpp b/src/server/server_keybinds.cpp
-index 504a98c3..4b716ebc 100644
+index 504a98c3..9a598aca 100644
 --- a/src/server/server_keybinds.cpp
 +++ b/src/server/server_keybinds.cpp
 @@ -9,6 +9,7 @@
@@ -4864,7 +4864,7 @@ index 504a98c3..4b716ebc 100644
    } // namespace
  
    bool Server::handleVtSwitch(uint32_t keysym, uint32_t modifiers) {
-@@ -317,6 +319,131 @@ namespace umbriel {
+@@ -317,6 +319,133 @@ namespace umbriel {
      return nullptr;
    }
  
@@ -4950,19 +4950,21 @@ index 504a98c3..4b716ebc 100644
 +    if (!m_modInputShield || m_sessionLocked || view == nullptr || !view->mapped()) {
 +      view = nullptr;
 +    }
-+    if (view == m_modHoverView) {
-+      return;
++    if (view != m_modHoverView) {
++      if (m_modHoverView != nullptr) {
++        m_modHoverView->setModHover(false);
++      }
++      m_modHoverView = view;
++      if (m_modHoverView != nullptr) {
++        m_modHoverView->setModHover(true);
++      }
 +    }
 +    if (m_modHoverView != nullptr) {
-+      m_modHoverView->setModHover(false);
-+    }
-+    m_modHoverView = view;
-+    if (m_modHoverView != nullptr) {
-+      m_modHoverView->setModHover(true);
 +      // Mantener Super es también un modo de enfoque: la ventana bajo el
 +      // puntero pasa a ser la que recibirá el teclado, no la última que tenía
-+      // el foco. Así los atajos de cerrar, maximizar o mover actúan sobre la
-+      // ventana que se está señalando.
++      // el foco. Se comprueba aunque la ventana ya estuviera bajo el puntero:
++      // un panel del shell puede haber tomado el teclado mientras tanto y,
++      // sin esto, el panel no se cerraba ni la ventana se enfocaba.
 +      View* target = m_modHoverView->placementRoot();
 +      if (target != nullptr) {
 +        target = target->inputDelegate();
@@ -5184,7 +5186,7 @@ index 2a3b3bcc..d223b427 100644
      m_workspace = workspace;
      if (m_workspace != nullptr) {
 diff --git a/src/view/view.h b/src/view/view.h
-index 52a43f63..65360674 100644
+index 52a43f63..9c10dd7b 100644
 --- a/src/view/view.h
 +++ b/src/view/view.h
 @@ -1,6 +1,7 @@
@@ -5270,7 +5272,7 @@ index 52a43f63..65360674 100644
      void updateBlur();
      void updateBlur(int contentWidth, int contentHeight);
      SurfaceBlurOptions blurOptions() const;
-@@ -775,9 +809,17 @@ namespace umbriel {
+@@ -775,9 +809,22 @@ namespace umbriel {
          const wlr_box usable, const std::optional<WindowPosition>& position = std::nullopt,
          const std::optional<std::array<int, 2>> size = std::nullopt
      );
@@ -5278,6 +5280,11 @@ index 52a43f63..65360674 100644
 +    // completely cover another visible float. `origin` and the result are
 +    // content origins, so the decorated frame takes part in the comparison.
 +    FloatingPoint cascadeFloatingPlacement(FloatingPoint origin, int width, int height) const;
++    // The default size a window gets on a stacking workspace when no floating
++    // size rule applies. Used both by the opening configure (so the first
++    // frame already has its final size) and by the first placement.
++    std::array<int, 2>
++    stackingDefaultFloatingSize(const wlr_box& usable, const ResolvedLayoutConfig* layout = nullptr) const;
 +    // `openingPlacement` marks the first placement of a window that is mapping.
 +    // On a stacking workspace that has no size rule it starts at the configured
 +    // default size and joins the cascade, matching a Mosaico->Flotante switch.
@@ -5289,7 +5296,7 @@ index 52a43f63..65360674 100644
      );
      // The output box a fullscreen window covers: its workspace's output, else the one under it.
      wlr_box fullscreenArea() const;
-@@ -804,6 +846,7 @@ namespace umbriel {
+@@ -804,6 +851,7 @@ namespace umbriel {
      // Fade the shade in while a dialog is attached and out once none is; animation.dialogs times it.
      void retargetModalShade();
      void syncModalShade();
@@ -5297,7 +5304,7 @@ index 52a43f63..65360674 100644
      void releaseDialog();
      [[nodiscard]] bool inheritScratchpadFromParent(bool restoreTiled);
      void syncTransientSceneParent();
-@@ -935,12 +978,18 @@ namespace umbriel {
+@@ -935,12 +983,18 @@ namespace umbriel {
      wlr_scene_rect* m_modalShade = nullptr;
      // 0 to 1 of animation.dialogs.dim.
      AnimatedValue m_modalShadeAlpha{0.0};
@@ -5316,7 +5323,7 @@ index 52a43f63..65360674 100644
      std::optional<bool> m_xdgDecorationPreference;
      std::optional<bool> m_legacyDecorationPreference;
      std::optional<TitleBarMode> m_titleBarMode;
-@@ -1078,6 +1127,7 @@ namespace umbriel {
+@@ -1078,6 +1132,7 @@ namespace umbriel {
      bool m_allowShortcutsInhibit = true;
      float m_dragOpacity = 1.0F;
      float m_overviewOpacity = 1.0F;
@@ -5634,12 +5641,32 @@ index 3d39675f..89702763 100644
      applyDynamicRules();
      if (notifyAloneStateChanged() && m_workspace != nullptr) {
 diff --git a/src/view/view_floating.cpp b/src/view/view_floating.cpp
-index a28244f7..2b1c048e 100644
+index a28244f7..2c17cf95 100644
 --- a/src/view/view_floating.cpp
 +++ b/src/view/view_floating.cpp
-@@ -328,25 +328,43 @@ namespace umbriel {
+@@ -327,26 +327,57 @@ namespace umbriel {
+     return keepTitleBarReachable(origin, titleBarHeight(), usable);
    }
  
++  std::array<int, 2>
++  View::stackingDefaultFloatingSize(const wlr_box& usable, const ResolvedLayoutConfig* layout) const {
++    if (usable.width <= 0 || usable.height <= 0) {
++      return {0, 0};
++    }
++    if (layout == nullptr && m_workspace != nullptr) {
++      layout = &m_workspace->layoutConfig();
++    }
++    if (layout == nullptr) {
++      return {0, 0};
++    }
++    const wlr_box area = floatingMarginArea(usable, layout);
++    const int availableHeight = std::max(1, area.height - titleBarHeight());
++    const SizeHints hints = sizeHints();
++    const int width = clampWidth(floatingFractionSize(layout->stacking.defaultWidthFraction, usable.width), hints);
++    const int height = clampHeight(floatingFractionSize(layout->stacking.defaultHeightFraction, usable.height), hints);
++    return {width, std::min(height, availableHeight)};
++  }
++
    void View::placeInUsableArea(
 -      const std::optional<WindowPosition>& position, std::optional<std::array<int, 2>> placementSize
 +      const std::optional<WindowPosition>& position, std::optional<std::array<int, 2>> placementSize,
@@ -5672,13 +5699,7 @@ index a28244f7..2b1c048e 100644
 +      // it takes the same default size a tiled window gets when the workspace
 +      // switches to cascading. The cascade below then puts it in the next
 +      // diagonal slot. The size leaves room for the title bar and layout edges.
-+      const ResolvedLayoutConfig::Stacking& stacking = m_workspace->layoutConfig().stacking;
-+      const wlr_box area = floatingMarginArea(usable);
-+      const int availableHeight = std::max(1, area.height - titleBarHeight());
-+      const SizeHints hints = sizeHints();
-+      const int width = clampWidth(floatingFractionSize(stacking.defaultWidthFraction, usable.width), hints);
-+      int height = clampHeight(floatingFractionSize(stacking.defaultHeightFraction, usable.height), hints);
-+      height = std::min(height, availableHeight);
++      const auto [width, height] = stackingDefaultFloatingSize(usable);
 +      if (width > 0 && height > 0) {
 +        placementSize = std::array{width, height};
 +        requestFloatingSize(width, height);
@@ -5687,7 +5708,7 @@ index a28244f7..2b1c048e 100644
        const auto [width, height] = floatingSize();
        const wlr_box area = floatingMarginArea(usable);
        const int availableHeight = std::max(1, area.height - titleBarHeight());
-@@ -380,41 +398,52 @@ namespace umbriel {
+@@ -380,41 +411,52 @@ namespace umbriel {
        );
        origin = centeredOverShown(parent->targetBox(), shownIn, size[0], size[1]);
      } else if (m_workspace != nullptr && m_workspace->layoutMode() == LayoutMode::Stacking) {
@@ -5769,7 +5790,7 @@ index a28244f7..2b1c048e 100644
    void View::requestFloatingSize(int width, int height) {
      if (m_xsurface != nullptr) {
        m_xFloatingRequestBase = currentSize();
-@@ -483,6 +512,22 @@ namespace umbriel {
+@@ -483,6 +525,22 @@ namespace umbriel {
      if (m_floating.size()) {
        return *m_floating.size();
      }
@@ -5793,7 +5814,7 @@ index a28244f7..2b1c048e 100644
      // then fall back to the layout target and committed geometry.
      int width = currentSize().width;
 diff --git a/src/view/view_lifecycle.cpp b/src/view/view_lifecycle.cpp
-index c32740da..b76f1727 100644
+index c32740da..642b1374 100644
 --- a/src/view/view_lifecycle.cpp
 +++ b/src/view/view_lifecycle.cpp
 @@ -384,7 +384,7 @@ namespace umbriel {
@@ -5805,6 +5826,33 @@ index c32740da..b76f1727 100644
        // Enable + clip the float against its home output now that per-output
        // visibility is resolved data-side (no per-render-pass pass to do it).
        if (m_workspace != nullptr) {
+@@ -1046,6 +1046,26 @@ namespace umbriel {
+         } else {
+           const wlr_box usable = openingUsableArea(targetOutput);
+           m_openingFloatingRuleSize = floatingRuleSize(rule, hints, usable);
++          // A window opening on a stacking workspace with no size rule should
++          // be configured at the same default size it will keep. Without this
++          // it mapped at the client's size and then visibly resized after the
++          // first frame, which made window mode feel less native than tiling.
++          if (layoutFloats
++              && !openingParented()
++              && !passiveUtility
++              && !rule.defaultFloatingWidth
++              && !rule.defaultFloatingWidthPx
++              && !rule.defaultFloatingHeight
++              && !rule.defaultFloatingHeightPx) {
++            const ResolvedLayoutConfig globalLayout =
++                target == nullptr ? resolveGlobalLayout(config()) : ResolvedLayoutConfig{};
++            const ResolvedLayoutConfig* openingLayout =
++                target != nullptr ? &target->layoutConfig() : &globalLayout;
++            const auto defaultSize = stackingDefaultFloatingSize(usable, openingLayout);
++            if (defaultSize[0] > 0 && defaultSize[1] > 0) {
++              m_openingFloatingRuleSize = defaultSize;
++            }
++          }
+           requestFloatingSize(m_openingFloatingRuleSize[0], m_openingFloatingRuleSize[1]);
+         }
+ 
 diff --git a/src/view/view_state.cpp b/src/view/view_state.cpp
 index c171665e..55f32d75 100644
 --- a/src/view/view_state.cpp
@@ -6068,7 +6116,7 @@ index ead8100c..1eb50bf1 100644
      // Show one window of the scratchpad at a time: the one after (`direction` > 0) or before the window on show,
      // wrapping at the ends. A hidden pad shows its most recently focused window.
 diff --git a/src/workspace/workspace.cpp b/src/workspace/workspace.cpp
-index abe1f377..3be84bfb 100644
+index abe1f377..65877d19 100644
 --- a/src/workspace/workspace.cpp
 +++ b/src/workspace/workspace.cpp
 @@ -439,7 +439,10 @@ namespace umbriel {
@@ -6465,7 +6513,7 @@ index abe1f377..3be84bfb 100644
      endLayoutMotion();
      // Remember each column's extent on its leading view; the other members join the new layout without one.
      if (isMovingFromScroll) {
-@@ -2545,9 +2878,12 @@ namespace umbriel {
+@@ -2545,9 +2878,17 @@ namespace umbriel {
          tiledViews.push_back(view);
        }
      }
@@ -6475,11 +6523,16 @@ index abe1f377..3be84bfb 100644
      if (m_layoutConfig.mode == LayoutMode::Stacking) {
        for (View* view : tiledViews) {
 -        view->floatForStackingLayout();
-+        view->floatForStackingLayout(/*cascadePosition=*/true);
++        // Conservar la última posición y tamaño de cada ventana en modo
++        // ventana. Antes se pasaba true y cada cambio mosaico→ventana volvía a
++        // cascadear desde el centro, perdiendo lo que el usuario había movido
++        // o redimensionado. Si una ventana nunca flotó, no hay origen
++        // recordado y el propio setFloating la coloca en cascada igualmente.
++        view->floatForStackingLayout(/*cascadePosition=*/false);
        }
        tiledViews.clear();
      } else {
-@@ -2559,6 +2895,22 @@ namespace umbriel {
+@@ -2559,6 +2900,22 @@ namespace umbriel {
      m_layout = createLayout(m_layoutMode);
      m_layout->setConfig(&m_layoutConfig);
      m_layout->setConstraints(&viewLayoutConstraints);
@@ -6502,7 +6555,7 @@ index abe1f377..3be84bfb 100644
      for (View* view : tiledViews) {
        m_layout->insertView(view, static_cast<int>(m_layout->columns().size()));
      }
-@@ -2589,6 +2941,7 @@ namespace umbriel {
+@@ -2589,6 +2946,7 @@ namespace umbriel {
        }
      }
      markArrange();
@@ -6510,7 +6563,7 @@ index abe1f377..3be84bfb 100644
      refreshDropZonePreview(*m_group->server());
    }
  
-@@ -3004,13 +3357,19 @@ namespace umbriel {
+@@ -3004,13 +3362,19 @@ namespace umbriel {
      m_workspaceAxis = axis;
    }
  

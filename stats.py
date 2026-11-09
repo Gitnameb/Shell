@@ -2,7 +2,8 @@
 """Muestreo de CPU, GPU y red para el shell.
 
 Imprime una línea JSON por segundo. No necesita privilegios: usa /proc,
-/sys/class/hwmon y /sys/class/drm, y `ping` al gateway para la latencia.
+/sys/class/hwmon y /sys/class/drm. La latencia se consulta aparte con
+`--latency`, solo mientras el monitor de tráfico está abierto.
 """
 
 import glob
