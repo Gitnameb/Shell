@@ -10,9 +10,11 @@ Pill {
 
     active: MusicState.playing
     draggable: true
-    // La portada llega hasta los bordes laterales de la píldora: sin relleno
-    // izquierdo y con el ancho del texto compensado a la derecha.
-    horizontalPadding: 0
+    // La portada y el bloque de texto comparten la misma caja que el resto de
+    // widgets de la barra. La píldora completa mide Theme.itemHeight igual que
+    // los demás controles, pero el contenido no sobresale por arriba ni por
+    // abajo.
+    horizontalPadding: 3
     // Mientras se mantiene Super, el borde derecho estira la píldora para
     // leer títulos largos, como el modo de configuración rápida del mockup.
     // En la barra vertical solo se muestra la portada: el título y el
@@ -22,12 +24,13 @@ Pill {
     // Ancho del bloque de texto. Se calcula desde el ancho elegido, nunca
     // desde root.width: si dependiera del ancho real, la píldora y su
     // contenido se darían tamaño mutuamente y la barra temblaría al
-    // mantener Super. La suma fija es portada (34) + dos espacios (4 + 4)
-    // + margen derecho (8).
+    // mantener Super. La suma fija es portada (barIconSize) + espacio (4) +
+    // relleno horizontal (3 + 3).
     readonly property real textWidth: root.compact ? 0
         : (SettingsState.musicWidth <= 0
             ? 90
-            : Math.max(90, SettingsState.musicWidth - 50))
+            : Math.max(90, SettingsState.musicWidth
+                - (SettingsState.barIconSize + 10)))
 
     onClicked: {
         const point = root.mapToItem(null, root.width / 2, root.height / 2);
@@ -44,12 +47,10 @@ Pill {
             id: cover
 
             anchors.verticalCenter: parent.verticalCenter
-            // Portada a todo el alto de la píldora, pegada al borde
-            // izquierdo. La imagen se recorta con la misma curva que el
-            // widget para que no asome ningún pico cuadrado.
-            width: Theme.itemHeight
-            height: Theme.itemHeight
-            radius: Theme.itemRadius
+            // Portada del mismo alto que el resto de iconos de la barra.
+            width: SettingsState.barIconSize
+            height: SettingsState.barIconSize
+            radius: 6
             color: Theme.surfaceAlt
             clip: true
 
@@ -78,7 +79,7 @@ Pill {
                 visible: !coverImage.visible
                 source: ShellIcons.src("music")
                 color: Theme.accent
-                size: Math.min(22, SettingsState.barIconSize)
+                size: Math.min(18, SettingsState.barIconSize)
                 fallback: "♪"
             }
 
@@ -88,7 +89,7 @@ Pill {
                 id: coverMask
 
                 anchors.fill: parent
-                radius: Theme.itemRadius
+                radius: 6
                 color: "white"
                 visible: false
                 layer.enabled: true
@@ -97,7 +98,7 @@ Pill {
 
         Item {
             width: root.textWidth
-            height: Theme.itemHeight
+            height: SettingsState.barIconSize
             visible: !root.compact
 
             Column {
@@ -132,8 +133,8 @@ Pill {
                 visible: root.hovered && MusicState.available
 
                 Rectangle {
-                    width: 24
-                    height: 24
+                    width: 22
+                    height: 20
                     radius: 6
                     color: prevMouse.containsMouse ? Theme.hover : "transparent"
 
@@ -142,7 +143,7 @@ Pill {
                         source: ShellIcons.src("prev")
                         color: MusicState.canGoPrevious
                             ? Theme.muted : Theme.faint
-                        size: Math.min(16, SettingsState.barIconSize)
+                        size: Math.min(14, SettingsState.barIconSize)
                     }
 
                     MouseArea {
@@ -156,8 +157,8 @@ Pill {
                 }
 
                 Rectangle {
-                    width: 26
-                    height: 24
+                    width: 24
+                    height: 20
                     radius: 6
                     color: playMouse.containsMouse ? Theme.accentSoft : "transparent"
 
@@ -166,7 +167,7 @@ Pill {
                         source: ShellIcons.src(MusicState.playing
                             ? "pause" : "play")
                         color: Theme.accent
-                        size: Math.min(16, SettingsState.barIconSize)
+                        size: Math.min(14, SettingsState.barIconSize)
                     }
 
                     MouseArea {
@@ -179,8 +180,8 @@ Pill {
                 }
 
                 Rectangle {
-                    width: 24
-                    height: 24
+                    width: 22
+                    height: 20
                     radius: 6
                     color: nextMouse.containsMouse ? Theme.hover : "transparent"
 
@@ -189,7 +190,7 @@ Pill {
                         source: ShellIcons.src("next")
                         color: MusicState.canGoNext
                             ? Theme.muted : Theme.faint
-                        size: Math.min(16, SettingsState.barIconSize)
+                        size: Math.min(14, SettingsState.barIconSize)
                     }
 
                     MouseArea {
@@ -202,13 +203,6 @@ Pill {
                     }
                 }
             }
-        }
-
-        // Margen derecho para que el texto no toque el borde de la píldora
-        // ahora que la portada ocupa todo el lado izquierdo.
-        Item {
-            width: root.compact ? 0 : 8
-            height: 1
         }
     }
 

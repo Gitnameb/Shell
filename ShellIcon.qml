@@ -13,6 +13,10 @@ Item {
     property string source: ""
     property color color: Theme.text
     property real size: 16
+    // Ajuste fino del tamaño dibujado. Los SVG no ocupan todo el viewBox: unos
+    // dibujan más alto que otros. La barra usa este factor para que todos los
+    // iconos tengan un peso visual parecido sin cambiar la caja de 22 px.
+    property real zoom: 1.0
     property string fallback: ""
     property bool tint: true
     // Los SVG se rasterizan al doble para que se vean nítidos al escalar.
@@ -32,6 +36,8 @@ Item {
 
     implicitWidth: root.size
     implicitHeight: root.size
+    scale: root.zoom
+    transformOrigin: Item.Center
 
     Image {
         id: iconImage

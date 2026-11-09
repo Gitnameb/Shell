@@ -231,8 +231,8 @@ Rectangle {
     }
 
     implicitWidth: Math.max(root.compact ? 26 : 0,
-        content.implicitWidth + 14,
-        root.modeSwitch ? 38 : 0)
+        content.implicitWidth + 8,
+        root.modeSwitch ? SettingsState.barIconSize + 4 : 0)
     implicitHeight: root.compact ? 28 : 34
     radius: 8
     // El escritorio actual lleva el mismo fondo que al pasar el ratón, así se
@@ -257,9 +257,9 @@ Rectangle {
 
                 required property var modelData
 
-                width: 26
-                height: 26
-                radius: 7
+                width: SettingsState.barIconSize
+                height: SettingsState.barIconSize
+                radius: 6
                 color: modelData.tile
                 opacity: root.modeSwitch
                     ? 0.24
@@ -280,8 +280,9 @@ Rectangle {
                     id: miniIcon
 
                     anchors.centerIn: parent
-                    width: Math.min(24, SettingsState.barIconSize)
-                    height: Math.min(24, SettingsState.barIconSize)
+                    width: Math.min(Math.round(SettingsState.barIconSize * 0.9),
+                        SettingsState.barIconSize)
+                    height: width
                     source: modelData.icon
                     fillMode: Image.PreserveAspectFit
                     smooth: true
@@ -305,8 +306,8 @@ Rectangle {
                     radius: 4
                     anchors.top: parent.top
                     anchors.right: parent.right
-                    anchors.topMargin: -2
-                    anchors.rightMargin: -2
+                    anchors.topMargin: -1
+                    anchors.rightMargin: -1
                     color: Theme.accent
                     border.width: 1
                     border.color: Theme.glass
@@ -393,9 +394,9 @@ Rectangle {
 
         anchors.centerIn: parent
         z: 20
-        width: 26
-        height: 26
-        radius: 7
+        width: SettingsState.barIconSize
+        height: SettingsState.barIconSize
+        radius: 6
         visible: root.modeSwitch
         color: modeMouse.containsMouse ? Theme.accent : Theme.accentSoft
         border.width: 1

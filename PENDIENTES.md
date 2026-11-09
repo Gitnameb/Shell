@@ -6,6 +6,14 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
 
 ## Estado al cerrar esta sesión
 
+- **Iconos y tamaño uniforme de la barra (2026-11-09).** `cpu`, `dns` y
+  `hotspot` usan SVG nuevos con la forma de las referencias de Descargas. Los
+  controles de la barra ya no dibujan huecos invisibles: los slots vacíos de
+  icono se ocultan y la píldora mide solo su contenido (22 px + 6 de relleno).
+  `ShellIcon.zoom` iguala el peso visual de los SVG, y la portada de música,
+  el lanzador y las fichas de escritorio comparten la caja de `barIconSize`.
+  El punto de notificaciones mide 7 px, igual que el de las apps. El botón de
+  energía conserva su tamaño original.
 - **Configuración por defecto, greeter y fondo (2026-11-09).** Las plantillas
   de `install/config/` ya son la configuración de este equipo: barra, orden de
   iconos, tamaños, acento, cristal, ventanas y escritorios. El fondo se copia a
@@ -356,11 +364,11 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
 - **Música · Portada con la forma del widget.** La imagen se recorta con
   `MultiEffect` y una máscara del mismo radio que la píldora, así que sus cuatro
   esquinas siguen la curva y no asoma ningún pico cuadrado. Verificado en real.
-- **Tráfico de red · Ancho fijo y cifras más juntas.** El botón mide siempre
-  50 px, de modo que al pasar de pocos a muchos dígitos no empuja a los demás
-  controles. La cifra baja a 9 px, la unidad sube con espaciado negativo y las
-  flechas quedan más cerca del número y de la unidad. Verificado en real con
-  tráfico de 825 KB/s.
+- **Tráfico de red · Ancho ajustado y cifras juntas.** La píldora pide un
+  ancho mínimo de 34 px y crece con el contenido, de modo que en «0 B/s» no
+  queda un hueco de 50 px. La cifra baja a 9 px, la unidad sube con espaciado
+  negativo y las flechas quedan más cerca del número y de la unidad. Verificado
+  en real con tráfico de 825 KB/s.
 - **Escritorios fijos y números ocupados.** Umbriel estaba en modo dinámico,
   así que solo existían dos o tres escritorios: elegir el 4–9 seleccionaba el
   último disponible y «Mover a escritorio 9» terminaba en el 2. La configuración

@@ -14,16 +14,50 @@ Pill {
     // tráfico de red se resume con su icono.
     readonly property bool compact: SettingsState.barVertical
 
-    // Como en el ejemplo web, el botón mide el icono más un borde mínimo: es
-    // más alto que ancho, los controles quedan juntos y el ancho acompaña a
-    // `barIconSize`. El tráfico de red solo lleva el relleno de sus cifras.
-    horizontalPadding: root.compact ? 2
-        : (root.key === "net" ? 4 : 3)
-    // El tráfico de red mantiene un ancho fijo para que sus cifras, al pasar
-    // de «9» a «1,2», no muevan al resto de controles de la barra. 50 px
-    // cubren el caso más largo («1024,0 MB/s») sin dejar un hueco excesivo.
-    fixedWidth: root.key === "net" ? (root.compact ? 30 : 50) : 0
+    // Todos los controles comparten el mismo relleno y la misma caja de icono.
+    // Así el hueco entre dos controles siempre es el mismo y ninguno parece
+    // más alto o más separado que el resto. El tráfico de red solo pide un
+    // ancho mínimo para sus cifras; crece con el contenido en vez de reservar
+    // 50 px fijos aunque esté en «0 B/s».
+    horizontalPadding: root.compact ? 2 : 3
+    preferredWidth: root.key === "net" && !root.compact ? 34 : 0
     readonly property real glyphSize: SettingsState.barIconSize
+    // Los SVG tienen distinto margen interno. Este factor iguala el peso
+    // visual de los iconos dentro de la misma caja. El botón de energía no
+    // pasa por aquí: conserva su tamaño original.
+    readonly property real glyphZoom: {
+        if (root.key === "wifi")
+            return 1.18;
+        if (root.key === "bluetooth")
+            return 1.05;
+        if (root.key === "cpu")
+            return 0.94;
+        if (root.key === "gpu")
+            return 1.08;
+        if (root.key === "net")
+            return 1.08;
+        if (root.key === "night")
+            return 1.00;
+        if (root.key === "airplane")
+            return 0.94;
+        if (root.key === "brightness")
+            return 0.90;
+        if (root.key === "extraDim")
+            return 1.15;
+        if (root.key === "vpn")
+            return 0.98;
+        if (root.key === "keyboard")
+            return 1.12;
+        if (root.key === "clipboard")
+            return 0.94;
+        if (root.key === "hotspot")
+            return 0.95;
+        if (root.key === "settings")
+            return 0.85;
+        if (root.key === "dns")
+            return 1.00;
+        return 1.00;
+    }
 
     // Elige el SVG del Wi-Fi con la misma escala de bandas que el diseño.
     function wifiSource(strength: real): string {
@@ -387,6 +421,7 @@ Pill {
             readonly property bool shown: root.key !== "volume"
                 && root.key !== "mic"
 
+            visible: shown
             anchors.verticalCenter: parent.verticalCenter
             width: shown ? root.glyphSize : 0
             height: root.glyphSize
@@ -400,6 +435,7 @@ Pill {
                 source: root.iconSource
                 color: root.iconColor
                 size: root.glyphSize
+                zoom: root.glyphZoom
                 fallback: root.fallbackIcon
             }
         }
@@ -412,6 +448,7 @@ Pill {
             readonly property bool shown: root.key === "volume"
                 || root.key === "mic"
 
+            visible: shown
             anchors.verticalCenter: parent.verticalCenter
             width: shown ? root.glyphSize : 0
             height: root.glyphSize
@@ -424,6 +461,7 @@ Pill {
                 muted: root.key === "mic" ? Audio.micMuted : Audio.muted
                 color: root.iconColor
                 size: root.glyphSize
+                zoom: root.key === "mic" ? 1.00 : 1.12
                 fallback: root.fallbackIcon
             }
         }
@@ -435,6 +473,7 @@ Pill {
                 && root.wiredConnected && root.wifiConnected
             readonly property real side: Math.round(root.glyphSize * 0.82)
 
+            visible: shown
             anchors.verticalCenter: parent.verticalCenter
             width: shown ? side : 0
             height: root.glyphSize
@@ -449,6 +488,7 @@ Pill {
                     && root.activeWifi.signalStrength < 0.5
                     ? Theme.warning : Theme.accent
                 size: wifiSlot.side
+                zoom: root.glyphZoom
                 fallback: "◌"
             }
         }

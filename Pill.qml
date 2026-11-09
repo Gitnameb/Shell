@@ -12,15 +12,12 @@ Rectangle {
     property bool alert: false
     property bool alertOn: false
     property bool draggable: false
-    // Relleno horizontal a cada lado del contenido. El tráfico de red usa
-    // menos para que la píldora no quede más ancha que sus cifras.
+    // Relleno horizontal a cada lado del contenido. Los controles de la barra
+    // usan 3 para que todos midan lo mismo y el hueco entre ellos sea regular.
     property real horizontalPadding: 8
     // Ancho mínimo solicitado por el widget. La música lo usa para poder
     // alargarse manteniendo Super sin dejar de encogerse con su contenido.
     property real preferredWidth: 0
-    // Ancho fijo opcional. El tráfico de red lo usa para que pasar de «9» a
-    // «1,2» no empuje a los controles que tiene al lado.
-    property real fixedWidth: 0
     readonly property bool hovered: mouse.containsMouse
     signal clicked()
     signal dragStarted()
@@ -28,10 +25,8 @@ Rectangle {
     signal dragCanceled()
     signal wheeled(int delta)
 
-    implicitWidth: root.fixedWidth > 0
-        ? root.fixedWidth
-        : Math.max(row.implicitWidth + root.horizontalPadding * 2,
-            root.preferredWidth)
+    implicitWidth: Math.max(row.implicitWidth
+        + root.horizontalPadding * 2, root.preferredWidth)
     implicitHeight: Theme.itemHeight
     radius: Theme.itemRadius
     // Los widgets no se dibujan como botones: comparten el fondo de la barra

@@ -436,17 +436,17 @@ Variants {
 
                     // Logo / lanzador
                     Rectangle {
-                        Layout.preferredWidth: 30
-                        Layout.preferredHeight: 30
-                        radius: 8
+                        Layout.preferredWidth: SettingsState.barIconSize
+                        Layout.preferredHeight: SettingsState.barIconSize
+                        radius: 6
                         color: Theme.accent
-                        Layout.alignment: Qt.AlignHCenter
+                        Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
 
                         ShellIcon {
                             anchors.centerIn: parent
                             source: Distro.iconSource
                             color: Theme.accentInk
-                            size: Math.min(26, SettingsState.barIconSize)
+                            size: Math.round(SettingsState.barIconSize * 0.82)
                             fallback: "▦"
                         }
 
@@ -727,7 +727,7 @@ Variants {
                                     ? Qt.AlignHCenter : Qt.AlignVCenter
 
                                 active: BatteryState.open
-                                horizontalPadding: 1
+                                horizontalPadding: 3
                                 onClicked: {
                                     const point = batteryButton.mapToItem(
                                         bar.contentItem, 0, 0);
@@ -783,6 +783,7 @@ Variants {
                                 visible: SystemTray.items
                                     && SystemTray.items.values.length > 0
                                 active: TrayState.open
+                                horizontalPadding: 3
 
                                 onClicked: {
                                     const point = trayButton.mapToItem(
@@ -805,7 +806,7 @@ Variants {
                                         source: ShellIcons.src("chevron-up")
                                         color: TrayState.open
                                             ? Theme.accent : Theme.accentFaded
-                                        size: 14
+                                        size: Math.min(18, SettingsState.barIconSize)
                                         // La flecha apunta hacia dentro de la
                                         // pantalla según el lado de la barra.
                                         rotation: SettingsState.barVertical
@@ -826,6 +827,7 @@ Variants {
                                 visible: !SettingsState.unifiedPanels
                                 active: NotificationState.panelOpen
                                     && NotificationState.panelSection === "control"
+                                horizontalPadding: 3
 
                                 onClicked: {
                                     CalendarState.hide();
@@ -844,6 +846,7 @@ Variants {
                                         color: controlButton.active
                                             ? Theme.accent : Theme.accentFaded
                                         size: SettingsState.barIconSize
+                                        zoom: 1.04
                                         fallback: "▦"
                                     }
                                 }
@@ -856,6 +859,7 @@ Variants {
                                 active: (NotificationState.panelOpen
                                         && NotificationState.panelSection !== "control")
                                     || NotificationState.count > 0
+                                horizontalPadding: 3
                                 onClicked: {
                                     CalendarState.hide();
                                     LauncherState.hide();
@@ -888,16 +892,18 @@ Variants {
                                         }
 
                                         Rectangle {
-                                            width: 6
-                                            height: 6
-                                            radius: 3
+                                            width: 7
+                                            height: 7
+                                            radius: 4
                                             anchors.top: parent.top
                                             anchors.right: parent.right
+                                            anchors.topMargin: -1
+                                            anchors.rightMargin: -1
                                             color: NotificationState.dnd
                                                 ? Theme.danger
                                                 : (DependencyState.hasMissing
                                                     ? Theme.warning : Theme.accent)
-                                            border.width: 2
+                                            border.width: 1
                                             border.color: Theme.glass
                                             visible: NotificationState.count > 0
                                                 || DependencyState.hasMissing

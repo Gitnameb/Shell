@@ -863,7 +863,7 @@ Comprobar a mano:
 - Barra abajo, 9 números de escritorio; los ocupados se iluminan.
 - Icono de batería visible sin batería, con rayo amarillo.
 - Música: portada redondeada, título/artista, controles al pasar el ratón.
-- Tráfico de red con ancho fijo.
+- Tráfico de red ajustado al contenido.
 - VPN: importar `.ovpn`, engranaje, nombre y arranque automático.
 - Clima manual, alarmas y temporizador con el shell cerrado.
 - Portapapeles, teclado en pantalla, bandeja del sistema.
