@@ -10,6 +10,7 @@
 #   scripts/install-packages.sh     repositorios, paquetes y servicios
 #   scripts/network.sh              red, Wi-Fi, hotspot, VPN y Bluetooth
 #   scripts/install-user-config.sh  enlaces y configuración del HOME
+#   scripts/install-greeter.sh      Noctalia Greeter (greetd)
 #   scripts/install-umbriel-edit.sh compilación e instalación del edit
 #
 # Uso:
@@ -22,6 +23,7 @@
 #   --skip-edit       No compila ni instala el edit personal de Umbriel
 #   --skip-config     No copia la configuración de usuario
 #   --skip-network    No configura ni instala la red, VPN ni Bluetooth
+#   --skip-greeter    No cambia el iniciador de sesión (deja SDDM)
 #   --skip-disks      No añade los discos internos NTFS a /etc/fstab
 #   --force-config    Reemplaza configuraciones existentes (hace copia .bak)
 #   --with-firmware   Instala firmware y drivers de este equipo
@@ -39,6 +41,7 @@ SKIP_PACKAGES=0
 SKIP_EDIT=0
 SKIP_CONFIG=0
 SKIP_NETWORK=0
+SKIP_GREETER=0
 SKIP_DISKS=0
 FORCE_CONFIG=0
 WITH_FIRMWARE=0
@@ -57,6 +60,7 @@ Opciones:
   --skip-edit       No compila ni instala el edit personal de Umbriel
   --skip-config     No copia la configuración de usuario
   --skip-network    No configura ni instala la red, VPN ni Bluetooth
+  --skip-greeter    No cambia el iniciador de sesión (deja SDDM)
   --skip-disks      No añade los discos internos NTFS a /etc/fstab
   --force-config    Reemplaza configuraciones existentes (hace copia .bak)
   --with-firmware   Instala firmware y drivers de este equipo
@@ -72,6 +76,7 @@ while (( $# > 0 )); do
         --skip-edit) SKIP_EDIT=1; shift ;;
         --skip-config) SKIP_CONFIG=1; shift ;;
         --skip-network) SKIP_NETWORK=1; shift ;;
+        --skip-greeter) SKIP_GREETER=1; shift ;;
         --skip-disks) SKIP_DISKS=1; shift ;;
         --force-config) FORCE_CONFIG=1; shift ;;
         --with-firmware) WITH_FIRMWARE=1; shift ;;
@@ -100,8 +105,9 @@ Se va a preparar el shell en este equipo:
   Proyecto:  $REPO_DIR
 
 Se instalarán paquetes con apt, se copiará configuración (sin sobrescribir la
-existente salvo --force-config) y se compilará el edit personal de Umbriel. La sesión
-actual no se reinicia sola.
+existente salvo --force-config) y se compilará el edit personal de Umbriel.
+También se configurará Noctalia Greeter como iniciador de sesión; SDDM queda
+instalado como respaldo. La sesión actual no se reinicia sola.
 
 EOF
     read -r -p "¿Continuar? [s/N] " answer || answer=""
@@ -120,6 +126,7 @@ if (( ! SKIP_PACKAGES )); then
     PKG_ARGS=()
     (( DRY_RUN )) && PKG_ARGS+=(--dry-run)
     (( WITH_FIRMWARE )) && PKG_ARGS+=(--with-firmware)
+    (( SKIP_GREETER )) && PKG_ARGS+=(--skip-greeter)
     "$REPO_DIR/scripts/install-packages.sh" "${PKG_ARGS[@]}"
 else
     log "Se omiten los paquetes (--skip-packages)."
@@ -162,6 +169,24 @@ if (( ! SKIP_CONFIG )); then
     "$REPO_DIR/scripts/install-user-config.sh" "${CFG_ARGS[@]}"
 else
     log "Se omite la configuración de usuario (--skip-config)."
+fi
+
+# ---------------------------------------------------------------------------
+# Iniciador de sesión
+# ---------------------------------------------------------------------------
+# Noctalia Greeter sustituye a SDDM. SDDM se queda instalado como respaldo.
+if (( ! SKIP_GREETER )); then
+    log "Configurando Noctalia Greeter."
+    GREETER_ARGS=(--yes)
+    (( DRY_RUN )) && GREETER_ARGS+=(--dry-run)
+    (( SKIP_PACKAGES )) && GREETER_ARGS+=(--skip-packages)
+    (( FORCE_CONFIG )) && GREETER_ARGS+=(--force-config)
+    "$REPO_DIR/scripts/install-greeter.sh" "${GREETER_ARGS[@]}"
+else
+    log "Se omite el iniciador de sesión (--skip-greeter); se mantiene SDDM."
+    SDDM_ARGS=(--sddm --skip-packages)
+    (( DRY_RUN )) && SDDM_ARGS+=(--dry-run)
+    "$REPO_DIR/scripts/install-greeter.sh" "${SDDM_ARGS[@]}"
 fi
 
 # ---------------------------------------------------------------------------
@@ -264,7 +289,7 @@ cat <<EOF
 Instalación terminada.
 
 Siguientes pasos:
-  1. Cierra sesión y elige «Umbriel» en SDDM.
+  1. Reinicia y entra por Noctalia Greeter con la sesión «Umbriel».
   2. Comprueba la barra, los escritorios, el brillo y las alarmas.
   3. Si algo falla, revisa INSTALACION.md y PENDIENTES.md.
 
@@ -273,4 +298,9 @@ el binario oficial con dpkg-divert, así que 'apt upgrade' no debería pisarlo.
 Si alguna vez quitas esa diversión, vuelve a ejecutar:
 
   ./scripts/install-umbriel-edit.sh
+
+Si Noctalia Greeter no arranca, recupera SDDM desde una TTY:
+
+  sudo systemctl disable greetd
+  sudo systemctl enable sddm
 EOF

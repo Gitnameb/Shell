@@ -37,14 +37,16 @@ El instalador:
 5. Copia la configuración del shell y Umbriel **sin sobrescribir** la que ya
    exista. Con `--force-config` la reemplaza y guarda una copia `.bak`.
 6. Crea la regla de sudoers de `ddcutil` y activa la unidad de alarmas.
-7. Compila e instala el edit de Umbriel con `scripts/install-umbriel-edit.sh`.
-8. Añade los discos internos NTFS a `/etc/fstab` con `scripts/mount-disks.sh`
+7. Configura Noctalia Greeter con `scripts/install-greeter.sh` y cambia de
+   SDDM a `greetd`.
+8. Compila e instala el edit de Umbriel con `scripts/install-umbriel-edit.sh`.
+9. Añade los discos internos NTFS a `/etc/fstab` con `scripts/mount-disks.sh`
    y deja `udiskie` activo para montar las unidades USB.
 
 `install.sh` solo orquesta; cada paso vive en su módulo y se puede revisar o
 ejecutar por separado: `scripts/install-packages.sh`, `scripts/network.sh`,
-`scripts/install-user-config.sh`, `scripts/install-umbriel-edit.sh` y
-`scripts/mount-disks.sh`.
+`scripts/install-user-config.sh`, `scripts/install-greeter.sh`,
+`scripts/install-umbriel-edit.sh` y `scripts/mount-disks.sh`.
 
 Los discos internos NTFS se montan al arrancar sin volver a pedir contraseña.
 Las unidades USB las monta `udiskie` al conectarlas. Para excluir un disco:
@@ -78,7 +80,7 @@ Opciones: `--dry-run`, `--skip-packages`, `--skip-edit`, `--skip-config`,
 | Ethernet | Realtek RTL8111 |
 | Monitor | LG FULL HD por HDMI-A-1, 1920×1080 |
 | Batería | No hay; el icono del shell muestra corriente y no porcentaje |
-| Sesión | Umbriel (Wayland), SDDM |
+| Sesión | Umbriel (Wayland), Noctalia Greeter (greetd); SDDM como respaldo |
 | Escritorios | 9 fijos, configurados en Umbriel |
 | Repos extra | `trixie-backports` y Noctalia (`pkg.noctalia.dev`) |
 
@@ -106,6 +108,8 @@ dar por hecho que los nombres serán los mismos tras una instalación limpia.
 | power-profiles-daemon | 0.30 |
 | BlueZ | 5.82 |
 | hyprlock | 0.9.6-1~bpo13+1 |
+| greetd | 0.10.3-7~bpo13+1 |
+| noctalia-greeter | 1.7.0-2~bpo13+1 |
 | swayidle | 1.8.0 |
 | wvkbd | 0.15 |
 | fonts-inter-variable | 4.1 |
@@ -150,8 +154,9 @@ Los archivos de referencia están copiados en `install/apt/`.
 
 La vía más fiel a esta instalación es instalar Debian 13 con el entorno
 **KDE Plasma** (`task-kde-desktop`). Aunque el shell sustituye a Plasma,
-KDE aporta SDDM, Qt 6, Breeze, `kdialog`, `plasma-integration`, PipeWire,
-NetworkManager, BlueZ, UPower, Polkit y el portal de KDE.
+KDE aporta Qt 6, Breeze, `kdialog`, `plasma-integration`, PipeWire,
+NetworkManager, BlueZ, UPower, Polkit y el portal de KDE. SDDM se instala
+como respaldo, pero el iniciador por defecto es Noctalia Greeter.
 
 El instalador también funciona sobre un Debian mínimo: instala solo las
 librerías y herramientas de KDE que necesita el shell, **sin `plasma-workspace` ni
@@ -165,6 +170,8 @@ Después, instalar lo específico:
 ```sh
 sudo apt install -t trixie-backports quickshell hyprlock
 sudo apt install -t trixie-backports umbriel xdg-desktop-portal-umbriel
+sudo apt install --no-install-recommends -t trixie-backports \
+  greetd noctalia-greeter
 
 sudo apt install \
   ddcutil qrencode libnotify-bin fonts-inter-variable wvkbd swayidle foot \
@@ -175,6 +182,9 @@ sudo apt install \
   xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-kde \
   xwayland
 ```
+
+`--no-install-recommends` en el greeter evita que `fonts-noctalia-tabler`
+arrastre el paquete `noctalia` completo; este escritorio usa Umbriel.
 
 La lista completa, separada por capas y con notas sobre lo que no hace falta,
 está en `install/packages.txt`.
@@ -207,6 +217,8 @@ está en `install/packages.txt`.
 - **Energía:** `upower`, `power-profiles-daemon`, `powerprofilesctl`.
 - **Brillo:** `ddcutil` y una regla de sudoers (ver abajo).
 - **Bloqueo:** `swayidle` y `shell-lock` (que usa `hyprlock` para dibujar la pantalla). `shell-lock` es el único punto de entrada y crea su configuración si falta.
+- **Iniciador de sesión:** `greetd` y `noctalia-greeter`. El instalador
+  configura la sesión «Umbriel», el usuario y el teclado `es`.
 - **Teclado en pantalla:** `wvkbd` (`wvkbd-mobintl`).
 - **Notificaciones/diálogos:** `libnotify-bin`, `kdialog`; `zenity` es un
   respaldo opcional que no está instalado.
@@ -265,7 +277,7 @@ sudo apt install -t trixie-backports wayland-protocols libwayland-dev
 
 ## 4. Compilar e instalar el edit de Umbriel
 
-El paquete `umbriel` instala el binario original, la sesión de SDDM,
+El paquete `umbriel` instala el binario original, la sesión de Wayland,
 `start-umbriel`, la configuración de ejemplo y el portal. El edit del shell
 sustituye solo `/usr/bin/umbriel` para añadir la barra nativa con seis botones,
 icono, subtítulo y otras mejoras.
@@ -610,23 +622,43 @@ sudo -n ddcutil detect
 Sustituir `username` por el usuario real si hace falta. En un portátil, el panel
 eDP no responde a DDC/CI; la adaptación a `/sys/class/backlight` sigue pendiente.
 
-### 7.4 SDDM
+### 7.4 Iniciador de sesión: Noctalia Greeter
 
-El paquete `umbriel` crea `/usr/share/wayland-sessions/umbriel.desktop` y
-`start-umbriel`. SDDM recuerda la última sesión (`RememberLastSession=true`):
-en el primer arranque hay que elegir **Umbriel** una vez.
+El iniciador por defecto es **Noctalia Greeter** sobre `greetd`. El paquete
+`umbriel` crea `/usr/share/wayland-sessions/umbriel.desktop` y
+`start-umbriel`; el greeter lo detecta como sesión «Umbriel».
 
-Si se quiere autoinicio (opcional):
+El instalador deja:
 
-```ini
-# /etc/sddm.conf.d/20-autologin.conf
-[Autologin]
-User=username
-Session=umbriel
-Relogin=false
+```text
+/etc/greetd/noctalia-greeter.toml     → lanza noctalia-greeter-session
+/var/lib/noctalia-greeter/greeter.toml → usuario, sesión, paleta, teclado y fondo
 ```
 
-No es necesario para el funcionamiento normal.
+La configuración se genera desde `install/config/noctalia-greeter.toml` y
+`scripts/install-greeter.sh`. El fondo del greeter se copia a
+`/var/lib/noctalia-greeter/wallpaper.<ext>` porque el usuario `_greetd` no
+puede leer dentro de un HOME privado. El instalador añade `_greetd` al grupo
+`video` para que el compositor del greeter acceda a las tarjetas DRM.
+
+`install.sh` desactiva SDDM y habilita greetd, pero **no cierra la sesión
+actual**. El cambio se aplica al reiniciar. SDDM se queda instalado como
+respaldo; si el greeter no arranca, desde una TTY:
+
+```sh
+sudo systemctl disable greetd
+sudo systemctl enable sddm
+sudo reboot
+```
+
+Para volver a SDDM sin desinstalar nada:
+
+```sh
+./scripts/install-greeter.sh --sddm
+```
+
+No se configura autoinicio por defecto: el greeter pide la contraseña y
+recuerda la última sesión elegida.
 
 ### 7.5 Red, VPN, Bluetooth y energía
 
@@ -746,7 +778,10 @@ sigue pendiente de probar.
 - `~/.config/autostart/org.kde.xwaylandvideobridge.desktop`.
 - `~/.config/kdeglobals` y `~/.config/gtk-*/` si se quieren conservar; el script
   de tema los recrea.
-- Tu fondo de pantalla (cópialo aparte y ajusta `wallpaperPath`).
+- `~/.local/share/shell/wallpapers/` (el shell copia aquí el fondo elegido;
+  borrar la imagen original de Descargas no lo elimina).
+- `/var/lib/noctalia-greeter/greeter.toml` y `wallpaper.*` (solo si se quiere
+  conservar la configuración del iniciador; se pueden regenerar).
 - `~/.local/state/shell/` (historial de portapapeles y progreso; opcional).
 
 ### 8.3 Red y secretos

@@ -7,8 +7,9 @@
 # scripts/network.sh (no install-packages.sh) para no duplicarlos.
 #
 # Punto de partida recomendado: instalar Debian 13 con el entorno KDE Plasma
-# (task-kde-desktop). Eso aporta SDDM, Qt 6, KDE, Breeze, PipeWire,
-# NetworkManager, BlueZ, UPower, Polkit, kdialog y el portal de KDE.
+# (task-kde-desktop). Eso aporta Qt 6, KDE, Breeze, PipeWire,
+# NetworkManager, BlueZ, UPower, Polkit, kdialog y el portal de KDE. SDDM se
+# queda como respaldo del iniciador principal, Noctalia Greeter.
 # Si se parte de una instalación mínima, instalar también los paquetes
 # marcados como «base KDE» en la sección 3.
 
@@ -32,6 +33,17 @@
 # ---------------------------------------------------------------------------
 sudo apt install -t trixie-backports quickshell hyprlock
 sudo apt install -t trixie-backports umbriel xdg-desktop-portal-umbriel
+
+# Noctalia Greeter es el iniciador de sesión por defecto. --no-install-recommends
+# evita que fonts-noctalia-tabler instale el paquete `noctalia` (shell completo);
+# este escritorio usa Umbriel.
+sudo apt install --no-install-recommends -t trixie-backports \
+  greetd noctalia-greeter
+
+# El instalador lo configura con:
+#   ./scripts/install-greeter.sh
+# SDDM se queda instalado como respaldo y se puede recuperar con
+#   sudo systemctl disable greetd && sudo systemctl enable sddm
 
 # ---------------------------------------------------------------------------
 # 3. Dependencias del shell que no siempre trae el entorno KDE
@@ -72,7 +84,8 @@ sudo apt install \
 
 # Base KDE ligera que usa el shell/Umbriel si no se instaló task-kde-desktop.
 # Sin plasma-workspace: no hace falta KWin ni el escritorio Plasma.
-# sddm-theme-maya solo si no hay ya un tema Breeze de SDDM.
+# SDDM se queda como respaldo de Noctalia Greeter; sddm-theme-maya solo se
+# instala si no hay ya un tema Breeze de SDDM.
 #   sudo apt install --no-install-recommends \
 #     sddm sddm-theme-maya libpam-systemd plasma-integration \
 #     libkf6config-bin kdialog \

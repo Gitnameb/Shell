@@ -138,6 +138,10 @@ check "recarga" $([ "$(reloads)" = 8 ]; echo $?)
 check "valida" $(validate; echo $?)
 "$REPO_DIR/scripts/shell-glass" blur 18 >/dev/null 2>&1
 check "segunda vez no recarga" $([ "$(reloads)" = 8 ]; echo $?)
+# La plantilla sincroniza el cristal de las ventanas. Se deja el bloque de
+# ventanas sin radio para que el radio 0 pueda desactivar el desenfoque global
+# sin eliminar el bloque (la prueba de integridad cuenta las líneas).
+"$REPO_DIR/scripts/shell-glass" windows 90 0 simple >/dev/null 2>&1
 "$REPO_DIR/scripts/shell-glass" blur 0 >/dev/null 2>&1
 check "cero apaga" $(grep -q '^enabled = false$' "$CFG"; echo $?)
 check "cero deja radio 0" $(grep -q '^radius = 0$' "$CFG"; echo $?)

@@ -125,6 +125,102 @@ copy_template "$REPO_DIR/install/config/shell-display.conf" \
 copy_template "$REPO_DIR/install/config/glass-blur.conf" \
     "$TARGET_HOME/.config/shell/glass-blur.conf"
 
+# ---------------------------------------------------------------------------
+# Fondo de pantalla
+# ---------------------------------------------------------------------------
+# La plantilla apunta a ~/.local/share/shell/wallpapers/default.png. Esa copia
+# es la que se usa en una instalación nueva: así el fondo no depende de que el
+# archivo original siga en Descargas. Si ya hay una configuración con un fondo
+# fuera de ese directorio, se copia aquí y se actualiza settings.conf.
+wallpaper_dir="$TARGET_HOME/.local/share/shell/wallpapers"
+log "Preparando el fondo de pantalla del shell."
+run mkdir -p "$wallpaper_dir"
+default_wallpaper="$REPO_DIR/install/wallpapers/default.png"
+if [[ -f "$default_wallpaper" ]]; then
+    if [[ ! -e "$wallpaper_dir/default.png" ]]; then
+        run install -m644 "$default_wallpaper" "$wallpaper_dir/default.png"
+    else
+        log "El fondo por defecto ya está en $wallpaper_dir/default.png."
+    fi
+else
+    warn "Falta $default_wallpaper; la instalación nueva se quedará sin imagen."
+fi
+
+migrate_wallpaper() {
+    local settings="$TARGET_HOME/.config/shell/settings.conf"
+    [[ -f "$settings" ]] || return 0
+
+    local line path name ext dest old
+    line=$(grep -m1 '^wallpaperPath=' "$settings" 2>/dev/null || true)
+    [[ -n "$line" ]] || return 0
+    path=${line#wallpaperPath=}
+    [[ -n "$path" && -f "$path" ]] || return 0
+
+    case "$path" in
+        "$wallpaper_dir"/*) return 0 ;;
+    esac
+
+    name=$(basename -- "$path")
+    ext=${name##*.}
+    if [[ "$ext" = "$name" || -z "$ext" ]]; then
+        ext=png
+    fi
+    ext=$(printf '%s' "$ext" | tr '[:upper:]' '[:lower:]')
+    dest="$wallpaper_dir/current.$ext"
+
+    if (( DRY_RUN )); then
+        printf '\033[2m[dry-run]\033[0m copiar %s -> %s\n' "$path" "$dest"
+        printf '\033[2m[dry-run]\033[0m actualizar wallpaperPath en %s\n' "$settings"
+        return 0
+    fi
+
+    if ! cp -f -- "$path" "$dest"; then
+        warn "No se pudo copiar el fondo actual; se conserva la ruta original."
+        return 0
+    fi
+    chmod 644 "$dest"
+
+    for old in "$wallpaper_dir"/current.*; do
+        [[ "$old" = "$dest" ]] && continue
+        [[ -e "$old" ]] || continue
+        rm -f -- "$old"
+    done
+
+    if ! command -v python3 >/dev/null 2>&1; then
+        warn "Falta python3; no se pudo actualizar wallpaperPath."
+        return 0
+    fi
+
+    backup_file "$settings"
+    if ! python3 - "$settings" "$dest" <<'PY'
+import sys
+from pathlib import Path
+
+settings = Path(sys.argv[1])
+path = sys.argv[2]
+lines = settings.read_text(encoding="utf-8").splitlines()
+for index, line in enumerate(lines):
+    if line.startswith("wallpaperPath="):
+        lines[index] = "wallpaperPath=" + path
+        break
+settings.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PY
+    then
+        warn "No se pudo actualizar wallpaperPath en $settings."
+        return 0
+    fi
+
+    # Si el shell está abierto, se actualiza también su estado en memoria para
+    # que un cambio de ajustes no vuelva a guardar la ruta antigua.
+    if command -v qs >/dev/null 2>&1 \
+        && qs ipc -c shell call appearance wallpaper "$dest" >/dev/null 2>&1; then
+        log "Fondo actualizado en la sesión abierta."
+    fi
+    log "Fondo actual copiado a $dest."
+}
+
+migrate_wallpaper
+
 log "Copiando la configuración de la pantalla de bloqueo."
 copy_template "$REPO_DIR/install/config/hyprlock.conf" \
     "$TARGET_HOME/.config/hypr/hyprlock.conf"

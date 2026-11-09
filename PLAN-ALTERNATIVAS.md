@@ -16,6 +16,7 @@ demás que ya existe fuera debería usarse antes de escribir otra implementació
 | Brillo del panel interno | `brightnessctl` y `/sys/backlight` |
 | Inactividad y bloqueo por tiempo | `swayidle` |
 | Bloqueo de pantalla | `hyprlock`, con `shell-lock` como única entrada |
+| Iniciador de sesión | Noctalia Greeter sobre `greetd`, con SDDM como respaldo |
 | Portapapeles | `cliphist` + `wl-paste`/`wl-copy` |
 | Clima | `wttr.in` por HTTP |
 | QR del punto de acceso | `qrencode` |

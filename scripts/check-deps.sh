@@ -51,6 +51,16 @@ check_package network-manager-openvpn "VPN OpenVPN" \
 check_package qrencode "QR del punto de acceso" \
     qrencode "$NET_FIX"
 
+# Iniciador de sesión y bloqueo de pantalla.
+check_package greetd "Iniciador de sesión (greetd)" \
+    greetd "cd ~/Shell && ./scripts/install-greeter.sh"
+check_package noctalia-greeter "Iniciador Noctalia" \
+    noctalia-greeter "cd ~/Shell && ./scripts/install-greeter.sh"
+check_package hyprlock "Bloqueo de pantalla (hyprlock)" \
+    hyprlock "sudo apt install -t trixie-backports hyprlock"
+check_package swayidle "Bloqueo automático (swayidle)" \
+    swayidle "sudo apt install swayidle"
+
 # cliphist guarda el historial; wl-clipboard aporta wl-paste y wl-copy.
 check_package wl-clipboard "Portapapeles (wl-clipboard)" \
     wl-clipboard "sudo apt install wl-clipboard"

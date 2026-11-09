@@ -178,6 +178,8 @@ capa no puede arreglar ese caso por sí sola, porque nunca se ejecutaría.
 - renderiza `config.toml.template` con el HOME real;
 - crea o actualiza `config.toml.good`;
 - instala el drop-in de systemd;
+- copia el fondo por defecto a `~/.local/share/shell/wallpapers/` y migra un
+  `wallpaperPath` antiguo para que no dependa de Descargas;
 - recarga systemd de usuario.
 
 `--dry-run` muestra los pasos sin escribir nada.
@@ -266,9 +268,10 @@ reales; el resto fueron `unchanged` y no tocaron el archivo.
 ### Escritor único
 
 ```sh
-./scripts/test-config-set.sh       # 48 comprobaciones
+./scripts/test-config-set.sh       # 76 comprobaciones
 ./scripts/test-config-writers.sh   # 48 comprobaciones
-./scripts/test-glass-rules.sh      # 21 comprobaciones
+./scripts/test-glass-rules.sh      # 94 comprobaciones
+./scripts/test-wallpaper.sh        # 13 comprobaciones
 ```
 
 `test-config-set.sh` cubre actualización de claves, idempotencia, varias
@@ -413,8 +416,8 @@ Verificados:
 - No guardar como `.good` una configuración sin autostart activo.
 - No cambiar el nombre del lock sin cambiar todos los escritores.
 - Probar con `./scripts/test-config-set.sh`,
-  `./scripts/test-config-writers.sh` y `./scripts/test-glass-rules.sh` antes de
-  dar un cambio por terminado.
+  `./scripts/test-config-writers.sh`, `./scripts/test-glass-rules.sh` y
+  `./scripts/test-wallpaper.sh` antes de dar un cambio por terminado.
 - Si se toca el instalador, ejecutar `./scripts/install-user-config.sh
   --dry-run` antes de probar en limpio.
 
@@ -593,6 +596,21 @@ No hay respaldos con otros bloqueadores ni llamadas directas a `hyprlock`.
 Antes el botón lanzaba `hyprlock` directamente y, sin archivo de
 configuración, hyprlock salía sin bloquear. Ahora la configuración se crea
 sola y el instalador también la copia en limpieza.
+
+### 15.1 Iniciador de sesión: Noctalia Greeter
+
+El iniciador por defecto es Noctalia Greeter sobre `greetd`. SDDM se queda
+instalado como respaldo, pero `scripts/install-greeter.sh` lo desactiva y
+habilita `greetd`; el cambio se aplica al reiniciar, no a la sesión actual.
+
+- La sesión por defecto es «Umbriel» y el teclado, `es`.
+- La configuración declarativa vive en
+  `/var/lib/noctalia-greeter/greeter.toml`, propiedad de `_greetd`.
+- El fondo se copia a `/var/lib/noctalia-greeter/wallpaper.<ext>` porque
+  `_greetd` no puede leer dentro de un HOME privado.
+- Si el greeter falla, se recupera SDDM con
+  `sudo systemctl disable greetd && sudo systemctl enable sddm`.
+- `./scripts/install-greeter.sh --sddm` vuelve a SDDM sin desinstalar nada.
 
 ## 16. Teclado
 

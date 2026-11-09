@@ -1,0 +1,58 @@
+#!/bin/sh
+# Copia una imagen al directorio estable del shell y escribe la ruta de la copia.
+#
+# Uso:
+#   shell-wallpaper-import /ruta/a/imagen.png
+#
+# El shell guarda el fondo en ~/.local/share/shell/wallpapers/current.<ext>.
+# Así el fondo no depende de Descargas ni de la carpeta original: si se borra
+# el archivo elegido, la copia sigue existiendo. Si la imagen ya está dentro
+# de ese directorio, no se copia de nuevo.
+
+set -eu
+
+src=${1:-}
+if [ -z "$src" ]; then
+    echo "uso: shell-wallpaper-import IMAGEN" >&2
+    exit 2
+fi
+if [ ! -f "$src" ]; then
+    echo "no existe la imagen: $src" >&2
+    exit 1
+fi
+
+data_home=${XDG_DATA_HOME:-$HOME/.local/share}
+dest_dir="$data_home/shell/wallpapers"
+mkdir -p "$dest_dir"
+
+case "$src" in
+    "$dest_dir"/*)
+        printf '%s\n' "$src"
+        exit 0
+        ;;
+esac
+
+name=$(basename -- "$src")
+ext=${name##*.}
+if [ "$ext" = "$name" ] || [ -z "$ext" ]; then
+    ext=png
+fi
+ext=$(printf '%s' "$ext" | tr '[:upper:]' '[:lower:]')
+dest="$dest_dir/current.$ext"
+tmp="$dest_dir/.current.$$"
+
+trap 'rm -f -- "$tmp"' EXIT HUP INT TERM
+cp -- "$src" "$tmp"
+chmod 644 "$tmp"
+mv -f -- "$tmp" "$dest"
+trap - EXIT HUP INT TERM
+
+# Solo se conserva la copia actual. Las extensiones anteriores se retiran
+# para no acumular fondos antiguos.
+for old in "$dest_dir"/current.*; do
+    [ "$old" = "$dest" ] && continue
+    [ -e "$old" ] || continue
+    rm -f -- "$old"
+done
+
+printf '%s\n' "$dest"

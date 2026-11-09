@@ -1,0 +1,70 @@
+# Iniciador de sesión · Noctalia Greeter
+#
+# Lo instala scripts/install-greeter.sh en
+# /var/lib/noctalia-greeter/greeter.toml. El marcador de usuario se sustituye
+# por quien ejecuta el instalador. La apariencia parte de la paleta
+# oscura del shell y el fondo se copia junto al estado del greeter para que
+# _greetd pueda leerlo aunque el HOME sea privado.
+
+[session]
+default = "Umbriel"
+
+[user]
+default = "@USER@"
+
+[appearance]
+# El esquema se fija para que el login use la misma paleta que el shell. El
+# selector de esquemas se oculta porque, al estar fijado, sus cambios no
+# persistirían; para cambiarlo, edita este archivo.
+scheme = "Synced"
+password_style = "default"
+hide_logo = false
+power_buttons_position = "bottom-right"
+scheme_selector_position = "hidden"
+theme_mode = "dark"
+corner_radius_scale = 1.0
+font_family = "Inter Variable"
+
+[appearance.palette]
+primary = "#7790aa"
+on_primary = "#0b0d10"
+secondary = "#8ab4f8"
+on_secondary = "#0b0d10"
+tertiary = "#9ad9b0"
+on_tertiary = "#0b0d10"
+error = "#ff7a7a"
+on_error = "#0b0d10"
+surface = "#0b0d10"
+on_surface = "#ebeae5"
+surface_variant = "#121418"
+on_surface_variant = "#9aa1ab"
+outline = "#2a2d33"
+shadow = "#000000"
+hover = "#191c21"
+on_hover = "#ebeae5"
+
+[appearance.wallpaper]
+path = "/var/lib/noctalia-greeter/wallpaper.png"
+fill_mode = "crop"
+fill_color = "#0b0d10"
+
+[clock]
+enabled = true
+position = "above-panel"
+time_format = "{:%H:%M}"
+date_format = "%A, %x"
+
+[idle]
+timeout = 300
+
+[cursor]
+theme = "breeze_cursors"
+size = 24
+
+[keyboard]
+layout = "es"
+numlock = false
+
+[auth]
+allow_empty_password = false
+request_timeout = 60

@@ -37,7 +37,7 @@ impacto en el uso diario, no por lucimiento.
 - Los paneles y menús se cierran al pulsar fuera, sin cerrar la barra.
 - Al mantener Super, la píldora del escritorio activo permite cambiar entre
   Flotante y Mosaico con las fichas atenuadas debajo.
-- Sesión Umbriel preseleccionada en SDDM, teclado `es`, Shell en autostart.
+- Sesión Umbriel preseleccionada en Noctalia Greeter, teclado `es`, Shell en autostart.
 - Puente X11 (`xwaylandvideobridge`) oculto en el scratchpad.
 
 ---

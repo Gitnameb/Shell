@@ -17,8 +17,8 @@ xwayland = true
 show_cheatsheet = false
 
 [layout]
-# Mosaico por defecto: el escritorio 1 y los nuevos reparten las ventanas.
-# «Configuración de ventanas» guarda abajo las excepciones (el 2 en ventana).
+# «Flotante / Como Windows» por defecto. El shell cambia a dwindle en los
+# escritorios que el usuario marque como Mosaico.
 mode = "dwindle"
 gap = 8
 client_maximize = "edges"
@@ -26,15 +26,9 @@ client_maximize = "edges"
 [layout.stacking]
 drop_zones = true
 
-default_width_fraction = 0.60
-default_height_fraction = 0.60
-cascade_step = 0
-
-[animation]
-# Velocidad global de las transiciones nativas. 2.0 tarda la mitad; el shell
-# lo ajusta desde «Ajustes del shell» y lo mantiene al día.
-speed = 2.0
-
+default_width_fraction = 0.40
+default_height_fraction = 0.40
+cascade_step = 40
 [appearance]
 # Decoración del compositor, no una capa encima del contenido.
 prefer_no_csd = true
@@ -52,9 +46,9 @@ mode = "forced"
 height = 36
 font = "sans 11"
 button_position = "right"
-# Del título hacia fuera: volumen, flotar, fijar, pantalla completa, mover
-# (abre la vista general), minimizar, maximizar y cerrar. Los botones nuevos
-# son del edit del shell.
+# Del título hacia fuera: flotar, fijar, pantalla completa, mover (abre la
+# vista general), minimizar, maximizar y cerrar. Los cuatro primeros son del
+# edit del shell.
 buttons = ["volume", "float", "pin", "fullscreen", "move", "minimize", "maximize", "close"]
 button_corner_radius = 6
 button_glyph = "always"
@@ -62,8 +56,7 @@ button_background = true
 
 [appearance.blur]
 enabled = true
-optimized = true
-radius = 16
+radius = 4
 passes = 3
 brightness = 0.720
 contrast = 0.920
@@ -79,11 +72,11 @@ offset_y = 3
 background = "#141519FF"
 text_primary = "#e8eaedFF"
 text_muted = "#8a8f98FF"
-accent_primary = "#8ab4f8FF"
-accent_secondary = "#8ab4f8FF"
+accent_primary = "#7790aaFF"
+accent_secondary = "#7790aaFF"
 
 [colors.border]
-focused = "#8ab4f8FF"
+focused = "#7790aaFF"
 unfocused = "#2a2d33FF"
 outer = "#1a1c20FF"
 
@@ -109,9 +102,9 @@ minimize_glyph_hover = "#141519FF"
 [keybinds]
 
 # Shell
-# El shell decide con el evento `modifiers` si el gesto fue un toque limpio.
-# No se añade un bind suelto para `Mod`: ese bind y el evento se ejecutaban a
-# la vez y podían abrir o cerrar el cajón dos veces.
+# El shell decide con el evento `modifiers` si el gesto fue un toque limpio. Este
+# bind sigue como respaldo para compositores antiguos; con el evento activo,
+# `superTap` no hace nada y evita abrir el lanzador dos veces.
 "Mod+Space" = { action = "spawn qs ipc -c shell call launcher toggle", repeat = false }
 "Mod+N" = { action = "spawn qs ipc -c shell call notifications toggle", repeat = false }
 "Mod+Shift+N" = { action = "spawn qs ipc -c shell call notifications dnd", repeat = false }
@@ -121,7 +114,6 @@ minimize_glyph_hover = "#141519FF"
 "Mod+Tab" = "overview-toggle"
 "Mod+Shift+Tab" = { action = "spawn qs ipc -c shell call windows pinned", repeat = false }
 "Mod+F1" = "cheatsheet-toggle"
-"Mod+Shift+M" = { action = "spawn qs ipc -c shell call notifications micToggle", repeat = false }
 "Mod+Escape" = "session-quit"
 "Mod+Shift+L" = { action = "spawn ~/.local/bin/shell-lock", repeat = false }
 
@@ -130,7 +122,6 @@ minimize_glyph_hover = "#141519FF"
 "Mod+Q" = { action = "window-close", repeat = false }
 "Mod+T" = { action = "window-toggle-floating", repeat = false }
 "Mod+P" = { action = "window-toggle-pinned", repeat = false }
-"Mod+M" = { action = "window-toggle-maximize-to-edges", repeat = false }
 "Mod+Shift+H" = { action = "window-minimize", repeat = false }
 "Mod+F" = { action = "window-toggle-fullscreen", repeat = false }
 
@@ -172,6 +163,8 @@ minimize_glyph_hover = "#141519FF"
 "XF86AudioMute" = { action = "spawn wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle", allow_when_locked = true, repeat = false }
 "XF86MonBrightnessUp" = { action = "spawn qs ipc -c shell call notifications brightnessUp", allow_when_locked = true }
 "XF86MonBrightnessDown" = { action = "spawn qs ipc -c shell call notifications brightnessDown", allow_when_locked = true }
+"Mod+M" = "window-toggle-maximize-to-edges"
+MouseBack = { action = "spawn qs ipc -c shell call notifications micToggle", repeat = false }
 
 [input.keyboard]
 layout = "es"
@@ -186,6 +179,11 @@ workspaces = 9
 # El puente de captura X11 (Discord, Zoom y demás apps X11) no necesita una
 # ventana visible. Se guarda en el scratchpad y sigue funcionando en segundo
 # plano; se puede sacar con Mod+` si alguna vez hace falta.
+
+[animation]
+speed = 2.00
+enabled = true
+
 [[window_rule]]
 match.app_id = "^xwaylandvideobridge$"
 default_scratchpad = "default"
@@ -196,7 +194,7 @@ extra_dim = 0.000
 warm = 0.000
 
 [input]
-mod_hold_delay_ms = 320
+mod_hold_delay_ms = 150
 
 # shell-workspace-modes: inicio
 # Generado desde «Configuración de ventanas»; no editar a mano.
@@ -228,3 +226,13 @@ blur_strength = 1.0000
 match.namespace = "^shell-(wallpaper|desktop-icons|outside-close|filter)$"
 blur = false
 # shell-glass: fin
+
+# shell-windows: inicio
+# Ventanas transparentes del shell. La opacidad se calcula desde el
+# porcentaje del centro de control. Al poner 0 % el bloque se elimina.
+[[window_rule]]
+opacity = 0.800
+blur = true
+blur_optimized = true
+blur_strength = 1.0000
+# shell-windows: fin

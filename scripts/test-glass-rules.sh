@@ -32,6 +32,11 @@ EOF
 template="$BASE/template.toml"
 sed "s|/home/USUARIO|$HOME|g" "$REPO_DIR/install/config/umbriel-config.toml" \
     >"$template"
+template_radius=$(awk '
+    /^\[appearance\.blur\]/ { found = 1; next }
+    /^\[/ { found = 0 }
+    found && /^radius[[:space:]]*=/ { print $3; exit }
+' "$template")
 
 pass=0
 fail=0
@@ -108,7 +113,7 @@ echo "== 5. estado =="
 fresh
 out=$("$GLASS" status)
 check "reglas presentes" $(printf '%s\n' "$out" | grep -q 'reglas: presentes'; echo $?)
-check "radio visible" $(printf '%s\n' "$out" | grep -q 'radius=16'; echo $?)
+check "radio visible" $(printf '%s\n' "$out" | grep -q "radius=$template_radius"; echo $?)
 check "modo fondo" $(printf '%s\n' "$out" | grep -q 'desenfoque: fondo de pantalla'; echo $?)
 check "esquinas recortadas" $(printf '%s\n' "$out" | grep -q 'esquinas: recortadas'; echo $?)
 
@@ -228,7 +233,7 @@ status=$("$GLASS" tone dark)
 check "oscuro cambia" $([ "$status" = changed ]; echo $?)
 check "brillo oscuro" $(grep -q '^brightness = 0.700$' "$UMBRIEL_CONFIG"; echo $?)
 check "saturación oscura" $(grep -q '^saturation = 1.050$' "$UMBRIEL_CONFIG"; echo $?)
-check "conserva el radio" $(grep -q '^radius = 16$' "$UMBRIEL_CONFIG"; echo $?)
+check "conserva el radio" $(grep -q "^radius = $template_radius$" "$UMBRIEL_CONFIG"; echo $?)
 check "valida" $(validate; echo $?)
 
 echo "== 14. radios independientes del shell y de las ventanas =="

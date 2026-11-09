@@ -17,6 +17,7 @@ source "$SCRIPT_DIR/lib/common.sh"
 
 DRY_RUN=0
 WITH_FIRMWARE=0
+SKIP_GREETER=0
 
 usage() {
     cat <<'EOF'
@@ -28,6 +29,7 @@ Uso:
 Opciones:
   --dry-run         Muestra los comandos sin ejecutar nada
   --with-firmware   Instala firmware y drivers de este equipo
+  --skip-greeter    No instala greetd ni Noctalia Greeter
   -h, --help        Muestra esta ayuda
 EOF
 }
@@ -36,6 +38,7 @@ while (( $# > 0 )); do
     case "$1" in
         --dry-run) DRY_RUN=1; shift ;;
         --with-firmware) WITH_FIRMWARE=1; shift ;;
+        --skip-greeter) SKIP_GREETER=1; shift ;;
         -h | --help) usage; exit 0 ;;
         *) die "Opción desconocida: $1 (usa --help)" ;;
     esac
@@ -179,6 +182,16 @@ log "Instalando Quickshell, Umbriel y su portal (backports/Noctalia)."
 run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
     -t trixie-backports quickshell hyprlock umbriel xdg-desktop-portal-umbriel
 
+# Noctalia Greeter depende de fonts-noctalia-tabler, que recomienda el paquete
+# `noctalia` (el shell completo). No se instala: este escritorio usa Umbriel.
+if (( ! SKIP_GREETER )); then
+    log "Instalando greetd y Noctalia Greeter."
+    run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        --no-install-recommends -t trixie-backports greetd noctalia-greeter
+else
+    log "Se omite greetd y Noctalia Greeter (--skip-greeter)."
+fi
+
 log "Instalando la base de KDE, Qt, audio y servicios."
 # Sin plasma-workspace: solo las librerías y herramientas que usa el shell.
 # --no-install-recommends evita que kio6 arrastre systemsettings/Plasma.
@@ -215,6 +228,8 @@ if (( WITH_FIRMWARE )); then
 fi
 
 log "Habilitando los servicios del sistema."
+# SDDM queda instalado y habilitado como respaldo. scripts/install-greeter.sh
+# lo desactiva al final si Noctalia Greeter está disponible.
 run_sudo systemctl enable sddm || warn "No se pudo habilitar SDDM."
 run_sudo systemctl enable --now power-profiles-daemon \
     || warn "Algún servicio no se pudo iniciar; revisa systemctl status."

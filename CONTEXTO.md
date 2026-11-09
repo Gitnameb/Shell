@@ -235,9 +235,9 @@ Prioridad acordada:
 
 - Debian GNU/Linux 13 (trixie), kernel/arquitectura amd64.
 - GPU: AMD Radeon RX 470/480/570/580 (Ellesmere). No es una VM (`systemd-detect-virt = none`).
-- Sesión principal: **Umbriel** (`XDG_CURRENT_DESKTOP=Umbriel`), elegible en SDDM.
-  Hyprland sigue instalado como respaldo y también aparece en SDDM. Monitor LG
-  `HDMI-A-1` a 1920×1080@75.
+- Sesión principal: **Umbriel** (`XDG_CURRENT_DESKTOP=Umbriel`), elegible en
+  Noctalia Greeter; SDDM queda como respaldo. Monitor LG `HDMI-A-1` a
+  1920×1080@75.
 - Umbriel: `0.1.0~1505-g63327b58-1~bpo13+1` desde el repositorio de Noctalia
   (`trixie-backports`). Config: `~/.config/umbriel/config.toml`; valida con
   `umbriel config validate -c ~/.config/umbriel/config.toml`.
@@ -707,14 +707,13 @@ sudo apt install qrencode
 
 ### Ejecutar el shell
 
-La sesión **Umbriel** está disponible en SDDM y es la principal. `~/.config/umbriel/config.toml`
-lanza `~/.local/bin/shell-start`, que arranca `qs -c shell -d` con el tema Qt y el tema
-de iconos. La sesión **Hyprland** sigue disponible como respaldo; allí
-`exec-once = env QS_ICON_THEME=breeze-dark qs -c shell` hace lo mismo.
+La sesión **Umbriel** está disponible en Noctalia Greeter y es la principal.
+`~/.config/umbriel/config.toml` lanza `~/.local/bin/shell-start`, que arranca
+`qs -c shell -d` con el tema Qt y el tema de iconos. Hyprland ya no se mantiene.
 
 ```bash
 # El symlink ya existe: ~/.config/quickshell/shell -> ~/Shell
-# Desde una sesión Umbriel o Hyprland:
+# Desde una sesión Umbriel:
 QS_ICON_THEME=breeze-dark qs -c shell
 
 # Alternativa sin symlink:

@@ -6,6 +6,17 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
 
 ## Estado al cerrar esta sesión
 
+- **Configuración por defecto, greeter y fondo (2026-11-09).** Las plantillas
+  de `install/config/` ya son la configuración de este equipo: barra, orden de
+  iconos, tamaños, acento, cristal, ventanas y escritorios. El fondo se copia a
+  `~/.local/share/shell/wallpapers/` y el shell usa esa copia; borrar la imagen
+  de Descargas ya no lo elimina. `scripts/shell-wallpaper-import` centraliza la
+  copia y el instalador migra un `wallpaperPath` antiguo. El fondo actual ya
+  está en `current.png` y `~/.config/shell/settings.conf` apunta ahí. Noctalia
+  Greeter sustituye a SDDM (`scripts/install-greeter.sh`), con SDDM como
+  respaldo y Hyprlock como único bloqueo. Para aplicarlo:
+  `./scripts/install-greeter.sh --yes` (pide sudo) y reiniciar. Falta probar
+  el greeter real.
 - **Edit personal instalado (2026-11-09).** `/usr/bin/umbriel` ya es la
   compilación del edit e incluye tamaño flotante en cambios rápidos, foco al pasar por la
   barra de título, `[animation] speed` y desenfoque «Fondo» al arrastrar. Si se
@@ -252,14 +263,15 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   `UseQApplication` de `shell.qml`, que exige reiniciar el proceso.
 - **Guía de instalación limpia preparada.** `INSTALACION.md` reúne hardware,
   repositorios, paquetes, compilación del edit, configuración de Umbriel,
-  portales, sudoers, SDDM y copias de seguridad. Los archivos que vivían fuera
+  portales, sudoers, Noctalia Greeter y copias de seguridad. Los archivos que vivían fuera
   del proyecto están guardados en `install/` (`bin/`, `config/`, `systemd/`,
   `sudoers/`, `apt/` y `packages.txt`).
 - **Instalador automático (E1).** `install.sh` es el punto de entrada y delega
-  en `scripts/install-packages.sh`, `scripts/network.sh` y
-  `scripts/install-user-config.sh`; `scripts/install-umbriel-edit.sh` clona el
-  edit si hace falta, aplica el parche, compila e instala con `mv` atómico.
-  Instala repositorios, paquetes, configuración de usuario, sudoers y alarmas.
+  en `scripts/install-packages.sh`, `scripts/network.sh`,
+  `scripts/install-user-config.sh` y `scripts/install-greeter.sh`;
+  `scripts/install-umbriel-edit.sh` clona el edit si hace falta, aplica el
+  parche, compila e instala con `mv` atómico. Instala repositorios, paquetes,
+  configuración de usuario, sudoers, alarmas y el iniciador de sesión.
   Probado con `--dry-run` y con una compilación completa desde un clon limpio.
   Falta ejecutarlo de principio a fin en un Debian recién instalado.
 - **Conflictos de backports corregidos (2026-11-06).** `install-packages.sh`

@@ -92,6 +92,11 @@ Singleton {
     // Fondo de pantalla del escritorio. Ruta absoluta a una imagen; vacío
     // deja el fondo del compositor o el color elegido.
     property string wallpaperPath: ""
+    // El fondo elegido se copia a ~/.local/share/shell/wallpapers/ para que
+    // borrar el original de Descargas no lo elimine. Estas dos propiedades
+    // coordinan la importación asíncrona.
+    property string pendingWallpaperPath: ""
+    property string importingWallpaperPath: ""
     // Color de fondo alternativo a la imagen (#RRGGBB). La imagen manda si
     // existe; al quitarla se vuelve a este color.
     property string wallpaperColor: ""
@@ -213,6 +218,8 @@ Singleton {
         + "/scripts/shell-glass"
     readonly property string wallpaperPickScript: (Quickshell.shellDir || "")
         + "/scripts/shell-wallpaper-pick"
+    readonly property string wallpaperImportScript: (Quickshell.shellDir || "")
+        + "/scripts/shell-wallpaper-import"
 
     readonly property var workspaceIds: {
         const list = [];
@@ -527,9 +534,30 @@ Singleton {
         workspaceModesProc.running = true;
     }
 
+    function startWallpaperImport(path: string): void {
+        root.importingWallpaperPath = path;
+        wallpaperImportProc.command = ["sh", root.wallpaperImportScript, path];
+        wallpaperImportProc.running = true;
+    }
+
+    // La ruta elegida se copia al directorio estable del shell. Así el fondo
+    // no depende del archivo original: si se borra de Descargas, la copia
+    // sigue ahí. Si la copia falla, se usa la ruta original como respaldo.
     function setWallpaperPath(path: string): void {
         const clean = String(path || "").trim();
-        root.wallpaperPath = clean;
+        if (clean.length === 0) {
+            root.pendingWallpaperPath = "";
+            root.importingWallpaperPath = "";
+            root.wallpaperPath = "";
+            if (wallpaperImportProc.running)
+                wallpaperImportProc.running = false;
+            return;
+        }
+        if (wallpaperImportProc.running) {
+            root.pendingWallpaperPath = clean;
+            return;
+        }
+        root.startWallpaperImport(clean);
     }
 
     // Igual que el acento: solo #RRGGBB. Elegir un color quita la imagen para
@@ -539,7 +567,7 @@ Singleton {
         if (!/^#[0-9a-f]{6}$/.test(clean))
             return false;
         root.wallpaperColor = clean;
-        root.wallpaperPath = "";
+        root.setWallpaperPath("");
         return true;
     }
 
@@ -548,7 +576,7 @@ Singleton {
     }
 
     function clearWallpaper(): void {
-        root.wallpaperPath = "";
+        root.setWallpaperPath("");
     }
 
     // Ciudad del clima. Se recorta, se quitan saltos de línea y se limita la
@@ -1493,6 +1521,41 @@ Singleton {
             const path = String(wallpaperPickOut.text || "").trim();
             if (path.length > 0)
                 root.setWallpaperPath(path);
+        }
+    }
+
+    Process {
+        id: wallpaperImportProc
+
+        stdout: StdioCollector {
+            id: wallpaperImportOut
+        }
+
+        onExited: (code) => {
+            const requested = root.importingWallpaperPath;
+            if (requested.length === 0) {
+                // Se canceló la importación (por ejemplo al quitar el fondo).
+                const cancelledNext = root.pendingWallpaperPath;
+                root.pendingWallpaperPath = "";
+                if (cancelledNext.length > 0)
+                    root.startWallpaperImport(cancelledNext);
+                return;
+            }
+            const copied = String(wallpaperImportOut.text || "").trim();
+            if (code === 0 && copied.length > 0) {
+                root.wallpaperPath = copied;
+            } else {
+                // Si no se pudo copiar, el fondo sigue funcionando mientras
+                // el archivo original exista.
+                console.warn("No se pudo copiar el fondo; se usa la ruta original:",
+                    requested);
+                root.wallpaperPath = requested;
+            }
+            root.importingWallpaperPath = "";
+            const next = root.pendingWallpaperPath;
+            root.pendingWallpaperPath = "";
+            if (next.length > 0 && next !== requested)
+                root.startWallpaperImport(next);
         }
     }
 }

@@ -27,7 +27,8 @@ Shell de escritorio personal para [Umbriel](https://noctalia.dev/umbriel/)
   app, subtítulo y seis botones (flotar, fijar, mover, minimizar, maximizar,
   cerrar).
 - Integración con portales (captura y uso compartido), tema de apps GTK/KDE y
-  bloqueo de sesión.
+  bloqueo de sesión con Hyprlock.
+- Iniciador de sesión Noctalia Greeter (greetd). SDDM queda como respaldo.
 
 ## Estado
 
@@ -47,7 +48,8 @@ falta o está en pruebas está en `PENDIENTES.md`. Lo más relevante:
 - Debian 13 «trixie» (probablemente funciona en otras distribuciones con
   Wayland, pero no está probado).
 - Umbriel y su portal, desde el repositorio de Noctalia.
-- Quickshell, PipeWire y Mesa desde `trixie-backports`.
+- Noctalia Greeter y `greetd` como iniciador de sesión.
+- Quickshell, PipeWire, Mesa y Hyprlock desde `trixie-backports`.
 - Qt 6, KDE/Breeze, NetworkManager (con `wpasupplicant`), BlueZ,
   UPower y Polkit.
 - Para el brillo: `ddcutil` y una regla de sudoers.
@@ -75,9 +77,10 @@ use `--force-config`; en ese caso guarda una copia `.bak`.
 ejecutar por separado:
 
 ```sh
-./scripts/install-packages.sh --dry-run   # repositorios y paquetes (instala el Umbriel oficial; después hay que reinstalar el edit)
-./scripts/network.sh --dry-run            # red, Wi-Fi, hotspot, VPN y Bluetooth
+./scripts/install-packages.sh --dry-run    # repositorios y paquetes (instala el Umbriel oficial; después hay que reinstalar el edit)
+./scripts/network.sh --dry-run             # red, Wi-Fi, hotspot, VPN y Bluetooth
 ./scripts/install-user-config.sh --dry-run # enlaces y configuración del HOME
+./scripts/install-greeter.sh --dry-run     # Noctalia Greeter y greetd
 ./scripts/install-umbriel-edit.sh --dry-run # Umbriel propio (edit personal)
 ```
 
@@ -93,6 +96,7 @@ Opciones útiles:
 - `--skip-disks`: no añade los discos internos NTFS a `/etc/fstab`.
 - `--skip-network`: no configura la red ni instala NetworkManager, Wi-Fi,
   hotspot, VPN ni Bluetooth.
+- `--skip-greeter`: no cambia el iniciador de sesión; deja SDDM.
 - `--with-firmware`: instala también firmware y drivers de este equipo.
 - `--help`: lista todas las opciones.
 
@@ -101,6 +105,28 @@ La guía manual, con el detalle de cada paso, sigue estando en
 
 > En los archivos de `install/` la ruta `/home/USUARIO` es un marcador: el
 > instalador la sustituye por tu HOME real.
+
+### Configuración inicial y fondo de pantalla
+
+Una instalación nueva parte de la configuración de este equipo: barra, orden
+de iconos, tamaños, acento, cristal, ventanas, escritorios y fondo. Las
+plantillas están en `install/config/`.
+
+El fondo elegido se copia a:
+
+```text
+~/.local/share/shell/wallpapers/
+```
+
+La copia es la que usa el shell. Si borras la imagen original de Descargas, el
+fondo sigue funcionando. Al elegir otra imagen desde Ajustes, el shell la copia
+al mismo directorio como `current.<ext>` y actualiza la configuración. El
+instalador también migra un `wallpaperPath` antiguo que apunte fuera de ese
+directorio.
+
+Noctalia Greeter recibe una copia aparte en
+`/var/lib/noctalia-greeter/wallpaper.<ext>`, porque `_greetd` no puede leer
+dentro de un HOME privado.
 
 ## Estructura
 
@@ -117,7 +143,9 @@ La guía manual, con el detalle de cada paso, sigue estando en
 | `scripts/install-packages.sh` | Módulo de repositorios, paquetes y servicios. |
 | `scripts/network.sh` | Módulo de NetworkManager, Ethernet y Wi-Fi. |
 | `scripts/install-user-config.sh` | Módulo de enlaces y configuración del HOME. |
+| `scripts/install-greeter.sh` | Configura Noctalia Greeter y cambia de SDDM a greetd. |
 | `scripts/install-umbriel-edit.sh` | Compila e instala el edit personal de Umbriel. |
+| `install/wallpapers/default.png` | Fondo de pantalla por defecto. |
 | `umbriel-edit.patch` | Parche del edit de Umbriel sobre `b6c4b7d`. |
 | `EDIT-PERSONAL.md` | Qué es este proyecto personal y cuáles son sus límites. |
 | `UMBRIEL-EDIT.md` | Qué es el edit de Umbriel, cómo publicarlo y protegerlo de `apt`. |
@@ -158,5 +186,6 @@ instalador usa el paquete del sistema.
 - [Umbriel](https://noctalia.dev/umbriel/), el compositor.
 - [Quickshell](https://quickshell.org/), el framework QML.
 - [Noctalia](https://noctalia.dev/), el proyecto del que sale Umbriel.
+- [Noctalia Greeter](https://github.com/noctalia-dev/noctalia-greeter), el iniciador de sesión.
 - Breeze y el resto de KDE por los iconos y el tema base.
 - Varios iconos SVG están inspirados en [Lucide](https://lucide.dev/) (ISC).
