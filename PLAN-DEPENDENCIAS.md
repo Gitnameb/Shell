@@ -24,6 +24,7 @@ romper el arranque ni mostrar errores raros.
 | --- | --- | --- | --- | --- |
 | Teclado en pantalla | `wvkbd` instalado. Capas `full`, `cyrillic`, `simple`, `nav` y `emoji`. | Español, alemán y portugués no tienen capa nativa; el chino necesita IME, no solo teclas. | Capas propias de `wvkbd` o cambiar a `squeekboard` (1.43) para es/de/pt. Chino: `fcitx5` + `fcitx5-chinese-addons`. | Alta |
 | Portapapeles | Delegado en `cliphist`: guarda texto, listas de archivos e imágenes y deduplica el historial. | Nada para lo pedido; funciones extra (abrir archivo, pegar como archivo) serían otro paso. | `cliphist` ya incluido en la instalación. | Hecho |
+| Discos extraíbles | `udisks2` ya activo; el instalador añade `udiskie` y su servicio de usuario. | Detección de adaptadores USB problemáticos. | `udiskie` ya incluido. | Hecho |
 | Brillo | `ddcutil` para monitores externos, panel interno por `brightnessctl`/sysfs y filtro nativo como respaldo. | Nada; el panel interno necesita la regla de sudo que instala el instalador. | `brightnessctl` ya incluido en la instalación. | Hecho |
 | Luz nocturna y atenuación extra | Ya son nativas: Umbriel aplica `[display]` como shader de salida. | Nada. | Ninguno. | Hecho |
 | VPN | OpenVPN instalado (`network-manager-openvpn`). | WireGuard, OpenConnect, StrongSwan, PPTP y VPNC no aparecen si su plugin no está. | `network-manager-openconnect`, `network-manager-strongswan`, `network-manager-vpnc`, `network-manager-pptp` y `wireguard-tools`. | Media |

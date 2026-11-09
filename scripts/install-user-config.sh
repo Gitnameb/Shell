@@ -243,6 +243,53 @@ else
     warn "No hay una sesión systemd de usuario activa; las alarmas arrancarán al entrar."
 fi
 
+# ---------------------------------------------------------------------------
+# Montaje automático de unidades extraíbles
+# ---------------------------------------------------------------------------
+if command -v udiskie >/dev/null 2>&1; then
+    log "Instalando el montaje automático de unidades extraíbles."
+    unit="$TARGET_HOME/.config/systemd/user/udiskie.service"
+    if [[ -e "$unit" && $FORCE_CONFIG -eq 0 ]]; then
+        warn "$unit ya existe; se conserva. Usa --force-config para reemplazarlo."
+    else
+        backup_file "$unit"
+        run mkdir -p "$(dirname "$unit")"
+        if (( ! DRY_RUN )); then
+            cat >"$unit" <<'EOF'
+[Unit]
+Description=Montaje automático de unidades extraíbles
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/udiskie --automount --notify
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+EOF
+            chmod 644 "$unit"
+        fi
+    fi
+
+    run mkdir -p "$TARGET_HOME/.config/systemd/user/default.target.wants"
+    run ln -sfn ../udiskie.service \
+        "$TARGET_HOME/.config/systemd/user/default.target.wants/udiskie.service"
+
+    if command -v systemctl >/dev/null 2>&1 \
+        && systemctl --user show-environment >/dev/null 2>&1; then
+        run systemctl --user daemon-reload \
+            || warn "No se pudo recargar systemd de usuario."
+        run systemctl --user enable --now udiskie.service \
+            || warn "No se pudo activar udiskie ahora; se activará al entrar."
+    else
+        warn "No hay una sesión systemd de usuario activa; udiskie arrancará al entrar."
+    fi
+else
+    warn "udiskie no está instalado; las unidades USB no se montarán solas."
+fi
+
 log "Autorizando ddcutil sin contraseña (solo ese comando)."
 if (( DRY_RUN )); then
     printf '\033[2m[dry-run]\033[0m instalar /etc/sudoers.d/shell-ddcutil para %s\n' "$USER_NAME"

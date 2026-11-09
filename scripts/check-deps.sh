@@ -56,6 +56,8 @@ check_package wl-clipboard "Portapapeles (wl-clipboard)" \
     wl-clipboard "sudo apt install wl-clipboard"
 check_package cliphist "Historial del portapapeles (cliphist)" \
     cliphist "sudo apt install cliphist"
+check_package udiskie "Montaje automático de USB (udiskie)" \
+    udiskie "sudo apt install udiskie"
 
 # python3 ejecuta los ayudantes de DNS y proxy; no lo instala network.sh.
 if ! command -v python3 >/dev/null 2>&1; then

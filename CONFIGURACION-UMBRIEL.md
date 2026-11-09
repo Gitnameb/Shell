@@ -1045,3 +1045,21 @@ abrir. Ahora:
 
 Comprobado con un teclado virtual: `open=0 → open=1 → open=0`, y mantener
 Super con el lanzador abierto lo cierra sin reabrirlo al soltar.
+
+## 30. Discos internos y extraíbles
+
+El plan completo está en `PLAN-DISCOS.md`.
+
+- `scripts/mount-disks.sh --dry-run` detecta los discos internos NTFS sin
+  montar y muestra las líneas que añadiría a `/etc/fstab`.
+- `sudo ./scripts/mount-disks.sh --apply` las escribe, crea los puntos de
+  montaje y comprueba que quedan montados. Usa `nofail`, así que un disco
+  ausente no bloquea el arranque. `--uninstall` quita el bloque y desmonta.
+- Las unidades USB no van a `fstab`: `udiskie` las monta al conectarlas y al
+  iniciar sesión. El instalador añade el paquete y su servicio de usuario.
+- `scripts/diagnose-usb-disk.sh` reúne `lsusb`, `lsblk`, `udisksctl` y el
+  registro del kernel para saber por qué no aparece un disco externo. No
+  modifica nada.
+
+Si un SSD externo no aparece, el problema suele estar antes del automontaje:
+cable, alimentación, puente USB-SATA/NVMe o formato no soportado.

@@ -122,7 +122,7 @@ MESA_BACKPORTS_PKGS=(
 RUNTIME_PKGS=(
     ddcutil brightnessctl libnotify-bin fonts-inter-variable wvkbd swayidle foot
     power-profiles-daemon
-    iputils-ping wl-clipboard cliphist python3 curl
+    iputils-ping wl-clipboard cliphist udiskie python3 curl
     qml6-module-qtquick-effects
     qml6-module-qt-labs-folderlistmodel
     xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-kde

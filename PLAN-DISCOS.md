@@ -113,3 +113,31 @@ ya están disponibles en el gestor de archivos.
 5. Arrancar Windows, apagarlo bien y volver a Linux: los NTFS se montan sin
    errores.
 6. Quitar una entrada de `fstab`: el sistema sigue arrancando.
+
+## SSD externo que no se reconoce
+
+El caso del SSD externo con adaptador USB no es lo mismo que el automontaje:
+si el equipo no lo ve, primero hay que saber en qué capa falla.
+
+1. Conectar el disco y ejecutar:
+
+   ```sh
+   ./scripts/diagnose-usb-disk.sh
+   sudo ./scripts/diagnose-usb-disk.sh
+   ```
+
+2. Interpretación rápida:
+
+   | Síntoma | Causa probable | Siguiente paso |
+   | --- | --- | --- |
+   | No aparece en `lsusb` | Cable, puerto o alimentación | Probar otro cable/puerto USB 3 y un hub alimentado |
+   | Aparece en `lsusb`, no en `lsblk` | Puente USB-SATA/NVMe, `uas` o `usb-storage` | Revisar el registro; probar quirk con el VID:PID |
+   | Aparece en `lsblk` sin `FSTYPE` | Sin tabla de particiones, APFS, BitLocker, LVM o ZFS | No formatear; identificar el formato antes |
+   | Aparece con NTFS/exFAT y no monta | Windows hibernado, BitLocker o error del sistema de archivos | `ntfsfix -n` solo como diagnóstico |
+   | Funciona en otro equipo | Compatibilidad del adaptador | Probar `usb-storage.quirks=VID:PID:u` |
+
+3. Cuando funcione como disco extraíble, `udiskie` lo montará solo. Si el
+   adaptador es problemático pero el disco se ve, se puede añadir el quirk del
+   kernel sin tocar el automontaje.
+
+No se ha instalado nada para diagnosticar: los comandos son de solo lectura.

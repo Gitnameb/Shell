@@ -36,6 +36,11 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   transición medida pasó de ~541 a ~407 ms. Maximizar usa
   `window-toggle-maximize-to-edges`: en mosaico ya ocupa todo el área útil en
   vez de dejar una franja de la ventana vecina.
+- **Discos internos y USB (2026-11-09).** `scripts/mount-disks.sh` prepara
+  las entradas de `/etc/fstab` para los NTFS internos, con `--dry-run` y
+  `--uninstall`. El instalador añade `udiskie` para montar USB al conectarlos.
+  `scripts/diagnose-usb-disk.sh` y `PLAN-DISCOS.md` cubren el caso del SSD
+  externo no reconocido. No se modificó `/etc/fstab` porque hace falta sudo.
 - **Atajos de una tecla y botones del ratón (2026-11-09).** El capturador
   acepta teclas multimedia, `F13`–`F24` y los botones laterales como
   `MouseBack`/`MouseForward` sin modificador. El fork permite enlazar esos dos
