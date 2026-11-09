@@ -180,7 +180,7 @@ Singleton {
         if (key === "gpu")
             return "Gráficos";
         if (key === "net")
-            return "Red";
+            return "Monitor de tráfico de red";
         if (key === "dns")
             return "DNS";
         if (key === "settings")

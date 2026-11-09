@@ -42,7 +42,7 @@ def hwmon_value(name, filename, divisor=1000.0):
         return None
 
 
-def cpu_snapshot():
+def cpu_snapshot(want_cores=True):
     total = idle = 0
     cores = []
     for line in (read("/proc/stat", "") or "").splitlines():
@@ -59,7 +59,7 @@ def cpu_snapshot():
         whole = sum(values)
         if fields[0] == "cpu":
             total, idle = whole, idle_all
-        else:
+        elif want_cores:
             cores.append((whole, idle_all))
     return total, idle, cores
 
@@ -180,27 +180,50 @@ def parent_alive(pid):
         return False
 
 
+def latency_report():
+    route = default_route()
+    interface = route[1] if route else ""
+    gateway = route[2] if route else ""
+    return {
+        "lat": latency(gateway),
+        "iface": interface,
+        "ip": interface_ip(interface) if interface else "",
+    }
+
+
+def detailed_enabled(path):
+    return (read(path, "0") or "").strip() == "1"
+
+
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "--latency":
+        print(json.dumps(latency_report()), flush=True)
+        return
+
     watchdog_pid = None
     if len(sys.argv) > 1:
         try:
             watchdog_pid = int(sys.argv[1])
         except ValueError:
             watchdog_pid = None
+    # Archivo que el shell escribe con 1 mientras hay una vista de rendimiento
+    # abierta. Fuera de ella solo se mide lo que la barra muestra.
+    detail_path = sys.argv[2] if len(sys.argv) > 2 else ""
 
     total, idle, cores = cpu_snapshot()
     route = default_route()
     interface = route[1] if route else ""
     gateway = route[2] if route else ""
-    ip = interface_ip(interface) if interface else ""
+    ip = ""
+    ip_tick = 0
     net_previous = net_bytes(interface) if interface else None
     session_down = session_up = 0.0
     peak_down = peak_up = 0.0
     last_time = time.monotonic()
-    last_latency = -1
     tick = 0
     smooth_cpu = 0.0
     smooth_gpu = 0.0
+    detailed_previous = False
 
     while True:
         # Si Quickshell se reinicia o muere, este proceso no debe quedarse
@@ -213,20 +236,27 @@ def main():
             elapsed = max(0.2, now - last_time)
             last_time = now
             tick += 1
+            detailed = detailed_enabled(detail_path)
+            just_opened = detailed and not detailed_previous
+            detailed_previous = detailed
 
-            new_total, new_idle, new_cores = cpu_snapshot()
+            # El total de CPU se sigue leyendo siempre: es una sola línea de
+            # /proc/stat y mantiene la base para cuando se abra el panel. La
+            # carga por núcleo solo se publica en detalle.
+            new_total, new_idle, new_cores = cpu_snapshot(detailed)
             delta_total = new_total - total
             delta_idle = new_idle - idle
-            raw_cpu = 100.0 * (1.0 - delta_idle / delta_total) if delta_total > 0 else 0.0
-            raw_cpu = clamp(raw_cpu, 0.0, 100.0)
-            smooth_cpu = smooth_cpu * 0.55 + raw_cpu * 0.45
-
+            if detailed and delta_total > 0:
+                raw_cpu = 100.0 * (1.0 - delta_idle / delta_total)
+                raw_cpu = clamp(raw_cpu, 0.0, 100.0)
+                smooth_cpu = smooth_cpu * 0.55 + raw_cpu * 0.45
             core_load = []
-            for (old_total, old_idle), (cur_total, cur_idle) in zip(cores, new_cores):
-                span = cur_total - old_total
-                idle_span = cur_idle - old_idle
-                value = 100.0 * (1.0 - idle_span / span) if span > 0 else 0.0
-                core_load.append(round(clamp(value, 0.0, 100.0), 1))
+            if detailed:
+                for (old_total, old_idle), (cur_total, cur_idle) in zip(cores, new_cores):
+                    span = cur_total - old_total
+                    idle_span = cur_idle - old_idle
+                    value = 100.0 * (1.0 - idle_span / span) if span > 0 else 0.0
+                    core_load.append(round(clamp(value, 0.0, 100.0), 1))
             total, idle, cores = new_total, new_idle, new_cores
 
             cpu_temp = hwmon_value("coretemp", "temp1_input")
@@ -239,23 +269,32 @@ def main():
                         except (TypeError, ValueError):
                             cpu_temp = None
                         break
-            cpu_max_raw = read("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq")
-            try:
-                cpu_max = float(cpu_max_raw) / 1000.0
-            except (TypeError, ValueError):
-                cpu_max = 0.0
 
-            gpu_raw = read("/sys/class/drm/card0/device/gpu_busy_percent")
-            try:
-                raw_gpu = clamp(float(gpu_raw), 0.0, 100.0)
-            except (TypeError, ValueError):
-                raw_gpu = 0.0
-            smooth_gpu = smooth_gpu * 0.55 + raw_gpu * 0.45
-            gpu_temp = hwmon_value("amdgpu", "temp1_input")
-            gpu_clock, gpu_clock_max = gpu_frequency()
-            gpu_watts = gpu_power()
-            vram_used = read("/sys/class/drm/card0/device/mem_info_vram_used")
-            vram_total = read("/sys/class/drm/card0/device/mem_info_vram_total")
+            if detailed:
+                cpu_max_raw = read("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq")
+                try:
+                    cpu_max = float(cpu_max_raw) / 1000.0
+                except (TypeError, ValueError):
+                    cpu_max = 0.0
+                gpu_raw = read("/sys/class/drm/card0/device/gpu_busy_percent")
+                try:
+                    raw_gpu = clamp(float(gpu_raw), 0.0, 100.0)
+                except (TypeError, ValueError):
+                    raw_gpu = 0.0
+                smooth_gpu = smooth_gpu * 0.55 + raw_gpu * 0.45
+                gpu_temp = hwmon_value("amdgpu", "temp1_input")
+                gpu_clock, gpu_clock_max = gpu_frequency()
+                gpu_watts = gpu_power()
+                vram_used = read("/sys/class/drm/card0/device/mem_info_vram_used")
+                vram_total = read("/sys/class/drm/card0/device/mem_info_vram_total")
+            else:
+                # La temperatura de la GPU sigue haciendo falta para el color
+                # del icono; el resto solo se consulta con el panel abierto.
+                cpu_max = 0.0
+                gpu_temp = hwmon_value("amdgpu", "temp1_input")
+                gpu_clock = gpu_clock_max = None
+                gpu_watts = None
+                vram_used = vram_total = None
 
             if tick % 10 == 1:
                 route = default_route()
@@ -263,11 +302,14 @@ def main():
                 if new_interface and new_interface != interface:
                     interface = new_interface
                     gateway = route[2]
-                    ip = interface_ip(interface)
+                    ip = ""
+                    ip_tick = 0
                     net_previous = net_bytes(interface)
-                elif interface:
-                    ip = interface_ip(interface)
-                last_latency = latency(gateway)
+                elif not interface:
+                    gateway = route[2] if route else ""
+            if detailed and (just_opened or tick - ip_tick >= 10):
+                ip = interface_ip(interface) if interface else ""
+                ip_tick = tick
 
             current = net_bytes(interface) if interface else None
             down_rate = up_rate = 0.0
@@ -282,12 +324,13 @@ def main():
 
             payload = {
                 "dt": round(elapsed, 3),
-                "cpu": round(smooth_cpu, 1),
+                "detailed": detailed,
+                "cpu": round(smooth_cpu, 1) if detailed else 0,
                 "temp": round(cpu_temp, 1) if cpu_temp is not None else None,
-                "freq": int(round(cpu_frequency())),
+                "freq": int(round(cpu_frequency())) if detailed else 0,
                 "maxfreq": int(round(cpu_max)),
                 "cores": core_load,
-                "gpu": round(smooth_gpu, 1),
+                "gpu": round(smooth_gpu, 1) if detailed else 0,
                 "gtemp": round(gpu_temp, 1) if gpu_temp is not None else None,
                 "gfreq": int(round(gpu_clock)) if gpu_clock else None,
                 "gmaxfreq": int(round(gpu_clock_max)) if gpu_clock_max else None,
@@ -300,7 +343,7 @@ def main():
                 "sup": round(session_up),
                 "pdown": round(peak_down),
                 "pup": round(peak_up),
-                "lat": last_latency,
+                "lat": None,
                 "iface": interface,
                 "ip": ip,
                 "kind": (
@@ -312,6 +355,8 @@ def main():
         except Exception:
             # Un fallo puntual no debe matar el muestreo.
             continue
+
+
 
 
 if __name__ == "__main__":

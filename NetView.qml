@@ -131,12 +131,15 @@ ColumnLayout {
         StatCell {
             Layout.fillWidth: true
             title: "Latencia"
-            value: SystemStats.netLatency >= 0
-                ? SystemStats.netLatency + " ms" : "—"
+            value: SystemStats.latencyBusy ? "…"
+                : (SystemStats.netLatency >= 0
+                    ? SystemStats.netLatency + " ms" : "—")
             detail: "ping al gateway"
-            valueColor: SystemStats.netLatency >= 0
-                && SystemStats.netLatency <= 60 ? Theme.accent
-                : (SystemStats.netLatency >= 0 ? Theme.warning : Theme.faint)
+            valueColor: SystemStats.latencyBusy ? Theme.faint
+                : (SystemStats.netLatency >= 0
+                    && SystemStats.netLatency <= 60 ? Theme.accent
+                    : (SystemStats.netLatency >= 0
+                        ? Theme.warning : Theme.faint))
         }
 
         StatCell {

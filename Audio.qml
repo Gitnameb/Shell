@@ -59,6 +59,44 @@ Singleton {
         return String(props["media.name"] || props["application.process.binary"] || "");
     }
 
+    // Flujos que pertenecen a una ventana. El PID es la coincidencia más
+    // fiable; si la app no lo publica, se compara el id o el nombre.
+    function streamsForWindow(win): var {
+        if (!win)
+            return [];
+        const pid = Number(win.pid) || 0;
+        const appId = String(win.appId || win.cls || win.class || "")
+            .toLowerCase();
+        const out = [];
+        const list = root.streams;
+        for (let i = 0; i < list.length; i++) {
+            const node = list[i];
+            if (!node || !node.audio)
+                continue;
+            const props = node.properties || ({});
+            const streamPid = Number(props["application.process.id"]) || 0;
+            const binary = String(props["application.process.binary"] || "")
+                .toLowerCase();
+            const appName = String(props["application.name"] || "")
+                .toLowerCase();
+            const samePid = pid > 0 && streamPid === pid;
+            const sameApp = appId.length > 0 && (
+                binary === appId || appName === appId
+                || (binary.length > 0 && binary.indexOf(appId) !== -1)
+                || (appId.indexOf(binary) !== -1 && binary.length > 0)
+                || (appName.length > 0 && appName.indexOf(appId) !== -1)
+                || (appId.indexOf(appName) !== -1 && appName.length > 0));
+            if (samePid || sameApp)
+                out.push(node);
+        }
+        return out;
+    }
+
+    function primaryStreamForWindow(win): var {
+        const list = root.streamsForWindow(win);
+        return list.length > 0 ? list[0] : null;
+    }
+
     function setNodeVolume(node, value): void {
         if (node && node.audio)
             node.audio.volume = Math.max(0, Math.min(1, value));

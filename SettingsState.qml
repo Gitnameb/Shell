@@ -56,6 +56,9 @@ Singleton {
     // Desactivado, la campana abre solo las notificaciones y el icono de
     // cuadrícula abre solo el centro de control.
     property bool unifiedPanels: true
+    // Sonido breve al llegar un aviso. La app puede pedir su propio sonido;
+    // esto solo es el respaldo del shell.
+    property bool notificationSound: true
 
     // ------------------------------------------------------- ventanas
     // Modo por defecto de los escritorios. «floating» imita a Windows: las
@@ -320,6 +323,10 @@ Singleton {
 
     function setUnifiedPanels(value: bool): void {
         root.unifiedPanels = value;
+    }
+
+    function setNotificationSound(value: bool): void {
+        root.notificationSound = value;
     }
 
     // ------------------------------------------------------- ventanas
@@ -653,6 +660,7 @@ Singleton {
             + "showBatteryPercent=%s\\n"
             + "showTemps=%s\\n"
             + "unifiedPanels=%s\\n"
+            + "notificationSound=%s\\n"
             + "hotspotAutoOff=%s\\n"
             + "hotspotMinutes=%s\\n"
             + "wifiAutoOff=%s\\n"
@@ -704,6 +712,7 @@ Singleton {
             root.showBatteryPercent ? "1" : "0",
             root.showTemps ? "1" : "0",
             root.unifiedPanels ? "1" : "0",
+            root.notificationSound ? "1" : "0",
             root.hotspotAutoOff ? "1" : "0",
             root.hotspotMinutes,
             root.wifiAutoOff ? "1" : "0",
@@ -802,6 +811,7 @@ Singleton {
     onShowBatteryPercentChanged: saveTimer.restart()
     onShowTempsChanged: saveTimer.restart()
     onUnifiedPanelsChanged: saveTimer.restart()
+    onNotificationSoundChanged: saveTimer.restart()
     onWorkspaceModeDefaultChanged: {
         saveTimer.restart();
         workspaceModesTimer.restart();
@@ -968,6 +978,7 @@ Singleton {
             let pctBattery = root.showBatteryPercent;
             let temps = root.showTemps;
             let unified = root.unifiedPanels;
+            let notifySound = root.notificationSound;
             let mode = root.themeMode;
             let accent = root.accentColor;
             let sysTheme = root.systemTheme;
@@ -1065,6 +1076,8 @@ Singleton {
                     temps = value === "1" || value === "true";
                 } else if (key === "unifiedPanels") {
                     unified = value === "1" || value === "true";
+                } else if (key === "notificationSound") {
+                    notifySound = value === "1" || value === "true";
                 } else if (key === "themeMode") {
                     mode = value === "light" ? "light" : "dark";
                 } else if (key === "accentColor") {
@@ -1182,6 +1195,7 @@ Singleton {
             root.showBatteryPercent = pctBattery;
             root.showTemps = temps;
             root.unifiedPanels = unified;
+            root.notificationSound = notifySound;
             root.themeMode = mode;
             root.accentColor = accent;
             root.systemTheme = sysTheme;

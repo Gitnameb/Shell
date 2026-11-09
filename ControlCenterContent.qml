@@ -82,6 +82,7 @@ ColumnLayout {
         DnsState.refresh();
         if (root.active && root.view === "wifi")
             root.refreshWired();
+        root.updateStatsMode();
     }
 
     Timer {
@@ -518,6 +519,7 @@ ColumnLayout {
 
     // Al cambiar de vista se corta el escaneo para no dejar la radio ocupada.
     onViewChanged: {
+        root.updateStatsMode();
         WifiState.watching = root.active && root.view === "wifi";
         CompositorState.watching = root.active && root.view === "compositor";
         if (root.view !== "mic")
@@ -553,6 +555,7 @@ ColumnLayout {
         }
     }
     onActiveChanged: {
+        root.updateStatsMode();
         WifiState.watching = root.active && root.view === "wifi";
         CompositorState.watching = root.active && root.view === "compositor";
         if (root.active && root.view === "wifi") {
@@ -698,6 +701,17 @@ ColumnLayout {
         event.accepted = true;
     }
 
+    // Solo se activa el muestreo detallado con una vista que lo use abierta.
+    // La latencia se mide una vez al abrir el monitor de red, no cada segundo.
+    function updateStatsMode(): void {
+        const detailed = root.active
+            && (root.view === "cpu" || root.view === "gpu"
+                || root.view === "net");
+        SystemStats.setDetailed(detailed);
+        if (root.active && root.view === "net")
+            SystemStats.refreshLatency();
+    }
+
     function viewTitle(): string {
         if (view === "wifi")
             return root.wifiNetworkOptions && root.wifiNetworkSsid.length > 0
@@ -723,7 +737,7 @@ ColumnLayout {
         if (view === "gpu")
             return "Gráficos";
         if (view === "net")
-            return "Red";
+            return "Monitor de tráfico de red";
         if (view === "dns")
             return "DNS";
         if (view === "vpn")
@@ -1449,7 +1463,7 @@ ColumnLayout {
             iconSource: ShellIcons.src("net")
             iconColor: (SystemStats.netDown + SystemStats.netUp) > 1024
                 ? Theme.accent : Theme.muted
-            label: "Red"
+            label: "Monitor de tráfico de red"
             dragKey: "net"
             toggleEnabled: false
             meta: SystemStats.networkAvailable
@@ -5203,6 +5217,25 @@ ColumnLayout {
 
             RowLayout {
                 Layout.fillWidth: true
+                spacing: 8
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Sonido de notificaciones"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                ShellSwitch {
+                    checked: SettingsState.notificationSound
+                    onToggled: SettingsState.setNotificationSound(
+                        !SettingsState.notificationSound)
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
                 spacing: 6
 
                 Text {
@@ -5618,10 +5651,19 @@ ColumnLayout {
                     spacing: 4
 
                     Repeater {
-                        model: [
-                            "#b8bec7", "#c9b8f5", "#a9e8cf",
-                            "#f4e6a6", "#8ab4f8", "#e8a9d6"
-                        ]
+                        model: {
+                            const base = [
+                                "#0b0d10", "#f2f1ee", "#31577f",
+                                "#7b2940", "#d79ab4", "#3e6b5c",
+                                "#c9b28a"
+                            ];
+                            const current = String(
+                                SettingsState.accentColor || "").toLowerCase();
+                            if (current.length === 7
+                                    && base.indexOf(current) === -1)
+                                base.splice(5, 0, current);
+                            return base;
+                        }
 
                         delegate: Rectangle {
                             id: accentDot
@@ -5836,18 +5878,174 @@ ColumnLayout {
                 }
             }
 
-            Text {
+            Rectangle {
                 Layout.fillWidth: true
-                text: SettingsState.glassBlurBehind
-                    ? "Se ve el contenido que hay detrás, con un desenfoque "
-                        + "simple."
-                    : "Solo se ve el fondo de pantalla desenfocado; el "
-                        + "contenido de detrás queda oculto."
-                color: Theme.faint
-                font.family: Theme.fontFamily
-                font.pixelSize: 8
-                wrapMode: Text.WordWrap
+                Layout.preferredHeight: 1
+                color: Theme.border
             }
+
+            // ------------------------------------------------ cristal de ventanas
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Cristal de ventanas"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                    font.weight: Font.DemiBold
+                }
+
+                Text {
+                    text: "Restablecer"
+                    color: windowResetMouse.containsMouse
+                        ? Theme.accent : Theme.faint
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+
+                    MouseArea {
+                        id: windowResetMouse
+                        anchors.fill: parent
+                        anchors.margins: -4
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            SettingsState.setWindowTransparency(0);
+                            SettingsState.setWindowBlur(12);
+                            SettingsState.setWindowBlurBehind(false);
+                            SettingsState.setWindowSync(false);
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 1
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Sincronizar con el shell"
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                    }
+
+                }
+
+                ShellSwitch {
+                    checked: SettingsState.windowSync
+                    onToggled: SettingsState.setWindowSync(
+                        !SettingsState.windowSync)
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Transparencia"
+                    color: Theme.muted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                }
+
+                Text {
+                    text: SettingsState.effectiveWindowTransparency + " %"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                }
+            }
+
+            ShellSlider {
+                id: windowTransparencySlider
+
+                Layout.fillWidth: true
+                enabled: !SettingsState.windowSync
+                from: 0
+                to: 90
+                stepSize: 2
+                value: SettingsState.effectiveWindowTransparency
+                onMoved: SettingsState.setWindowTransparency(value)
+            }
+
+            Binding {
+                target: windowTransparencySlider
+                property: "value"
+                value: SettingsState.effectiveWindowTransparency
+                when: !windowTransparencySlider.pressed
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Desenfoque"
+                    color: Theme.muted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                }
+
+                Text {
+                    text: SettingsState.effectiveWindowBlur + " px"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                }
+            }
+
+            ShellSlider {
+                id: windowBlurSlider
+
+                Layout.fillWidth: true
+                enabled: !SettingsState.windowSync
+                from: 0
+                to: 40
+                stepSize: 2
+                value: SettingsState.effectiveWindowBlur
+                onMoved: SettingsState.setWindowBlur(value)
+            }
+
+            Binding {
+                target: windowBlurSlider
+                property: "value"
+                value: SettingsState.effectiveWindowBlur
+                when: !windowBlurSlider.pressed
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Tipo de desenfoque"
+                    color: Theme.muted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                }
+
+                BlurModeChoice {
+                    interactive: !SettingsState.windowSync
+                    behind: SettingsState.effectiveWindowBlurBehind
+                    onSelected: (behind) =>
+                        SettingsState.setWindowBlurBehind(behind)
+                }
+            }
+
 
             Rectangle {
                 Layout.fillWidth: true
@@ -5871,15 +6069,6 @@ ColumnLayout {
                         font.pixelSize: 10
                     }
 
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Aplica el modo y el acento a GTK y a las apps "
-                            + "de KDE."
-                        color: Theme.faint
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 8
-                        wrapMode: Text.WordWrap
-                    }
                 }
 
                 ShellSwitch {
@@ -6013,10 +6202,19 @@ ColumnLayout {
                     spacing: 4
 
                     Repeater {
-                        model: [
-                            "#0b0d10", "#141821", "#1b1520",
-                            "#101a16", "#231a14", "#f2f1ee"
-                        ]
+                        model: {
+                            const base = [
+                                "#0b0d10", "#f2f1ee", "#142235",
+                                "#2a121c", "#6b3a4c", "#12231e",
+                                "#2b241a"
+                            ];
+                            const current = String(
+                                SettingsState.accentColor || "").toLowerCase();
+                            if (current.length === 7
+                                    && base.indexOf(current) === -1)
+                                base.splice(5, 0, current);
+                            return base;
+                        }
 
                         delegate: Rectangle {
                             id: wallpaperDot
@@ -6183,58 +6381,6 @@ ColumnLayout {
                         }
                     }
                 }
-            }
-
-            // ---------------------------------------------- controles de ventana
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Controles de ventana"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                }
-
-                Rectangle {
-                    implicitWidth: 96
-                    implicitHeight: 24
-                    radius: 7
-                    color: showChromeHover.containsMouse
-                        ? Theme.accentSoft : Theme.surfaceAlt
-                    border.width: 1
-                    border.color: SuperState.active
-                        ? Theme.accentLine : Theme.border
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: SuperState.pinned ? "Ocultar"
-                            : (CompositorState.supports("superHold")
-                                ? "Mostrar con Super"
-                                : "Mostrar con Super+Tab")
-                        color: SuperState.pinned
-                            ? Theme.accent : Theme.muted
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 8
-                        font.weight: Font.DemiBold
-                    }
-
-                    MouseArea {
-                        id: showChromeHover
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: SuperState.togglePinned()
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Theme.border
             }
 
             // -------------------------------------------- modo por escritorio
@@ -6483,173 +6629,6 @@ ColumnLayout {
                 }
             }
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Theme.border
-            }
-
-            // ------------------------------------------------ cristal de ventanas
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Cristal de ventanas"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                    font.weight: Font.DemiBold
-                }
-
-                Text {
-                    text: "Restablecer"
-                    color: windowResetMouse.containsMouse
-                        ? Theme.accent : Theme.faint
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 8
-
-                    MouseArea {
-                        id: windowResetMouse
-                        anchors.fill: parent
-                        anchors.margins: -4
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            SettingsState.setWindowTransparency(0);
-                            SettingsState.setWindowBlur(12);
-                            SettingsState.setWindowBlurBehind(false);
-                            SettingsState.setWindowSync(false);
-                        }
-                    }
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 1
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Sincronizar con el shell"
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 10
-                    }
-
-                }
-
-                ShellSwitch {
-                    checked: SettingsState.windowSync
-                    onToggled: SettingsState.setWindowSync(
-                        !SettingsState.windowSync)
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Transparencia"
-                    color: Theme.muted
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                }
-
-                Text {
-                    text: SettingsState.effectiveWindowTransparency + " %"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                    font.weight: Font.DemiBold
-                }
-            }
-
-            ShellSlider {
-                id: windowTransparencySlider
-
-                Layout.fillWidth: true
-                enabled: !SettingsState.windowSync
-                from: 0
-                to: 90
-                stepSize: 2
-                value: SettingsState.effectiveWindowTransparency
-                onMoved: SettingsState.setWindowTransparency(value)
-            }
-
-            Binding {
-                target: windowTransparencySlider
-                property: "value"
-                value: SettingsState.effectiveWindowTransparency
-                when: !windowTransparencySlider.pressed
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Desenfoque"
-                    color: Theme.muted
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                }
-
-                Text {
-                    text: SettingsState.effectiveWindowBlur + " px"
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                    font.weight: Font.DemiBold
-                }
-            }
-
-            ShellSlider {
-                id: windowBlurSlider
-
-                Layout.fillWidth: true
-                enabled: !SettingsState.windowSync
-                from: 0
-                to: 40
-                stepSize: 2
-                value: SettingsState.effectiveWindowBlur
-                onMoved: SettingsState.setWindowBlur(value)
-            }
-
-            Binding {
-                target: windowBlurSlider
-                property: "value"
-                value: SettingsState.effectiveWindowBlur
-                when: !windowBlurSlider.pressed
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Tipo de desenfoque"
-                    color: Theme.muted
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                }
-
-                BlurModeChoice {
-                    interactive: !SettingsState.windowSync
-                    behind: SettingsState.effectiveWindowBlurBehind
-                    onSelected: (behind) =>
-                        SettingsState.setWindowBlurBehind(behind)
-                }
-            }
 
         }
 

@@ -31,6 +31,9 @@ PanelWindow {
     // Misma lista que dibuja la barra de título: orden, iconos, etiquetas y
     // atajos salen de WindowActions para que no puedan desincronizarse.
     readonly property var windowActions: WindowActions.itemsFor(root.app)
+    // Flujo de audio de la app/window. El PID del toplevel es la pista más
+    // fiable; si la app no lo publica se compara su id.
+    readonly property var audioStream: Audio.primaryStreamForWindow(root.app)
     property bool showWorkspaces: false
 
     // La tarjeta se centra sobre el icono y se abre hacia dentro de la
@@ -362,6 +365,100 @@ PanelWindow {
                             }
                         }
                     }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                Layout.topMargin: 4
+                Layout.bottomMargin: 4
+                color: Theme.border
+            }
+
+            // Volumen de la aplicación, como el altavoz de las ventanas del
+            // mockup. Se controla el flujo de PipeWire de esa app; si no hay
+            // flujo activo, la fila queda visible pero desactivada.
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Item {
+                        Layout.preferredWidth: 18
+                        Layout.preferredHeight: 18
+
+                        ShellIcon {
+                            anchors.fill: parent
+                            source: ShellIcons.src(
+                                root.audioStream && root.audioStream.audio
+                                    && root.audioStream.audio.muted
+                                    ? "volume-off" : "volume-3")
+                            color: root.audioStream && root.audioStream.audio
+                                && root.audioStream.audio.muted
+                                ? Theme.danger : Theme.muted
+                            size: 16
+                            fallback: "◖"
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            anchors.margins: -4
+                            enabled: root.audioStream !== null
+                            cursorShape: root.audioStream !== null
+                                ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            onClicked: Audio.toggleNodeMute(root.audioStream)
+                        }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Volumen"
+                        color: root.audioStream !== null
+                            ? Theme.text : Theme.faint
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                    }
+
+                    Text {
+                        text: root.audioStream
+                            && root.audioStream.audio
+                            ? (root.audioStream.audio.muted
+                                ? "Mudo"
+                                : Math.round(root.audioStream.audio.volume
+                                    * 100) + "%")
+                            : "—"
+                        color: root.audioStream && root.audioStream.audio
+                            && root.audioStream.audio.muted
+                            ? Theme.danger : Theme.muted
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 9
+                        font.weight: Font.DemiBold
+                    }
+                }
+
+                ShellSlider {
+                    id: windowVolume
+
+                    Layout.fillWidth: true
+                    enabled: root.audioStream !== null
+                    from: 0
+                    to: 1
+                    stepSize: 0.02
+                    value: root.audioStream && root.audioStream.audio
+                        ? root.audioStream.audio.volume : 0
+                    onMoved: Audio.setNodeVolume(root.audioStream, value)
+                }
+
+                Binding {
+                    target: windowVolume
+                    property: "value"
+                    value: root.audioStream && root.audioStream.audio
+                        ? root.audioStream.audio.volume : 0
+                    when: !windowVolume.pressed
                 }
             }
         }

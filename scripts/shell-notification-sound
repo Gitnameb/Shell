@@ -1,0 +1,28 @@
+#!/bin/sh
+# Sonido de una notificación. La app puede pedir un archivo o un nombre del
+# tema de sonidos; si no lo hace, se usa el aviso corto de freedesktop.
+set -eu
+
+event="${1:-message-new-instant}"
+file="${2:-}"
+
+if [ -n "$file" ] && [ -f "$file" ]; then
+    sound="$file"
+else
+    case "$event" in
+        /*) sound="$event" ;;
+        *) sound="/usr/share/sounds/freedesktop/stereo/${event}.oga" ;;
+    esac
+    [ -f "$sound" ] \
+        || sound="/usr/share/sounds/freedesktop/stereo/message-new-instant.oga"
+fi
+
+[ -f "$sound" ] || exit 0
+
+# PipeWire primero; paplay cubre sesiones PulseAudio antiguas.
+for player in pw-play paplay; do
+    if command -v "$player" >/dev/null 2>&1; then
+        exec "$player" "$sound" >/dev/null 2>&1
+    fi
+done
+exit 0

@@ -9,6 +9,24 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
 
 ## Estado al cerrar esta sesión
 
+- **Ajustes de apariencia (2026-11-09).** «Controles de ventana» desapareció
+  de Configuración de ventanas: el modo Super sigue funcionando, pero ya no
+  hay una fila que lo duplique. «Cristal de ventanas» se movió a Temas, junto
+  al cristal del shell. Las paletas de acento y de fondo usan azul marino,
+  vino, rosa, verde, arena, negro, blanco y el acento actual; las opciones ya
+  no llevan descripciones.
+- **Monitor de red y muestreo ligero (2026-11-09).** La vista se llama
+  «Monitor de tráfico de red». `stats.py` ya no hace `ping` cada 10 s: la
+  latencia se mide una sola vez al abrir la vista. Fuera del panel solo lee la
+  temperatura de CPU/GPU y el tráfico de la barra; carga, núcleos,
+  frecuencias, potencia, VRAM e historial se consultan solo con la vista de
+  rendimiento abierta.
+- **Volumen por ventana y sonido de avisos (2026-11-09).** El menú de
+  opciones de una app incluye «Volumen» con silencio y deslizador; se enlaza
+  al flujo de PipeWire por PID o por id de la app. Las notificaciones pueden
+  sonar con el aviso corto del sistema o con el `sound-file`/`sound-name` que
+  pida la app, y se puede desactivar en Ajustes.
+
 - **Binario nuevo ya en uso.** `/usr/bin/umbriel` es `d3f5effaad771b37` y la
   sesión se reinició a las 17:49, así que el arreglo de A7 (cambiar la barra de
   ventanas ya no devuelve los mosaicos al modo configurado) está cargado. A5
@@ -48,8 +66,7 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
 - **Menos controles en Ajustes.** Se quitó el selector de número de
   escritorios: `maxWorkspaces` se configura editando
   `~/.config/shell/settings.conf` y sigue valiendo 9 por defecto. «Tema en las
-  apps» ahora explica que propaga el modo y el acento a GTK y a las apps de
-  KDE.
+  apps» queda como interruptor; las opciones se explican por su nombre.
 - **Redimensionar e intercambiar ventanas en modo Super (2026-11-07).** Con
   Super mantenido aparece una banda con una línea fina en cada borde compartido
   entre mosaicos y cuatro puntos en las esquinas de la ventana flotante
@@ -81,8 +98,8 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
   dos avisos seguidos sin recrear la primera tarjeta.
 - **Configuración de ventanas unificada (2026-11-07).** La vista «Modo de
   ventanas» pasa a llamarse «Configuración de ventanas» y reúne la barra de
-  título, los controles, el modo por escritorio, el tamaño y la cascada de
-  ventanas flotantes y el cristal de las ventanas. En Ajustes del shell queda
+  título, el modo por escritorio, el tamaño y la cascada de ventanas
+  flotantes. En Ajustes del shell queda
   solo el acceso «Configuración de ventanas»; se eliminó la fila duplicada de
   «Barra de ventanas». La barra de título va primero, encima de los modos
   manuales. Los modos se muestran «Mosaico» a la izquierda y «Ventana» a la
@@ -94,9 +111,10 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
 - **Temas como vista propia (2026-11-07).** En Ajustes del shell queda una
   fila «Temas → Abrir», igual que «Configuración de ventanas». La vista nueva
   reúne el modo oscuro/claro, el acento y el color propio, el cristal del
-  shell (transparencia, desenfoque y tipo), «Tema en las apps», el fondo de
-  pantalla y sus colores. Del ajuste general solo se movió lo relativo a
-  colores, fondos y apariencia; bloqueo, barra y tamaños siguen en Ajustes.
+  shell y el de las ventanas (transparencia, desenfoque y tipo), «Tema en las
+  apps», el fondo de pantalla y sus colores. Del ajuste general solo se movió
+  lo relativo a colores, fondos y apariencia; bloqueo, barra y tamaños siguen
+  en Ajustes.
 - **Escritorios rápidos sin cambiar el modo equivocado (2026-11-07).** Umbriel
   solo cambia el layout del escritorio activo. Ahora el shell guarda el modo y
   espera 320 ms a que el escritorio se asiente antes de aplicarlo; si el

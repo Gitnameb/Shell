@@ -482,12 +482,12 @@ blur = false
   `~/.config/shell/glass-blur.conf` al cambiar de modo; en oscuro baja el
   brillo y en claro lo sube. Se puede afinar ese archivo y ejecutar
   `shell-glass tone dark|light` sin recompilar nada.
-- **Shell y ventanas por separado.** El centro de control divide el cristal
-  en «Shell» y «Ventanas». Cada bloque tiene su transparencia, su radio y su
-  selector «Simple / Fondo». «Sincronizar con el shell», dentro de Ventanas,
-  copia en vivo la transparencia y el tipo del shell; mientras está activo,
-  los controles de ventanas quedan bloqueados. Los valores propios se
-  conservan y vuelven al desactivar la sincronización.
+- **Shell y ventanas por separado.** La vista Temas divide el cristal en
+  «Shell» y «Cristal de ventanas». Cada bloque tiene su transparencia, su
+  radio y su selector «Simple / Fondo». «Sincronizar con el shell», dentro de
+  Cristal de ventanas, copia en vivo la transparencia y el tipo del shell;
+  mientras está activo, los controles de ventanas quedan bloqueados. Los
+  valores propios se conservan y vuelven al desactivar la sincronización.
 - **Ventanas transparentes.** Se aplica un `[[window_rule]]` global con
   `opacity` (desde `windowTransparency`, 0–90), `blur` y `blur_optimized`.
   Desenfoca el contenido que queda detrás de la ventana, no el contenido
@@ -695,6 +695,10 @@ etiquetas, mismos iconos y mismos atajos. El orden imita los botones nativos
   fijar» con el icono `window-unpin` cuando la ventana ya está fijada.
 - «Mover a escritorio» muestra los nueve botones solo al pulsar la fila; por
   defecto el menú abre con esa lista plegada.
+- «Volumen» controla el flujo de PipeWire de esa app: el altavoz silencia y el
+  deslizador ajusta el nivel. Si la app no tiene audio activo, la fila queda
+  desactivada. Se identifica por el PID de la ventana y, si falta, por el id o
+  el nombre de la aplicación.
 - Cada opción lleva un icono de teclado a la derecha (`ShortcutKey.qml`). Al
   pasar el ratón por ese icono aparece un tooltip con el atajo: `Super+T`
   flotar, `Super+P` fijar, `Super+Shift+1…9` mover, `Super+Shift+H` minimizar,
@@ -832,6 +836,9 @@ las notificaciones siguen guardándose en el historial hasta que se cierran.
 - Aparecen en el monitor de la ventana enfocada. La capa
   `shell-notification-popup` está incluida en la regla de cristal, así que
   hereda el desenfoque y el tono del shell.
+- Sonido: si la app envía `sound-file` o `sound-name`, se respeta; si no,
+  suena el aviso corto de freedesktop. `suppress-sound` lo silencia y el
+  interruptor «Sonido de notificaciones» de Ajustes lo desactiva entero.
 - Diagnóstico: `qs ipc -c shell call notifications popups` devuelve el número
   y los resúmenes de las tarjetas visibles.
 

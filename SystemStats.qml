@@ -49,6 +49,15 @@ Singleton {
     property bool hasSample: false
     property int sampleCount: 0
 
+    // El panel de rendimiento escribe 1 mientras está abierto. Fuera de él
+    // basta con la temperatura de la barra y el tráfico; el resto de lecturas
+    // (frecuencias, potencia, VRAM e historial) se posponen.
+    property bool detailed: false
+    property bool latencyBusy: false
+    readonly property string detailPath:
+        (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp")
+            + "/shell-stats-detailed"
+
     readonly property int historyLength: 32
     readonly property bool cpuAvailable: root.cpuTemp >= 0
     readonly property bool gpuAvailable: root.gpuTemp >= 0
@@ -83,32 +92,38 @@ Singleton {
 
     function applySample(data): void {
         const dt = Number(data.dt) > 0 ? Number(data.dt) : 1;
+        const detailed = data.detailed === true;
         const cpu = Number(data.cpu) || 0;
         const gpu = Number(data.gpu) || 0;
         const down = Number(data.down) || 0;
         const up = Number(data.up) || 0;
 
-        root.cpuLoad = cpu;
+        root.cpuLoad = detailed ? cpu : 0;
         root.cpuTemp = data.temp === null ? -1 : Number(data.temp);
-        root.cpuFreq = Number(data.freq) || 0;
-        root.cpuMaxFreq = Number(data.maxfreq) || 0;
-        root.cpuCores = data.cores || [];
-        root.cpuHistory = root.pushHistory(root.cpuHistory, cpu);
-        root.cpuPeakLoad = Math.max(root.cpuPeakLoad, cpu);
-        if (root.cpuTemp >= 0)
-            root.cpuPeakTemp = Math.max(root.cpuPeakTemp, root.cpuTemp);
+        root.cpuFreq = detailed ? Number(data.freq) || 0 : 0;
+        root.cpuMaxFreq = detailed ? Number(data.maxfreq) || 0 : 0;
+        root.cpuCores = detailed ? (data.cores || []) : [];
+        if (detailed) {
+            root.cpuHistory = root.pushHistory(root.cpuHistory, cpu);
+            root.cpuPeakLoad = Math.max(root.cpuPeakLoad, cpu);
+            if (root.cpuTemp >= 0)
+                root.cpuPeakTemp = Math.max(root.cpuPeakTemp, root.cpuTemp);
+        }
 
-        root.gpuLoad = gpu;
+        root.gpuLoad = detailed ? gpu : 0;
         root.gpuTemp = data.gtemp === null ? -1 : Number(data.gtemp);
-        root.gpuFreq = Number(data.gfreq) || 0;
-        root.gpuMaxFreq = Number(data.gmaxfreq) || 0;
-        root.gpuPower = data.gpower === null ? -1 : Number(data.gpower);
-        root.vramUsed = Number(data.vram) || 0;
-        root.vramTotal = Number(data.vramtotal) || 0;
-        root.gpuHistory = root.pushHistory(root.gpuHistory, gpu);
-        root.gpuPeakLoad = Math.max(root.gpuPeakLoad, gpu);
-        if (root.gpuTemp >= 0)
-            root.gpuPeakTemp = Math.max(root.gpuPeakTemp, root.gpuTemp);
+        root.gpuFreq = detailed ? Number(data.gfreq) || 0 : 0;
+        root.gpuMaxFreq = detailed ? Number(data.gmaxfreq) || 0 : 0;
+        root.gpuPower = detailed && data.gpower !== null
+            ? Number(data.gpower) : -1;
+        root.vramUsed = detailed ? Number(data.vram) || 0 : 0;
+        root.vramTotal = detailed ? Number(data.vramtotal) || 0 : 0;
+        if (detailed) {
+            root.gpuHistory = root.pushHistory(root.gpuHistory, gpu);
+            root.gpuPeakLoad = Math.max(root.gpuPeakLoad, gpu);
+            if (root.gpuTemp >= 0)
+                root.gpuPeakTemp = Math.max(root.gpuPeakTemp, root.gpuTemp);
+        }
 
         root.netDown = down;
         root.netUp = up;
@@ -118,13 +133,34 @@ Singleton {
         root.netPeakUp = Math.max(root.netPeakUp, up);
         root.netHistoryDown = root.pushHistory(root.netHistoryDown, down);
         root.netHistoryUp = root.pushHistory(root.netHistoryUp, up);
-        root.netLatency = Number(data.lat);
+        if (data.lat !== null && data.lat !== undefined
+                && Number(data.lat) >= 0)
+            root.netLatency = Number(data.lat);
         root.netInterface = data.iface || "";
         root.netIp = data.ip || "";
         root.netKind = data.kind || "none";
 
         root.hasSample = true;
         root.sampleCount += 1;
+    }
+
+    function writeDetailed(): void {
+        Quickshell.execDetached(["sh", "-c",
+            "printf '%s' \"$1\" > \"$2\"", "shell",
+            root.detailed ? "1" : "0", root.detailPath]);
+    }
+
+    function setDetailed(value: bool): void {
+        root.detailed = value === true;
+        root.writeDetailed();
+    }
+
+    // La latencia se mide una sola vez al abrir el panel, no cada segundo.
+    function refreshLatency(): void {
+        if (latencyProc.running)
+            return;
+        root.latencyBusy = true;
+        latencyProc.running = true;
     }
 
     function resetPerf(kind: string): void {
@@ -233,7 +269,7 @@ Singleton {
         id: statsProc
 
         command: ["python3", "-u", root.statsPath,
-            "" + Quickshell.processId]
+            "" + Quickshell.processId, root.detailPath]
         running: true
 
         stdout: SplitParser {
@@ -249,6 +285,39 @@ Singleton {
         }
 
         onExited: restartTimer.restart()
+    }
+
+    Process {
+        id: latencyProc
+
+        command: ["python3", root.statsPath, "--latency"]
+
+        stdout: StdioCollector {
+            id: latencyOut
+        }
+
+        onExited: {
+            root.latencyBusy = false;
+            try {
+                const text = (latencyOut.text || "").trim();
+                const data = JSON.parse(text.length > 0 ? text : "{}");
+                if (data.lat !== undefined && data.lat !== null)
+                    root.netLatency = Number(data.lat);
+                if (data.iface)
+                    root.netInterface = String(data.iface);
+                if (data.ip)
+                    root.netIp = String(data.ip);
+            } catch (error) {
+                root.netLatency = -1;
+            }
+        }
+    }
+
+    Timer {
+        interval: 500
+        running: true
+        repeat: false
+        onTriggered: root.writeDetailed()
     }
 
     Timer {

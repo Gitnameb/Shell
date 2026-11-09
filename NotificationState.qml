@@ -194,6 +194,27 @@ Singleton {
         return -1;
     }
 
+    // Sonido del aviso. Las apps pueden indicar `sound-file` o `sound-name`
+    // en sus pistas; `suppress-sound` lo apaga. Si no dicen nada, suena el
+    // aviso corto del sistema, salvo que el usuario lo haya desactivado.
+    function playSound(notification): void {
+        if (!SettingsState.notificationSound || !notification)
+            return;
+        const hints = notification.hints || ({});
+        if (hints["suppress-sound"] === true
+                || hints["suppress-sound"] === "true")
+            return;
+        let file = String(hints["sound-file"] || "");
+        if (file.startsWith("file://"))
+            file = file.slice(7);
+        const name = String(hints["sound-name"] || "message-new-instant");
+        Quickshell.execDetached([
+            (Quickshell.shellDir || "")
+                + "/scripts/shell-notification-sound",
+            name, file
+        ]);
+    }
+
     // Añade una tarjeta al principio. Si la app reemplaza el aviso con el
     // mismo id, la anterior se sustituye en lugar de duplicarse.
     function showBanner(notification): void {
@@ -311,6 +332,7 @@ Singleton {
             // esos avisos no deben aparecer como si acabaran de llegar.
             if (notification.lastGeneration === true)
                 return;
+            root.playSound(notification);
             root.showBanner(notification);
         }
     }
