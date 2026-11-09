@@ -405,6 +405,8 @@ PanelWindow {
         } else {
             root.commitEditors();
             root.closeNoteEditor();
+            // La próxima apertura vuelve a pedir dos clics para editar.
+            root.lastClickedDate = null;
         }
     }
 
