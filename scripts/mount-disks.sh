@@ -283,6 +283,7 @@ for row in "${disks[@]}"; do
 done
 
 declare -A seen
+declare -A new_options=()
 block_lines=()
 mounted_now=()
 for row in "${disks[@]}"; do
@@ -300,6 +301,7 @@ for row in "${disks[@]}"; do
     options="nofail,x-systemd.device-timeout=5s,uid=$owner_uid,gid=$owner_gid,umask=022"
     (( WINDOWS_NAMES )) && options+=",windows_names"
     options+=",x-gvfs-show,x-gvfs-name=$label"
+    new_options["$mount"]="$options"
     block_lines+=("UUID=$uuid $mount $FSTYPE $options 0 0")
 done
 
@@ -322,6 +324,20 @@ if [[ "$MODE" == "dry-run" ]]; then
 fi
 
 backup_file=$(backup)
+
+# Opciones que tienen ahora las entradas gestionadas, para compararlas con las
+# nuevas y avisar si hace falta remontar (mount -a no remonta lo ya montado).
+declare -A old_options=()
+while IFS=$'\t' read -r mount opts; do
+    [[ -n "$mount" ]] && old_options["$mount"]="$opts"
+done < <(
+    awk -v b="$BEGIN_MARK" -v e="$END_MARK" '
+        $0 == b { inside = 1; next }
+        $0 == e { inside = 0; next }
+        inside && $1 ~ /^UUID=/ && $2 ~ /^\// { print $2 "\t" $4 }
+    ' "$FSTAB"
+)
+
 for row in "${disks[@]}"; do
     IFS=$'\t' read -r uuid label device mount <<<"$row"
     install -d -m 755 "$mount"
@@ -370,17 +386,14 @@ for row in "${disks[@]}"; do
     fi
 done
 
-# mount -a no remonta lo que ya estaba montado. Si el disco tenía
-# windows_names y ahora no se pide, hay que desmontarlo para aplicar el cambio.
+# mount -a no remonta lo que ya estaba montado: solo aplica el fstab a montajes
+# nuevos. Si las opciones de una entrada cambiaron, hay que desmontarla.
 remount=()
-if (( ! WINDOWS_NAMES )); then
-    for mount in "${mounted_now[@]}"; do
-        current=$(findmnt -rno OPTIONS "$mount" 2>/dev/null || true)
-        if [[ "$current" == *windows_names* ]]; then
-            remount+=("$mount")
-        fi
-    done
-fi
+for mount in "${mounted_now[@]}"; do
+    if [[ "${old_options[$mount]:-}" != "${new_options[$mount]:-}" ]]; then
+        remount+=("$mount")
+    fi
+done
 if (( ${#remount[@]} > 0 )); then
     printf '\nmount -a no remonta lo que ya estaba montado. Para aplicar las opciones nuevas:\n' >&2
     for mount in "${remount[@]}"; do
