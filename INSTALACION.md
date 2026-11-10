@@ -53,7 +53,10 @@ El instalador:
     añade `windows_names`, porque prohíbe `:` y Proton necesita crear
     `dosdevices/c:`; para recuperarla, `--windows-names`. Si el apagado se
     queda parado con los discos montados, `--lazy-unmount` hace que systemd
-    suelte el montaje sin esperar a que se liberen los archivos.
+    suelte el montaje sin esperar a que se liberen los archivos. Si la
+    biblioteca de Steam vive en estos discos, `--fs ntfs3` usa el driver del
+    kernel y reduce mucho la latencia por archivo (los juegos cargan y
+    transmiten datos sin los tirones del FUSE de `ntfs-3g`).
 
 `install.sh` solo orquesta; cada paso vive en su módulo y se puede revisar o
 ejecutar por separado: `scripts/install-packages.sh`,

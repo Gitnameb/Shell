@@ -1124,3 +1124,91 @@ El plan completo está en `PLAN-DISCOS.md`.
 
 Si un SSD externo no aparece, el problema suele estar antes del automontaje:
 cable, alimentación, puente USB-SATA/NVMe o formato no soportado.
+
+## 31. Rendimiento en juegos
+
+Los tirones en pleno juego tienen poco que ver con el compositor: Umbriel
+consume alrededor del 1 % de CPU incluso con la barra y el cristal activos. Las
+causas medidas en este equipo, por orden de impacto:
+
+### Biblioteca de Steam en ntfs-3g (FUSE)
+
+La biblioteca está en `/mnt/SSD1T`, montada con `ntfs-3g`. Es un sistema de
+archivos en espacio de usuario y cada acceso pasa por FUSE:
+
+```text
+ntfs-3g: 1500 stats en 393 ms (0,26 ms/archivo)
+ext4:    1500 stats en  11 ms (0,01 ms/archivo)
+lectura secuencial: 320 MB/s
+```
+
+Un juego abre miles de texturas, sonidos y archivos de datos mientras carga
+zonas. Esa latencia extra se nota como microtirones y tiempos de carga largos,
+algo que en Windows no ocurre porque usa el driver NTFS nativo.
+
+El kernel de Debian trae `ntfs3`, que hace el trabajo dentro del kernel y
+admite las mismas opciones. Para cambiar la biblioteca sin salir de NTFS:
+
+```sh
+sudo ./scripts/mount-disks.sh --fs ntfs3 --apply
+```
+
+- Conserva `nofail`, `uid`, `gid`, `umask` y sigue sin `windows_names`, así que
+  Proton puede crear `dosdevices/c:`.
+- Desmonta y vuelve a montar los discos; cierra Steam antes de ejecutarlo.
+- Windows debe apagarse del todo, sin hibernación ni **inicio rápido**. Si el
+  volumen queda sucio, `ntfs3` se niega a montarlo y el escritorio arranca sin
+  la biblioteca (`nofail` evita que se cuelgue el arranque). Para volver atrás,
+  `sudo ./scripts/mount-disks.sh --fs ntfs-3g --apply`.
+
+### Caché de shaders de Steam
+
+Steam replaya la caché de tuberías con `fossilize_replay` al lanzar un juego.
+En la comprobación había siete hilos al 100 % de CPU durante minutos (la caché
+de un solo juego ocupaba 1,5 GB), y las cachés de varios juegos suman más de
+13 GB. Eso compite con el juego por CPU y disco.
+
+- En Steam: **Ajustes → Descargas → Caché de shaders**, desactivar la
+  precompilación, o dejar que termine una vez sin jugar.
+- Borrar cachés viejas es seguro: se regeneran. Están en
+  `steamapps/shadercache/<appid>`.
+- RADV y Mesa mantienen su propia caché en `~/.cache/mesa_shader_cache`, así
+  que desactivarla no deja al juego sin caché.
+
+### `PROTON_LOG=1`
+
+Algunas opciones de lanzamiento dejan `PROTON_LOG=1`, que escribe un registro
+de depuración enorme en el directorio personal (se encontró uno de 235 MB).
+Hay que quitarlo de **Propiedades → Opciones de lanzamiento**; en pleno juego
+añade escrituras constantes y no aporta nada.
+
+### Sondeo de brillo por DDC/CI
+
+`DisplayState` releía el brillo del monitor con `ddcutil` cada 3 s. Cada
+llamada tarda unos 200 ms y bloquea el bus I2C del monitor, lo que puede
+provocar un pequeño tirón periódico. Ahora se relee cada 30 s y se salta
+mientras hay una ventana a pantalla completa (`CompositorState.
+hasFullscreenWindow`), que es cuando el juego está en primer plano. Los botones
+del monitor siguen funcionando: el valor se recupera al salir de pantalla
+completa o al abrir el panel.
+
+### 75 Hz sin VRR
+
+La salida `HDMI-A-1` está a 1920x1080@74,973 Hz y el monitor no anuncia VRR
+(`vrr_capable` no existe). Un juego limitado a 60 fps sobre una pantalla de
+75 Hz reparte los fotogramas de forma irregular (cada cierto tiempo uno se
+duplica), y se percibe como microtirones. Dos salidas:
+
+- Bajar la salida a 60 Hz en `~/.config/umbriel/config.toml`:
+  `[output."HDMI-A-1"] mode = "1920x1080@60"`, y validar con `umbriel config
+  validate`.
+- O dejar el juego sin límite a 75 fps (o a 37,5) con `mangohud`/`gamemode`,
+  que además fijan el gobernador de CPU en `performance`.
+
+### Otros
+
+- La RX 570 tiene 4 GB de VRAM. A 1080p con texturas altas se llena y aparecen
+  bajones; en ventana el juego renderiza menos píxeles y va más estable. Bajar
+  texturas o sombras en los juegos más pesados es la diferencia más directa.
+- `gamemode` (`sudo apt install gamemode`, luego `gamemoderun %command%`)
+  evita que el planificador de energía baje la CPU mientras se juega.

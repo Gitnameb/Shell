@@ -32,7 +32,11 @@ Opciones:
   --dry-run          Muestra lo que haría (por defecto)
   --apply            Escribe /etc/fstab y monta
   --uninstall        Quita el bloque gestionado y desmonta esos puntos
-  --fs ntfs-3g|ntfs3 Sistema de archivos a usar (por defecto ntfs-3g)
+  --fs ntfs-3g|ntfs3 Sistema de archivos a usar (por defecto ntfs-3g).
+                     ntfs3 es el driver del kernel: mucha menos latencia por
+                     archivo, recomendable para bibliotecas de juegos. Exige
+                     que Windows haya cerrado el volumen (sin hibernación ni
+                     inicio rápido).
   --windows-names    Prohíbe nombres no válidos en Windows. Rompe los prefijos
                      de Proton, que necesitan crear dosdevices/c:
   --lazy-unmount     Desmonta sin esperar a que se liberen los archivos; evita

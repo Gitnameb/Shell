@@ -325,17 +325,21 @@ Singleton {
     }
 
     // ddcutil no avisa cuando el brillo se cambia con los botones del monitor,
-    // así que se relee cada pocos segundos. La lectura se salta mientras el
-    // shell escribe o está detectando, para no pisar el deslizador.
+    // así que se relee de vez en cuando. Cada lectura cuesta ~200 ms y bloquea
+    // el bus I2C del monitor, que en pleno juego se nota como microtirones: se
+    // relee cada 30 s y se salta mientras hay una ventana a pantalla completa.
+    // La lectura también se salta mientras el shell escribe o detecta, para no
+    // pisar el deslizador.
     Timer {
         id: hardwareReadTimer
-        interval: 3000
+        interval: 30000
         repeat: true
         running: root.hardwareAvailable
         onTriggered: {
             if (root.writingHardware || writeTimer.running
                     || root.applyingRead || queryProc.running
-                    || readProc.running)
+                    || readProc.running
+                    || CompositorState.hasFullscreenWindow)
                 return;
             readProc.running = true;
         }
