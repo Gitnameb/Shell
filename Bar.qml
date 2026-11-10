@@ -253,13 +253,13 @@ Variants {
         property real barOpacity: bar.barHidden ? 0 : 1
         readonly property int revealHeight: 4
         // Mientras haya un panel, un menú o un arrastre abierto, la barra no
-        // se oculta: los paneles se apoyan encima de ella.
+        // se oculta: los paneles se apoyan encima de ella. Mantener Super no
+        // cuenta: si el gesto retira el cajón, la barra se va con él.
         readonly property bool keepVisible: NotificationState.panelOpen
             || QuickPanelState.open
             || CalendarState.open || LauncherState.open || PowerState.open
             || BatteryState.open || TrayState.open
             || ControlDrag.active || bar.appMenuApp !== null
-            || SuperState.active
 
         Behavior on barOpacity {
             NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
