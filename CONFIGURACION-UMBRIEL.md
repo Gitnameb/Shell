@@ -1083,12 +1083,13 @@ abrir. Ahora:
 Comprobado con un teclado virtual: `open=0 → open=1 → open=0`, y mantener
 Super con el lanzador abierto lo cierra sin reabrirlo al soltar.
 
-El lanzador ya no tapa la barra: su superficie reserva el borde donde vive la
-barra (`Theme.barHeight + Theme.edge`, 52 px) y el fondo atenuado solo cubre el
-resto. Así el cajón y la barra se ven a la vez, también con una ventana a
-pantalla completa, y el margen sigue la posición configurada (arriba, abajo,
-izquierda o derecha). La tarjeta del lanzador sigue centrada en el espacio que
-queda.
+El lanzador ya no tapa la barra y tampoco atenúa el fondo: su superficie
+reserva el borde donde vive la barra (`Theme.barHeight + Theme.edge`, 52 px) y
+el resto queda transparente, con solo la tarjeta visible. Así el cajón y la
+barra se ven a la vez, también con una ventana a pantalla completa, y el margen
+sigue la posición configurada (arriba, abajo, izquierda o derecha). La tarjeta
+del lanzador sigue centrada en el espacio que queda. Un clic fuera de la tarjeta
+sigue cerrando el cajón.
 
 ## 30. Discos internos y extraíbles
 

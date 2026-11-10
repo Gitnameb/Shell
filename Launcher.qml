@@ -112,14 +112,12 @@ PanelWindow {
         }
     }
 
-    Rectangle {
+    // Sin fondo atenuado: el cajón no oscurece el escritorio ni el juego. La
+    // superficie transparente sigue capturando el clic fuera de la tarjeta
+    // para cerrarlo.
+    MouseArea {
         anchors.fill: parent
-        color: Qt.rgba(0, 0, 0, 0.45)
-
-        MouseArea {
-            anchors.fill: parent
-            onClicked: LauncherState.hide()
-        }
+        onClicked: LauncherState.hide()
     }
 
     Rectangle {
