@@ -19,6 +19,16 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     focusable: true
 
+    // La barra y el cajón comparten la capa Overlay. Si el cajón empezara en el
+    // borde taparía la barra, así que se aparta el lado donde vive la barra y
+    // ambos quedan visibles, como el menú de inicio y la barra de Windows.
+    margins {
+        top: SettingsState.barAtTop ? Theme.barHeight + Theme.edge : 0
+        bottom: SettingsState.barAtBottom ? Theme.barHeight + Theme.edge : 0
+        left: SettingsState.barAtLeft ? Theme.barHeight + Theme.edge : 0
+        right: SettingsState.barAtRight ? Theme.barHeight + Theme.edge : 0
+    }
+
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "shell-launcher"
     WlrLayershell.keyboardFocus: LauncherState.open
