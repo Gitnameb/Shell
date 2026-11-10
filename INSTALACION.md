@@ -32,18 +32,20 @@ El instalador:
    dependencias de compilación.
 3. Habilita i386 e instala las librerías de 32 bits que necesita Steam
    (`scripts/install-steam-libs.sh`); se omite con `--skip-steam`.
-4. Enlaza el shell en `~/.config/quickshell/shell` y copia los scripts a
+4. Reduce el plazo de systemd para cerrar las aplicaciones antes de apagar
+   (`scripts/install-shutdown.sh`); se omite con `--skip-shutdown`.
+5. Enlaza el shell en `~/.config/quickshell/shell` y copia los scripts a
    `~/.local/bin`.
-5. Configura NetworkManager para que gestione Ethernet y Wi-Fi (instala
+6. Configura NetworkManager para que gestione Ethernet y Wi-Fi (instala
    `wpasupplicant` y `rfkill`, y retira las interfaces de ifupdown).
-6. Copia la configuración del shell y Umbriel **sin sobrescribir** la que ya
+7. Copia la configuración del shell y Umbriel **sin sobrescribir** la que ya
    exista. Con `--force-config` la reemplaza y guarda una copia `.bak`. También
    registra `foot` como terminal de Thunar.
-7. Crea la regla de sudoers de `ddcutil` y activa la unidad de alarmas.
-8. Configura Noctalia Greeter con `scripts/install-greeter.sh` y cambia de
+8. Crea la regla de sudoers de `ddcutil` y activa la unidad de alarmas.
+9. Configura Noctalia Greeter con `scripts/install-greeter.sh` y cambia de
    SDDM a `greetd`.
-9. Compila e instala el edit de Umbriel con `scripts/install-umbriel-edit.sh`.
-10. Añade los discos internos NTFS a `/etc/fstab` con `scripts/mount-disks.sh`
+10. Compila e instala el edit de Umbriel con `scripts/install-umbriel-edit.sh`.
+11. Añade los discos internos NTFS a `/etc/fstab` con `scripts/mount-disks.sh`
     y deja `udiskie` activo para montar las unidades USB. Las entradas llevan
     `x-gvfs-show,x-gvfs-name=<etiqueta>` para que los gestores basados en GVfs
     (Thunar, Nautilus) las muestren como dispositivos además de quedar
@@ -53,9 +55,10 @@ El instalador:
 
 `install.sh` solo orquesta; cada paso vive en su módulo y se puede revisar o
 ejecutar por separado: `scripts/install-packages.sh`,
-`scripts/install-steam-libs.sh`, `scripts/network.sh`,
-`scripts/install-user-config.sh`, `scripts/install-greeter.sh`,
-`scripts/install-umbriel-edit.sh` y `scripts/mount-disks.sh`.
+`scripts/install-steam-libs.sh`, `scripts/install-shutdown.sh`,
+`scripts/network.sh`, `scripts/install-user-config.sh`,
+`scripts/install-greeter.sh`, `scripts/install-umbriel-edit.sh` y
+`scripts/mount-disks.sh`.
 
 Los discos internos NTFS se montan al arrancar sin volver a pedir contraseña.
 Las unidades USB las monta `udiskie` al conectarlas. Para excluir un disco:
@@ -64,9 +67,9 @@ Las unidades USB las monta `udiskie` al conectarlas. Para excluir un disco:
 sudo ./scripts/mount-disks.sh --exclude "New Volume" --apply
 ```
 
-Opciones: `--dry-run`, `--skip-packages`, `--skip-steam`, `--skip-edit`,
-`--skip-config`, `--skip-network`, `--skip-disks`, `--force-config`,
-`--with-firmware` y `--help`.
+Opciones: `--dry-run`, `--skip-packages`, `--skip-steam`, `--skip-shutdown`,
+`--skip-edit`, `--skip-config`, `--skip-network`, `--skip-disks`,
+`--force-config`, `--with-firmware` y `--help`.
 
 > Probado con `--dry-run` y con una compilación completa desde un clon limpio
 > de Umbriel. **Falta la prueba definitiva en un Debian recién instalado.**
@@ -268,6 +271,41 @@ sudo apt install -t trixie-backports \
 Esto instala solo las librerías; Steam se instala aparte. Con una GPU NVIDIA
 hacen falta además las librerías propietarias de 32 bits
 (`nvidia-driver-libs:i386`) emparejadas con las de 64 bits.
+
+### Cierre de la sesión
+
+Antes de desmontar los discos, systemd detiene la sesión del usuario y pide a
+las aplicaciones que se cierren. El plazo por defecto es de 90 s por unidad; si
+Steam o un juego de Proton no responden, el apagado se alarga y el desmontaje de
+NTFS puede fallar con «Failed unmounting mnt-SSD1T.mount».
+
+`scripts/install-shutdown.sh` (que `install.sh` ejecuta salvo `--skip-shutdown`)
+escribe:
+
+```ini
+# /etc/systemd/user.conf.d/20-shell-shutdown.conf
+[Manager]
+DefaultTimeoutStopSec=20s
+```
+
+Cada aplicación recibe `SIGTERM` y tiene 20 s para guardar y salir; si no lo
+hace, systemd la mata antes de seguir con el apagado. Es el equivalente al
+«cerrar programas» de Windows, sin pantalla intermedia. Se aplica al siguiente
+inicio de sesión.
+
+Comando manual equivalente:
+
+```sh
+sudo install -d /etc/systemd/user.conf.d
+printf '[Manager]\nDefaultTimeoutStopSec=20s\n' \
+  | sudo tee /etc/systemd/user.conf.d/20-shell-shutdown.conf
+```
+
+Para volver al valor por defecto:
+
+```sh
+sudo rm /etc/systemd/user.conf.d/20-shell-shutdown.conf
+```
 
 ### Grupos que deben instalarse juntos
 
@@ -847,6 +885,8 @@ sigue pendiente de probar.
 - `~/.config/xdg-desktop-portal/portals.conf`.
 - `~/.config/xfce4/helpers.rc` y `~/.local/share/xfce4/helpers/foot.desktop`
   (terminal de Thunar; el instalador los recrea).
+- `/etc/systemd/user.conf.d/20-shell-shutdown.conf` (cierre ordenado de la
+  sesión; lo crea `scripts/install-shutdown.sh`).
 - `~/.config/systemd/user/shell-alarms.service`.
 - `~/.local/bin/shell-*`.
 - `~/.config/autostart/org.kde.xwaylandvideobridge.desktop`.

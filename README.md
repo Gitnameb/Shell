@@ -79,6 +79,7 @@ ejecutar por separado:
 ```sh
 ./scripts/install-packages.sh --dry-run    # repositorios y paquetes (instala el Umbriel oficial; después hay que reinstalar el edit)
 ./scripts/install-steam-libs.sh --dry-run  # librerías de 32 bits para Steam
+./scripts/install-shutdown.sh --dry-run    # cierre ordenado de la sesión
 ./scripts/network.sh --dry-run             # red, Wi-Fi, hotspot, VPN y Bluetooth
 ./scripts/install-user-config.sh --dry-run # enlaces y configuración del HOME
 ./scripts/install-greeter.sh --dry-run     # Noctalia Greeter y greetd
@@ -94,6 +95,7 @@ Opciones útiles:
 - `--dry-run`: enseña los comandos sin ejecutarlos.
 - `--skip-packages`: solo configura y compila.
 - `--skip-steam`: no instala las librerías de 32 bits de Steam.
+- `--skip-shutdown`: no configura el cierre ordenado de la sesión.
 - `--skip-edit`: no toca el compositor.
 - `--skip-disks`: no añade los discos internos NTFS a `/etc/fstab`.
 - `--skip-network`: no configura la red ni instala NetworkManager, Wi-Fi,
@@ -144,6 +146,7 @@ dentro de un HOME privado.
 | `install.sh` | Instalador principal para Debian 13 + Umbriel. |
 | `scripts/install-packages.sh` | Módulo de repositorios, paquetes y servicios. |
 | `scripts/install-steam-libs.sh` | Habilita i386 e instala las librerías de 32 bits de Steam. |
+| `scripts/install-shutdown.sh` | Reduce el plazo para cerrar las aplicaciones antes de apagar. |
 | `scripts/network.sh` | Módulo de NetworkManager, Ethernet y Wi-Fi. |
 | `scripts/install-user-config.sh` | Módulo de enlaces, configuración del HOME y terminal de Thunar. |
 | `scripts/install-greeter.sh` | Configura Noctalia Greeter y cambia de SDDM a greetd. |

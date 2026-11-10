@@ -9,6 +9,7 @@
 #
 #   scripts/install-packages.sh     repositorios, paquetes y servicios
 #   scripts/install-steam-libs.sh   librerías de 32 bits para Steam
+#   scripts/install-shutdown.sh     cierre ordenado de la sesión
 #   scripts/network.sh              red, Wi-Fi, hotspot, VPN y Bluetooth
 #   scripts/install-user-config.sh  enlaces y configuración del HOME
 #   scripts/install-greeter.sh      Noctalia Greeter (greetd)
@@ -22,6 +23,7 @@
 #   --yes             No pide confirmación al empezar
 #   --skip-packages   No instala paquetes (solo configura y compila)
 #   --skip-steam      No instala las librerías de 32 bits de Steam
+#   --skip-shutdown   No configura el cierre ordenado de la sesión
 #   --skip-edit       No compila ni instala el edit personal de Umbriel
 #   --skip-config     No copia la configuración de usuario
 #   --skip-network    No configura ni instala la red, VPN ni Bluetooth
@@ -41,6 +43,7 @@ DRY_RUN=0
 ASSUME_YES=0
 SKIP_PACKAGES=0
 SKIP_STEAM=0
+SKIP_SHUTDOWN=0
 SKIP_EDIT=0
 SKIP_CONFIG=0
 SKIP_NETWORK=0
@@ -61,6 +64,7 @@ Opciones:
   --yes             No pide confirmación al empezar
   --skip-packages   No instala paquetes (solo configura y compila)
   --skip-steam      No instala las librerías de 32 bits de Steam
+  --skip-shutdown   No configura el cierre ordenado de la sesión
   --skip-edit       No compila ni instala el edit personal de Umbriel
   --skip-config     No copia la configuración de usuario
   --skip-network    No configura ni instala la red, VPN ni Bluetooth
@@ -78,6 +82,7 @@ while (( $# > 0 )); do
         --yes) ASSUME_YES=1; shift ;;
         --skip-packages) SKIP_PACKAGES=1; shift ;;
         --skip-steam) SKIP_STEAM=1; shift ;;
+        --skip-shutdown) SKIP_SHUTDOWN=1; shift ;;
         --skip-edit) SKIP_EDIT=1; shift ;;
         --skip-config) SKIP_CONFIG=1; shift ;;
         --skip-network) SKIP_NETWORK=1; shift ;;
@@ -151,6 +156,20 @@ else
     STEAM_ARGS=()
     (( DRY_RUN )) && STEAM_ARGS+=(--dry-run)
     "$REPO_DIR/scripts/install-steam-libs.sh" "${STEAM_ARGS[@]}"
+fi
+
+# ---------------------------------------------------------------------------
+# Cierre de la sesión
+# ---------------------------------------------------------------------------
+# Reduce el plazo de systemd al cerrar las aplicaciones para que el desmontaje
+# de los discos NTFS no llegue antes que el cierre de Steam o del juego.
+if (( SKIP_SHUTDOWN )); then
+    log "Se omite el cierre ordenado de la sesión (--skip-shutdown)."
+else
+    log "Configurando el cierre ordenado de la sesión."
+    SHUTDOWN_ARGS=()
+    (( DRY_RUN )) && SHUTDOWN_ARGS+=(--dry-run)
+    "$REPO_DIR/scripts/install-shutdown.sh" "${SHUTDOWN_ARGS[@]}"
 fi
 
 # ---------------------------------------------------------------------------
