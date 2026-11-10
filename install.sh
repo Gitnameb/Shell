@@ -8,6 +8,7 @@
 # por separado:
 #
 #   scripts/install-packages.sh     repositorios, paquetes y servicios
+#   scripts/install-steam-libs.sh   librerías de 32 bits para Steam
 #   scripts/network.sh              red, Wi-Fi, hotspot, VPN y Bluetooth
 #   scripts/install-user-config.sh  enlaces y configuración del HOME
 #   scripts/install-greeter.sh      Noctalia Greeter (greetd)
@@ -20,6 +21,7 @@
 #   --dry-run         Muestra los comandos sin ejecutar nada
 #   --yes             No pide confirmación al empezar
 #   --skip-packages   No instala paquetes (solo configura y compila)
+#   --skip-steam      No instala las librerías de 32 bits de Steam
 #   --skip-edit       No compila ni instala el edit personal de Umbriel
 #   --skip-config     No copia la configuración de usuario
 #   --skip-network    No configura ni instala la red, VPN ni Bluetooth
@@ -38,6 +40,7 @@ source "$REPO_DIR/scripts/lib/common.sh"
 DRY_RUN=0
 ASSUME_YES=0
 SKIP_PACKAGES=0
+SKIP_STEAM=0
 SKIP_EDIT=0
 SKIP_CONFIG=0
 SKIP_NETWORK=0
@@ -57,6 +60,7 @@ Opciones:
   --dry-run         Muestra los comandos sin ejecutar nada
   --yes             No pide confirmación al empezar
   --skip-packages   No instala paquetes (solo configura y compila)
+  --skip-steam      No instala las librerías de 32 bits de Steam
   --skip-edit       No compila ni instala el edit personal de Umbriel
   --skip-config     No copia la configuración de usuario
   --skip-network    No configura ni instala la red, VPN ni Bluetooth
@@ -73,6 +77,7 @@ while (( $# > 0 )); do
         --dry-run) DRY_RUN=1; shift ;;
         --yes) ASSUME_YES=1; shift ;;
         --skip-packages) SKIP_PACKAGES=1; shift ;;
+        --skip-steam) SKIP_STEAM=1; shift ;;
         --skip-edit) SKIP_EDIT=1; shift ;;
         --skip-config) SKIP_CONFIG=1; shift ;;
         --skip-network) SKIP_NETWORK=1; shift ;;
@@ -130,6 +135,22 @@ if (( ! SKIP_PACKAGES )); then
     "$REPO_DIR/scripts/install-packages.sh" "${PKG_ARGS[@]}"
 else
     log "Se omiten los paquetes (--skip-packages)."
+fi
+
+# ---------------------------------------------------------------------------
+# Steam
+# ---------------------------------------------------------------------------
+# El cliente de Steam es de 32 bits. Estas librerías no las necesita el shell,
+# pero sin ellas Steam no arranca; se instalan aparte para poder omitirlas.
+if (( SKIP_PACKAGES )); then
+    log "Se omiten las librerías de Steam (--skip-packages)."
+elif (( SKIP_STEAM )); then
+    log "Se omiten las librerías de Steam (--skip-steam)."
+else
+    log "Preparando las librerías de 32 bits de Steam."
+    STEAM_ARGS=()
+    (( DRY_RUN )) && STEAM_ARGS+=(--dry-run)
+    "$REPO_DIR/scripts/install-steam-libs.sh" "${STEAM_ARGS[@]}"
 fi
 
 # ---------------------------------------------------------------------------
@@ -269,6 +290,20 @@ if [[ -x "$TARGET_HOME/.local/bin/shell-config-set" ]]; then
     else
         warn "shell-config-set no responde; revisa python3 y el script."
     fi
+fi
+
+# Los GIR de ATK y AT-SPI deben seguir el origen de libatk. Si libatk viene de
+# backports y los GIR no, instalar después una app GTK3 (un .deb, Steam, etc.)
+# falla con «held broken packages». install-packages.sh los alinea; esto solo
+# avisa si algo quedó desfasado.
+if dpkg-query -W -f='${Version}' libatk1.0-0t64 2>/dev/null | grep -q 'bpo13'; then
+    for pkg in gir1.2-atk-1.0 gir1.2-atspi-2.0; do
+        if dpkg -s "$pkg" >/dev/null 2>&1; then
+            printf '  ok  %s\n' "$pkg"
+        else
+            warn "Falta $pkg; instala apps GTK3 con: sudo apt install -t trixie-backports $pkg"
+        fi
+    done
 fi
 
 # Los iconos de red, micrófono y volumen son SVG propios: si falta alguno, la

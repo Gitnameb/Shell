@@ -34,6 +34,13 @@
 sudo apt install -t trixie-backports quickshell hyprlock
 sudo apt install -t trixie-backports umbriel xdg-desktop-portal-umbriel
 
+# Quickshell arrastra at-spi2-core, libatk1.0-0t64 y libatspi2.0-0t64 desde
+# backports. Los GIR de ATK y AT-SPI deben venir del mismo origen: los de
+# trixie exigen la versión exacta de trixie, así que instalar después una app
+# GTK3 (por ejemplo un .deb como LocalSend) falla con «held broken packages».
+# El instalador lo hace solo si libatk1.0-0t64 es de backports.
+sudo apt install -t trixie-backports gir1.2-atk-1.0 gir1.2-atspi-2.0
+
 # Noctalia Greeter es el iniciador de sesión por defecto. --no-install-recommends
 # evita que fonts-noctalia-tabler instale el paquete `noctalia` (shell completo);
 # este escritorio usa Umbriel.
@@ -124,7 +131,26 @@ sudo apt install \
   mesa-utils intel-media-va-driver
 
 # ---------------------------------------------------------------------------
-# 6. Solo para pruebas y diagnóstico (no hacen falta para usar el shell)
+# 6. Steam (librerías de 32 bits)
+# ---------------------------------------------------------------------------
+# Steam es un cliente de 32 bits. Sin libc6:i386 no arranca y muestra
+# «you are missing the following 32-bit libraries: libc.so.6».
+# Se instalan con -t trixie-backports para que las versiones i386 coincidan
+# con el Mesa/Wayland de 64 bits de backports; si no, apt falla con
+# «held broken packages». El instalador lo hace con scripts/install-steam-libs.sh.
+sudo dpkg --add-architecture i386
+sudo apt update
+sudo apt install -t trixie-backports \
+  libc6:i386 libegl1:i386 libgbm1:i386 libgl1:i386 libgl1-mesa-dri:i386 \
+  steam-libs:amd64 steam-libs:i386
+
+# Si usas el repositorio oficial de Steam, los metapaquetes se llaman
+# steam-libs-amd64:amd64 y steam-libs-i386:i386; son equivalentes.
+# Con GPU NVIDIA hacen falta además nvidia-driver-libs:i386 y su versión amd64.
+# Esto instala solo las librerías; Steam (steam-launcher) se instala aparte.
+
+# ---------------------------------------------------------------------------
+# 7. Solo para pruebas y diagnóstico (no hacen falta para usar el shell)
 # ---------------------------------------------------------------------------
 # grim slurp          capturas en pruebas
 # btop                monitor de recursos

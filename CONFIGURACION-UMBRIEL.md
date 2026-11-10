@@ -1073,6 +1073,12 @@ El plan completo está en `PLAN-DISCOS.md`.
 - `sudo ./scripts/mount-disks.sh --apply` las escribe, crea los puntos de
   montaje y comprueba que quedan montados. Usa `nofail`, así que un disco
   ausente no bloquea el arranque. `--uninstall` quita el bloque y desmonta.
+- Las entradas incluyen `x-gvfs-show,x-gvfs-name=<etiqueta>`: systemd y
+  `ntfs-3g` ignoran esas opciones, pero GVfs las lee para mostrar el volumen
+  en Thunar o Nautilus. La etiqueta se sanea (espacios y comas pasan a `-`).
+- Dolphin no usa GVfs, sino Solid/KIO: no interpreta `x-gvfs-show`. Para ver
+  estos montajes en su panel lateral hay que añadirlos a **Lugares** (clic
+  derecho en el panel → «Añadir entrada»), o dejar que udisks2 los monte.
 - Las unidades USB no van a `fstab`: `udiskie` las monta al conectarlas y al
   iniciar sesión. El instalador añade el paquete y su servicio de usuario.
 - `scripts/diagnose-usb-disk.sh` reúne `lsusb`, `lsblk`, `udisksctl` y el

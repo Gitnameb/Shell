@@ -30,21 +30,28 @@ El instalador:
 1. Añade `trixie-backports` y el repositorio de Noctalia.
 2. Instala Quickshell, Umbriel, el portal, KDE/Qt, audio, red y las
    dependencias de compilación.
-3. Enlaza el shell en `~/.config/quickshell/shell` y copia los scripts a
+3. Habilita i386 e instala las librerías de 32 bits que necesita Steam
+   (`scripts/install-steam-libs.sh`); se omite con `--skip-steam`.
+4. Enlaza el shell en `~/.config/quickshell/shell` y copia los scripts a
    `~/.local/bin`.
-4. Configura NetworkManager para que gestione Ethernet y Wi-Fi (instala
+5. Configura NetworkManager para que gestione Ethernet y Wi-Fi (instala
    `wpasupplicant` y `rfkill`, y retira las interfaces de ifupdown).
-5. Copia la configuración del shell y Umbriel **sin sobrescribir** la que ya
-   exista. Con `--force-config` la reemplaza y guarda una copia `.bak`.
-6. Crea la regla de sudoers de `ddcutil` y activa la unidad de alarmas.
-7. Configura Noctalia Greeter con `scripts/install-greeter.sh` y cambia de
+6. Copia la configuración del shell y Umbriel **sin sobrescribir** la que ya
+   exista. Con `--force-config` la reemplaza y guarda una copia `.bak`. También
+   registra `foot` como terminal de Thunar.
+7. Crea la regla de sudoers de `ddcutil` y activa la unidad de alarmas.
+8. Configura Noctalia Greeter con `scripts/install-greeter.sh` y cambia de
    SDDM a `greetd`.
-8. Compila e instala el edit de Umbriel con `scripts/install-umbriel-edit.sh`.
-9. Añade los discos internos NTFS a `/etc/fstab` con `scripts/mount-disks.sh`
-   y deja `udiskie` activo para montar las unidades USB.
+9. Compila e instala el edit de Umbriel con `scripts/install-umbriel-edit.sh`.
+10. Añade los discos internos NTFS a `/etc/fstab` con `scripts/mount-disks.sh`
+    y deja `udiskie` activo para montar las unidades USB. Las entradas llevan
+    `x-gvfs-show,x-gvfs-name=<etiqueta>` para que los gestores basados en GVfs
+    (Thunar, Nautilus) las muestren como dispositivos además de quedar
+    montadas en `/mnt`. Dolphin usa Solid/KIO y no lee esas opciones.
 
 `install.sh` solo orquesta; cada paso vive en su módulo y se puede revisar o
-ejecutar por separado: `scripts/install-packages.sh`, `scripts/network.sh`,
+ejecutar por separado: `scripts/install-packages.sh`,
+`scripts/install-steam-libs.sh`, `scripts/network.sh`,
 `scripts/install-user-config.sh`, `scripts/install-greeter.sh`,
 `scripts/install-umbriel-edit.sh` y `scripts/mount-disks.sh`.
 
@@ -55,9 +62,9 @@ Las unidades USB las monta `udiskie` al conectarlas. Para excluir un disco:
 sudo ./scripts/mount-disks.sh --exclude "New Volume" --apply
 ```
 
-Opciones: `--dry-run`, `--skip-packages`, `--skip-edit`, `--skip-config`,
-`--skip-network`, `--skip-disks`, `--force-config`, `--with-firmware` y
-`--help`.
+Opciones: `--dry-run`, `--skip-packages`, `--skip-steam`, `--skip-edit`,
+`--skip-config`, `--skip-network`, `--skip-disks`, `--force-config`,
+`--with-firmware` y `--help`.
 
 > Probado con `--dry-run` y con una compilación completa desde un clon limpio
 > de Umbriel. **Falta la prueba definitiva en un Debian recién instalado.**
@@ -227,6 +234,39 @@ está en `install/packages.txt`.
   instalado por Plasma. **No instalar `-hyprland`** en la instalación limpia.
 - **X11:** `xwayland`.
 
+### Steam (32 bits)
+
+Steam es un cliente de 32 bits. Sin `libc6:i386` no arranca y muestra
+«you are missing the following 32-bit libraries: libc.so.6».
+
+`scripts/install-steam-libs.sh` (que `install.sh` ejecuta salvo `--skip-steam`):
+
+1. Habilita la arquitectura `i386` si no lo está.
+2. Instala `libc6:i386`, `libegl1:i386`, `libgbm1:i386`, `libgl1:i386` y
+   `libgl1-mesa-dri:i386`.
+3. Añade los metapaquetes de Steam. Si existe el repositorio oficial de Steam
+   usa `steam-libs-amd64:amd64` y `steam-libs-i386:i386`; si no, usa los
+   equivalentes de Debian (`steam-libs:amd64` y `steam-libs:i386`).
+
+Se instala con `-t trixie-backports` para que las versiones i386 coincidan con
+el Mesa/Wayland de 64 bits de backports. Sin eso, apt falla con «held broken
+packages» porque los paquetes multiarch exigen la misma versión en ambas
+arquitecturas.
+
+Comando manual equivalente:
+
+```sh
+sudo dpkg --add-architecture i386
+sudo apt update
+sudo apt install -t trixie-backports \
+  libc6:i386 libegl1:i386 libgbm1:i386 libgl1:i386 libgl1-mesa-dri:i386 \
+  steam-libs:amd64 steam-libs:i386
+```
+
+Esto instala solo las librerías; Steam se instala aparte. Con una GPU NVIDIA
+hacen falta además las librerías propietarias de 32 bits
+(`nvidia-driver-libs:i386`) emparejadas con las de 64 bits.
+
 ### Grupos que deben instalarse juntos
 
 Estos paquetes tienen dependencias de versión exacta entre sí. Instalar solo
@@ -248,6 +288,12 @@ sudo apt install -t trixie-backports \
   libwayland-dev wayland-protocols
 
 sudo apt install -t trixie-backports libspa-0.2-bluetooth
+
+# Quickshell arrastra at-spi2-core, libatk1.0-0t64 y libatspi2.0-0t64 desde
+# backports. Sus paquetes GIR deben ser del mismo origen: los de trixie exigen
+# la versión exacta de trixie y cualquier app GTK3 (un .deb, Steam, etc.) falla
+# al instalarse con «held broken packages».
+sudo apt install -t trixie-backports gir1.2-atk-1.0 gir1.2-atspi-2.0
 ```
 
 Si una instalación anterior falló a mitad, estos son los comandos de rescate
@@ -483,6 +529,30 @@ mismo desenfoque que los paneles. Se apilan hasta tres, se ocultan con «No
 molestar» y un clic abre el panel de notificaciones. Comparten el margen de la
 barra y el ancho del panel lateral; el modelo es un `ListModel`, así que las
 tarjetas anteriores no se reconstruyen ni parpadean al llegar una nueva.
+
+### 5.5 Terminal de Thunar
+
+Thunar abre la terminal con `exo-open`, que busca un descriptor en
+`~/.local/share/xfce4/helpers` y la categoría `TerminalEmulator` en
+`~/.config/xfce4/helpers.rc`. Sin eso, «Abrir terminal aquí» falla con:
+
+```text
+Failed to launch preferred application for category "TerminalEmulator"
+```
+
+`foot` no trae descriptor propio, así que el instalador lo registra:
+
+```sh
+mkdir -p ~/.config/xfce4 ~/.local/share/xfce4/helpers
+printf 'TerminalEmulator=foot\n' >> ~/.config/xfce4/helpers.rc
+install -m644 install/config/xfce4-helpers-foot.desktop \
+  ~/.local/share/xfce4/helpers/foot.desktop
+```
+
+Si `helpers.rc` ya existe, `scripts/install-user-config.sh` solo añade
+`TerminalEmulator=foot` cuando falta, sin pisar otras categorías (navegador,
+correo, etc.). Con `--force-config` reemplaza el valor y guarda una copia
+`.bak`.
 
 ---
 
@@ -773,6 +843,8 @@ sigue pendiente de probar.
 - `~/.config/hypr/hyprlock.conf` (pantalla de bloqueo; se crea sola si falta).
 - `~/.config/umbriel/config.toml`.
 - `~/.config/xdg-desktop-portal/portals.conf`.
+- `~/.config/xfce4/helpers.rc` y `~/.local/share/xfce4/helpers/foot.desktop`
+  (terminal de Thunar; el instalador los recrea).
 - `~/.config/systemd/user/shell-alarms.service`.
 - `~/.local/bin/shell-*`.
 - `~/.config/autostart/org.kde.xwaylandvideobridge.desktop`.

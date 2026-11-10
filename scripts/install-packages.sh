@@ -122,6 +122,15 @@ MESA_BACKPORTS_PKGS=(
     mesa-va-drivers mesa-vulkan-drivers
 )
 
+# Quickshell y Umbriel arrastran at-spi2-core, libatk1.0-0t64 y
+# libatspi2.0-0t64 desde backports. Sus paquetes GIR deben ser del mismo
+# origen: los de trixie exigen la versión exacta de trixie y cualquier app
+# GTK3 (por ejemplo un .deb como LocalSend) falla al instalarse con
+# «held broken packages».
+GTK_GIR_BACKPORTS_PKGS=(
+    gir1.2-atk-1.0 gir1.2-atspi-2.0
+)
+
 RUNTIME_PKGS=(
     ddcutil brightnessctl libnotify-bin fonts-inter-variable wvkbd swayidle foot
     power-profiles-daemon
@@ -181,6 +190,15 @@ run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
 log "Instalando Quickshell, Umbriel y su portal (backports/Noctalia)."
 run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
     -t trixie-backports quickshell hyprlock umbriel xdg-desktop-portal-umbriel
+
+# Solo si libatk viene de backports: alinear sus GIR evita que instalar
+# después una app GTK3 (un .deb, Steam, etc.) rompa apt por dependencias
+# exactas entre trixie y backports.
+if dpkg-query -W -f='${Version}' libatk1.0-0t64 2>/dev/null | grep -q 'bpo13'; then
+    log "Alineando los GIR de ATK y AT-SPI con libatk de backports."
+    run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        -t trixie-backports "${GTK_GIR_BACKPORTS_PKGS[@]}"
+fi
 
 # Noctalia Greeter depende de fonts-noctalia-tabler, que recomienda el paquete
 # `noctalia` (el shell completo). No se instala: este escritorio usa Umbriel.

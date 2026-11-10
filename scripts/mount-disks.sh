@@ -252,7 +252,9 @@ for row in "${disks[@]}"; do
         continue
     fi
     seen[$mount]=1
-    options="nofail,x-systemd.device-timeout=5s,uid=$owner_uid,gid=$owner_gid,umask=022,windows_names"
+    # x-gvfs-* lo lee GVfs (Thunar, Nautilus, PCManFM). Dolphin usa Solid/KIO
+    # y no interpreta estas opciones; allí el punto se añade a Lugares.
+    options="nofail,x-systemd.device-timeout=5s,uid=$owner_uid,gid=$owner_gid,umask=022,windows_names,x-gvfs-show,x-gvfs-name=$label"
     block_lines+=("UUID=$uuid $mount $FSTYPE $options 0 0")
 done
 

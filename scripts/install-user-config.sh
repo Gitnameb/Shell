@@ -97,6 +97,57 @@ copy_static() {
     run install -m644 "$src" "$dest"
 }
 
+# Thunar abre la terminal con exo-open. Para eso necesita un descriptor en
+# ~/.local/share/xfce4/helpers y la categoría TerminalEmulator en
+# ~/.config/xfce4/helpers.rc. foot no trae descriptor propio y, sin él,
+# «Abrir terminal aquí» falla con:
+#   Failed to launch preferred application for category "TerminalEmulator"
+ensure_exo_terminal() {
+    local rc="$TARGET_HOME/.config/xfce4/helpers.rc"
+    local desktop="$TARGET_HOME/.local/share/xfce4/helpers/foot.desktop"
+    local src="$REPO_DIR/install/config/xfce4-helpers-foot.desktop"
+    local line
+    line=$(cat "$REPO_DIR/install/config/xfce4-helpers.rc")
+
+    run mkdir -p "$(dirname "$rc")" "$(dirname "$desktop")"
+
+    # helpers.rc puede tener más categorías (navegador, correo, etc.). Solo se
+    # añade TerminalEmulator si falta, para no pisar la configuración del usuario.
+    if [[ -f "$rc" ]] && grep -qxF "$line" "$rc"; then
+        log "El terminal de Thunar ya está configurado (foot)."
+    elif [[ -f "$rc" ]] && grep -q '^TerminalEmulator=' "$rc" \
+        && (( ! FORCE_CONFIG )); then
+        warn "$rc ya define otro terminal; se conserva. Usa --force-config para cambiarlo."
+    else
+        backup_file "$rc"
+        if (( DRY_RUN )); then
+            printf '\033[2m[dry-run]\033[0m escribir %s en %s\n' "$line" "$rc"
+        elif [[ -f "$rc" ]] && grep -q '^TerminalEmulator=' "$rc"; then
+            local tmp
+            tmp=$(mktemp)
+            awk -v line="$line" '
+                /^TerminalEmulator=/ { print line; next }
+                { print }
+            ' "$rc" >"$tmp"
+            mv "$tmp" "$rc"
+            chmod 644 "$rc"
+        elif [[ -s "$rc" ]] && [[ -n "$(tail -c 1 "$rc")" ]]; then
+            printf '\n%s\n' "$line" >>"$rc"
+        else
+            printf '%s\n' "$line" >>"$rc"
+        fi
+    fi
+
+    if [[ -f "$desktop" ]] && cmp -s "$src" "$desktop"; then
+        log "El descriptor de foot para exo-open ya está instalado."
+    elif [[ -e "$desktop" && $FORCE_CONFIG -eq 0 ]]; then
+        warn "$desktop ya existe con otro contenido; se conserva. Usa --force-config para reemplazarlo."
+    else
+        backup_file "$desktop"
+        run install -m644 "$src" "$desktop"
+    fi
+}
+
 # ---------------------------------------------------------------------------
 # Enlaces y archivos del usuario
 # ---------------------------------------------------------------------------
@@ -124,6 +175,15 @@ copy_template "$REPO_DIR/install/config/shell-display.conf" \
     "$TARGET_HOME/.config/shell/display.conf"
 copy_template "$REPO_DIR/install/config/glass-blur.conf" \
     "$TARGET_HOME/.config/shell/glass-blur.conf"
+
+# ---------------------------------------------------------------------------
+# Terminal de Thunar
+# ---------------------------------------------------------------------------
+log "Registrando foot como terminal de exo-open (Thunar)."
+if ! command -v foot >/dev/null 2>&1; then
+    warn "foot no está instalado; «Abrir terminal aquí» fallará hasta instalarlo."
+fi
+ensure_exo_terminal
 
 # ---------------------------------------------------------------------------
 # Fondo de pantalla
