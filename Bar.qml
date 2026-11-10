@@ -446,7 +446,10 @@ Variants {
                             anchors.centerIn: parent
                             source: Distro.iconSource
                             color: Theme.accentInk
-                            size: Math.round(SettingsState.barIconSize * 0.82)
+                            // El logotipo de la distro llena la caja: su PNG ya
+                            // trae su propio margen y antes se veía más pequeño
+                            // que el resto de iconos de la barra.
+                            size: SettingsState.barIconSize
                             fallback: "▦"
                         }
 
