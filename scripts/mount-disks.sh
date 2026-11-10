@@ -459,16 +459,27 @@ for row in "${disks[@]}"; do
 done
 
 # mount -a no remonta lo que ya estaba montado: solo aplica el fstab a montajes
-# nuevos. Si las opciones de una entrada cambiaron, hay que desmontarla.
+# nuevos. Si las opciones de una entrada cambiaron, se desmonta y se vuelve a
+# montar aquí mismo, unidad a unidad. Si alguna está ocupada, se deja como
+# estaba y se muestran las instrucciones manuales.
 remount=()
 for mount in "${mounted_now[@]}"; do
     if [[ "${old_options[$mount]:-}" != "${new_options[$mount]:-}" ]]; then
         remount+=("$mount")
     fi
 done
-if (( ${#remount[@]} > 0 )); then
-    printf '\nmount -a no remonta lo que ya estaba montado. Para aplicar las opciones nuevas:\n' >&2
-    for mount in "${remount[@]}"; do
+manual=()
+for mount in "${remount[@]}"; do
+    if umount "$mount" 2>/dev/null && mount "$mount"; then
+        printf '  ok  %s remontado\n' "$mount"
+    else
+        manual+=("$mount")
+        failed=1
+    fi
+done
+if (( ${#manual[@]} > 0 )); then
+    printf '\nNo se pudo remontar (¿sigue abierto algún programa?):\n' >&2
+    for mount in "${manual[@]}"; do
         printf '  sudo umount %s && sudo mount %s\n' "$mount" "$mount" >&2
     done
 fi
