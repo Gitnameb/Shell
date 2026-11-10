@@ -7,13 +7,16 @@
 #   sudo ./scripts/mount-disks.sh --fs ntfs3 --apply
 #   sudo ./scripts/mount-disks.sh --uninstall
 #
-# No toca el disco del sistema: solo particiones NTFS internas, no extraíbles
-# y sin punto de montaje activo. Las unidades USB se dejan para udiskie.
+# No toca el disco del sistema: solo particiones NTFS internas y no
+# extraíbles. De las que ya están montadas solo gestiona las que pertenecen al
+# bloque que él mismo escribe en /etc/fstab. Las unidades USB se dejan para
+# udiskie.
 set -Eeuo pipefail
 
 PREFIX="/mnt"
 FSTYPE="ntfs-3g"
 MODE="dry-run"
+WINDOWS_NAMES=0
 FSTAB="${SHELL_FSTAB:-/etc/fstab}"
 ONLY=()
 EXCLUDE=()
@@ -29,6 +32,8 @@ Opciones:
   --apply            Escribe /etc/fstab y monta
   --uninstall        Quita el bloque gestionado y desmonta esos puntos
   --fs ntfs-3g|ntfs3 Sistema de archivos a usar (por defecto ntfs-3g)
+  --windows-names    Prohíbe nombres no válidos en Windows. Rompe los prefijos
+                     de Proton, que necesitan crear dosdevices/c:
   --prefix RUTA      Carpeta base de los puntos de montaje (/mnt)
   --only ETIQUETA    Solo estos discos (UUID o etiqueta; repetible)
   --exclude ETIQUETA No montar estos discos (UUID o etiqueta; repetible)
@@ -41,6 +46,7 @@ while (( $# > 0 )); do
         --dry-run) MODE="dry-run"; shift ;;
         --apply) MODE="apply"; shift ;;
         --uninstall) MODE="uninstall"; shift ;;
+        --windows-names) WINDOWS_NAMES=1; shift ;;
         --fs)
             FSTYPE="${2:-}"
             shift 2
@@ -105,12 +111,14 @@ fail() {
 }
 
 # Devuelve una lista TSV con uuid, etiqueta, dispositivo y punto de montaje.
-# Solo discos internos no extraíbles con NTFS y sin montar.
+# Incluye los discos internos no extraíbles con NTFS, estén o no montados: los
+# que ya están montados solo se listan si pertenecen al bloque gestionado, para
+# poder reaplicar opciones sin perder sus entradas de /etc/fstab.
 list_disks() {
     local tmp
     tmp=$(mktemp)
     lsblk -J -o NAME,PATH,FSTYPE,UUID,LABEL,TYPE,RM,TRAN,MOUNTPOINTS >"$tmp"
-    python3 - "$tmp" "$PREFIX" <<'PY'
+    python3 - "$tmp" "$PREFIX" "$FSTAB" "$BEGIN_MARK" "$END_MARK" <<'PY'
 import json
 import re
 import sys
@@ -122,6 +130,33 @@ prefix = sys.argv[2]
 def clean(value):
     text = re.sub(r"[^A-Za-z0-9._-]+", "-", str(value or ""))
     return text.strip("-") or "NTFS"
+
+
+def managed_mounts(path, begin, end):
+    """UUID -> punto de montaje de las entradas del bloque gestionado."""
+    mounts = {}
+    inside = False
+    try:
+        lines = Path(path).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return mounts
+    for line in lines:
+        text = line.strip()
+        if text == begin:
+            inside = True
+            continue
+        if text == end:
+            inside = False
+            continue
+        if not inside or not text or text.startswith("#"):
+            continue
+        fields = text.split()
+        if len(fields) >= 2 and fields[0].startswith("UUID="):
+            mounts[fields[0][5:]] = fields[1]
+    return mounts
+
+
+managed = managed_mounts(sys.argv[3], sys.argv[4], sys.argv[5])
 
 
 def walk(nodes, inherited_tran="", inherited_rm=False):
@@ -139,12 +174,16 @@ def walk(nodes, inherited_tran="", inherited_rm=False):
             continue
         if not node.get("uuid"):
             continue
+        uuid = node["uuid"]
+        label = clean(node.get("label") or uuid[:8])
         mounts = [m for m in (node.get("mountpoints") or []) if m]
         if mounts:
+            if uuid not in managed:
+                continue
+            print("\t".join([uuid, label, node.get("path", ""), managed[uuid]]))
             continue
-        label = clean(node.get("label") or node.get("uuid", "")[:8])
         path = f"{prefix}/{label}"
-        print("\t".join([node["uuid"], label, node.get("path", ""), path]))
+        print("\t".join([uuid, label, node.get("path", ""), path]))
 
 
 data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
@@ -194,7 +233,7 @@ PY
     exit 0
 fi
 
-mapfile -t disks < <(list_disks)
+mapfile -t disks < <(list_disks "$FSTAB" "$BEGIN_MARK" "$END_MARK")
 
 filter_value() {
     printf '%s' "$1" |
@@ -245,6 +284,7 @@ done
 
 declare -A seen
 block_lines=()
+mounted_now=()
 for row in "${disks[@]}"; do
     IFS=$'\t' read -r uuid label device mount <<<"$row"
     if [[ -n "${seen[$mount]:-}" ]]; then
@@ -252,9 +292,14 @@ for row in "${disks[@]}"; do
         continue
     fi
     seen[$mount]=1
+    findmnt -rn "$mount" >/dev/null 2>&1 && mounted_now+=("$mount")
     # x-gvfs-* lo lee GVfs (Thunar, Nautilus, PCManFM). Dolphin usa Solid/KIO
     # y no interpreta estas opciones; allí el punto se añade a Lugares.
-    options="nofail,x-systemd.device-timeout=5s,uid=$owner_uid,gid=$owner_gid,umask=022,windows_names,x-gvfs-show,x-gvfs-name=$label"
+    # windows_names prohíbe ':' en nombres nuevos, y Proton necesita crear
+    # dosdevices/c: dentro del prefijo; por eso no se usa salvo que se pida.
+    options="nofail,x-systemd.device-timeout=5s,uid=$owner_uid,gid=$owner_gid,umask=022"
+    (( WINDOWS_NAMES )) && options+=",windows_names"
+    options+=",x-gvfs-show,x-gvfs-name=$label"
     block_lines+=("UUID=$uuid $mount $FSTYPE $options 0 0")
 done
 
@@ -324,6 +369,24 @@ for row in "${disks[@]}"; do
         failed=1
     fi
 done
+
+# mount -a no remonta lo que ya estaba montado. Si el disco tenía
+# windows_names y ahora no se pide, hay que desmontarlo para aplicar el cambio.
+remount=()
+if (( ! WINDOWS_NAMES )); then
+    for mount in "${mounted_now[@]}"; do
+        current=$(findmnt -rno OPTIONS "$mount" 2>/dev/null || true)
+        if [[ "$current" == *windows_names* ]]; then
+            remount+=("$mount")
+        fi
+    done
+fi
+if (( ${#remount[@]} > 0 )); then
+    printf '\nmount -a no remonta lo que ya estaba montado. Para aplicar las opciones nuevas:\n' >&2
+    for mount in "${remount[@]}"; do
+        printf '  sudo umount %s && sudo mount %s\n' "$mount" "$mount" >&2
+    done
+fi
 
 printf '\nCopia de seguridad: %s\n' "$backup_file"
 exit "$failed"

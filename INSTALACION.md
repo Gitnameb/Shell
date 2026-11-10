@@ -47,7 +47,9 @@ El instalador:
     y deja `udiskie` activo para montar las unidades USB. Las entradas llevan
     `x-gvfs-show,x-gvfs-name=<etiqueta>` para que los gestores basados en GVfs
     (Thunar, Nautilus) las muestren como dispositivos además de quedar
-    montadas en `/mnt`. Dolphin usa Solid/KIO y no lee esas opciones.
+    montadas en `/mnt`. Dolphin usa Solid/KIO y no lee esas opciones. No se
+    añade `windows_names`, porque prohíbe `:` y Proton necesita crear
+    `dosdevices/c:`; para recuperarla, `--windows-names`.
 
 `install.sh` solo orquesta; cada paso vive en su módulo y se puede revisar o
 ejecutar por separado: `scripts/install-packages.sh`,

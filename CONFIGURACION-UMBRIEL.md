@@ -1079,6 +1079,11 @@ El plan completo está en `PLAN-DISCOS.md`.
 - Dolphin no usa GVfs, sino Solid/KIO: no interpreta `x-gvfs-show`. Para ver
   estos montajes en su panel lateral hay que añadirlos a **Lugares** (clic
   derecho en el panel → «Añadir entrada»), o dejar que udisks2 los monte.
+- Las entradas **no** llevan `windows_names`: esa opción prohíbe `:` en nombres
+  nuevos y Proton necesita crear `dosdevices/c:` dentro de cada prefijo, así
+  que los juegos que estrenan prefijo fallan con «Invalid argument». Con
+  `--windows-names` el script la vuelve a añadir si el disco también se usa
+  desde Windows.
 - Las unidades USB no van a `fstab`: `udiskie` las monta al conectarlas y al
   iniciar sesión. El instalador añade el paquete y su servicio de usuario.
 - `scripts/diagnose-usb-disk.sh` reúne `lsusb`, `lsblk`, `udisksctl` y el

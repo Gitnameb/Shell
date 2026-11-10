@@ -53,7 +53,10 @@ predecible y permite arrancar aunque un disco no esté.
 3. **Añadir entradas a `/etc/fstab`.**
    - Usar `UUID=` de `lsblk -f`, nunca `/dev/sdX`, que cambia de orden.
    - Opciones recomendadas con el kernel `ntfs3`:
-     `defaults,nofail,uid=1000,gid=1000,umask=022,windows_names`.
+     `defaults,nofail,uid=1000,gid=1000,umask=022`.
+   - **No añadir `windows_names`**: prohíbe `:` en nombres nuevos y Proton
+     necesita crear `dosdevices/c:` en cada prefijo. Solo tiene sentido si el
+     disco se usa también desde Windows y no hay prefijos de Proton.
    - Si `ntfs3` no monta bien, usar `ntfs-3g` con las mismas opciones de
      permisos.
    - `nofail` evita que el arranque se quede esperando un disco ausente.
