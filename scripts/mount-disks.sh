@@ -244,8 +244,8 @@ Path(path).write_text("\n".join(out).rstrip("\n") + "\n", encoding="utf-8")
 PY
     for mount in "${old_mounts[@]}"; do
         dropin=$(lazy_dropin "$mount")
-        run_sudo rm -f "$dropin"
-        run_sudo rmdir "$(dirname "$dropin")" 2>/dev/null || true
+        rm -f "$dropin"
+        rmdir "$(dirname "$dropin")" 2>/dev/null || true
     done
     systemctl daemon-reload || true
     for mount in "${old_mounts[@]}"; do
@@ -406,12 +406,12 @@ for row in "${disks[@]}"; do
     if (( LAZY_UNMOUNT )); then
         tmp=$(mktemp)
         printf '[Mount]\n# Generado por scripts/mount-disks.sh; no editar a mano.\nLazyUnmount=yes\n' >"$tmp"
-        run_sudo install -d -m 755 "$(dirname "$dropin")"
-        run_sudo install -m644 "$tmp" "$dropin"
+        install -d -m 755 "$(dirname "$dropin")"
+        install -m644 "$tmp" "$dropin"
         rm -f "$tmp"
     else
-        run_sudo rm -f "$dropin"
-        run_sudo rmdir "$(dirname "$dropin")" 2>/dev/null || true
+        rm -f "$dropin"
+        rmdir "$(dirname "$dropin")" 2>/dev/null || true
     fi
 done
 
