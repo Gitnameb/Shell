@@ -593,6 +593,14 @@ del repositorio si todavía no existe y lanza `hyprlock`, que dibuja la
 superficie `ext-session-lock-v1`; Quickshell no puede crearla por sí mismo.
 No hay respaldos con otros bloqueadores ni llamadas directas a `hyprlock`.
 
+El bloqueo automático se inhibe mientras hay música o vídeo
+(`MusicState.playing`) o una ventana a pantalla completa
+(`CompositorState.hasFullscreenWindow`). Hace falta porque el protocolo de
+inactividad del compositor solo cuenta teclado y puntero: usar el mando no
+reinicia el temporizador, y bajo XWayland las peticiones de inhibición que hace
+el juego no llegan a Wayland. El estado de pantalla completa sí lo conoce
+Umbriel, así que los juegos en pantalla completa no se bloquean.
+
 Antes el botón lanzaba `hyprlock` directamente y, sin archivo de
 configuración, hyprlock salía sin bloquear. Ahora la configuración se crea
 sola y el instalador también la copia en limpieza.

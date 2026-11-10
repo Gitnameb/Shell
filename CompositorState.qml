@@ -115,6 +115,18 @@ Singleton {
     readonly property string focusedApp: root.focusedWindow
         ? String(root.focusedWindow.appId || root.focusedWindow.class || "") : ""
 
+    // Alguna ventana a pantalla completa. Los juegos no reinician el idle del
+    // compositor con el mando (sobre todo bajo XWayland), así que la barra usa
+    // esto para inhibir el bloqueo automático mientras haya una en pantalla.
+    readonly property bool hasFullscreenWindow: {
+        const list = root.windows || [];
+        for (let i = 0; i < list.length; i++) {
+            if (list[i] && list[i].fullscreen === true)
+                return true;
+        }
+        return false;
+    }
+
     // Orden estable de las fichas de la barra. El backend devuelve las ventanas
     // en orden de apilado, que cambia al enfocar; aquí se conserva el orden en
     // que apareció cada ventana. Se mutan solo las claves del objeto (nunca se

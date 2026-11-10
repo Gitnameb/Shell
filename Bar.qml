@@ -15,12 +15,14 @@ Variants {
         required property var modelData
         screen: modelData
 
-        // Mientras hay música o vídeo, la pantalla no se considera inactiva:
-        // swayidle no llega a bloquear. El inhibidor vive en la superficie de
-        // la barra, que siempre está mapeada aunque esté oculta.
+        // Mientras hay música o vídeo, o un juego a pantalla completa, la
+        // pantalla no se considera inactiva: swayidle no llega a bloquear. El
+        // inhibidor vive en la superficie de la barra, que siempre está mapeada
+        // aunque esté oculta. Los juegos no cuentan como actividad con mando.
         IdleInhibitor {
             window: bar
             enabled: MusicState.playing
+                || CompositorState.hasFullscreenWindow
         }
 
         // Menú contextual de las apps del escritorio activo.
