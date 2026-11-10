@@ -53,10 +53,10 @@ El instalador:
     añade `windows_names`, porque prohíbe `:` y Proton necesita crear
     `dosdevices/c:`; para recuperarla, `--windows-names`. Si el apagado se
     queda parado con los discos montados, `--lazy-unmount` hace que systemd
-    suelte el montaje sin esperar a que se liberen los archivos. Si la
-    biblioteca de Steam vive en estos discos, `--fs ntfs3` usa el driver del
-    kernel y reduce mucho la latencia por archivo (los juegos cargan y
-    transmiten datos sin los tirones del FUSE de `ntfs-3g`).
+    suelte el montaje sin esperar a que se liberen los archivos. No cambies a
+    `--fs ntfs3` una biblioteca de Steam ya instalada: `ntfs-3g` guarda los
+    enlaces de los prefijos de Proton como archivos Interix y, con `ntfs3`,
+    Proton falla al leer `dosdevices/s:` y los juegos no arrancan.
 
 `install.sh` solo orquesta; cada paso vive en su módulo y se puede revisar o
 ejecutar por separado: `scripts/install-packages.sh`,

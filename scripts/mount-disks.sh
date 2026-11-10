@@ -33,10 +33,12 @@ Opciones:
   --apply            Escribe /etc/fstab y monta
   --uninstall        Quita el bloque gestionado y desmonta esos puntos
   --fs ntfs-3g|ntfs3 Sistema de archivos a usar (por defecto ntfs-3g).
-                     ntfs3 es el driver del kernel: mucha menos latencia por
-                     archivo, recomendable para bibliotecas de juegos. Exige
-                     que Windows haya cerrado el volumen (sin hibernación ni
-                     inicio rápido).
+                     ntfs3 es el driver del kernel y va bien en discos de
+                     datos, pero NO en una biblioteca de Steam ya instalada:
+                     ntfs-3g guardó los enlaces de los prefijos de Proton y de
+                     los runtimes como archivos Interix, y con ntfs3 los juegos
+                     no arrancan. Para una biblioteca nueva, ntfs3 sí crea
+                     enlaces nativos.
   --windows-names    Prohíbe nombres no válidos en Windows. Rompe los prefijos
                      de Proton, que necesitan crear dosdevices/c:
   --lazy-unmount     Desmonta sin esperar a que se liberen los archivos; evita
@@ -320,6 +322,25 @@ for row in "${disks[@]}"; do
         continue
     fi
     seen[$mount]=1
+    # ntfs3 no resuelve los enlaces Interix que deja ntfs-3g. Proton lee
+    # dosdevices/s: con readlink; con ntfs3 es un archivo normal, aborta con
+    # EINVAL y el juego no llega a abrirse. Avisar antes de romper una
+    # biblioteca de Steam que ya funciona.
+    if [[ "$FSTYPE" == "ntfs3" ]]; then
+        for steamapps in "$mount/steamapps" "$mount/SteamLibrary/steamapps"; do
+            [[ -d "$steamapps/compatdata" ]] || continue
+            if grep -rqs -m1 -a 'IntxLNK' \
+                    "$steamapps"/compatdata/*/pfx/dosdevices 2>/dev/null; then
+                msg="'$steamapps' tiene prefijos de Proton creados con ntfs-3g. ntfs3 no resuelve sus enlaces y los juegos no arrancarán; usa --fs ntfs-3g."
+                if [[ "$MODE" == "apply" ]]; then
+                    fail "$msg"
+                else
+                    printf 'Aviso: %s\n' "$msg" >&2
+                fi
+                break
+            fi
+        done
+    fi
     findmnt -rn "$mount" >/dev/null 2>&1 && mounted_now+=("$mount")
     # x-gvfs-* lo lee GVfs (Thunar, Nautilus, PCManFM). Dolphin usa Solid/KIO
     # y no interpreta estas opciones; allí el punto se añade a Lugares.

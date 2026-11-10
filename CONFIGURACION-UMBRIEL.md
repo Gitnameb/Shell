@@ -1146,20 +1146,31 @@ Un juego abre miles de texturas, sonidos y archivos de datos mientras carga
 zonas. Esa latencia extra se nota como microtirones y tiempos de carga largos,
 algo que en Windows no ocurre porque usa el driver NTFS nativo.
 
-El kernel de Debian trae `ntfs3`, que hace el trabajo dentro del kernel y
-admite las mismas opciones. Para cambiar la biblioteca sin salir de NTFS:
+`ntfs3` (el driver del kernel) reduciría esa latencia, pero **no se puede
+activar en una biblioteca ya instalada**: `ntfs-3g` no crea enlaces POSIX, los
+guarda como archivos Interix (`IntxLNK` + la ruta en UTF-16). Los prefijos de
+Proton y los runtimes de Steam están llenos de ellos (1.334 en el prefijo de
+Alice, 3.586 en `SteamLinuxRuntime_sniper`). Al montar con `ntfs3` dejan de
+verse como enlaces y pasan a ser archivos normales:
 
-```sh
-sudo ./scripts/mount-disks.sh --fs ntfs3 --apply
+```text
+File ".../proton", line 524, in setup_dir_drive
+    cur_tgt = os.readlink(drive_path)
+OSError: [Errno 22] Invalid argument: '.../pfx/dosdevices/s:'
 ```
 
-- Conserva `nofail`, `uid`, `gid`, `umask` y sigue sin `windows_names`, así que
-  Proton puede crear `dosdevices/c:`.
-- Desmonta y vuelve a montar los discos; cierra Steam antes de ejecutarlo.
-- Windows debe apagarse del todo, sin hibernación ni **inicio rápido**. Si el
-  volumen queda sucio, `ntfs3` se niega a montarlo y el escritorio arranca sin
-  la biblioteca (`nofail` evita que se cuelgue el arranque). Para volver atrás,
-  `sudo ./scripts/mount-disks.sh --fs ntfs-3g --apply`.
+Proton aborta en `setup_prefix()` y el juego no llega a abrirse. Por eso la
+biblioteca debe seguir en `ntfs-3g`; para volver si se cambió:
+
+```sh
+sudo ./scripts/mount-disks.sh --fs ntfs-3g --apply
+```
+
+La alternativa segura para ganar velocidad es dejar los datos de los juegos en
+`ntfs-3g` y mover solo los prefijos (`steamapps/compatdata`) a ext4, que es
+donde Wine crea y lee miles de archivos pequeños. Los prefijos nuevos se
+recrean sin problemas y los existentes se copian con `cp -a` mientras el disco
+está montado con `ntfs-3g`, que sí resuelve los enlaces Interix.
 
 ### Caché de shaders de Steam
 
