@@ -434,11 +434,13 @@ Variants {
                         width: implicitWidth
                         height: implicitHeight
 
-                    // Logo / lanzador
+                    // Logo / lanzador. Mide lo mismo que una ficha de
+                    // escritorio (34 px, 28 en la barra vertical) para que el
+                    // logotipo no quede más pequeño que sus botones vecinos.
                     Rectangle {
-                        Layout.preferredWidth: SettingsState.barIconSize
-                        Layout.preferredHeight: SettingsState.barIconSize
-                        radius: 6
+                        Layout.preferredWidth: SettingsState.barVertical ? 28 : 34
+                        Layout.preferredHeight: SettingsState.barVertical ? 28 : 34
+                        radius: 8
                         color: Theme.accent
                         Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
 
@@ -446,10 +448,8 @@ Variants {
                             anchors.centerIn: parent
                             source: Distro.iconSource
                             color: Theme.accentInk
-                            // El logotipo de la distro llena la caja: su PNG ya
-                            // trae su propio margen y antes se veía más pequeño
-                            // que el resto de iconos de la barra.
-                            size: SettingsState.barIconSize
+                            // El PNG del logotipo ya trae su propio margen.
+                            size: parent.width
                             fallback: "▦"
                         }
 
