@@ -17,6 +17,7 @@ PREFIX="/mnt"
 FSTYPE="ntfs-3g"
 MODE="dry-run"
 WINDOWS_NAMES=0
+LAZY_UNMOUNT=0
 FSTAB="${SHELL_FSTAB:-/etc/fstab}"
 ONLY=()
 EXCLUDE=()
@@ -34,6 +35,8 @@ Opciones:
   --fs ntfs-3g|ntfs3 Sistema de archivos a usar (por defecto ntfs-3g)
   --windows-names    Prohíbe nombres no válidos en Windows. Rompe los prefijos
                      de Proton, que necesitan crear dosdevices/c:
+  --lazy-unmount     Desmonta sin esperar a que se liberen los archivos; evita
+                     que el apagado se quede colgado con el disco en uso
   --prefix RUTA      Carpeta base de los puntos de montaje (/mnt)
   --only ETIQUETA    Solo estos discos (UUID o etiqueta; repetible)
   --exclude ETIQUETA No montar estos discos (UUID o etiqueta; repetible)
@@ -47,6 +50,7 @@ while (( $# > 0 )); do
         --apply) MODE="apply"; shift ;;
         --uninstall) MODE="uninstall"; shift ;;
         --windows-names) WINDOWS_NAMES=1; shift ;;
+        --lazy-unmount) LAZY_UNMOUNT=1; shift ;;
         --fs)
             FSTYPE="${2:-}"
             shift 2
@@ -108,6 +112,20 @@ backup() {
 fail() {
     echo "Error: $*" >&2
     exit 1
+}
+
+# Nombre de la unidad systemd de un punto de montaje. Los guiones se escapan
+# (\x2d), así que /mnt/New-Volume es mnt-New\x2dVolume.mount.
+mount_unit() {
+    command -v systemd-escape >/dev/null 2>&1 ||
+        fail "Falta systemd-escape; no se puede configurar el desmontaje."
+    systemd-escape -p --suffix=mount "$1"
+}
+
+# Drop-in con LazyUnmount=yes: systemd suelta el montaje al instante y lo
+# limpia cuando deja de estar ocupado, en vez de fallar y bloquear el apagado.
+lazy_dropin() {
+    printf '/etc/systemd/system/%s.d/10-lazy-unmount.conf' "$(mount_unit "$1")"
 }
 
 # Devuelve una lista TSV con uuid, etiqueta, dispositivo y punto de montaje.
@@ -224,6 +242,11 @@ for line in lines:
         out.append(line)
 Path(path).write_text("\n".join(out).rstrip("\n") + "\n", encoding="utf-8")
 PY
+    for mount in "${old_mounts[@]}"; do
+        dropin=$(lazy_dropin "$mount")
+        run_sudo rm -f "$dropin"
+        run_sudo rmdir "$(dirname "$dropin")" 2>/dev/null || true
+    done
     systemctl daemon-reload || true
     for mount in "${old_mounts[@]}"; do
         umount "$mount" 2>/dev/null || true
@@ -319,6 +342,13 @@ if [[ "$MODE" == "dry-run" ]]; then
         IFS=$'\t' read -r uuid label device mount <<<"$row"
         printf '  mkdir -p %s\n' "$mount"
     done
+    if (( LAZY_UNMOUNT )); then
+        printf '\nDesmontaje perezoso (LazyUnmount=yes):\n'
+        for row in "${disks[@]}"; do
+            IFS=$'\t' read -r uuid label device mount <<<"$row"
+            printf '  %s\n' "$(lazy_dropin "$mount")"
+        done
+    fi
     printf '\nPara aplicar: sudo %s --apply\n' "$0"
     exit 0
 fi
@@ -367,6 +397,23 @@ while out and not out[-1].strip():
 out.extend(["", *block.splitlines()])
 Path(path).write_text("\n".join(out) + "\n", encoding="utf-8")
 PY
+
+# Desmontaje perezoso opcional: systemd suelta el montaje al instante en vez de
+# fallar cuando el disco sigue en uso, y así el apagado no se queda colgado.
+for row in "${disks[@]}"; do
+    IFS=$'\t' read -r uuid label device mount <<<"$row"
+    dropin=$(lazy_dropin "$mount")
+    if (( LAZY_UNMOUNT )); then
+        tmp=$(mktemp)
+        printf '[Mount]\n# Generado por scripts/mount-disks.sh; no editar a mano.\nLazyUnmount=yes\n' >"$tmp"
+        run_sudo install -d -m 755 "$(dirname "$dropin")"
+        run_sudo install -m644 "$tmp" "$dropin"
+        rm -f "$tmp"
+    else
+        run_sudo rm -f "$dropin"
+        run_sudo rmdir "$(dirname "$dropin")" 2>/dev/null || true
+    fi
+done
 
 systemctl daemon-reload
 if ! mount -a; then

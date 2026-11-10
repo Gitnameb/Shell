@@ -1084,6 +1084,11 @@ El plan completo está en `PLAN-DISCOS.md`.
   que los juegos que estrenan prefijo fallan con «Invalid argument». Con
   `--windows-names` el script la vuelve a añadir si el disco también se usa
   desde Windows.
+- Si al apagar aparece «Failed unmounting» o el equipo se queda encendido con
+  la pantalla apagada, `--lazy-unmount` añade un drop-in `LazyUnmount=yes` a
+  cada unidad: systemd suelta el montaje al instante y lo limpia cuando deja de
+  estar ocupado. Es la mitigación para discos FUSE (`ntfs-3g`) que siguen en uso
+  durante el apagado.
 - Las unidades USB no van a `fstab`: `udiskie` las monta al conectarlas y al
   iniciar sesión. El instalador añade el paquete y su servicio de usuario.
 - `scripts/diagnose-usb-disk.sh` reúne `lsusb`, `lsblk`, `udisksctl` y el

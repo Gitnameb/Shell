@@ -68,6 +68,9 @@ predecible y permite arrancar aunque un disco no esté.
    - `findmnt /mnt/SSD1T /mnt/NewVolume`
    - Escribir y borrar un archivo de prueba en cada uno.
    - Reiniciar y repetir.
+   - Si al apagar el equipo se queda encendido con la pantalla apagada, usar
+     `sudo ./scripts/mount-disks.sh --apply --lazy-unmount`: añade
+     `LazyUnmount=yes` a las unidades para que systemd no espere al desmontar.
 
 5. **Reversión.**
    - Guardar copia de `/etc/fstab` antes de tocarlo.

@@ -51,7 +51,9 @@ El instalador:
     (Thunar, Nautilus) las muestren como dispositivos además de quedar
     montadas en `/mnt`. Dolphin usa Solid/KIO y no lee esas opciones. No se
     añade `windows_names`, porque prohíbe `:` y Proton necesita crear
-    `dosdevices/c:`; para recuperarla, `--windows-names`.
+    `dosdevices/c:`; para recuperarla, `--windows-names`. Si el apagado se
+    queda parado con los discos montados, `--lazy-unmount` hace que systemd
+    suelte el montaje sin esperar a que se liberen los archivos.
 
 `install.sh` solo orquesta; cada paso vive en su módulo y se puede revisar o
 ejecutar por separado: `scripts/install-packages.sh`,
