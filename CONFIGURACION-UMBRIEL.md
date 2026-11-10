@@ -859,6 +859,17 @@ el orden en que apareció cada ventana:
 - El orden es el mismo en todas las píldoras: primero se numera la lista
   completa y después cada escritorio filtra las suyas.
 
+### 19.1 Barra y pantalla completa
+
+La barra vive en la capa `Overlay`, porque una ventana a pantalla completa se
+dibuja por encima de la capa `Top`. Con una ventana a pantalla completa la barra
+se auto-oculta (deja una franja de 4 px) y no reserva espacio; al pulsar Super,
+abrir el lanzador o un panel, o acercar el puntero al borde, se revela y queda
+por encima del juego. Es el mismo comportamiento que la barra de Windows.
+Cambiar `WlrLayershell.layer` en caliente no funciona: Quickshell solo aplica la
+capa al crear la superficie, así que la barra nace en `Overlay` y el
+auto-ocultado es lo que evita tapar el juego.
+
 ## 20. Limpieza de dependencias
 
 Además de `foot` e `Inter Variable`:

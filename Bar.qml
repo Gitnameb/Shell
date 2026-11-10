@@ -242,7 +242,13 @@ Variants {
         exclusiveZone: bar.autoHide ? 0 : Theme.barHeight
 
         // ------------------------------------------------- barra automática
+        // La barra vive en la capa Overlay para poder quedar por encima de una
+        // ventana a pantalla completa. Fuera de ese caso se comporta igual:
+        // reserva su espacio y no se oculta salvo que el usuario lo pida.
+        // Con un juego a pantalla completa se auto-oculta y se revela al
+        // pulsar Super o al llevar el puntero al borde, como en Windows.
         property bool autoHide: SettingsState.autoHideBar
+            || CompositorState.hasFullscreenWindow
         property bool barHidden: false
         property real barOpacity: bar.barHidden ? 0 : 1
         readonly property int revealHeight: 4
@@ -343,7 +349,7 @@ Variants {
                 ? bar.revealHeight : bar.height
         }
 
-        WlrLayershell.layer: WlrLayer.Top
+        WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "shell-bar"
 
         SystemClock {
