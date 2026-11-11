@@ -401,6 +401,69 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Recarga de unidades de XDG Autostart
+# ---------------------------------------------------------------------------
+# systemd-xdg-autostart-generator solo se ejecuta al arrancar el gestor de
+# usuario o con `daemon-reload`. Si una app activa su arranque automático a
+# mitad de sesión (por ejemplo, el portal Background de un Flatpak), su unidad
+# no existe hasta el próximo reinicio. Este path unit vigila
+# ~/.config/autostart y recarga systemd en cuanto cambia una entrada.
+log "Instalando el vigilante de XDG Autostart."
+reload_service="$TARGET_HOME/.config/systemd/user/shell-autostart-reload.service"
+reload_path="$TARGET_HOME/.config/systemd/user/shell-autostart-reload.path"
+if [[ -e "$reload_service" && $FORCE_CONFIG -eq 0 ]]; then
+    warn "$reload_service ya existe; se conserva. Usa --force-config para reemplazarlo."
+else
+    backup_file "$reload_service"
+    run mkdir -p "$(dirname "$reload_service")"
+    if (( ! DRY_RUN )); then
+        cat >"$reload_service" <<'EOF'
+[Unit]
+Description=Regenerar las unidades de XDG Autostart
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl --user daemon-reload
+EOF
+        chmod 644 "$reload_service"
+    fi
+fi
+if [[ -e "$reload_path" && $FORCE_CONFIG -eq 0 ]]; then
+    warn "$reload_path ya existe; se conserva. Usa --force-config para reemplazarlo."
+else
+    backup_file "$reload_path"
+    run mkdir -p "$(dirname "$reload_path")"
+    if (( ! DRY_RUN )); then
+        cat >"$reload_path" <<'EOF'
+[Unit]
+Description=Vigilar ~/.config/autostart y regenerar sus unidades
+
+[Path]
+PathChanged=%h/.config/autostart
+Unit=shell-autostart-reload.service
+
+[Install]
+WantedBy=default.target
+EOF
+        chmod 644 "$reload_path"
+    fi
+fi
+
+run mkdir -p "$TARGET_HOME/.config/systemd/user/default.target.wants"
+run ln -sfn ../shell-autostart-reload.path \
+    "$TARGET_HOME/.config/systemd/user/default.target.wants/shell-autostart-reload.path"
+
+if command -v systemctl >/dev/null 2>&1 \
+    && systemctl --user show-environment >/dev/null 2>&1; then
+    run systemctl --user daemon-reload \
+        || warn "No se pudo recargar systemd de usuario."
+    run systemctl --user enable --now shell-autostart-reload.path \
+        || warn "No se pudo activar el vigilante ahora; se activará al entrar."
+else
+    warn "No hay una sesión systemd de usuario activa; el vigilante arrancará al entrar."
+fi
+
+# ---------------------------------------------------------------------------
 # Montaje automático de unidades extraíbles
 # ---------------------------------------------------------------------------
 if command -v udiskie >/dev/null 2>&1; then

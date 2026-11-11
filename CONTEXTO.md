@@ -2727,3 +2727,20 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   `app-com.usebottles.bottles@autostart.service`, ligadas al target de
   arranque. La configuración queda en `install/config/portals.conf` para que
   el instalador la reponga. Documentado en `CONFIGURACION-UMBRIEL.md` §33.
+
+### 2026-11-11 · El arranque automático no se regeneraba a mitad de sesión
+
+- **Síntoma.** Easy Effects ya dejaba activar su interruptor, pero al cerrar y
+  volver a abrir la sesión solo arrancaba Steam. La entrada
+  `com.github.wwmm.easyeffects.desktop` sí se había creado; el problema era que
+  `systemd-xdg-autostart-generator` solo se ejecuta al arrancar el gestor de
+  usuario o con `daemon-reload`. Reiniciar la sesión gráfica no reinicia ese
+  gestor, así que la unidad de Easy Effects no existía.
+- **Solución.** `shell-autostart-reload.path` vigila `~/.config/autostart` y
+  lanza `shell-autostart-reload.service` (`systemctl --user daemon-reload`).
+  Probado creando una entrada: el servicio corre y regenera las unidades al
+  instante. La de Easy Effects ya está generada y su
+  `Exec=flatpak run --command=easyeffects … --service-mode --hide-window`
+  arranca sin errores; quedará ligada a `xdg-desktop-autostart.target` en el
+  siguiente inicio de sesión. El instalador crea las dos unidades y activa el
+  path unit.

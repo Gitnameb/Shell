@@ -1346,3 +1346,24 @@ Para añadir una app a mano basta con copiar su `.desktop` a
 `~/.config/autostart/` y ejecutar `systemctl --user daemon-reload`; el
 generador crea la unidad sin reiniciar la sesión. Si se quiere probar en el
 momento: `systemctl --user start app-<id>@autostart.service`.
+
+### La unidad no aparece hasta recargar systemd
+
+`systemd-xdg-autostart-generator` no vigila `~/.config/autostart`: solo se
+ejecuta al arrancar el gestor de usuario o con `systemctl --user
+daemon-reload`. Si una app activa su arranque a mitad de sesión, su unidad no
+existe todavía y, al cerrar y volver a abrir la sesión gráfica, el gestor de
+usuario sigue siendo el mismo y tampoco la genera. Por eso parecía que «solo
+arrancaba Steam»: la entrada de Steam ya existía desde el arranque.
+
+Para que cualquier cambio se recoja al instante, el instalador crea
+`shell-autostart-reload.path`, que vigila `~/.config/autostart` y lanza
+`shell-autostart-reload.service` (un `systemctl --user daemon-reload`). Así,
+al activar el interruptor de una app, su unidad queda generada y arrancará en
+el siguiente inicio de sesión, aunque no se reinicie el equipo. Se puede
+comprobar con:
+
+```bash
+systemctl --user list-unit-files | grep autostart
+```
+
