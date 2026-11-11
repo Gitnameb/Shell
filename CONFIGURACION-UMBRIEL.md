@@ -1267,14 +1267,35 @@ Lo que el usuario cambia a mano se guarda; lo que cambia un automatismo
 |---|---|---|
 | Ethernet | `connection.autoconnect` del perfil (script `scripts/shell-wired-power`) | Apagado si se desconectó a mano; encendido si no |
 | Wi-Fi | `NetworkManager.state` (`WirelessEnabled`) | En el estado guardado; si estaba apagado, arranca apagado |
-| Bluetooth | `settings.conf` (`btEnabled`) | BlueZ enciende el adaptador (`AutoEnable=true`) y el shell lo apaga al cargar los ajustes |
-| Modo avión | `settings.conf` (`airplaneMode`) | Las radios arrancan encendidas y el shell las apaga unos 500 ms después |
+| Bluetooth | `settings.conf` (`btEnabled`) + `AutoEnable=false` en BlueZ | Apagado **desde el arranque** si se dejó apagado; el shell lo enciende si se dejó encendido |
+| Modo avión | `settings.conf` (`airplaneMode`) | Wi-Fi apagado por NetworkManager y Bluetooth sin autoencendido; el shell refuerza el estado al iniciar |
 | VPN | `connection.autoconnect` del perfil | Apagada si se desconectó a mano; encendida si no |
 | Punto de acceso | No se guarda | Apagado; es una acción de sesión, no una preferencia |
 | Luz nocturna y atenuación extra | `~/.config/shell/display.conf` | En el estado guardado |
 | Volumen y micrófono | WirePlumber | En el estado guardado |
 | Perfil de energía | power-profiles-daemon | Lo decide el demonio; el shell no lo pisa |
 | Brillo | Hardware / DDC del monitor | No lo guarda el shell; depende del firmware |
+
+### Arranque con el estado guardado
+
+- **Ethernet y VPN** los resuelve NetworkManager antes de que exista la sesión,
+  con el `connection.autoconnect` que dejó el usuario.
+- **Wi-Fi** lo recuerda NetworkManager en su propio estado.
+- **Bluetooth** necesita una configuración de sistema: BlueZ enciende el
+  adaptador al arrancar y no guarda el apagado. Una sola vez:
+
+  ```bash
+  sudo ~/Shell/scripts/bluetooth-boot-off.sh
+  ```
+
+  Escribe `AutoEnable=false` en `/etc/bluetooth/main.conf`. A partir de ahí, un
+  Bluetooth apagado no se enciende durante el arranque; el shell lo enciende al
+  iniciar la sesión si la última vez quedó encendido.
+- **Antes de Quickshell**, `shell-start` ejecuta `shell-radio-state`, que lee
+  `settings.conf` y deja el Bluetooth como estaba (y apaga el Wi-Fi si el modo
+  avión está activo). Es una red de seguridad, no un sustituto de
+  `AutoEnable=false`.
+
 
 ### Iconos por escritorio
 

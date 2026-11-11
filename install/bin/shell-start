@@ -5,6 +5,13 @@
 export QT_QPA_PLATFORMTHEME=kde
 export QS_ICON_THEME=breeze-dark
 
+# Deja las radios como las dejó el usuario antes de que aparezca el escritorio.
+# Con el autoencendido de BlueZ desactivado, un Bluetooth apagado no se enciende
+# durante el arranque. Si el script falla, el shell lo reaplica al cargar.
+if [ -x "$HOME/.local/bin/shell-radio-state" ]; then
+    "$HOME/.local/bin/shell-radio-state" >/dev/null 2>&1 || true
+fi
+
 # Segunda capa de seguridad: si el arranque se hizo a mano y la configuración
 # perdió [general] autostart, se repara antes de lanzar Quickshell. La primera
 # capa es el ExecStartPre de umbriel.service.

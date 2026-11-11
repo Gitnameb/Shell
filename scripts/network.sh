@@ -440,6 +440,29 @@ run systemctl enable --now NetworkManager \
 run systemctl enable --now bluetooth \
     || warn "No se pudo activar bluetooth; revisa systemctl status."
 
+# BlueZ enciende el adaptador al arrancar (AutoEnable=true) y no recuerda que
+# el usuario lo apagó. El shell guarda ese estado y lo reaplica al iniciar,
+# pero para que un Bluetooth apagado tampoco se encienda durante el arranque
+# se desactiva el autoencendido. El shell lo vuelve a encender si la última
+# vez quedó encendido.
+configure_bluetooth_autoenable() {
+    local conf=/etc/bluetooth/main.conf
+    [[ -f "$conf" ]] || return 0
+    if grep -qE '^[[:space:]]*AutoEnable[[:space:]]*=' "$conf"; then
+        grep -qE '^[[:space:]]*AutoEnable[[:space:]]*=[[:space:]]*false' "$conf" \
+            && return 0
+        run sed -i -E \
+            's/^[[:space:]]*AutoEnable[[:space:]]*=.*/AutoEnable=false/' "$conf"
+    elif grep -qE '^\[Policy\][[:space:]]*$' "$conf"; then
+        run sed -i '/^\[Policy\][[:space:]]*$/a AutoEnable=false' "$conf"
+    else
+        run sh -c 'printf "\n[Policy]\nAutoEnable=false\n" >> "$1"' sh "$conf"
+    fi
+    log "Bluetooth: autoencendido desactivado; el shell restaura el estado guardado."
+}
+configure_bluetooth_autoenable
+
+
 # Si no se instaló network-manager, no tiene sentido seguir: nmcli es la vía
 # de configuración de NetworkManager.
 if ! command -v nmcli >/dev/null 2>&1; then

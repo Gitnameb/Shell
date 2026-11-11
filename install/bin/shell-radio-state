@@ -1,0 +1,70 @@
+#!/bin/sh
+# Aplica al inicio de la sesión el estado guardado de las radios.
+#
+# Uso: shell-radio-state [--dry-run]
+#
+# Se ejecuta desde shell-start antes de lanzar Quickshell. Así el escritorio no
+# aparece con el Bluetooth encendido si el usuario lo dejó apagado, sin esperar
+# a que el shell cargue los ajustes y lo apague después.
+#
+# NetworkManager ya recuerda el estado del Wi-Fi y el autoconectado de la
+# Ethernet; aquí solo se fuerza el Wi-Fi apagado en modo avión.
+
+set -u
+
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+
+dry=0
+[ "${1:-}" = "--dry-run" ] && dry=1
+
+conf="${XDG_CONFIG_HOME:-$HOME/.config}/shell/settings.conf"
+
+run() {
+    if [ "$dry" = "1" ]; then
+        printf 'dry:'
+        printf ' %s' "$@"
+        printf '\n'
+        return 0
+    fi
+    "$@" >/dev/null 2>&1 || true
+}
+
+read_value() {
+    [ -r "$conf" ] || return 1
+    sed -n "s/^$1=//p" "$conf" | tail -n 1
+}
+
+airplane=$(read_value airplaneMode || true)
+bt=$(read_value btEnabled || true)
+
+# En modo avión el Bluetooth debe quedar apagado aunque el usuario lo hubiera
+# encendido a mano durante el modo.
+want_bt="$bt"
+[ "$airplane" = "1" ] && want_bt=0
+
+# En modo avión el Wi-Fi no debe arrancar solo. Fuera de él manda
+# NetworkManager, que ya conserva el último estado.
+if [ "$airplane" = "1" ] && command -v nmcli >/dev/null 2>&1; then
+    run nmcli radio wifi off
+fi
+
+case "$want_bt" in
+    0 | 1) ;;
+    *) exit 0 ;;
+esac
+
+command -v bluetoothctl >/dev/null 2>&1 || exit 0
+
+# Si bluetoothd aún no está listo, no se bloquea el arranque: el shell vuelve
+# a aplicar el estado cuando carga los ajustes.
+current=$(timeout 1 bluetoothctl show 2>/dev/null \
+    | sed -n 's/^[[:space:]]*Powered:[[:space:]]*//p' | head -n 1)
+
+if [ "$want_bt" = "1" ] && [ "$current" = "no" ]; then
+    run timeout 2 bluetoothctl power on
+elif [ "$want_bt" = "0" ] && [ "$current" = "yes" ]; then
+    run timeout 2 bluetoothctl power off
+fi
+
+exit 0
