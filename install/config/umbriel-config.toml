@@ -195,6 +195,13 @@ default_scratchpad = "default"
 match.app_id = "^steam_app_[0-9]+$"
 default_floating = true
 
+# Alice: Madness Returns espera arrancar a pantalla completa; si abre en
+# ventana se queda esperando y luego centra su buffer pequeño con bordes
+# negros. La excepción va después de la regla general.
+[[window_rule]]
+match.app_id = "^steam_app_19680$"
+default_fullscreen = true
+
 [display]
 brightness = 1.000
 extra_dim = 0.000

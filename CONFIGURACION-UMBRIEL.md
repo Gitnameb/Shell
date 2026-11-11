@@ -887,6 +887,12 @@ Es el equivalente a Windows: en modo ventana el área cliente la fija el juego,
 en fullscreen exclusivo cambia el modo de vídeo y el sistema solo respeta los
 estilos y límites que declara la aplicación.
 
+Algunos juegos antiguos esperan arrancar directamente a pantalla completa y no
+toleran abrir en ventana. Para ellos se añade una regla `default_fullscreen =
+true` después de la general; es el caso de Alice: Madness Returns
+(`steam_app_19680`). Sin esa excepción, el juego se queda esperando y al volver
+a fullscreen puede centrar su buffer pequeño con bordes negros.
+
 ## 20. Limpieza de dependencias
 
 Además de `foot` e `Inter Variable`:
