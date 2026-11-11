@@ -1258,7 +1258,7 @@ parte del `PATH`; en otra instalación se pueden instalar con
 - `gamemode` (`sudo apt install gamemode`, luego `gamemoderun %command%`)
   evita que el planificador de energía baje la CPU mientras se juega.
 
-## 28. Interruptores que sobreviven al reinicio
+## 32. Interruptores que sobreviven al reinicio
 
 Lo que el usuario cambia a mano se guarda; lo que cambia un automatismo
 (apagado por inactividad, modo avión) no pisa esa preferencia.
@@ -1303,3 +1303,46 @@ El escritorio activo enseña una ficha por ventana. El máximo es configurable
 en **Ajustes → Iconos por escritorio** (1–30; 10 por defecto). Las ventanas que
 no caben se resumen con `+N`. Se guarda en `settings.conf` como
 `workspaceIcons`.
+
+## 33. Arranque automático de las apps
+
+Las apps de escritorio no tienen una API propia de «iniciar con el sistema»:
+siguen el estándar **XDG Autostart**. Una app arranca sola si deja un archivo
+`.desktop` en `~/.config/autostart/` (o en `/etc/xdg/autostart/` para todos los
+usuarios). En Umbriel los recoge `systemd-xdg-autostart-generator`: al iniciar
+sesión, `umbriel-session.target` arranca `xdg-desktop-autostart.target` y este
+lanza cada entrada como `app-<id>@autostart.service`. Las entradas con
+`Hidden=true` se respetan.
+
+- **Apps nativas** (Steam, LocalSend, Telegram…): escriben el `.desktop` ellas
+  mismas. Steam, por ejemplo, deja `~/.config/autostart/steam.desktop`; por eso
+  su opción funciona y el servicio aparece como
+  `app-steam@autostart.service`.
+- **Apps Flatpak**: no pueden escribir en `~/.config/autostart` porque el
+  sandbox no se lo permite. Para eso existe el portal
+  `org.freedesktop.portal.Background`: la app pide `RequestBackground` con
+  `autostart=true`, el frontend de xdg-desktop-portal escribe la entrada
+  (marcada con `X-Flatpak` y `X-XDP-Autostart`) y systemd la ejecuta con
+  `flatpak run`. Easy Effects y Bottles lo usan. Si el portal no existe, su
+  interruptor queda bloqueado: la app no tiene forma de pedir el arranque.
+
+En esta sesión faltaba el portal Background. `umbriel.portal` solo implementa
+Access, ScreenCast y Screenshot, y GTK tampoco lo aporta, así que el frontend
+no publicaba la interfaz. Se añadió al `portals.conf`:
+
+```
+org.freedesktop.impl.portal.Background=kde
+```
+
+El backend de KDE aporta la interfaz (Umbriel no tiene su parte de
+monitorización de ventanas, pero para el arranque basta) y el frontend es quien
+crea el `.desktop`. Verificado desde el sandbox de Easy Effects: la petición
+crea `~/.config/autostart/com.github.wwmm.easyeffects.desktop` y el generador
+produce `app-com.github.wwmm.easyeffects@autostart.service`, que arranca con el
+target. El instalador copia esta configuración desde
+`install/config/portals.conf`.
+
+Para añadir una app a mano basta con copiar su `.desktop` a
+`~/.config/autostart/` y ejecutar `systemctl --user daemon-reload`; el
+generador crea la unidad sin reiniciar la sesión. Si se quiere probar en el
+momento: `systemctl --user start app-<id>@autostart.service`.

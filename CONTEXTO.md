@@ -2706,3 +2706,24 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   `latencyBusy` sustituía el número. Ahora se conserva la última latencia
   válida y el valor cambia en el sitio cada segundo; «…» solo aparece antes de
   la primera medida. Un ping fallido tampoco borra el último dato bueno.
+
+### 2026-11-11 · Arranque automático de apps Flatpak
+
+- **El portal Background faltaba.** Steam arranca solo porque es nativo y deja
+  `~/.config/autostart/steam.desktop`; systemd lo convierte en
+  `app-steam@autostart.service` y `xdg-desktop-autostart.target` lo lanza al
+  iniciar sesión. Las apps Flatpak no pueden escribir ahí y usan el portal
+  `org.freedesktop.portal.Background`. Umbriel no lo publicaba: solo tenía
+  Access, ScreenCast y Screenshot, y GTK tampoco lo implementa. Por eso el
+  interruptor de «iniciar con el sistema» de Easy Effects y Bottles quedaba
+  bloqueado, como si faltara algo.
+- **Solución.** `~/.config/xdg-desktop-portal/portals.conf` mapea
+  `org.freedesktop.impl.portal.Background=kde`; el frontend crea el `.desktop`
+  con `X-Flatpak` y `X-XDP-Autostart` y el backend solo aporta la interfaz.
+  Comprobado desde el sandbox de Easy Effects y de Bottles:
+  `RequestBackground` con `autostart=true` crea la entrada y
+  `systemd-xdg-autostart-generator` genera
+  `app-com.github.wwmm.easyeffects@autostart.service` /
+  `app-com.usebottles.bottles@autostart.service`, ligadas al target de
+  arranque. La configuración queda en `install/config/portals.conf` para que
+  el instalador la reponga. Documentado en `CONFIGURACION-UMBRIEL.md` §33.
