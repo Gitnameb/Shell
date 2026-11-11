@@ -1239,6 +1239,17 @@ duplica), y se percibe como microtirones. Dos salidas:
 - O dejar el juego sin límite a 75 fps (o a 37,5) con `mangohud`/`gamemode`,
   que además fijan el gobernador de CPU en `performance`.
 
+### Capturas de pantalla
+
+- **Impr Pant** guarda una captura de toda la salida en
+  `~/Pictures/Capturas/`.
+- **Mayús + Impr Pant** deja elegir una región con el ratón.
+
+Los atajos llaman a `scripts/captura.sh` y `scripts/captura-region.sh`, que
+usan `grim` y `slurp`. En este equipo están en `~/.local/bin`, que ya forma
+parte del `PATH`; en otra instalación se pueden instalar con
+`sudo apt install grim slurp`.
+
 ### Otros
 
 - La RX 570 tiene 4 GB de VRAM. A 1080p con texturas altas se llena y aparecen
