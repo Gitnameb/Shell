@@ -31,6 +31,37 @@ PanelWindow {
         && OsdState.muted) || (OsdState.kind === "mic" && OsdState.muted)
     readonly property real shownValue: root.mutedKind ? 0 : OsdState.value
 
+    // La barra conserva el ancho del aviso anterior mientras está oculta. Si
+    // al reaparecer se animara desde ese ancho (por ejemplo, del 100 % del
+    // brillo al 50 % del volumen), se vería un salto al máximo antes de
+    // corregirse. Solo se anima entre cambios de un mismo aviso ya visible.
+    property bool animateFill: false
+
+    Connections {
+        target: OsdState
+
+        function onVisibleChanged(): void {
+            root.animateFill = false;
+            if (OsdState.visible)
+                fillArmTimer.restart();
+        }
+
+        function onKindChanged(): void {
+            if (!root.animateFill)
+                return;
+            root.animateFill = false;
+            if (OsdState.visible)
+                fillArmTimer.restart();
+        }
+    }
+
+    Timer {
+        id: fillArmTimer
+        interval: 16
+        repeat: false
+        onTriggered: root.animateFill = true
+    }
+
     readonly property string iconName: {
         if (OsdState.kind === "volume")
             return OsdState.muted ? "audio-volume-muted" : "audio-volume-high";
@@ -145,6 +176,7 @@ PanelWindow {
                     radius: 4
                     color: root.mutedKind ? Theme.danger : root.iconColor
                     Behavior on width {
+                        enabled: root.animateFill
                         NumberAnimation { duration: 90; easing.type: Easing.OutQuad }
                     }
                 }

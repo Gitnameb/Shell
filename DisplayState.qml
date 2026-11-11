@@ -36,6 +36,11 @@ Singleton {
     property int hardwareValue: 100
     property bool writingHardware: false
     property bool writePending: false
+    // Valor que se envió al monitor en la escritura en curso. No se usa el
+    // brillo actual al terminar porque puede haber cambiado mientras ddcutil
+    // trabajaba: entonces la escritura pendiente se saltaría por creer que ya
+    // estaba aplicada y el monitor se quedaría en el valor anterior.
+    property int writtenHardwareValue: -1
     // Mientras se lee el valor del monitor no se escribe de vuelta.
     property bool applyingRead: false
     property int detectAttempts: 0
@@ -69,12 +74,18 @@ Singleton {
         // Al leer el valor real del monitor no se devuelve la escritura.
         if (root.applyingRead)
             return;
-        if (root.hardwareAvailable)
-            writeTimer.restart();
-        else if (root.backlightAvailable)
+        if (root.hardwareAvailable) {
+            // Escritura adelantada: el primer cambio empieza a contar ya y los
+            // cambios que lleguen mientras ddcutil trabaja se agrupan en una
+            // sola escritura final. Antes se reiniciaba el temporizador con
+            // cada pulsación y el monitor se quedaba atrás.
+            if (!writeTimer.running)
+                writeTimer.start();
+        } else if (root.backlightAvailable) {
             backlightWriteTimer.restart();
-        else
+        } else {
             root.schedule();
+        }
     }
     onExtraDimChanged: {
         root.schedule();
@@ -260,6 +271,7 @@ Singleton {
         if (value === root.hardwareValue)
             return;
         root.writingHardware = true;
+        root.writtenHardwareValue = value;
         writeProc.command = ["sudo", "-n", "ddcutil", "setvcp", "10",
             String(value), "--sleep-multiplier", "1.5"];
         writeProc.running = true;
@@ -267,7 +279,7 @@ Singleton {
 
     Timer {
         id: writeTimer
-        interval: 160
+        interval: 90
         repeat: false
         onTriggered: root.writeHardware()
     }
@@ -314,9 +326,11 @@ Singleton {
 
         onExited: (code) => {
             root.writingHardware = false;
-            if (code === 0)
-                root.hardwareValue = Math.round(
-                    root.brightness * root.hardwareMax);
+            // Se anota el valor que de verdad se escribió, no el brillo actual:
+            // si el usuario cambió mientras ddcutil trabajaba, la escritura
+            // pendiente debe seguir viendo el monitor desfasado y aplicarse.
+            if (code === 0 && root.writtenHardwareValue >= 0)
+                root.hardwareValue = root.writtenHardwareValue;
             if (root.writePending) {
                 root.writePending = false;
                 Qt.callLater(root.writeHardware);

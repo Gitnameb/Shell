@@ -2662,3 +2662,23 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   timeout, y `UmbrielBackend` usa `umbriel subscribe`. El centro de control se
   carga con `Loader` la primera vez y los iconos usan `MultiEffect` en vez de
   `ColorOverlay`. Detalle: `CONFIGURACION-UMBRIEL.md` §17.
+
+### 2026-11-11 · OSD sin saltos y brillo DDC sincronizado
+
+- **El aviso no salta al máximo al aparecer.** La barra del OSD conservaba el
+  ancho del aviso anterior mientras estaba oculta; al reaparecer con otro valor
+  (por ejemplo, del 100 % del brillo al 50 % del volumen) la animación de 90 ms
+  empezaba desde ese ancho viejo. Ahora `Osd.qml` desactiva la animación al
+  mostrarse y al cambiar de tipo de aviso: el primer dibujo ya lleva el valor
+  real y solo se animan los cambios de un aviso que sigue visible.
+- **Brillo del monitor sin quedarse atrás.** `writeHardware` anotaba como
+  aplicado el brillo *actual* al terminar cada escritura de `ddcutil`, aunque
+  hubiera escrito un valor anterior. Si el usuario seguía pulsando durante los
+  ~0,7 s que tarda DDC/CI, la escritura pendiente se saltaba por creer que ya
+  estaba hecha y el monitor se quedaba en el valor viejo mientras el OSD y el
+  porcentaje mostraban el nuevo. Ahora se guarda el valor realmente escrito
+  (`writtenHardwareValue`), se empieza a contar en el primer cambio (90 ms, no
+  160 ms de espera tras la última pulsación) y los cambios que llegan durante
+  la escritura se agrupan en una escritura final. Verificado con un `ddcutil`
+  simulado de 1,2 s: tres pulsaciones durante la escritura terminan en
+  `setvcp 65` y `displayStatus` marca 0,65.
