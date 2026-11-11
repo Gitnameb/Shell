@@ -7294,6 +7294,9 @@ ColumnLayout {
                                 }
 
                                 CompositorChip {
+                                    // En pantalla completa no se redimensiona
+                                    // ni se cambia de modo: solo se sale.
+                                    visible: !modelData.fullscreen
                                     label: modelData.floating
                                         ? "Mosaico" : "Flotar"
                                     active: modelData.floating
@@ -7324,6 +7327,10 @@ ColumnLayout {
                                 }
 
                                 CompositorChip {
+                                    // Maximizar desde pantalla completa salía
+                                    // de ella y redimensionaba la ventana. Se
+                                    // oculta igual que en el menú contextual.
+                                    visible: !modelData.fullscreen
                                     label: modelData.maximized
                                         ? "Restaurar" : "Maximizar"
                                     active: modelData.maximized

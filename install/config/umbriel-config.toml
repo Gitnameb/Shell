@@ -188,6 +188,13 @@ enabled = true
 match.app_id = "^xwaylandvideobridge$"
 default_scratchpad = "default"
 
+# Los juegos de Steam abren flotantes: su ventana la manda el juego, con su
+# resolución y sus límites, en vez de que el mosaico le imponga un tamaño.
+# Si el juego pide pantalla completa, se respeta y pasa al modo de siempre.
+[[window_rule]]
+match.app_id = "^steam_app_[0-9]+$"
+default_floating = true
+
 [display]
 brightness = 1.000
 extra_dim = 0.000

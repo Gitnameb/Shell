@@ -878,6 +878,15 @@ ventana ya flota, está minimizada o es la propia ventana a pantalla completa, e
 clic solo enfoca o restaura como antes. La decisión se toma en
 `UmbrielBackend.qml` (`fullscreenWindowOnWorkspace` y `focusWindow`).
 
+Con una ventana a pantalla completa, el menú contextual y el centro de control
+ocultan «Flotar» y «Maximizar»: la única acción de tamaño que queda es salir de
+pantalla completa. Además, los juegos de Steam (`steam_app_*`) abren flotantes
+por regla. Así la ventana usa el tamaño que pide el juego —su resolución— y el
+mosaico no le impone un hueco; si el juego pide pantalla completa, se respeta.
+Es el equivalente a Windows: en modo ventana el área cliente la fija el juego,
+en fullscreen exclusivo cambia el modo de vídeo y el sistema solo respeta los
+estilos y límites que declara la aplicación.
+
 ## 20. Limpieza de dependencias
 
 Además de `foot` e `Inter Variable`:
