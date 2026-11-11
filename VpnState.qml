@@ -61,10 +61,26 @@ Singleton {
         root.busy = true;
         root.busyName = name;
         root.error = "";
-        actionProc.command = [
-            "nmcli", "--wait", "20", "connection",
-            isActive ? "down" : "up", "id", name
-        ];
+        // Lo que el usuario hace a mano se recuerda: al desconectar, el perfil
+        // deja de conectarse solo en el próximo arranque; al conectar, vuelve
+        // a quedar disponible para autoconectar.
+        if (isActive) {
+            actionProc.command = [
+                "sh", "-c",
+                "nmcli connection modify \"$1\" connection.autoconnect no"
+                + " >/dev/null 2>&1 || true; "
+                + "nmcli --wait 20 connection down id \"$1\"",
+                "shell", name
+            ];
+        } else {
+            actionProc.command = [
+                "sh", "-c",
+                "nmcli --wait 20 connection up id \"$1\"; rc=$?; "
+                + "[ $rc -eq 0 ] && nmcli connection modify \"$1\""
+                + " connection.autoconnect yes >/dev/null 2>&1; exit $rc",
+                "shell", name
+            ];
+        }
         actionProc.running = true;
     }
 

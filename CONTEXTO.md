@@ -372,7 +372,7 @@ compositor; si es el contenido de una app → la app.**
 
 - [ ] Iconos del escritorio con cuadrícula, arrastre e intercambio.
 - [ ] Cabeceras de ventana flotantes/integradas: overlay que lee `hyprctl clients -j`.
-- [x] Mini-iconos de las apps abiertas en cada escritorio (hasta 5 en el activo y solo
+- [x] Mini-iconos de las apps abiertas en cada escritorio (hasta 10 en el activo por defecto, configurable, y solo
       el número en los demás); los avisos por app llevan punto y las tareas externas
       pueden mostrar un anillo de progreso.
 - [ ] Tiling/flotante por escritorio, pin, minimizar a `special:minimized`,
@@ -460,7 +460,7 @@ compositor; si es el contenido de una app → la app.**
     elegir la pantalla bajo el cursor.
 18. **Máximo de escritorios**: los atajos de Hyprland solo llegan a `SUPER+9`. Si se
     configuran más de 9, los escritorios extra solo se alcanzan desde la barra.
-19. **Iconos por escritorio**: el escritorio activo muestra hasta 5 apps (una ficha por
+19. **Iconos por escritorio**: el escritorio activo muestra hasta 10 apps por defecto (configurable; una ficha por
     app, no por ventana) y resume el resto con `+N`; los inactivos solo muestran su
     número, como en el ejemplo web. Pulsar una ficha enfoca esa ventana. Las apps con
     aviso pendiente llevan un punto. Si una app o un escritorio informan progreso, un
@@ -993,7 +993,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 | `CompositorChip.qml` | Chip reutilizable de las acciones del diagnóstico; acento cuando está activo y rojo para lo destructivo. |
 | `Bar.qml` | Barra inferior: escritorios, reloj, controles dinámicos, batería, bandeja, campana, energía, marca de inserción al reordenar y ocultación automática con franja de 4 px para revelarla. |
 | `Distro.qml` | Distribución leída de `/etc/os-release`; elige el logotipo del lanzador y cae a `icons/grid.svg` cuando no hay uno disponible. |
-| `WorkspacePill.qml` | Indicador de escritorio: el activo muestra hasta 5 fichas de ventanas (26 px, icono configurable de 22 px por defecto) y oculta su número; los demás solo el número. Hay una ficha por ventana, aunque sean de la misma app, y las minimizadas siguen visibles atenuadas en su escritorio de origen. Al pulsar una ficha enfoca (o restaura) esa ventana; con clic derecho abre su menú contextual. Los clics de ventana y escritorio pasan por `CompositorState`. |
+| `WorkspacePill.qml` | Indicador de escritorio: el activo muestra hasta 10 fichas de ventanas (configurable en Ajustes; icono de 22 px por defecto) y oculta su número; los demás solo el número. Hay una ficha por ventana, aunque sean de la misma app, y las minimizadas siguen visibles atenuadas en su escritorio de origen. Al pulsar una ficha enfoca (o restaura) esa ventana; con clic derecho abre su menú contextual. Los clics de ventana y escritorio pasan por `CompositorState`. |
 | `AppContextMenu.qml` | Menú contextual de una ventana: enfocar, maximizar/restaurar, minimizar/restaurar, flotante/mosaico, mover al escritorio y cerrar esa ventana. Las acciones pasan por `CompositorState`. |
 | `AppMenuItem.qml` | Fila reutilizable del menú contextual, con icono del tema o glifo de respaldo. |
 | `ShellIcon.qml` | Icono de widget del tema Breeze con color de estado mediante `ColorOverlay`; sustituye a los emojis. |
@@ -1217,7 +1217,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 - **Iconos del escritorio**: se había perdido la clase de las ventanas porque
   `HyprlandToplevel.lastIpcObject` llega vacío en Quickshell 0.3. Ahora la clase se lee
   de `toplevel.wayland.appId`, con `lastIpcObject` como respaldo. `WorkspacePill.qml`
-  copia el ejemplo web: hasta 5 fichas de color por app, `+N` para el resto, punto de
+  copia el ejemplo web: hasta 10 fichas de color por app (configurable), `+N` para el resto, punto de
   aviso y atenuación si la ventana está minimizada. El clic enfoca la ventana; Hyprland
   necesita la dirección con prefijo `0x`, que Quickshell no incluye.
 - **Cierre rápido de paneles**: abrir el panel de notificaciones, el del reloj o el de

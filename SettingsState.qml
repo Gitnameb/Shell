@@ -10,6 +10,9 @@ Singleton {
     id: root
 
     property int maxWorkspaces: 9
+    // Iconos de apps que enseña el escritorio activo en la barra. El resto de
+    // ventanas se resume con «+N». Diez por defecto; configurable.
+    property int workspaceIcons: 10
     // Filas visibles del centro de control. El resto se desplaza hacia abajo.
     property int centerRows: 5
     // Tamaño de los iconos del centro. La caja mide 32 px y nunca se supera.
@@ -176,6 +179,14 @@ Singleton {
     property bool airplaneMode: false
     property bool airplaneRestoreWifi: true
     property bool airplaneRestoreBt: true
+    // Estado que el usuario dejó en la radio Bluetooth. BlueZ enciende el
+    // adaptador al arrancar (AutoEnable=true) y no recuerda el apagado, así
+    // que el shell guarda la intención y la reaplica al iniciar la sesión.
+    property bool btEnabled: true
+
+    function setBtEnabled(value: bool): void {
+        root.btEnabled = value === true;
+    }
 
     // Bloqueo automático de la sesión con shell-lock. 0 = nunca.
     property int lockMinutes: 5
@@ -230,6 +241,10 @@ Singleton {
 
     function setMaxWorkspaces(value: int): void {
         root.maxWorkspaces = Math.max(1, Math.min(20, value));
+    }
+
+    function setWorkspaceIcons(value: int): void {
+        root.workspaceIcons = Math.max(1, Math.min(30, value));
     }
 
     function setCenterRows(value: int): void {
@@ -776,6 +791,7 @@ Singleton {
         // ruta, se hace shift y printf escribe las claves con los valores.
         const format = "out=\"$1\" && shift && mkdir -p \"$(dirname \"$out\")\""
             + " && printf 'maxWorkspaces=%s\\n"
+            + "workspaceIcons=%s\\n"
             + "showVolumePercent=%s\\n"
             + "showBrightnessPercent=%s\\n"
             + "showExtraDimPercent=%s\\n"
@@ -827,9 +843,11 @@ Singleton {
             + "airplaneMode=%s\\n"
             + "airplaneRestoreWifi=%s\\n"
             + "airplaneRestoreBt=%s\\n"
+            + "btEnabled=%s\\n"
             + "showHiddenWifi=%s\\n' \"$@\" > \"$out\"";
         const values = [
             root.maxWorkspaces,
+            root.workspaceIcons,
             root.showVolumePercent ? "1" : "0",
             root.showBrightnessPercent ? "1" : "0",
             root.showExtraDimPercent ? "1" : "0",
@@ -881,6 +899,7 @@ Singleton {
             root.airplaneMode ? "1" : "0",
             root.airplaneRestoreWifi ? "1" : "0",
             root.airplaneRestoreBt ? "1" : "0",
+            root.btEnabled ? "1" : "0",
             root.showHiddenWifi ? "1" : "0"
         ];
         saveProc.command = ["sh", "-c", format, "shell", root.path].concat(values);
@@ -922,6 +941,8 @@ Singleton {
     }
 
     onMaxWorkspacesChanged: saveTimer.restart()
+    onWorkspaceIconsChanged: saveTimer.restart()
+    onBtEnabledChanged: saveTimer.restart()
     onCenterRowsChanged: saveTimer.restart()
     onCenterIconSizeChanged: saveTimer.restart()
     onBarIconSizeChanged: saveTimer.restart()
@@ -1097,6 +1118,7 @@ Singleton {
         onExited: {
             const lines = loadOut.text.split("\n");
             let max = root.maxWorkspaces;
+            let workspaceIconCount = root.workspaceIcons;
             let rows = root.centerRows;
             let iconSize = root.centerIconSize;
             let barIcon = root.barIconSize;
@@ -1148,6 +1170,7 @@ Singleton {
             let airplane = root.airplaneMode;
             let airplaneWifi = root.airplaneRestoreWifi;
             let airplaneBt = root.airplaneRestoreBt;
+            let btOn = root.btEnabled;
             let hiddenWifi = root.showHiddenWifi;
             let controlsOrder = "";
             let centerOrderText = "";
@@ -1162,6 +1185,10 @@ Singleton {
                     const parsed = parseInt(value, 10);
                     if (!isNaN(parsed))
                         max = Math.max(1, Math.min(20, parsed));
+                } else if (key === "workspaceIcons") {
+                    const parsed = parseInt(value, 10);
+                    if (!isNaN(parsed))
+                        workspaceIconCount = Math.max(1, Math.min(30, parsed));
                 } else if (key === "showVolumePercent") {
                     pctVolume = value === "1" || value === "true";
                 } else if (key === "showBrightnessPercent") {
@@ -1305,6 +1332,8 @@ Singleton {
                     airplaneWifi = value === "1" || value === "true";
                 } else if (key === "airplaneRestoreBt") {
                     airplaneBt = value === "1" || value === "true";
+                } else if (key === "btEnabled") {
+                    btOn = value === "1" || value === "true";
                 } else if (key === "showHiddenWifi") {
                     hiddenWifi = value === "1" || value === "true";
                 } else if (key === "barControls") {
@@ -1320,6 +1349,7 @@ Singleton {
                 windowRadius = on ? 12 : 0;
             }
             root.maxWorkspaces = max;
+            root.workspaceIcons = workspaceIconCount;
             root.centerRows = rows;
             root.centerIconSize = iconSize;
             root.barIconSize = barIcon;
@@ -1371,6 +1401,7 @@ Singleton {
             root.airplaneMode = airplane;
             root.airplaneRestoreWifi = airplaneWifi;
             root.airplaneRestoreBt = airplaneBt;
+            root.btEnabled = btOn;
             root.showHiddenWifi = hiddenWifi;
             BarState.restore(controlsOrder, centerOrderText);
             root.ready = true;

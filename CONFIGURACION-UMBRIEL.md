@@ -1257,3 +1257,28 @@ parte del `PATH`; en otra instalación se pueden instalar con
   texturas o sombras en los juegos más pesados es la diferencia más directa.
 - `gamemode` (`sudo apt install gamemode`, luego `gamemoderun %command%`)
   evita que el planificador de energía baje la CPU mientras se juega.
+
+## 28. Interruptores que sobreviven al reinicio
+
+Lo que el usuario cambia a mano se guarda; lo que cambia un automatismo
+(apagado por inactividad, modo avión) no pisa esa preferencia.
+
+| Interruptor | Dónde se guarda | Cómo arranca |
+|---|---|---|
+| Ethernet | `connection.autoconnect` del perfil (script `scripts/shell-wired-power`) | Apagado si se desconectó a mano; encendido si no |
+| Wi-Fi | `NetworkManager.state` (`WirelessEnabled`) | En el estado guardado; si estaba apagado, arranca apagado |
+| Bluetooth | `settings.conf` (`btEnabled`) | BlueZ enciende el adaptador (`AutoEnable=true`) y el shell lo apaga al cargar los ajustes |
+| Modo avión | `settings.conf` (`airplaneMode`) | Las radios arrancan encendidas y el shell las apaga unos 500 ms después |
+| VPN | `connection.autoconnect` del perfil | Apagada si se desconectó a mano; encendida si no |
+| Punto de acceso | No se guarda | Apagado; es una acción de sesión, no una preferencia |
+| Luz nocturna y atenuación extra | `~/.config/shell/display.conf` | En el estado guardado |
+| Volumen y micrófono | WirePlumber | En el estado guardado |
+| Perfil de energía | power-profiles-daemon | Lo decide el demonio; el shell no lo pisa |
+| Brillo | Hardware / DDC del monitor | No lo guarda el shell; depende del firmware |
+
+### Iconos por escritorio
+
+El escritorio activo enseña una ficha por ventana. El máximo es configurable
+en **Ajustes → Iconos por escritorio** (1–30; 10 por defecto). Las ventanas que
+no caben se resumen con `+N`. Se guarda en `settings.conf` como
+`workspaceIcons`.

@@ -1,0 +1,91 @@
+#!/bin/sh
+# Guarda y aplica el estado de una Ethernet para que sobreviva al reinicio.
+#
+# Uso:
+#   shell-wired-power off <interfaz>   desconecta y desactiva el autoconectado
+#   shell-wired-power on  <interfaz>   vuelve a conectar y lo reactiva
+#   shell-wired-power status <interfaz> solo consulta (para diagnóstico)
+#
+# `nmcli device disconnect` corta la sesión actual, pero NetworkManager vuelve
+# a levantar el perfil al arrancar porque `connection.autoconnect` sigue en
+# «yes». Este script apaga también esa marca para que la decisión del usuario
+# se conserve, y recuerda el perfil usado para poder reactivarlo después.
+
+set -eu
+
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+
+action="${1:-status}"
+iface="${2:-}"
+
+if [ -z "$iface" ]; then
+    echo "uso: $0 off|on|status <interfaz>" >&2
+    exit 2
+fi
+
+state_dir="${XDG_CACHE_HOME:-$HOME/.cache}/shell"
+state_file="$state_dir/wired-autoconnect"
+mkdir -p "$state_dir"
+
+# Perfil activo en la interfaz (vacío si está desconectada).
+active_profile() {
+    nmcli -g GENERAL.CONNECTION device show "$iface" 2>/dev/null || true
+}
+
+# Perfil recordado la última vez que se apagó esta interfaz.
+remembered_profile() {
+    [ -r "$state_file" ] || return 1
+    sed -n "s/^${iface}=//p" "$state_file" | tail -n 1
+}
+
+# Perfil Ethernet genérico, como último recurso si no hay nada recordado.
+first_ethernet_profile() {
+    nmcli -t -f NAME,TYPE connection show 2>/dev/null \
+        | awk -F: '$2 == "802-3-ethernet" { print $1; exit }'
+}
+
+remember_profile() {
+    tmp="$state_file.tmp.$$"
+    if [ -r "$state_file" ]; then
+        grep -v "^${iface}=" "$state_file" > "$tmp" || true
+    else
+        : > "$tmp"
+    fi
+    printf '%s=%s\n' "$iface" "$1" >> "$tmp"
+    mv "$tmp" "$state_file"
+}
+
+case "$action" in
+    off)
+        name=$(active_profile)
+        if [ -n "$name" ] && [ "$name" != "--" ]; then
+            nmcli connection modify "$name" connection.autoconnect no >/dev/null 2>&1 || true
+            remember_profile "$name"
+        fi
+        nmcli device disconnect "$iface" >/dev/null 2>&1 || true
+        ;;
+    on)
+        name=$(remembered_profile || true)
+        if [ -z "$name" ]; then
+            name=$(first_ethernet_profile || true)
+        fi
+        if [ -n "$name" ]; then
+            nmcli connection modify "$name" connection.autoconnect yes >/dev/null 2>&1 || true
+        fi
+        nmcli device connect "$iface" >/dev/null 2>&1 || true
+        ;;
+    status)
+        name=$(active_profile)
+        [ -n "$name" ] || name=$(remembered_profile || true)
+        auto=""
+        if [ -n "$name" ] && [ "$name" != "--" ]; then
+            auto=$(nmcli -g connection.autoconnect connection show "$name" 2>/dev/null || true)
+        fi
+        printf 'interface=%s\nprofile=%s\nautoconnect=%s\n' "$iface" "$name" "$auto"
+        ;;
+    *)
+        echo "uso: $0 off|on|status <interfaz>" >&2
+        exit 2
+        ;;
+esac

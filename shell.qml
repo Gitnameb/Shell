@@ -1,6 +1,7 @@
 //@ pragma UseQApplication
 
 import Quickshell
+import Quickshell.Bluetooth
 import Quickshell.Io
 import Quickshell.Networking
 import QtQml
@@ -29,6 +30,17 @@ ShellRoot {
         BatteryState.hide();
         TrayState.hide();
         windowVolumePopup.hide();
+    }
+
+    // BlueZ enciende el adaptador al arrancar (AutoEnable=true) y no recuerda
+    // que el usuario lo apagó. Se reaplica la intención guardada; el modo
+    // avión manda y no se toca mientras esté activo.
+    function applyBluetoothPreference(): void {
+        if (!SettingsState.ready || AirplaneState.active)
+            return;
+        const adapter = Bluetooth.defaultAdapter;
+        if (adapter !== null && adapter.enabled !== SettingsState.btEnabled)
+            adapter.enabled = SettingsState.btEnabled;
     }
 
     // Va antes que la barra para quedar debajo de ella dentro de la misma capa.
@@ -482,6 +494,24 @@ ShellRoot {
                     + "\n";
             }
             return text;
+        }
+    }
+
+    // Los ajustes pueden terminar de cargar antes o después de que aparezca
+    // el adaptador Bluetooth; se intenta en ambos casos.
+    Connections {
+        target: SettingsState
+
+        function onReadyChanged(): void {
+            shellRoot.applyBluetoothPreference();
+        }
+    }
+
+    Connections {
+        target: Bluetooth
+
+        function onDefaultAdapterChanged(): void {
+            shellRoot.applyBluetoothPreference();
         }
     }
 }

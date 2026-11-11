@@ -455,6 +455,15 @@ ColumnLayout {
             root.btPair(dev);
     }
 
+    // Guarda la intención del usuario y aplica el cambio. BlueZ no recuerda
+    // que el adaptador quedó apagado, así que el arranque del shell la
+    // reaplica (ver shell.qml).
+    function setBluetoothEnabled(value: bool): void {
+        SettingsState.setBtEnabled(value);
+        if (root.btAdapter)
+            root.btAdapter.enabled = value;
+    }
+
     // Quickshell no registra un agente de BlueZ propio, así que `pair()` puede
     // quedarse sin nadie que confirme el emparejamiento. `bluetoothctl` sí
     // registra su agente y funciona con auriculares «Just Works».
@@ -493,16 +502,24 @@ ColumnLayout {
         if (!dev)
             return;
         root.wifiNotice = "";
-        // `nmcli device disconnect` marca la desconexión como manual y evita
-        // que NetworkManager vuelva a activar el perfil automáticamente.
-        Quickshell.execDetached(["nmcli", "device", "disconnect", dev.name]);
+        // `nmcli device disconnect` solo corta la sesión actual: al reiniciar,
+        // NetworkManager vuelve a levantar el perfil porque tiene autoconnect.
+        // El script apaga también `connection.autoconnect` para que el estado
+        // elegido sobreviva al arranque.
+        Quickshell.execDetached([
+            "sh", (Quickshell.shellDir || "") + "/scripts/shell-wired-power",
+            "off", String(dev.name)
+        ]);
     }
 
     function connectWiredDevice(dev): void {
         if (!dev)
             return;
         root.wifiNotice = "";
-        Quickshell.execDetached(["nmcli", "device", "connect", dev.name]);
+        Quickshell.execDetached([
+            "sh", (Quickshell.shellDir || "") + "/scripts/shell-wired-power",
+            "on", String(dev.name)
+        ]);
     }
 
     function btStopAdding(): void {
@@ -1343,10 +1360,8 @@ ColumnLayout {
                                 : "")
                         : "Activado"))
             active: root.btAdapter !== null && root.btAdapter.enabled
-            onToggled: {
-                if (root.btAdapter)
-                    root.btAdapter.enabled = !root.btAdapter.enabled;
-            }
+            onToggled: root.setBluetoothEnabled(
+                !(root.btAdapter !== null && root.btAdapter.enabled))
             onOpened: root.setView("bluetooth")
         }
 
@@ -1883,8 +1898,10 @@ ColumnLayout {
                 onToggled: {
                     if (root.view === "wifi")
                         Networking.wifiEnabled = !Networking.wifiEnabled;
-                    else if (root.view === "bluetooth" && root.btAdapter)
-                        root.btAdapter.enabled = !root.btAdapter.enabled;
+                    else if (root.view === "bluetooth")
+                        root.setBluetoothEnabled(
+                            !(root.btAdapter !== null
+                                && root.btAdapter.enabled));
                     else if (root.view === "night")
                         DisplayState.toggleNight();
                     else if (root.view === "extraDim")
@@ -5686,6 +5703,77 @@ ColumnLayout {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: SettingsState.setBarIconSize(
                             SettingsState.barIconSize + 1)
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Iconos por escritorio"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                Rectangle {
+                    implicitWidth: 22
+                    implicitHeight: 22
+                    radius: 6
+                    color: wsIconsLess.containsMouse ? Theme.hover : Theme.surface
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "−"
+                        color: Theme.muted
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 12
+                    }
+
+                    MouseArea {
+                        id: wsIconsLess
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: SettingsState.setWorkspaceIcons(
+                            SettingsState.workspaceIcons - 1)
+                    }
+                }
+
+                Text {
+                    text: SettingsState.workspaceIcons
+                    color: Theme.accent
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                    font.weight: Font.Bold
+                    horizontalAlignment: Text.AlignHCenter
+                    width: 20
+                }
+
+                Rectangle {
+                    implicitWidth: 22
+                    implicitHeight: 22
+                    radius: 6
+                    color: wsIconsMore.containsMouse ? Theme.hover : Theme.surface
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "+"
+                        color: Theme.muted
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 12
+                    }
+
+                    MouseArea {
+                        id: wsIconsMore
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: SettingsState.setWorkspaceIcons(
+                            SettingsState.workspaceIcons + 1)
                     }
                 }
             }

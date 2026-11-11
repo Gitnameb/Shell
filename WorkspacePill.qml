@@ -1,10 +1,11 @@
 import Quickshell
 import QtQuick
 
-// Indicador de un escritorio. El activo muestra hasta cinco iconos de las
-// ventanas abiertas, como el ejemplo web: cada ventana va en una ficha con su
-// color y al pulsarla se enfoca (o se restaura). Los demás escritorios solo
-// muestran el número para no ensuciar la barra.
+// Indicador de un escritorio. El activo muestra hasta los iconos que quepan
+// según «Iconos por escritorio» (10 por defecto), como el ejemplo web: cada
+// ventana va en una ficha con su color y al pulsarla se enfoca (o se
+// restaura). Los demás escritorios solo muestran el número para no ensuciar
+// la barra.
 Rectangle {
     id: root
 
@@ -46,8 +47,9 @@ Rectangle {
     readonly property var windows:
         CompositorState.windowsForWorkspace(root.workspaceId)
     readonly property var clients: root.windows
-    // El ejemplo web enseña como máximo cinco fichas y resume el resto con +N.
-    readonly property int maxIcons: 5
+    // El ejemplo web enseña un máximo de fichas y resume el resto con +N.
+    // El límite es configurable desde Ajustes (10 por defecto).
+    readonly property int maxIcons: SettingsState.workspaceIcons
 
     // Una entrada por ventana, no por aplicación: dos terminales muestran dos
     // fichas y cada una abre su propio menú y ejecuta acciones sobre su ventana.
