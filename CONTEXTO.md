@@ -2744,3 +2744,21 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   arranca sin errores; quedará ligada a `xdg-desktop-autostart.target` en el
   siguiente inicio de sesión. El instalador crea las dos unidades y activa el
   path unit.
+
+### 2026-11-11 · Easy Effects arrancaba, pero sin icono de bandeja
+
+- **Síntoma.** La unidad ya estaba activa desde el inicio de sesión, pero el
+  usuario no veía la app. El proceso sí corría y aparecía en PipeWire; su
+  `--service-mode --hide-window` es intencionado. Lo que faltaba era el icono
+  de bandeja: Easy Effects consulta `org.kde.StatusNotifierWatcher` solo al
+  arrancar y, al empezar casi a la vez que el shell, Quickshell aún no lo
+  había registrado. No vuelve a intentarlo, así que la app queda invisible.
+- **Solución.** `scripts/shell-autostart-refresh` crea un drop-in para cada
+  entrada de `~/.config/autostart` con
+  `ExecStartPre=scripts/shell-autostart-wait`; ese script espera hasta 10 s a
+  que exista el watcher y luego deja arrancar la app. Se ejecuta desde
+  `shell-autostart-reload.service`, que a su vez dispara el path unit al
+  cambiar `~/.config/autostart`. Verificado: tras reiniciar la unidad, Easy
+  Effects registra `Id=easyeffects` en la bandeja
+  (`:1.1043/StatusNotifierItem`) y sigue procesando audio. Documentado en
+  `CONFIGURACION-UMBRIEL.md` §33.

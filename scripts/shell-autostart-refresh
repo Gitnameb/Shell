@@ -1,0 +1,31 @@
+#!/bin/sh
+# Mantiene los drop-ins que hacen esperar a las apps de XDG Autostart hasta
+# que el shell tenga lista su bandeja, y recarga systemd para que el generador
+# cree o actualice sus unidades. Lo llama shell-autostart-reload.service cada
+# vez que cambia ~/.config/autostart; también se puede ejecutar a mano.
+set -eu
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+wait_script="${SHELL_AUTOSTART_WAIT:-$script_dir/shell-autostart-wait}"
+service_dir="$HOME/.config/systemd/user"
+autostart_dir="$HOME/.config/autostart"
+
+for desktop in "$autostart_dir"/*.desktop; do
+    [ -e "$desktop" ] || continue
+    if grep -qiE '^[[:space:]]*(Hidden|X-systemd-skip)[[:space:]]*=[[:space:]]*true' "$desktop"; then
+        continue
+    fi
+    base=$(basename "$desktop" .desktop)
+    escaped=$(systemd-escape "$base") || continue
+    dropin_dir="$service_dir/app-$escaped@autostart.service.d"
+    dropin="$dropin_dir/50-wait-tray.conf"
+    content="[Service]
+ExecStartPre=$wait_script"
+
+    if [ ! -f "$dropin" ] || [ "$(cat "$dropin" 2>/dev/null)" != "$content" ]; then
+        mkdir -p "$dropin_dir"
+        printf '%s\n' "$content" >"$dropin"
+    fi
+done
+
+systemctl --user daemon-reload || true

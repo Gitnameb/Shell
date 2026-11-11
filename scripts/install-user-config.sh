@@ -417,13 +417,13 @@ else
     backup_file "$reload_service"
     run mkdir -p "$(dirname "$reload_service")"
     if (( ! DRY_RUN )); then
-        cat >"$reload_service" <<'EOF'
+        cat >"$reload_service" <<EOF
 [Unit]
 Description=Regenerar las unidades de XDG Autostart
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/systemctl --user daemon-reload
+ExecStart=$REPO_DIR/scripts/shell-autostart-refresh
 EOF
         chmod 644 "$reload_service"
     fi
@@ -459,6 +459,8 @@ if command -v systemctl >/dev/null 2>&1 \
         || warn "No se pudo recargar systemd de usuario."
     run systemctl --user enable --now shell-autostart-reload.path \
         || warn "No se pudo activar el vigilante ahora; se activará al entrar."
+    run "$REPO_DIR/scripts/shell-autostart-refresh" \
+        || warn "No se pudieron preparar los drop-ins de autostart."
 else
     warn "No hay una sesión systemd de usuario activa; el vigilante arrancará al entrar."
 fi

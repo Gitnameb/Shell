@@ -1367,3 +1367,25 @@ comprobar con:
 systemctl --user list-unit-files | grep autostart
 ```
 
+### Apps con icono de bandeja
+
+Las apps que ponen un icono en la bandeja consultan la bandeja **solo al
+arrancar**. Si arrancan a la vez que el shell, antes de que Quickshell registre
+`org.kde.StatusNotifierWatcher`, se quedan sin icono y parecen no haber
+arrancado aunque el proceso siga vivo. Easy Effects es el caso típico: arranca
+oculto (`--service-mode --hide-window`), procesa audio y no muestra ventana ni
+icono.
+
+Para evitarlo, `shell-autostart-refresh` crea un drop-in para cada entrada de
+`~/.config/autostart`:
+
+```ini
+[Service]
+ExecStartPre=/home/username/Shell/scripts/shell-autostart-wait
+```
+
+`shell-autostart-wait` espera hasta 10 s a que exista el watcher de la bandeja
+y después deja arrancar la app. Si el shell no llega a arrancar, la espera
+termina igualmente y el autostart sigue funcionando. La espera es inapreciable
+cuando el shell ya está listo.
+

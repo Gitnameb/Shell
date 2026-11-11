@@ -1,0 +1,15 @@
+#!/bin/sh
+# Retrasa el arranque de las apps de XDG Autostart hasta que el shell tenga
+# lista su bandeja (StatusNotifierWatcher). Las apps con icono de bandeja lo
+# consultan solo al arrancar; si aún no existe, se quedan sin icono y parecen
+# no haber arrancado (Easy Effects es un caso típico). Si el shell tarda
+# demasiado o no llega a arrancar, se continúa igualmente tras 10 s.
+i=0
+while [ "$i" -lt 40 ]; do
+    if busctl --user status org.kde.StatusNotifierWatcher >/dev/null 2>&1; then
+        exit 0
+    fi
+    sleep 0.25
+    i=$((i + 1))
+done
+exit 0
