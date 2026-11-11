@@ -13,8 +13,6 @@ ColumnLayout {
         ? SystemStats.cpuLoad : SystemStats.gpuLoad
     readonly property real temp: root.cpuMode
         ? SystemStats.cpuTemp : SystemStats.gpuTemp
-    readonly property real peakLoad: root.cpuMode
-        ? SystemStats.cpuPeakLoad : SystemStats.gpuPeakLoad
     readonly property real peakTemp: root.cpuMode
         ? SystemStats.cpuPeakTemp : SystemStats.gpuPeakTemp
     readonly property real average: root.cpuMode
@@ -53,7 +51,6 @@ ColumnLayout {
             Text {
                 Layout.fillWidth: true
                 text: "media " + Math.round(root.average) + "%"
-                    + " · pico " + Math.round(root.peakLoad) + "%"
                 color: Theme.faint
                 font.family: Theme.fontFamily
                 font.pixelSize: 8
@@ -61,7 +58,7 @@ ColumnLayout {
         }
 
         Rectangle {
-            implicitWidth: 48
+            implicitWidth: Math.max(48, tempChipText.implicitWidth + 16)
             implicitHeight: 26
             radius: 7
             color: root.temp >= 0
@@ -73,8 +70,14 @@ ColumnLayout {
                 : Theme.border
 
             Text {
+                id: tempChipText
+
                 anchors.centerIn: parent
-                text: root.temp >= 0 ? Math.round(root.temp) + "°" : "—"
+                // Actual / pico desde que arranca el shell.
+                text: root.temp >= 0
+                    ? Math.round(root.temp) + "° / "
+                        + Math.round(root.peakTemp) + "°"
+                    : "—"
                 color: root.temp >= 0 ? root.accent : Theme.faint
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
@@ -100,10 +103,13 @@ ColumnLayout {
         StatCell {
             Layout.fillWidth: true
             title: "Temperatura"
-            value: root.temp >= 0 ? Math.round(root.temp) + " °C" : "—"
+            // Actual / pico máximo desde que arranca el shell.
+            value: root.temp >= 0
+                ? Math.round(root.temp) + " / " + Math.round(root.peakTemp)
+                    + " °C"
+                : "—"
             detail: root.temp >= 0
-                ? "pico " + Math.round(root.peakTemp) + " °C · "
-                    + SystemStats.thermalLabel(root.temp)
+                ? "actual / pico · " + SystemStats.thermalLabel(root.temp)
                 : "sensor no disponible"
             valueColor: root.accent
         }

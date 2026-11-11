@@ -45,6 +45,10 @@ def profile(ssid, qr_path):
         print(json.dumps({"found": False}))
         return 0
 
+    uuid = run([
+        "nmcli", "-g", "connection.uuid",
+        "connection", "show", name,
+    ]).stdout.strip()
     autoconnect = run([
         "nmcli", "-g", "connection.autoconnect",
         "connection", "show", name,
@@ -80,6 +84,7 @@ def profile(ssid, qr_path):
     print(json.dumps({
         "found": True,
         "name": name,
+        "uuid": uuid,
         "autoconnect": autoconnect,
         "secure": secure,
         "hasPsk": bool(psk),

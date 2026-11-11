@@ -35,6 +35,27 @@ Singleton {
         root.envFile = "";
     }
 
+    // UUID del perfil cableado de una interfaz, para incrustar su proxy en
+    // las opciones de esa conexión. Si el perfil no fija una interfaz, se usa
+    // el primer perfil cableado guardado como respaldo.
+    function connectionUuidForDevice(deviceName): string {
+        const name = String(deviceName || "");
+        if (name.length === 0)
+            return "";
+        let fallback = "";
+        for (let i = 0; i < root.connections.length; i++) {
+            const item = root.connections[i];
+            if (String(item.kind || "") !== "wired")
+                continue;
+            if (String(item.device || "") === name)
+                return String(item.uuid || "");
+            if (fallback.length === 0
+                    && String(item.device || "").length === 0)
+                fallback = String(item.uuid || "");
+        }
+        return fallback;
+    }
+
     function save(uuid, method, pac, http, https, socks, noProxy): void {
         if (root.busy)
             return;

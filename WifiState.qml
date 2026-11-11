@@ -31,6 +31,7 @@ Singleton {
 
     // Perfil de la red que se está editando y QR para compartirla.
     property string profileSsid: ""
+    property string profileUuid: ""
     property bool profileFound: false
     property bool profileAutoconnect: true
     property bool profileQrReady: false
@@ -85,6 +86,7 @@ Singleton {
     // Carga los datos del perfil guardado de una red y genera su QR.
     function loadProfile(ssid): void {
         root.profileSsid = ssid;
+        root.profileUuid = "";
         root.profileFound = false;
         root.profileAutoconnect = true;
         root.profileQrReady = false;
@@ -98,6 +100,7 @@ Singleton {
 
     function clearProfile(): void {
         root.profileSsid = "";
+        root.profileUuid = "";
         root.profileFound = false;
         root.profileQrReady = false;
         root.profileError = "";
@@ -440,6 +443,8 @@ Singleton {
             try {
                 const info = JSON.parse(profileOut.text.trim() || "{}");
                 root.profileFound = info.found === true;
+                root.profileUuid = info.found === true
+                    ? String(info.uuid || "") : "";
                 root.profileAutoconnect = info.autoconnect === true;
                 root.profileQrReady = info.qr === true;
                 root.profileError = root.profileFound

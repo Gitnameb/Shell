@@ -98,13 +98,16 @@ Prioridad acordada:
   los cambios se aplican con `nmcli device reapply`, sin cortar el enlace. Lo
   implementan `DnsSettings.qml`, `DnsState.qml` y
   `scripts/network-settings.py`.
-- El engranaje general de la vista Red incluye **Proxy por red**: cada conexión
-  guardada puede usar sin proxy, automático (PAC) o manual (HTTP, HTTPS, SOCKS y
-  excepciones). NetworkManager solo admite `none`/`auto`, así que el modo manual
-  se guarda como un PAC generado en el perfil. Si la red está activa, también se
-  escribe `~/.config/environment.d/90-shell-proxy.conf` para la próxima sesión.
-  Los datos editables se guardan en `~/.config/shell/proxy.json`. Lo implementan
-  `ProxySettings.qml`, `ProxyState.qml` y el mismo ayudante.
+- El **proxy por red** vive dentro de las opciones de cada conexión: el
+  engranaje de una red Wi-Fi conectada o el de una Ethernet conectada abre su
+  formulario. Cada conexión guardada puede usar sin proxy, automático (PAC) o
+  manual (HTTP, HTTPS, SOCKS y excepciones). NetworkManager solo admite
+  `none`/`auto`, así que el modo manual se guarda como un PAC generado en el
+  perfil. Si la red está activa, también se escribe
+  `~/.config/environment.d/90-shell-proxy.conf` para la próxima sesión. Los
+  datos editables se guardan en `~/.config/shell/proxy.json`. Lo implementan
+  `ProxySettings.qml` (con modo incrustado por `connectionUuid`),
+  `ProxyState.qml` y el mismo ayudante.
 - El panel de notificaciones tiene un icono de comprobación junto a
   «No molestar». Al pulsarlo ejecuta `scripts/check-deps.sh` y muestra una
   tarjeta con los paquetes que faltan y el comando para instalarlos; la
@@ -2682,3 +2685,24 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   la escritura se agrupan en una escritura final. Verificado con un `ddcutil`
   simulado de 1,2 s: tres pulsaciones durante la escritura terminan en
   `setvcp 65` y `displayStatus` marca 0,65.
+
+### 2026-11-11 · Proxy en cada conexión, picos de temperatura y ping estable
+
+- **Proxy dentro de las redes conectadas.** El engranaje de una red Wi-Fi
+  conectada abre su QR, reconexión, banda, «Olvidar red» y, al final, el proxy
+  de ese perfil. Cada Ethernet conectada tiene ahora su propio engranaje, que
+  abre una vista «Ethernet · interfaz» con el proxy de su perfil cableado.
+  `ProxySettings.qml` acepta `connectionUuid` y, en ese modo, pinta solo el
+  formulario de esa conexión. El UUID del perfil Wi-Fi llega de
+  `scripts/wifi-profile.py`; el de la Ethernet se resuelve por interfaz en
+  `ProxyState.connectionUuidForDevice`. El proxy ya no aparece en el engranaje
+  general de Wi-Fi.
+- **Procesador y gráficos sin picos de uso.** Se quitó el «pico N %» de la
+  línea de media y `SystemStats` dejó de acumular `cpuPeakLoad`/`gpuPeakLoad`.
+  La temperatura se muestra como actual / pico: «43° / 72°» en la ficha de la
+  cabecera y «43 / 72 °C» en la celda, con el pico desde que arranca el shell.
+  «Reiniciar picos» sigue poniendo a cero el pico de temperatura y el historial.
+- **Ping sin parpadeo.** `NetView` enseñaba «…» durante cada medición porque
+  `latencyBusy` sustituía el número. Ahora se conserva la última latencia
+  válida y el valor cambia en el sitio cada segundo; «…» solo aparece antes de
+  la primera medida. Un ping fallido tampoco borra el último dato bueno.

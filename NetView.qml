@@ -131,15 +131,16 @@ ColumnLayout {
         StatCell {
             Layout.fillWidth: true
             title: "Latencia"
-            value: SystemStats.latencyBusy ? "…"
-                : (SystemStats.netLatency >= 0
-                    ? SystemStats.netLatency + " ms" : "—")
-            detail: "ping al gateway"
-            valueColor: SystemStats.latencyBusy ? Theme.faint
-                : (SystemStats.netLatency >= 0
-                    && SystemStats.netLatency <= 60 ? Theme.accent
-                    : (SystemStats.netLatency >= 0
-                        ? Theme.warning : Theme.faint))
+            // Se conserva el último valor mientras se mide el siguiente: el
+            // número cambia en el sitio, sin desaparecer cada segundo.
+            value: SystemStats.netLatency >= 0
+                ? SystemStats.netLatency + " ms"
+                : (SystemStats.latencyBusy ? "…" : "—")
+            detail: "ping al gateway, cada segundo"
+            valueColor: SystemStats.netLatency >= 0
+                ? (SystemStats.netLatency <= 60
+                    ? Theme.accent : Theme.warning)
+                : Theme.faint
         }
 
         StatCell {

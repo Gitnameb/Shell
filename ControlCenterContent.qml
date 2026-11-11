@@ -69,6 +69,9 @@ ColumnLayout {
     property int wifiNetworkSecurity: -1
     property bool wifiNetworkOptions: false
     property string wifiNetworkSsid: ""
+    // Opciones de una Ethernet conectada, detrás del engranaje de su fila.
+    property string wiredOptionsDevice: ""
+    readonly property bool wiredOptionsOpen: root.wiredOptionsDevice.length > 0
     property bool wifiForgetArmed: false
     // Vinculación Bluetooth en curso y error legible para la vista.
     property bool btBusy: false
@@ -564,6 +567,7 @@ ColumnLayout {
             root.wifiNetworkOptions = false;
             root.wifiNetworkSecurity = -1;
             root.wifiNetworkSsid = "";
+            root.wiredOptionsDevice = "";
             root.wifiForgetArmed = false;
             WifiState.clearProfile();
         }
@@ -870,9 +874,13 @@ ColumnLayout {
     }
 
     function viewTitle(): string {
-        if (view === "wifi")
-            return root.wifiNetworkOptions && root.wifiNetworkSsid.length > 0
-                ? root.wifiNetworkSsid : "Red";
+        if (view === "wifi") {
+            if (root.wifiNetworkOptions && root.wifiNetworkSsid.length > 0)
+                return root.wifiNetworkSsid;
+            if (root.wiredOptionsOpen)
+                return "Ethernet · " + root.wiredOptionsDevice;
+            return "Red";
+        }
         if (view === "bluetooth")
             return "Bluetooth";
         if (view === "volume")
@@ -941,14 +949,15 @@ ColumnLayout {
     function refreshScan(): void {
         const should = root.active && root.view === "wifi"
             && Networking.wifiEnabled && !root.wifiAdvanced
-            && !root.wifiNetworkOptions;
+            && !root.wifiNetworkOptions && !root.wiredOptionsOpen;
         if (wifiDevice)
             wifiDevice.scannerEnabled = should;
     }
 
     function startWifiScan(): void {
         if (!root.active || root.view !== "wifi" || !Networking.wifiEnabled
-                || root.wifiAdvanced || root.wifiNetworkOptions) {
+                || root.wifiAdvanced || root.wifiNetworkOptions
+                || root.wiredOptionsOpen) {
             root.refreshScan();
             return;
         }
@@ -967,6 +976,7 @@ ColumnLayout {
         root.wifiNetworkSecurity = net ? net.security : -1;
         root.wifiNetworkSsid = name;
         root.wifiNetworkOptions = true;
+        root.wiredOptionsDevice = "";
         root.wifiAdvanced = false;
         root.wifiForgetArmed = false;
         root.refreshScan();
@@ -979,6 +989,33 @@ ColumnLayout {
         root.wifiNetworkSsid = "";
         root.wifiForgetArmed = false;
         WifiState.clearProfile();
+        root.startWifiScan();
+    }
+
+    // Opciones de una Ethernet conectada: el engranaje de su fila abre el
+    // proxy de su perfil, igual que el engranaje de una red Wi-Fi.
+    function openWiredOptions(dev): void {
+        if (!dev || !dev.nmManaged)
+            return;
+        root.wifiNotice = "";
+        root.pendingNetworkName = "";
+        root.wifiListFrozen = false;
+        root.closeHiddenInline();
+        root.closeHiddenNetwork();
+        root.wifiNetworkOptions = false;
+        root.wifiNetworkSecurity = -1;
+        root.wifiNetworkSsid = "";
+        root.wifiForgetArmed = false;
+        WifiState.clearProfile();
+        root.wifiAdvanced = false;
+        root.wiredOptionsDevice = String(dev.name || "");
+        root.refreshScan();
+        ProxyState.refresh();
+    }
+
+    function closeWiredOptions(): void {
+        root.wiredOptionsDevice = "";
+        root.wifiNotice = "";
         root.startWifiScan();
     }
 
@@ -1693,6 +1730,10 @@ ColumnLayout {
                             root.closeWifiNetwork();
                             return;
                         }
+                        if (root.wiredOptionsOpen) {
+                            root.closeWiredOptions();
+                            return;
+                        }
                         root.closeView();
                     }
                 }
@@ -1711,7 +1752,8 @@ ColumnLayout {
             // Añadir red oculta: abre el formulario manual con SSID y clave.
             Rectangle {
                 visible: root.view === "wifi" && !root.wifiAdvanced
-                    && !root.wifiNetworkOptions && Networking.wifiEnabled
+                    && !root.wifiNetworkOptions && !root.wiredOptionsOpen
+                    && Networking.wifiEnabled
                 implicitWidth: 26
                 implicitHeight: 26
                 radius: 7
@@ -1747,7 +1789,7 @@ ColumnLayout {
             // Recargar: pide otra búsqueda de redes Wi-Fi.
             Rectangle {
                 visible: root.view === "wifi" && !root.wifiAdvanced
-                    && !root.wifiNetworkOptions
+                    && !root.wifiNetworkOptions && !root.wiredOptionsOpen
 
                 implicitWidth: 26
                 implicitHeight: 26
@@ -1835,7 +1877,7 @@ ColumnLayout {
                 visible: (root.view === "bluetooth"
                     || root.view === "hotspot"
                     || root.view === "wifi")
-                    && !root.wifiNetworkOptions
+                    && !root.wifiNetworkOptions && !root.wiredOptionsOpen
                 implicitWidth: 26
                 implicitHeight: 26
                 radius: 7
@@ -1882,6 +1924,7 @@ ColumnLayout {
                     || root.view === "hotspot"
                     || root.view === "vpn")
                     && !(root.view === "wifi" && root.wifiNetworkOptions)
+                    && !root.wiredOptionsOpen
                 enabled: !(root.view === "hotspot" && HotspotState.busy)
                     && !(root.view === "vpn" && !VpnState.configured)
                 checked: root.view === "wifi"
@@ -1929,6 +1972,7 @@ ColumnLayout {
                 Layout.preferredHeight: Math.max(0,
                     root.wiredDevices.length * 44 - 2)
                 visible: !root.wifiAdvanced && !root.wifiNetworkOptions
+                    && !root.wiredOptionsOpen
                     && root.wiredDevices.length > 0
                 interactive: false
                 clip: true
@@ -2005,6 +2049,37 @@ ColumnLayout {
                             }
                         }
 
+                        // Opciones de la conexión cableada (su proxy), como el
+                        // engranaje de una red Wi-Fi conectada.
+                        Rectangle {
+                            id: wiredGear
+
+                            visible: wiredRow.dev.connected
+                                && wiredRow.dev.nmManaged
+                            implicitWidth: 22
+                            implicitHeight: 22
+                            radius: 6
+                            color: wiredGearMouse.containsMouse
+                                ? Theme.hover : "transparent"
+
+                            ShellIcon {
+                                anchors.centerIn: parent
+                                name: "applications-system-symbolic"
+                                fallbackName: "preferences-system-symbolic"
+                                color: Theme.muted
+                                size: 13
+                                fallback: "⚙"
+                            }
+
+                            MouseArea {
+                                id: wiredGearMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.openWiredOptions(wiredRow.dev)
+                            }
+                        }
+
                         Rectangle {
                             implicitWidth: 78
                             implicitHeight: 24
@@ -2041,6 +2116,7 @@ ColumnLayout {
             Text {
                 Layout.fillWidth: true
                 visible: !root.wifiAdvanced && !root.wifiNetworkOptions
+                    && !root.wiredOptionsOpen
                     && !Networking.wifiEnabled
                 text: "Wi-Fi desactivado"
                 color: Theme.faint
@@ -2051,6 +2127,7 @@ ColumnLayout {
             RowLayout {
                 Layout.fillWidth: true
                 visible: !root.wifiAdvanced && !root.wifiNetworkOptions
+                    && !root.wiredOptionsOpen
                     && Networking.wifiEnabled
                     && root.activeWifi === null
                 spacing: 6
@@ -2120,6 +2197,7 @@ ColumnLayout {
             ColumnLayout {
                 Layout.fillWidth: true
                 visible: !root.wifiAdvanced && !root.wifiNetworkOptions
+                    && !root.wiredOptionsOpen
                     && Networking.wifiEnabled && root.hiddenNetworkOpen
                 spacing: 4
 
@@ -2183,6 +2261,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 2
                 visible: !root.wifiAdvanced && !root.wifiNetworkOptions
+                    && !root.wiredOptionsOpen
                     && root.wifiNetworks.length > 0
 
                 Repeater {
@@ -2735,6 +2814,81 @@ ColumnLayout {
                         onClicked: root.forgetWifiNetwork()
                     }
                 }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    visible: WifiState.profileFound
+                    Layout.preferredHeight: 1
+                    color: Theme.border
+                }
+
+                // El proxy vive dentro de las opciones de la red conectada,
+                // no en el engranaje general de Wi-Fi.
+                ProxySettings {
+                    Layout.fillWidth: true
+                    active: root.wifiNetworkOptions
+                    connectionUuid: WifiState.profileUuid
+                }
+            }
+
+            // ----------------------------------- opciones de una Ethernet
+            ColumnLayout {
+                Layout.fillWidth: true
+                visible: root.wiredOptionsOpen
+                spacing: 7
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    ShellIcon {
+                        source: ShellIcons.src(root.wiredIsUsb({
+                            name: root.wiredOptionsDevice
+                        }) ? "usb" : "wired")
+                        color: Theme.accent
+                        size: 17
+                        fallback: "◌"
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: "Conexión cableada · "
+                                + root.wiredOptionsDevice
+                            color: Theme.text
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                            font.weight: Font.DemiBold
+                            elide: Text.ElideRight
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: "El proxy se guarda en el perfil de "
+                                + "NetworkManager de esta conexión."
+                            color: Theme.faint
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 8
+                            wrapMode: Text.Wrap
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                    color: Theme.border
+                }
+
+                ProxySettings {
+                    Layout.fillWidth: true
+                    active: root.wiredOptionsOpen
+                    connectionUuid: ProxyState.connectionUuidForDevice(
+                        root.wiredOptionsDevice)
+                }
             }
 
             // ------------------------------------- opciones de Wi-Fi (engranaje)
@@ -2873,18 +3027,6 @@ ColumnLayout {
                     font.family: Theme.fontFamily
                     font.pixelSize: 8
                     wrapMode: Text.Wrap
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 1
-                    Layout.topMargin: 2
-                    color: Theme.border
-                }
-
-                ProxySettings {
-                    Layout.fillWidth: true
-                    active: root.wifiAdvanced
                 }
             }
         }

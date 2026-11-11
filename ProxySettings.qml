@@ -5,10 +5,29 @@ import QtQuick.Layouts
 // Proxy por conexión. Cada perfil guardado puede usar el proxy del sistema,
 // un PAC o servidores propios. El modo manual se guarda como un PAC generado
 // en NetworkManager y, si la red está activa, también en environment.d.
+//
+// Se usa de dos formas:
+//   - Suelto (sin `connectionUuid`): lista todas las conexiones guardadas.
+//   - Incrustado en las opciones de una red: `connectionUuid` deja solo el
+//     formulario de esa conexión, siempre abierto.
 ColumnLayout {
     id: root
 
     property bool active: false
+    property string connectionUuid: ""
+    readonly property bool embedded: root.connectionUuid.length > 0
+    // Conexiones que se pintan. En modo incrustado solo la de esta red.
+    readonly property var shownConnections: {
+        if (!root.embedded)
+            return ProxyState.connections;
+        const out = [];
+        const list = ProxyState.connections;
+        for (let i = 0; i < list.length; i++) {
+            if (String(list[i].uuid || "") === root.connectionUuid)
+                out.push(list[i]);
+        }
+        return out;
+    }
     spacing: 6
 
     onActiveChanged: {
@@ -22,8 +41,18 @@ ColumnLayout {
         }
     }
 
+    // El UUID del perfil Wi-Fi llega después de abrir la vista; cuando esté,
+    // se vuelve a pedir la lista para poder enseñar su proxy.
+    onConnectionUuidChanged: {
+        ProxyState.error = "";
+        ProxyState.notice = "";
+        if (root.active && root.connectionUuid.length > 0)
+            ProxyState.refresh();
+    }
+
     Text {
         Layout.fillWidth: true
+        visible: !root.embedded
         text: "PROXY POR RED"
         color: Theme.faint
         font.family: Theme.fontFamily
@@ -34,6 +63,7 @@ ColumnLayout {
 
     Text {
         Layout.fillWidth: true
+        visible: !root.embedded
         text: "Cada conexión guardada puede usar su propio proxy. El modo "
             + "manual se guarda como PAC; la red activa se exporta al iniciar "
             + "sesión."
@@ -43,16 +73,27 @@ ColumnLayout {
         wrapMode: Text.Wrap
     }
 
+    Text {
+        Layout.fillWidth: true
+        visible: root.embedded
+        text: "PROXY DE ESTA CONEXIÓN"
+        color: Theme.faint
+        font.family: Theme.fontFamily
+        font.pixelSize: 8
+        font.weight: Font.DemiBold
+        font.letterSpacing: 0.8
+    }
+
     Repeater {
-        model: ProxyState.connections
+        model: root.shownConnections
 
         delegate: ColumnLayout {
             id: proxyRow
 
             required property var modelData
 
-            readonly property bool open: ProxyState.expandedUuid
-                === String(modelData.uuid || "")
+            readonly property bool open: root.embedded
+                || ProxyState.expandedUuid === String(modelData.uuid || "")
             readonly property bool usb: {
                 const name = String(proxyRow.modelData.device || "").toLowerCase();
                 return name.indexOf("usb") === 0
@@ -110,6 +151,7 @@ ColumnLayout {
             Rectangle {
                 Layout.fillWidth: true
                 implicitHeight: 42
+                visible: !root.embedded
                 radius: 8
                 color: proxyRow.open
                     ? Theme.surfaceAlt
@@ -177,6 +219,7 @@ ColumnLayout {
                 MouseArea {
                     id: proxyMouse
                     anchors.fill: parent
+                    visible: !root.embedded
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: ProxyState.toggle(proxyRow.modelData.uuid)
@@ -460,8 +503,10 @@ ColumnLayout {
 
     Text {
         Layout.fillWidth: true
-        visible: !ProxyState.loading && ProxyState.connections.length === 0
-        text: "No hay conexiones Wi-Fi o Ethernet guardadas."
+        visible: !ProxyState.loading && root.shownConnections.length === 0
+        text: root.embedded
+            ? "No se encontró el perfil de esta conexión."
+            : "No hay conexiones Wi-Fi o Ethernet guardadas."
         color: Theme.faint
         font.family: Theme.fontFamily
         font.pixelSize: 8

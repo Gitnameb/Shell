@@ -19,7 +19,6 @@ Singleton {
     property real cpuMaxFreq: 0
     property var cpuCores: []
     property var cpuHistory: []
-    property real cpuPeakLoad: 0
     property real cpuPeakTemp: 0
 
     property real gpuLoad: 0
@@ -30,7 +29,6 @@ Singleton {
     property real vramUsed: 0
     property real vramTotal: 0
     property var gpuHistory: []
-    property real gpuPeakLoad: 0
     property real gpuPeakTemp: 0
 
     property real netDown: 0
@@ -108,7 +106,6 @@ Singleton {
         root.cpuCores = detailed ? (data.cores || []) : [];
         if (detailed) {
             root.cpuHistory = root.pushHistory(root.cpuHistory, cpu);
-            root.cpuPeakLoad = Math.max(root.cpuPeakLoad, cpu);
             if (root.cpuTemp >= 0)
                 root.cpuPeakTemp = Math.max(root.cpuPeakTemp, root.cpuTemp);
         }
@@ -123,7 +120,6 @@ Singleton {
         root.vramTotal = detailed ? Number(data.vramtotal) || 0 : 0;
         if (detailed) {
             root.gpuHistory = root.pushHistory(root.gpuHistory, gpu);
-            root.gpuPeakLoad = Math.max(root.gpuPeakLoad, gpu);
             if (root.gpuTemp >= 0)
                 root.gpuPeakTemp = Math.max(root.gpuPeakTemp, root.gpuTemp);
         }
@@ -178,11 +174,9 @@ Singleton {
 
     function resetPerf(kind: string): void {
         if (kind === "gpu") {
-            root.gpuPeakLoad = root.gpuLoad;
             root.gpuPeakTemp = Math.max(0, root.gpuTemp);
             root.gpuHistory = [];
         } else {
-            root.cpuPeakLoad = root.cpuLoad;
             root.cpuPeakTemp = Math.max(0, root.cpuTemp);
             root.cpuHistory = [];
         }
@@ -314,14 +308,17 @@ Singleton {
             try {
                 const text = (latencyOut.text || "").trim();
                 const data = JSON.parse(text.length > 0 ? text : "{}");
-                if (data.lat !== undefined && data.lat !== null)
+                // Un fallo puntual no borra la última medida: el número se
+                // queda hasta que llegue una lectura válida.
+                if (data.lat !== undefined && data.lat !== null
+                        && Number(data.lat) >= 0)
                     root.netLatency = Number(data.lat);
                 if (data.iface)
                     root.netInterface = String(data.iface);
                 if (data.ip)
                     root.netIp = String(data.ip);
             } catch (error) {
-                root.netLatency = -1;
+                // Se conserva la última latencia válida.
             }
         }
     }
