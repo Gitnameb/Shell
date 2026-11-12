@@ -105,7 +105,9 @@ Pill {
 
         Item {
             width: root.textWidth
-            height: SettingsState.barIconSize
+            // Misma altura que la portada: la fila mide lo que el contenido
+            // más alto y el texto se centra en ella, no desde arriba.
+            height: root.coverSize
             visible: !root.compact
 
             Column {
