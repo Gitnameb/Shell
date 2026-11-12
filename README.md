@@ -15,47 +15,9 @@ Shell de escritorio personal para [Umbriel](https://noctalia.dev/umbriel/)
 > necesidades. Los detalles están en [`EDIT-PERSONAL.md`](EDIT-PERSONAL.md) y
 > [`UMBRIEL-EDIT.md`](UMBRIEL-EDIT.md).
 
-## Qué incluye
-
-- Barra inferior con escritorios, lanzador, música, red, batería y bandeja.
-- Centro de control: Wi-Fi, Bluetooth, volumen, micrófono, VPN, hotspot, modo
-  avión, brillo, atenuación, luz nocturna y perfiles de energía.
-- Notificaciones, historial del portapapeles, calendario, alarmas y temporizador.
-- Clima, estadísticas del sistema y menú de apagado.
-- Escritorios con modo por escritorio (flotante, mosaico, pila) y vista general.
-- Barra de ventanas nativa de Umbriel ampliada mediante un edit personal: icono de la
-  app, subtítulo y seis botones (flotar, fijar, mover, minimizar, maximizar,
-  cerrar).
-- Integración con portales (captura y uso compartido), tema de apps GTK/KDE y
-  bloqueo de sesión con Hyprlock.
-- Iniciador de sesión Noctalia Greeter (greetd). SDDM queda como respaldo.
-
-## Estado
-
-Es un proyecto que uso a diario en mi equipo, pero no está terminado. Lo que
-falta o está en pruebas está en `PENDIENTES.md`. Lo más relevante:
-
-- La captura y el uso compartido desde aplicaciones X11/Firefox no están
-  verificados de principio a fin.
-- Wi-Fi y Bluetooth funcionan, pero algunos flujos (hotspot, olvidar redes,
-  emparejamiento) no se han probado en todo tipo de hardware.
-- La instalación está automatizada con `./install.sh`, pero todavía no se ha
-  probado de principio a fin en un Debian recién instalado.
-- El número de escritorios está fijado por conector (`HDMI-A-1` en este equipo).
-
 ## Requisitos
 
-- Debian 13 «trixie» (probablemente funciona en otras distribuciones con
-  Wayland, pero no está probado).
-- Umbriel y su portal, desde el repositorio de Noctalia.
-- Noctalia Greeter y `greetd` como iniciador de sesión.
-- Quickshell, PipeWire, Mesa y Hyprlock desde `trixie-backports`.
-- Qt 6, KDE/Breeze, NetworkManager (con `wpasupplicant`), BlueZ,
-  UPower y Polkit.
-- Para el brillo: `ddcutil` y una regla de sudoers.
-- Para el edit de Umbriel: las dependencias de compilación de `meson`.
-
-La lista completa, por capas, está en `install/packages.txt`.
+- Debian 13 «trixie».
 
 ## Instalación
 
