@@ -113,6 +113,7 @@ dentro de un HOME privado.
 | `scripts/install-user-config.sh` | Módulo de enlaces, configuración del HOME y terminal de Thunar. |
 | `scripts/install-greeter.sh` | Configura Noctalia Greeter y cambia de SDDM a greetd. |
 | `scripts/install-umbriel-edit.sh` | Compila e instala el edit personal de Umbriel. |
+| `scripts/regenerate-umbriel-patch.sh` | Regenera `umbriel-edit.patch` desde la base de Umbriel. |
 | `install/wallpapers/default.png` | Fondo de pantalla por defecto. |
 | `umbriel-edit.patch` | Parche del edit de Umbriel sobre `b6c4b7d`. |
 | `EDIT-PERSONAL.md` | Qué es este proyecto personal y cuáles son sus límites. |

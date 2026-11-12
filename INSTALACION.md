@@ -408,7 +408,7 @@ sudo apt install -t trixie-backports \
 ```
 
 El edit está basado en Umbriel `b6c4b7d` y acumula un conjunto de cambios
-propios. El parche reproducible es `umbriel-edit.patch` (50 archivos). Entre
+propios. El parche reproducible es `umbriel-edit.patch` (80 archivos). Entre
 esos cambios está el desenfoque del contenido de la ventana bajo el puntero al
 mantener Super; no necesita configuración adicional.
 
@@ -463,8 +463,12 @@ sudo cp /usr/bin/umbriel /usr/bin/umbriel.stock-0.1.0
 sudo cp build/umbriel /usr/bin/umbriel.new
 sudo mv -f /usr/bin/umbriel.new /usr/bin/umbriel
 
-# Regenerar el parche si se tocó el edit
-git diff b6c4b7d > ~/Shell/umbriel-edit.patch
+# Regenerar el parche si se tocó el edit. El repositorio del edit no comparte
+# historia con upstream, así que hace falta un clon de Umbriel con la base:
+git clone https://github.com/noctalia-dev/umbriel.git ~/umbriel-upstream
+cd ~/umbriel-upstream && git checkout b6c4b7d
+cd ~/Shell && ./scripts/regenerate-umbriel-patch.sh \
+    --base ~/umbriel-upstream --source ~/umbriel-edit
 ```
 
 Después hay que **cerrar sesión y volver a entrar** para que el compositor use

@@ -22,12 +22,29 @@ PanelWindow {
     readonly property real cardWidth: 244
     readonly property real cardHeight: menuColumn.implicitHeight + 16
     // Acciones propias del .desktop de la app («Nueva ventana», «Incógnito»…).
-    readonly property var appActions: {
-        if (!root.app)
-            return [];
-        return DesktopActions.actionsFor(String(root.app.cls
-            || root.app.appId || ""));
+    // Se recalculan a mano en vez de con un binding: DesktopActions.actionsFor
+    // lee `revision` y el modelo del Repeater, y Qt detectaba un bucle entre
+    // esa lectura y la altura de la tarjeta.
+    readonly property string appId: root.app
+        ? String(root.app.cls || root.app.appId || "") : ""
+    property var appActions: []
+
+    function reloadAppActions(): void {
+        root.appActions = root.appId.length > 0
+            ? DesktopActions.actionsFor(root.appId) : [];
     }
+
+    onAppIdChanged: root.reloadAppActions()
+
+    Connections {
+        target: DesktopActions
+
+        function onRevisionChanged(): void {
+            root.reloadAppActions();
+        }
+    }
+
+    Component.onCompleted: root.reloadAppActions()
     // Misma lista que dibuja la barra de título: orden, iconos, etiquetas y
     // atajos salen de WindowActions para que no puedan desincronizarse.
     readonly property var windowActions: WindowActions.itemsFor(root.app)

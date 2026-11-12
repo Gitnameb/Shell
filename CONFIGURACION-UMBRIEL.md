@@ -1323,9 +1323,8 @@ duplica), y se percibe como microtirones. Dos salidas:
 - **Mayús + Impr Pant** deja elegir una región con el ratón.
 
 Los atajos llaman a `scripts/captura.sh` y `scripts/captura-region.sh`, que
-usan `grim` y `slurp`. En este equipo están en `~/.local/bin`, que ya forma
-parte del `PATH`; en otra instalación se pueden instalar con
-`sudo apt install grim slurp`.
+usan `grim` y `slurp`. El instalador los añade a las dependencias de uso
+diario; si faltan, se pueden instalar con `sudo apt install grim slurp`.
 
 ### Otros
 
@@ -1359,15 +1358,16 @@ Lo que el usuario cambia a mano se guarda; lo que cambia un automatismo
   con el `connection.autoconnect` que dejó el usuario.
 - **Wi-Fi** lo recuerda NetworkManager en su propio estado.
 - **Bluetooth** necesita una configuración de sistema: BlueZ enciende el
-  adaptador al arrancar y no guarda el apagado. Una sola vez:
+  adaptador al arrancar y no guarda el apagado. `scripts/network.sh` (que el
+  instalador ejecuta) escribe `AutoEnable=false` en `/etc/bluetooth/main.conf`.
+  Para volver a aplicarlo sin tocar el resto de la red:
 
   ```bash
   sudo ~/Shell/scripts/bluetooth-boot-off.sh
   ```
 
-  Escribe `AutoEnable=false` en `/etc/bluetooth/main.conf`. A partir de ahí, un
-  Bluetooth apagado no se enciende durante el arranque; el shell lo enciende al
-  iniciar la sesión si la última vez quedó encendido.
+  A partir de ahí, un Bluetooth apagado no se enciende durante el arranque; el
+  shell lo enciende al iniciar la sesión si la última vez quedó encendido.
 - **Antes de Quickshell**, `shell-start` ejecuta `shell-radio-state`, que lee
   `settings.conf` y deja el Bluetooth como estaba (y apaga el Wi-Fi si el modo
   avión está activo). Es una red de seguridad, no un sustituto de
