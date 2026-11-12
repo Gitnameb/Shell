@@ -254,7 +254,7 @@ impacto en el uso diario, no por lucimiento.
   automáticamente para el resto de interfaces.
 - Aceptación del portal: la captura devuelve `Response 0` con un PNG real y el
   flujo ScreenCast abre el selector de Umbriel (pestañas Screens/Windows, elige
-  HDMI-A-1), y `Start` devuelve un stream de 1920×1080. Queda probar el flujo
+  el conector), y `Start` devuelve un stream de 1920×1080. Queda probar el flujo
   completo desde Firefox y desde una app X11.
 - El puente `xwaylandvideobridge` está desactivado en el arranque con
   `~/.config/autostart/org.kde.xwaylandvideobridge.desktop` (`Hidden=true`).

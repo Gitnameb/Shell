@@ -10,9 +10,9 @@ Hay dos discos NTFS internos además del disco del sistema:
 
 | Disco | Tipo | Estado actual |
 | --- | --- | --- |
-| SSD S700 500 GB | ext4 + EFI + swap | Sistema, ya montado |
-| KINGSTON SA400S37960G, etiqueta `SSD1T` | NTFS | Sin montar |
-| WDC WD10EZEX, etiqueta `New Volume` | NTFS | Sin montar |
+| Disco del sistema | ext4 + EFI + swap | Ya montado |
+| Disco de datos 1, etiqueta `<etiqueta>` | NTFS | Sin montar |
+| Disco de datos 2, etiqueta `<etiqueta>` | NTFS | Sin montar |
 
 `udisks2` ya está instalado y activo. `ntfs-3g` y `exfatprogs` también están
 instalados. No hay ningún servicio que los monte solos al iniciar sesión.
@@ -46,8 +46,8 @@ predecible y permite arrancar aunque un disco no esté.
      “arreglar” a ciegas.
 
 2. **Elegir puntos de montaje.**
-   - `/mnt/SSD1T`
-   - `/mnt/NewVolume` (o `/mnt/WD10EZEX`)
+   - `/mnt/<etiqueta>`
+   - `/mnt/<etiqueta>`
    - Crear con `sudo mkdir -p` y dejar el propietario en el usuario.
 
 3. **Añadir entradas a `/etc/fstab`.**
@@ -65,7 +65,7 @@ predecible y permite arrancar aunque un disco no esté.
 4. **Probar sin reiniciar.**
    - `sudo systemctl daemon-reload`
    - `sudo mount -a`
-   - `findmnt /mnt/SSD1T /mnt/NewVolume`
+   - `findmnt /mnt/<etiqueta> /mnt/<etiqueta>`
    - Escribir y borrar un archivo de prueba en cada uno.
    - Reiniciar y repetir.
    - Si al apagar el equipo se queda encendido con la pantalla apagada, usar
@@ -157,11 +157,11 @@ No se ha instalado nada para diagnosticar: los comandos son de solo lectura.
 El bloque de `fstab` se regenera entero, así que se puede cambiar la selección:
 
 ```sh
-# Solo SSD1T
-sudo ./scripts/mount-disks.sh --only SSD1T --apply
+# Solo un disco
+sudo ./scripts/mount-disks.sh --only "<etiqueta>" --apply
 
-# Todos menos New Volume
-sudo ./scripts/mount-disks.sh --exclude "New Volume" --apply
+# Todos menos uno
+sudo ./scripts/mount-disks.sh --exclude "<etiqueta>" --apply
 
 # Quitar todos los montajes gestionados
 sudo ./scripts/mount-disks.sh --uninstall

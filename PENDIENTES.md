@@ -6,9 +6,8 @@ en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
 
 ## Tarea prioritaria pendiente: auditoría antes de publicar
 
-> Guardada el 2026-11-12. **No empezar todavía**: el usuario quiere modificar
-> algunas cosas primero. Cuando lo pida, empezar por un inventario sin cambiar
-> nada y enseñar qué hay en cada categoría.
+> En curso desde el 2026-11-12. El inventario ya está hecho; el progreso y lo
+> que queda están al final de esta sección.
 
 Orden acordado:
 
@@ -372,7 +371,7 @@ Progreso (2026-11-12):
   que no se toca porque pertenece al compositor.
 - **Veredicto para uso principal:** sí en este equipo, con dos reservas: B3
   sigue sin probar y el instalador aún no se ha probado en limpio. B5 sí es
-  comprobable aquí porque el AX210 tiene Wi-Fi y Bluetooth. Lo pendiente de
+  comprobable aquí porque el adaptador Intel tiene Wi-Fi y Bluetooth. Lo pendiente de
   diseño (reloj, A4, VPN, iconos del escritorio, perfiles personalizados y
   portátiles) no bloquea el uso diario.
 
@@ -409,7 +408,7 @@ Progreso (2026-11-12):
 - **Escritorios fijos y números ocupados.** Umbriel estaba en modo dinámico,
   así que solo existían dos o tres escritorios: elegir el 4–9 seleccionaba el
   último disponible y «Mover a escritorio 9» terminaba en el 2. La configuración
-  de Umbriel fija ahora nueve (`[output."HDMI-A-1"] workspaces = 9`). Además, el
+  de Umbriel fija ahora nueve (`[output."<conector>"] workspaces = 9`). Además, el
   número de cada escritorio se ilumina con el acento si tiene cualquier ventana,
   incluidas las minimizadas o en el scratchpad. Verificado en real: cambio al 9
   y movimiento de una ventana al 9, con el número 9 encendido; la ventana se
@@ -435,7 +434,7 @@ Progreso (2026-11-12):
   terminó en SEGV. `~/.config/xdg-desktop-portal/portals.conf` mapea Access a
   GTK y ya funciona. Verificado: la captura devuelve un PNG real y el flujo de
   ScreenCast abre el selector de Umbriel, deja elegir pantalla o ventana y
-  `Start` devuelve un stream de HDMI-A-1 a 1920×1080. Falta la prueba final
+  `Start` devuelve un stream de la salida a 1920×1080. Falta la prueba final
   desde Firefox y desde una app X11. El selector y el diálogo de permiso son
   de los portales (en inglés); el resto de Shell sigue en castellano.
 - **B2 · No bloquear mientras hay reproducción.** La barra crea un
@@ -941,7 +940,7 @@ Tras cerrar sesión y volver a entrar:
   final, después del resto de bloques.
 - A4 (volumen por ventana) sigue descartado.
 - **Escritorios automáticos (mejora futura).** El inventario fijo de nueve está
-  escrito a mano para `HDMI-A-1`. Conviene un `shell-workspaces` que lea
+  escrito a mano para el conector detectado. Conviene un `shell-workspaces` que lea
   `umbriel outputs --json`, localice la sección `[output."..."]` correcta y
   escriba `workspaces = N` sin depender del conector. Así funcionará igual en el
   sobremesa y en un portátil (`eDP-1`). No empezar sin pedirlo.

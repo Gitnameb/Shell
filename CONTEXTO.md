@@ -239,7 +239,7 @@ Prioridad acordada:
 - Debian GNU/Linux 13 (trixie), kernel/arquitectura amd64.
 - GPU: AMD Radeon RX 470/480/570/580 (Ellesmere). No es una VM (`systemd-detect-virt = none`).
 - Sesión principal: **Umbriel** (`XDG_CURRENT_DESKTOP=Umbriel`), elegible en
-  Noctalia Greeter; SDDM queda como respaldo. Monitor LG `HDMI-A-1` a
+  Noctalia Greeter; SDDM queda como respaldo. Monitor externo por HDMI a
   1920×1080@75.
 - Umbriel: `0.1.0~1505-g63327b58-1~bpo13+1` desde el repositorio de Noctalia
   (`trixie-backports`). Config: `~/.config/umbriel/config.toml`; valida con
@@ -270,7 +270,7 @@ Prioridad acordada:
 - Red: NetworkManager disponible (`nmcli`).
 - Audio: PipeWire + WirePlumber (`wpctl`); para Bluetooth,
   `libspa-0.2-bluetooth`.
-- Brillo: el monitor LG `HDMI-A-1` admite **DDC/CI**. Se instaló `ddcutil` y se
+- Brillo: el monitor externo admite **DDC/CI**. Se instaló `ddcutil` y se
   creó `/etc/sudoers.d/shell-ddcutil` para que el usuario pueda leer y escribir el
   brillo sin contraseña (`sudo -n ddcutil ...`). Si el monitor no responde, el shell
   vuelve al shader global de Hyprland. No hay `/sys/class/backlight` ni
@@ -2501,7 +2501,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   se quedaba en «Failed to show access dialog: Timeout was reached» y una vez
   provocó un SEGV. `~/.config/xdg-desktop-portal/portals.conf` mapea Access a
   GTK. Verificado: captura con PNG real y ScreenCast con selector de pantalla
-  o ventana que devuelve un stream de HDMI-A-1 (1920×1080). Falta el flujo
+  o ventana que devuelve un stream de la salida (1920×1080). Falta el flujo
   completo desde Firefox y una app X11.
 - **C2 · Energía, finalmente solo en la batería.** Ajustes llegó a mostrar la
   sección «ENERGÍA», pero el usuario pidió quitarla: los perfiles se cambian
@@ -2518,7 +2518,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   Ajustes ya no muestra la sección ENERGÍA. Verificado por IPC y captura; falta
   el clic físico.
 - **Lo que hace cada perfil en este equipo.** El procesador es un Intel
-  i3-10105F con `intel_pstate`; el driver de plataforma de
+  de referencia con `intel_pstate`; el driver de plataforma de
   `power-profiles-daemon` es `placeholder`, así que el perfil solo cambia la
   preferencia energía/rendimiento del CPU (`power`, `balance_performance` o
   `performance`), no la autonomía (no hay batería). No cambia el límite máximo
@@ -2535,7 +2535,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   queda más pegada y las flechas más cerca del texto.
 - **Escritorios fijos.** Umbriel usaba el modelo dinámico y solo mantenía dos o
   tres escritorios; por eso cambiar al 4–9 o mover una ventana a ellos acababa
-  en el último existente. Se añadió `[output."HDMI-A-1"] workspaces = 9` a la
+  en el último existente. Se añadió `[output."<conector>"] workspaces = 9` a la
   configuración. En un portátil o tras una instalación limpia hay que repetir
   esa sección con el conector que corresponda.
 - **Números de escritorio ocupados.** `WorkspacePill` ilumina el número con el
@@ -2553,11 +2553,11 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   Debian limpio y probar la reversión (E4).
 - **Veredicto de uso principal.** El sistema está listo para el día a día en
   este equipo salvo B3 (captura/uso compartido) sin probar y el instalador sin
-  probar en limpio. B5 sí se puede probar porque el AX210 tiene Wi-Fi y
+  probar en limpio. B5 sí se puede probar porque el adaptador Intel tiene Wi-Fi y
   Bluetooth. No bloquean el uso: A4, opciones VPN, pestañas del reloj, iconos
   del escritorio, perfiles personalizados y adaptación a portátiles.
 - **Escritorios automáticos, idea futura.** El `workspaces = 9` actual depende
-  del conector `HDMI-A-1`. Un script que lea `umbriel outputs --json` y escriba
+  del conector detectado. Un script que lea `umbriel outputs --json` y escriba
   el inventario por salida evitaría repetir la sección en cada equipo.
 - **Perfiles personalizados, idea futura.** El usuario preguntó por perfiles
   propios con tope de frecuencia de CPU/GPU y algo tipo TDP para portátiles.
@@ -2574,7 +2574,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   `wl-clipboard`; ahora `wl-copy`/`wl-paste` se usan del sistema y los scripts
   tienen el binario local solo como respaldo. Se añadió `wl-clipboard` a los
   paquetes.
-- **Plantillas saneadas.** Las rutas `/home/username` se sustituyeron por
+- **Plantillas saneadas.** Las rutas `/home/USUARIO` se sustituyeron por
   `/home/USUARIO` en `install/`, se vaciaron el fondo y la ciudad del clima, y
   la regla de sudoers usa `USUARIO`.
 - **Instalador general.** `install.sh` añade repositorios, instala paquetes,
@@ -2601,7 +2601,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   `umbriel-edit.patch`, compila con meson/ninja, guarda el binario original e
   instala con `mv` atómico. Valida el hash y detecta si el binario ya es el
   edit.
-- **Rutas de usuario.** Se quitaron las rutas `/home/username` de los comandos
+- **Rutas de usuario.** Se quitaron las rutas `/home/USUARIO` de los comandos
   de `shell-idle`, `shell-keyboard-layout` y `shell-umbriel-theme`; ahora usan
   `Quickshell.env("HOME")`, así que el shell funciona con cualquier usuario.
 - **Modo ligero.** Se quitó `plasma-workspace` y `kde-cli-tools` de la lista de

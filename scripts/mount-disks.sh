@@ -121,7 +121,7 @@ fail() {
 }
 
 # Nombre de la unidad systemd de un punto de montaje. Los guiones se escapan
-# (\x2d), así que /mnt/New-Volume es mnt-New\x2dVolume.mount.
+# (\x2d), así que /mnt/MiDisco es mnt-MiDisco.mount.
 mount_unit() {
     command -v systemd-escape >/dev/null 2>&1 ||
         fail "Falta systemd-escape; no se puede configurar el desmontaje."
