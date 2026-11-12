@@ -8,6 +8,21 @@ ColumnLayout {
 
     spacing: 8
 
+    // Texto de estado del botón de letras. Se calcula aquí para que las
+    // dependencias de LyricsState y MusicState queden claras.
+    function lyricsStatus(): string {
+        if (LyricsState.loading)
+            return "Buscando letras…";
+        if (LyricsState.available)
+            return "Letras sincronizadas · " + LyricsState.lines.length
+                + " líneas";
+        if (MusicState.trackUrl.length === 0 || !LyricsState.localSource)
+            return "Este reproductor no publica la ruta del archivo";
+        if (LyricsState.checked)
+            return "Esta pista no tiene letras sincronizadas";
+        return "";
+    }
+
     // ------------------------------------------------------- selector
     ColumnLayout {
         Layout.fillWidth: true
@@ -167,6 +182,119 @@ ColumnLayout {
         font.family: Theme.fontFamily
         font.pixelSize: 9
         wrapMode: Text.Wrap
+    }
+
+    // ------------------------------------------------------- letras
+    ColumnLayout {
+        Layout.fillWidth: true
+        spacing: 4
+        visible: MusicState.available
+
+        Rectangle {
+            id: lyricsButton
+
+            Layout.fillWidth: true
+            implicitHeight: 30
+            radius: 8
+            color: SettingsState.lyricsEnabled
+                ? Theme.accentSoft : Theme.surfaceAlt
+            border.width: 1
+            border.color: SettingsState.lyricsEnabled
+                ? Theme.accentLine : Theme.border
+
+            RowLayout {
+                anchors {
+                    fill: parent
+                    leftMargin: 9
+                    rightMargin: 9
+                }
+                spacing: 7
+
+                ShellIcon {
+                    name: "view-media-lyrics"
+                    fallbackName: "amarok_lyrics"
+                    color: SettingsState.lyricsEnabled
+                        ? Theme.accent : Theme.muted
+                    size: 15
+                    fallback: "♪"
+                }
+
+                Text {
+                    text: "Letras"
+                    color: SettingsState.lyricsEnabled
+                        ? Theme.accent : Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                    font.weight: Font.DemiBold
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                Text {
+                    text: SettingsState.lyricsEnabled
+                        ? "Activadas" : "Desactivadas"
+                    color: Theme.faint
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: SettingsState.lyricsEnabled
+                    = !SettingsState.lyricsEnabled
+            }
+        }
+
+        Text {
+            Layout.fillWidth: true
+            visible: SettingsState.lyricsEnabled
+            text: root.lyricsStatus()
+            color: LyricsState.available
+                ? Theme.muted : Theme.faint
+            font.family: Theme.fontFamily
+            font.pixelSize: 8
+            wrapMode: Text.Wrap
+        }
+
+        // Vista rápida de las mismas tres líneas que enseña la barra.
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 0
+            visible: SettingsState.lyricsEnabled && LyricsState.available
+
+            Text {
+                Layout.fillWidth: true
+                text: LyricsState.previousLine
+                color: Theme.faint
+                font.family: Theme.fontFamily
+                font.pixelSize: 9
+                elide: Text.ElideRight
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: LyricsState.currentLine
+                color: Theme.text
+                font.family: Theme.fontFamily
+                font.pixelSize: 11
+                font.weight: Font.DemiBold
+                elide: Text.ElideRight
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: LyricsState.nextLine
+                color: Theme.muted
+                font.family: Theme.fontFamily
+                font.pixelSize: 9
+                elide: Text.ElideRight
+            }
+        }
     }
 
     // ------------------------------------------------------- progreso

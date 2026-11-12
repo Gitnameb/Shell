@@ -927,6 +927,35 @@ buffer pequeño con bordes negros.
   reloj local. Se respeta también `rate`. Si no hay duración conocida
   (directos), el deslizador se oculta en vez de mostrarse lleno.
 
+### 19.3 Letras sincronizadas
+
+- El panel de Música tiene un botón «Letras». Al activarlo, el widget de la
+  barra cambia título y artista por tres líneas: la letra anterior, la actual
+  (en negrita) y la siguiente. Al pasar el ratón siguen apareciendo los
+  controles, igual que en el modo normal.
+- El estado se guarda como `lyricsEnabled` en `~/.config/shell/settings.conf` y
+  sobrevive a las recargas. Se puede cambiar desde la terminal con
+  `qs ipc -c shell call lyrics toggle`.
+- MPRIS no transporta letras. `LyricsState` toma `xesam:url` de
+  `MprisPlayer.metadata`, lee el tag del propio archivo con `lyrics.py` y lo
+  interpreta como LRC (`[mm:ss.xx]texto`). No hacen falta archivos `.lrc`
+  separados.
+- `lyrics.py` usa solo la biblioteca estándar de Python: átomo `©lyr` en
+  MP4/M4A, comentarios Vorbis `SYNCEDLYRICS`/`LYRICS` en FLAC, marcos `SYLT`
+  (milisegundos) o `USLT` con LRC en MP3, y un `.lrc` junto al archivo como
+  último respaldo. La lista de líneas se cachea por URL para no relanzar el
+  analizador al volver a una pista.
+- Si la pista no trae letra, el widget vuelve a título y artista y el panel
+  explica el motivo. Los servicios en streaming (Spotify, navegadores)
+  publican una URL `https`, no la ruta de un archivo, así que tampoco hay tag
+  que leer.
+- Con letras activas el ancho mínimo del widget es 240 px, aunque se hubiera
+  dejado estrecho para título y artista. Si se había ensanchado más con Super,
+  se respeta ese ancho.
+- Al pausar se conserva el último reproductor que sonaba. Antes, si todos los
+  reproductores estaban en pausa, el widget podía saltar al primero de la lista
+  de MPRIS (por ejemplo, una pestaña del navegador) y mostrar otra canción.
+
 ## 20. Limpieza de dependencias
 
 Además de `foot` e `Inter Variable`:

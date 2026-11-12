@@ -11,6 +11,10 @@ Singleton {
     id: root
 
     property var preferredPlayer: null
+    // Último reproductor que estaba sonando. Cuando todos se pausan, evita
+    // que el widget salte a otro reproductor solo porque aparece antes en la
+    // lista de MPRIS (por ejemplo, una pestaña del navegador en pausa).
+    property var lastPlayingPlayer: null
 
     readonly property var players: Mpris.players.values
     // Prefiere al reproductor que está sonando y, entre varios, al que expone
@@ -24,6 +28,10 @@ Singleton {
             return null;
         const playing = list.filter((item) => item.isPlaying);
         const pool = playing.length > 0 ? playing : list;
+        // Nadie suena: conservar el reproductor que sonaba antes de pausar.
+        if (playing.length === 0 && root.lastPlayingPlayer
+                && list.indexOf(root.lastPlayingPlayer) !== -1)
+            return root.lastPlayingPlayer;
         for (let i = 0; i < pool.length; i++) {
             if ((pool[i].trackArtUrl || "").length > 0
                     && root.artistFor(pool[i]).length > 0)
@@ -67,6 +75,18 @@ Singleton {
         ? root.player.identity : ""
     readonly property string artUrl: root.player
         && root.player.trackArtUrl ? root.player.trackArtUrl : ""
+    // Ruta del archivo que suena, cuando el reproductor la publica. MPRIS no
+    // transporta letras, pero sí la URL del archivo; con ella LyricsState lee
+    // el tag incrustado. Los servicios en streaming no la exponen.
+    readonly property string trackUrl: {
+        if (!root.player)
+            return "";
+        const metadata = root.player.metadata;
+        if (!metadata)
+            return "";
+        const value = metadata["xesam:url"];
+        return value ? String(value) : "";
+    }
     readonly property real length: root.player
         && root.player.length > 0 ? root.player.length : 0
     // Position de MPRIS tal como la notifica el reproductor. Solo cambia en
@@ -198,10 +218,15 @@ Singleton {
         return minutes + ":" + String(rest).padStart(2, "0");
     }
 
-    onPlayerChanged: root.resetPosition()
+    onPlayerChanged: {
+        root.resetPosition();
+        if (root.player && root.player.isPlaying)
+            root.lastPlayingPlayer = root.player;
+    }
     onTitleChanged: root.resetPosition()
     onPlayingChanged: {
         if (root.playing) {
+            root.lastPlayingPlayer = root.player;
             root.lastTickMs = Date.now();
             root.positionPollTick = 0;
         }

@@ -34,6 +34,10 @@ Singleton {
     // Ancho del reproductor de música, ajustable manteniendo Super. 0 deja
     // que la píldora mida lo que pida su contenido.
     property int musicWidth: 0
+    // Muestra las letras sincronizadas en el widget de música. Se activa con
+    // el botón «Letras» del panel; si la pista no trae letra, el widget vuelve
+    // a mostrar título y artista.
+    property bool lyricsEnabled: false
     // Cuántos milisegundos hay que mantener Super para entrar en el modo
     // ventanas. Un toque más corto sigue abriendo el lanzador. El valor se
     // escribe en la configuración de Umbriel para que el compositor y el
@@ -831,6 +835,7 @@ Singleton {
             + "wallpaperPath=%s\\n"
             + "barPosition=%s\\n"
             + "musicWidth=%s\\n"
+            + "lyricsEnabled=%s\\n"
             + "superHoldMs=%s\\n"
             + "floatingSizePercent=%s\\n"
             + "floatingCascade=%s\\n"
@@ -887,6 +892,7 @@ Singleton {
             root.wallpaperPath,
             root.barPosition,
             root.musicWidth,
+            root.lyricsEnabled ? "1" : "0",
             root.superHoldMs,
             root.floatingSizePercent,
             root.floatingCascade,
@@ -949,6 +955,7 @@ Singleton {
     onAutoHideBarChanged: saveTimer.restart()
     onBarPositionChanged: saveTimer.restart()
     onMusicWidthChanged: saveTimer.restart()
+    onLyricsEnabledChanged: saveTimer.restart()
     onSuperHoldMsChanged: saveTimer.restart()
     onFloatingSizePercentChanged: saveTimer.restart()
     onFloatingCascadeChanged: saveTimer.restart()
@@ -1125,6 +1132,7 @@ Singleton {
             let autoHide = root.autoHideBar;
             let barPos = root.barPosition;
             let music = root.musicWidth;
+            let lyrics = root.lyricsEnabled;
             let superHold = root.superHoldMs;
             let floatingSize = root.floatingSizePercent;
             let floatingStep = root.floatingCascade;
@@ -1221,6 +1229,8 @@ Singleton {
                     if (!isNaN(parsed))
                         music = parsed <= 0
                             ? 0 : Math.max(140, Math.min(420, parsed));
+                } else if (key === "lyricsEnabled") {
+                    lyrics = value === "1" || value === "true";
                 } else if (key === "superHoldMs") {
                     const parsed = parseInt(value, 10);
                     if (!isNaN(parsed))
@@ -1356,6 +1366,7 @@ Singleton {
             root.autoHideBar = autoHide;
             root.barPosition = barPos;
             root.musicWidth = music;
+            root.lyricsEnabled = lyrics;
             root.superHoldMs = superHold;
             root.floatingSizePercent = floatingSize;
             root.floatingCascade = floatingStep;

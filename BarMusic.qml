@@ -20,22 +20,39 @@ Pill {
     // En la barra vertical solo se muestra la portada: el título y el
     // artista no caben en 44 px.
     readonly property bool compact: SettingsState.barVertical
-    preferredWidth: root.compact ? 0 : SettingsState.musicWidth
     // Portada a la altura del botón, como el logotipo de la distribución:
     // llena la píldora en vez de quedar del tamaño de los iconos pequeños.
     // En la barra vertical se ajusta al tamaño del resto de fichas.
     readonly property real coverSize: root.compact ? 28 : Theme.itemHeight
     readonly property real coverRadius: root.compact ? 6 : 8
+    // Con letras activas se muestran tres líneas (anterior, actual y
+    // siguiente). Si la pista no tiene letra sincronizada, `lyricsMode` se
+    // apaga solo y vuelven el título y el artista.
+    readonly property bool lyricsMode: !root.compact && MusicState.available
+        && SettingsState.lyricsEnabled && LyricsState.available
     // Ancho del bloque de texto. Se calcula desde el ancho elegido, nunca
     // desde root.width: si dependiera del ancho real, la píldora y su
     // contenido se darían tamaño mutuamente y la barra temblaría al
     // mantener Super. La suma fija es portada (coverSize) + espacio (4) +
     // relleno horizontal (3 + 3).
-    readonly property real textWidth: root.compact ? 0
+    readonly property real baseTextWidth: root.compact ? 0
         : (SettingsState.musicWidth <= 0
             ? 90
             : Math.max(90, SettingsState.musicWidth
                 - (root.coverSize + 10)))
+    // Las letras necesitan más ancho para no cortar cada verso. Aunque el
+    // usuario haya dejado el reproductor estrecho (por ejemplo, 140 px para
+    // título y artista), al activar letras se garantiza un mínimo legible;
+    // si lo había ensanchado más, se respeta su ancho.
+    readonly property real lyricTextWidth: root.compact ? 0
+        : Math.max(196, SettingsState.musicWidth - (root.coverSize + 10))
+    readonly property real textWidth: root.lyricsMode
+        ? root.lyricTextWidth : root.baseTextWidth
+
+    preferredWidth: root.compact ? 0
+        : (root.lyricsMode
+            ? Math.max(SettingsState.musicWidth, 240)
+            : SettingsState.musicWidth)
 
     onClicked: {
         const point = root.mapToItem(null, root.width / 2, root.height / 2);
@@ -114,7 +131,8 @@ Pill {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width
                 spacing: 0
-                visible: !root.hovered || !MusicState.available
+                visible: !root.lyricsMode
+                    && (!root.hovered || !MusicState.available)
 
                 Text {
                     width: parent.width
@@ -133,6 +151,51 @@ Pill {
                     font.family: Theme.fontFamily
                     font.pixelSize: 8
                     elide: Text.ElideRight
+                }
+            }
+
+            // Tres líneas de letra: la anterior y la siguiente en tono tenue,
+            // la actual en el color principal. Las alturas son fijas para que
+            // el widget no cambie de tamaño cuando una línea está vacía.
+            Column {
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width
+                spacing: 1
+                visible: root.lyricsMode
+                    && (!root.hovered || !MusicState.available)
+
+                Text {
+                    width: parent.width
+                    height: 9
+                    text: LyricsState.previousLine
+                    color: Theme.faint
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+                    elide: Text.ElideRight
+                    verticalAlignment: Text.AlignVCenter
+                }
+
+                Text {
+                    width: parent.width
+                    height: 11
+                    text: LyricsState.currentLine
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                    elide: Text.ElideRight
+                    verticalAlignment: Text.AlignVCenter
+                }
+
+                Text {
+                    width: parent.width
+                    height: 9
+                    text: LyricsState.nextLine
+                    color: Theme.muted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+                    elide: Text.ElideRight
+                    verticalAlignment: Text.AlignVCenter
                 }
             }
 

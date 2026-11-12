@@ -143,6 +143,28 @@ ShellRoot {
         }
     }
 
+    // Letras del widget de música:
+    //   qs ipc -c shell call lyrics toggle
+    //   qs ipc -c shell call lyrics enable true
+    //   qs ipc -c shell call lyrics refresh
+    IpcHandler {
+        target: "lyrics"
+
+        function toggle(): void {
+            SettingsState.lyricsEnabled = !SettingsState.lyricsEnabled;
+        }
+
+        function enable(value: string): void {
+            SettingsState.lyricsEnabled =
+                value === "1" || value === "true";
+        }
+
+        function refresh(): void {
+            LyricsState.checked = false;
+            LyricsState.request(MusicState.trackUrl);
+        }
+    }
+
     // Cambios de apariencia desde la terminal o desde un atajo:
     //   qs ipc -c shell call appearance toggle
     //   qs ipc -c shell call appearance mode light
