@@ -171,6 +171,9 @@ Singleton {
     // sin conexión durante estos minutos, se apaga para no gastar radio.
     property bool hotspotAutoOff: true
     property int hotspotMinutes: 15
+    // Clave del punto de acceso. Se genera una al azar en el primer arranque
+    // y se guarda aquí; nunca se publica una clave fija en el repositorio.
+    property string hotspotPassword: ""
     property bool wifiAutoOff: true
     property int wifiMinutes: 15
     // Mostrar la entrada para conectarse a una red Wi-Fi oculta.
@@ -759,6 +762,23 @@ Singleton {
         root.hotspotMinutes = Math.max(1, Math.min(120, value));
     }
 
+    // Clave aleatoria para el punto de acceso. Sin caracteres ambiguos
+    // (0/O, 1/l/I) para que se pueda leer del QR o dictar sin errores.
+    function randomHotspotPassword(): string {
+        const chars = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let out = "";
+        for (let i = 0; i < 12; i++)
+            out += chars.charAt(Math.floor(Math.random() * chars.length));
+        return out;
+    }
+
+    function setHotspotPassword(value: string): void {
+        // La configuración es línea a línea: un salto de línea partiría el
+        // archivo. Se limita a la longitud máxima de WPA2.
+        root.hotspotPassword = String(value || "")
+            .replace(/[\r\n]/g, "").slice(0, 63);
+    }
+
     function setWifiAutoOff(value: bool): void {
         root.wifiAutoOff = value;
     }
@@ -806,6 +826,7 @@ Singleton {
             + "notificationSound=%s\\n"
             + "hotspotAutoOff=%s\\n"
             + "hotspotMinutes=%s\\n"
+            + "hotspotPassword=%s\\n"
             + "wifiAutoOff=%s\\n"
             + "wifiMinutes=%s\\n"
             + "btAutoOff=%s\\n"
@@ -863,6 +884,7 @@ Singleton {
             root.notificationSound ? "1" : "0",
             root.hotspotAutoOff ? "1" : "0",
             root.hotspotMinutes,
+            root.hotspotPassword,
             root.wifiAutoOff ? "1" : "0",
             root.wifiMinutes,
             root.btAutoOff ? "1" : "0",
@@ -1049,6 +1071,7 @@ Singleton {
     }
     onHotspotAutoOffChanged: saveTimer.restart()
     onHotspotMinutesChanged: saveTimer.restart()
+    onHotspotPasswordChanged: saveTimer.restart()
     onWifiAutoOffChanged: saveTimer.restart()
     onWifiMinutesChanged: saveTimer.restart()
     onBtAutoOffChanged: saveTimer.restart()
@@ -1163,6 +1186,7 @@ Singleton {
             let shortcut = root.micShortcut;
             let hotspotOff = root.hotspotAutoOff;
             let hotspotMin = root.hotspotMinutes;
+            let hotspotPass = root.hotspotPassword;
             let wifiOff = root.wifiAutoOff;
             let wifiMin = root.wifiMinutes;
             let btOff = root.btAutoOff;
@@ -1314,6 +1338,8 @@ Singleton {
                     const parsed = parseInt(value, 10);
                     if (!isNaN(parsed))
                         btMin = Math.max(1, Math.min(120, parsed));
+                } else if (key === "hotspotPassword") {
+                    hotspotPass = value.slice(0, 63);
                 } else if (key === "workspaceModeDefault") {
                     wsModeDefault = value === "mosaic" ? "mosaic" : "floating";
                 } else if (key === "workspaceModes") {
@@ -1393,6 +1419,7 @@ Singleton {
             root.keyboardLayout = layout;
             root.hotspotAutoOff = hotspotOff;
             root.hotspotMinutes = hotspotMin;
+            root.hotspotPassword = hotspotPass;
             root.wifiAutoOff = wifiOff;
             root.wifiMinutes = wifiMin;
             root.btAutoOff = btOff;
@@ -1416,6 +1443,8 @@ Singleton {
             root.showHiddenWifi = hiddenWifi;
             BarState.restore(controlsOrder, centerOrderText);
             root.ready = true;
+            if (root.hotspotPassword.length === 0)
+                root.hotspotPassword = root.randomHotspotPassword();
             root.applyWindowChrome();
             root.applyWorkspaceModes();
             root.applySuperHoldDelay();

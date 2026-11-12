@@ -4723,7 +4723,7 @@ ColumnLayout {
                         font.family: Theme.fontFamily
                         font.pixelSize: 10
                         selectByMouse: true
-                        onTextEdited: HotspotState.password = text
+                        onTextEdited: SettingsState.setHotspotPassword(text)
                         background: Rectangle {
                             radius: 7
                             color: Theme.surface

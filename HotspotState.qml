@@ -13,7 +13,8 @@ Singleton {
     readonly property string connectionName: "shell-hotspot"
     // Por defecto, el nombre que verán otros equipos es el de esta máquina.
     property string ssid: HostInfo.displayName
-    property string password: "shell12345"
+    // Se genera y persiste en settings.conf; no hay clave fija en el código.
+    readonly property string password: SettingsState.hotspotPassword
     // Banda en la que emite el punto de acceso: "2.4" o "5".
     property string band: "2.4"
     // Red oculta: no aparece en la lista de redes de los demás equipos.
