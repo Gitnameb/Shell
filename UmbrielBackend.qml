@@ -311,24 +311,6 @@ Scope {
         return root.noteAction(action, true);
     }
 
-    // Ventana a pantalla completa en el mismo escritorio. La capa de mosaico
-    // queda debajo de la ventana a pantalla completa, así que una ficha
-    // mosaicada no se vería al pulsarla: hay que pasarla a flotante, que es la
-    // capa que Umbriel sube por encima del fullscreen.
-    function fullscreenWindowOnWorkspace(workspaceId): var {
-        const id = Number(workspaceId) || 0;
-        if (id <= 0)
-            return null;
-        const list = root.windows || [];
-        for (let i = 0; i < list.length; i++) {
-            const win = list[i];
-            if (win && win.fullscreen === true
-                    && Number(win.workspaceId) === id)
-                return win;
-        }
-        return null;
-    }
-
     function focusWindow(windowId): bool {
         const win = root.windowById(windowId);
         if (!win)
@@ -338,16 +320,6 @@ Scope {
         // entero, no devolvería la ventana a su escritorio.
         if (win.minimized)
             return root.restoreWindow(windowId);
-        const fullscreen = root.fullscreenWindowOnWorkspace(win.workspaceId);
-        // Si hay un juego a pantalla completa en este escritorio, flotar la
-        // ventana antes de enfocarla la deja visible por encima del juego.
-        // Para la propia ventana a pantalla completa o una que ya flota, el
-        // foco normal es suficiente.
-        if (fullscreen && String(fullscreen.address) !== String(win.address)
-                && win.fullscreen !== true && win.floating !== true) {
-            return root.run("umbriel msg window-focus " + root.quote(win.address)
-                + " && umbriel msg window-toggle-floating", "focusWindow");
-        }
         return root.run("umbriel msg window-focus " + root.quote(win.address),
             "focusWindow");
     }

@@ -870,13 +870,14 @@ Cambiar `WlrLayershell.layer` en caliente no funciona: Quickshell solo aplica la
 capa al crear la superficie, así que la barra nace en `Overlay` y el
 auto-ocultado es lo que evita tapar el juego.
 
-Con un juego a pantalla completa, pulsar la ficha de una ventana mosaicada del
-mismo escritorio la pasa a flotante antes de enfocarla. La capa de mosaico queda
-debajo de la ventana a pantalla completa; la flotante se sube por encima, así
-que la aplicación aparece y se puede usar sin sacar al juego de su modo. Si la
-ventana ya flota, está minimizada o es la propia ventana a pantalla completa, el
-clic solo enfoca o restaura como antes. La decisión se toma en
-`UmbrielBackend.qml` (`fullscreenWindowOnWorkspace` y `focusWindow`).
+Al pulsar la ficha de una ventana se enfoca tal cual, sin cambiar su modo. Antes,
+con un juego a pantalla completa, la ficha de una ventana mosaicada la pasaba a
+flotante para poder subirla por encima del juego. Ese rodeo ya no hace falta:
+el piloto de render fijo presenta el juego como una ventana normal aunque el
+cliente crea que está a pantalla completa, así que se puede redimensionar,
+mosaicar o sacar a ventana como cualquier otra, y las demás ventanas se ven por
+encima sin cambiar de modo. `focusWindow` en `UmbrielBackend.qml` solo enfoca o
+restaura.
 
 Con una ventana a pantalla completa, el menú contextual y el centro de control
 ocultan «Flotar» y «Maximizar»: la única acción de tamaño que queda es salir de
