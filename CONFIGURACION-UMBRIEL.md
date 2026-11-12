@@ -889,6 +889,19 @@ en modo ventana el área cliente la fija el juego, en fullscreen exclusivo cambi
 el modo de vídeo y el sistema solo respeta los estilos y límites que declara la
 aplicación.
 
+El piloto no se activa por suposiciones: pedir pantalla completa o declarar un
+aspecto no bastan, porque el propio cliente de Steam pide fullscreen un instante
+y luego se redimensiona como cualquier app. Se activa cuando la app no se deja
+redimensionar de verdad:
+
+- declara tamaño fijo (`min == max` en `WM_NORMAL_HINTS`);
+- su app id es de un juego (`steam_app_<id>`, `*.exe`, `wine*`);
+- o rechaza el tamaño del mosaico: pide tres veces seguidas otro tamaño, o al
+  cabo de 0,7 s su búfer sigue en otro tamaño. Entonces conserva su resolución y
+  la celda se escala, y de paso se corta el bucle de configures.
+
+Una app normal y `xterm` adoptan el tamaño del mosaico y no entran al piloto.
+
 Algunos juegos antiguos esperan arrancar directamente a pantalla completa y no
 toleran abrir en ventana. Para ellos se añade una regla `default_fullscreen =
 true`; es el caso de Alice: Madness Returns (`steam_app_19680`). Sin esa
