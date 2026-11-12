@@ -110,10 +110,6 @@ PanelWindow {
     readonly property string timerPath: Quickshell.env("HOME")
         + "/.config/shell/timer.conf"
 
-    function pad(value): string {
-        return value < 10 ? "0" + value : "" + value;
-    }
-
     function shiftMonth(delta): void {
         root.commitEditors();
         shownMonth = new Date(shownMonth.getFullYear(), shownMonth.getMonth() + delta, 1);
@@ -233,8 +229,8 @@ PanelWindow {
     function formatAlarm(value): string {
         const total = Math.max(0, Math.min(23 * 3600 + 59 * 60,
             Math.round(value)));
-        return root.pad(Math.floor(total / 3600)) + ":"
-            + root.pad(Math.floor((total % 3600) / 60));
+        return Format.pad(Math.floor(total / 3600)) + ":"
+            + Format.pad(Math.floor((total % 3600) / 60));
     }
 
     function updateAlarm(index, field, value): void {
@@ -255,7 +251,7 @@ PanelWindow {
         root.commitEditors();
         const next = new Date();
         next.setHours(next.getHours() + 1, 0, 0, 0);
-        const time = root.pad(next.getHours()) + ":" + root.pad(next.getMinutes());
+        const time = Format.pad(next.getHours()) + ":" + Format.pad(next.getMinutes());
         root.alarms = root.alarms.concat([{ time: time, label: "Alarma", enabled: true }]);
     }
 
@@ -282,8 +278,8 @@ PanelWindow {
     }
 
     function checkAlarms(): void {
-        const stamp = root.pad(now.date.getHours()) + ":"
-            + root.pad(now.date.getMinutes());
+        const stamp = Format.pad(now.date.getHours()) + ":"
+            + Format.pad(now.date.getMinutes());
         if (root.alarmMinute !== stamp) {
             root.alarmMinute = stamp;
             root.firedAlarms = ({});

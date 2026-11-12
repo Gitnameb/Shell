@@ -27,13 +27,9 @@ Singleton {
     readonly property string scriptPath:
         (Quickshell.shellDir || "") + "/scripts/shell-calendar"
 
-    function pad(value): string {
-        return value < 10 ? "0" + value : "" + value;
-    }
-
     function key(date): string {
-        return date.getFullYear() + "-" + pad(date.getMonth() + 1)
-            + "-" + pad(date.getDate());
+        return date.getFullYear() + "-" + Format.pad(date.getMonth() + 1)
+            + "-" + Format.pad(date.getDate());
     }
 
     function firstOfMonth(date): var {

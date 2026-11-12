@@ -28,10 +28,6 @@ Item {
     implicitWidth: label.implicitWidth
     implicitHeight: label.implicitHeight + 2
 
-    function pad(number): string {
-        return number < 10 ? "0" + number : "" + number;
-    }
-
     // Formato en reposo. Temporizador: «25:00» o «1:05:09». Alarma: «09:30».
     function compact(total): string {
         const value = Math.max(0, Math.floor(total));
@@ -39,10 +35,10 @@ Item {
         const minutes = Math.floor((value % 3600) / 60);
         const secs = value % 60;
         if (!root.showSeconds)
-            return root.pad(hours) + ":" + root.pad(minutes);
+            return Format.pad(hours) + ":" + Format.pad(minutes);
         if (hours > 0)
-            return hours + ":" + root.pad(minutes) + ":" + root.pad(secs);
-        return minutes + ":" + root.pad(secs);
+            return hours + ":" + Format.pad(minutes) + ":" + Format.pad(secs);
+        return minutes + ":" + Format.pad(secs);
     }
 
     // Los dígitos escritos, agrupados de derecha a izquierda.
