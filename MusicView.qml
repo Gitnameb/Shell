@@ -179,6 +179,9 @@ ColumnLayout {
             id: seek
 
             Layout.fillWidth: true
+            // Sin duración conocida (directos) no hay progreso que mostrar:
+            // con `to` en 1 s la barra se llenaba entera al poco de empezar.
+            visible: MusicState.length > 0
             from: 0
             to: Math.max(1, MusicState.length)
             stepSize: 1

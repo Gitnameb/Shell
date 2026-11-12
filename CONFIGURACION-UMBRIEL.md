@@ -908,6 +908,25 @@ true`; es el caso de Alice: Madness Returns (`steam_app_19680`). Sin esa
 excepción, el juego se queda esperando y al volver a fullscreen puede centrar su
 buffer pequeño con bordes negros.
 
+### 19.2 Ficha de música
+
+- La portada ocupa el alto de la píldora (`Theme.itemHeight`, 34 px; 28 en la
+  barra vertical), como el logotipo de la distribución, en vez de los 22 px de
+  un icono suelto. Sin carátula, la nota de respaldo se dibuja a 22 px.
+- El hover de `Pill` se lee con un `HoverHandler`, no con
+  `mouse.containsMouse`: el `MouseArea` de la píldora vive debajo del contenido
+  (`z: -1`) para no robar clics, así que al pasar sobre anterior, play o
+  siguiente dejaba de estar «dentro»; los controles se ocultaban, el puntero
+  volvía a caer sobre la ficha y todo parpadeaba en bucle. El `HoverHandler`
+  sigue el puntero sobre toda la píldora, incluidos los controles hijos.
+- La barra de progreso avanza con un reloj local y se resincroniza con
+  `MprisPlayer.position`: al buscar en la app de origen (MPRIS emite
+  `positionChanged`), al cambiar de pista y cada 2 s para corregir la deriva.
+  La corrección periódica solo se aplica si el reproductor demuestra que
+  actualiza `Position`; Firefox la deja congelada mientras suena y ahí manda el
+  reloj local. Se respeta también `rate`. Si no hay duración conocida
+  (directos), el deslizador se oculta en vez de mostrarse lleno.
+
 ## 20. Limpieza de dependencias
 
 Además de `foot` e `Inter Variable`:

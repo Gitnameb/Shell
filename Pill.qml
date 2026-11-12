@@ -18,7 +18,12 @@ Rectangle {
     // Ancho mínimo solicitado por el widget. La música lo usa para poder
     // alargarse manteniendo Super sin dejar de encogerse con su contenido.
     property real preferredWidth: 0
-    readonly property bool hovered: mouse.containsMouse
+    // El hover se lee con un HoverHandler y no con `mouse.containsMouse`: el
+    // MouseArea vive por debajo del contenido (z: -1) para no robar clics, así
+    // que al pasar sobre un control hijo la ficha dejaba de contar como
+    // hovered, volvía al estado de reposo y el puntero entraba y salía en
+    // bucle (parpadeo).
+    readonly property bool hovered: hoverSensor.hovered
     signal clicked()
     signal dragStarted()
     signal dragFinished()
@@ -56,6 +61,12 @@ Rectangle {
         id: row
         anchors.centerIn: parent
         spacing: 6
+    }
+
+    // Detecta el puntero sobre toda la píldora, incluidos los controles hijos.
+    // No consume clics ni el hover de los MouseArea de dentro.
+    HoverHandler {
+        id: hoverSensor
     }
 
     // Traduce un punto del widget a coordenadas globales de la pantalla. La

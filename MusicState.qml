@@ -69,14 +69,26 @@ Singleton {
         && root.player.trackArtUrl ? root.player.trackArtUrl : ""
     readonly property real length: root.player
         && root.player.length > 0 ? root.player.length : 0
+    // Position de MPRIS tal como la notifica el reproductor. Solo cambia en
+    // saltos no lineales (buscar, cambiar de pista); no sirve para avanzar la
+    // barra segundo a segundo.
     readonly property real reportedPosition: root.player
         && root.player.position > 0 ? root.player.position : 0
 
-    // La posición MPRIS no siempre emite cambios (Firefox, por ejemplo, no
-    // actualiza Position). Se avanza localmente mientras suena y se resincroniza
-    // al cambiar de pista o al buscar.
+    // La barra avanza con un reloj local y se resincroniza con la posición
+    // real del reproductor: al buscar (MPRIS emite positionChanged), al
+    // cambiar de pista y cada pocos segundos para corregir la deriva. Leer
+    // `position` devuelve siempre el valor actual aunque Quickshell no emita
+    // cambios cada segundo.
     property real displayPosition: 0
     property double lastTickMs: 0
+    // Última lectura del reproductor y si su Position avanza de verdad.
+    // Algunos reproductores (Firefox) la dejan congelada mientras suena; en
+    // ese caso manda el reloj local y no se corrige hacia atrás.
+    property real lastPolledPosition: -1
+    property bool playerPositionLive: false
+    property int positionPollTick: 0
+
     readonly property real position: root.displayPosition
     readonly property bool canGoNext: root.player !== null
         && root.player.canGoNext
@@ -92,9 +104,47 @@ Singleton {
         root.resetPosition();
     }
 
-    function resetPosition(): void {
-        root.displayPosition = root.reportedPosition;
+    // Posición actual del reproductor, o -1 si no la expone.
+    function currentPlayerPosition(): real {
+        if (!root.player)
+            return -1;
+        const value = root.player.position;
+        return (isFinite(value) && value >= 0) ? value : -1;
+    }
+
+    function adoptPosition(seconds: real): void {
+        if (!isFinite(seconds) || seconds < 0)
+            return;
+        root.displayPosition = root.length > 0
+            ? Math.min(root.length, seconds) : seconds;
         root.lastTickMs = Date.now();
+    }
+
+    function resetPosition(): void {
+        const actual = root.currentPlayerPosition();
+        root.displayPosition = actual > 0 ? actual : 0;
+        if (root.length > 0)
+            root.displayPosition = Math.min(root.length, root.displayPosition);
+        root.lastTickMs = Date.now();
+        root.lastPolledPosition = actual;
+        root.playerPositionLive = false;
+        root.positionPollTick = 0;
+    }
+
+    // Contrasta el reloj local con la posición real. Solo corrige cuando el
+    // reproductor demuestra que actualiza Position y la diferencia ya se nota,
+    // para no dar saltos atrás con los que la dejan congelada.
+    function pollPlayerPosition(): void {
+        const actual = root.currentPlayerPosition();
+        if (actual < 0)
+            return;
+        if (root.lastPolledPosition >= 0
+                && Math.abs(actual - root.lastPolledPosition) > 0.05)
+            root.playerPositionLive = true;
+        root.lastPolledPosition = actual;
+        if (root.playerPositionLive
+                && Math.abs(actual - root.displayPosition) > 1.5)
+            root.adoptPosition(actual);
     }
 
     function toggle(): void {
@@ -151,8 +201,18 @@ Singleton {
     onPlayerChanged: root.resetPosition()
     onTitleChanged: root.resetPosition()
     onPlayingChanged: {
-        if (root.playing)
+        if (root.playing) {
             root.lastTickMs = Date.now();
+            root.positionPollTick = 0;
+        }
+    }
+
+    // Un salto no lineal en MPRIS (buscar en la app de origen, cambiar de
+    // pista) sí emite positionChanged: se adopta en el acto.
+    onReportedPositionChanged: {
+        const actual = root.currentPlayerPosition();
+        if (actual >= 0 && Math.abs(actual - root.displayPosition) > 0.75)
+            root.adoptPosition(actual);
     }
 
     // Inicializa la posición cuando el singleton arranca con un reproductor ya
@@ -175,11 +235,19 @@ Singleton {
             const now = Date.now();
             const elapsed = (now - root.lastTickMs) / 1000;
             root.lastTickMs = now;
+            const rate = root.player.rate > 0 ? root.player.rate : 1;
             if (root.length > 0)
                 root.displayPosition = Math.min(root.length,
-                    root.displayPosition + elapsed);
+                    root.displayPosition + elapsed * rate);
             else
-                root.displayPosition += elapsed;
+                root.displayPosition += elapsed * rate;
+
+            // Cada 2 s, contrasta con la posición real del reproductor.
+            root.positionPollTick++;
+            if (root.positionPollTick >= 4) {
+                root.positionPollTick = 0;
+                root.pollPlayerPosition();
+            }
         }
     }
 }

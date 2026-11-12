@@ -21,16 +21,21 @@ Pill {
     // artista no caben en 44 px.
     readonly property bool compact: SettingsState.barVertical
     preferredWidth: root.compact ? 0 : SettingsState.musicWidth
+    // Portada a la altura del botón, como el logotipo de la distribución:
+    // llena la píldora en vez de quedar del tamaño de los iconos pequeños.
+    // En la barra vertical se ajusta al tamaño del resto de fichas.
+    readonly property real coverSize: root.compact ? 28 : Theme.itemHeight
+    readonly property real coverRadius: root.compact ? 6 : 8
     // Ancho del bloque de texto. Se calcula desde el ancho elegido, nunca
     // desde root.width: si dependiera del ancho real, la píldora y su
     // contenido se darían tamaño mutuamente y la barra temblaría al
-    // mantener Super. La suma fija es portada (barIconSize) + espacio (4) +
+    // mantener Super. La suma fija es portada (coverSize) + espacio (4) +
     // relleno horizontal (3 + 3).
     readonly property real textWidth: root.compact ? 0
         : (SettingsState.musicWidth <= 0
             ? 90
             : Math.max(90, SettingsState.musicWidth
-                - (SettingsState.barIconSize + 10)))
+                - (root.coverSize + 10)))
 
     onClicked: {
         const point = root.mapToItem(null, root.width / 2, root.height / 2);
@@ -47,10 +52,11 @@ Pill {
             id: cover
 
             anchors.verticalCenter: parent.verticalCenter
-            // Portada del mismo alto que el resto de iconos de la barra.
-            width: SettingsState.barIconSize
-            height: SettingsState.barIconSize
-            radius: 6
+            // La portada ocupa el alto del botón, como el logotipo de la
+            // distribución, no el de un icono suelto.
+            width: root.coverSize
+            height: root.coverSize
+            radius: root.coverRadius
             color: Theme.surfaceAlt
             clip: true
 
@@ -79,7 +85,7 @@ Pill {
                 visible: !coverImage.visible
                 source: ShellIcons.src("music")
                 color: Theme.accent
-                size: Math.min(18, SettingsState.barIconSize)
+                size: Math.min(22, root.coverSize - 8)
                 normalize: true
                 fallback: "♪"
             }
@@ -90,7 +96,7 @@ Pill {
                 id: coverMask
 
                 anchors.fill: parent
-                radius: 6
+                radius: root.coverRadius
                 color: "white"
                 visible: false
                 layer.enabled: true
