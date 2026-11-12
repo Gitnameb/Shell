@@ -88,10 +88,36 @@ Singleton {
         root.notificationId = "";
     }
 
+    // El demonio shell-alarms avisa por su cuenta cuando el shell no estaba
+    // abierto (por ejemplo, justo al encender el equipo). Ese sonido no lo
+    // controla este singleton, así que el reloj le pide que se detenga.
+    function stopExternal(): void {
+        // Solo hay un proceso a la vez; reiniciarlo fuerza una nueva consulta
+        // aunque una parada anterior siguiera en marcha.
+        externalStop.running = false;
+        externalStop.running = true;
+    }
+
+    // Retira los avisos que dejó el demonio. Sin esto, el sonido externo
+    // podría seguir hasta que caducara su propio plazo de seguridad.
+    function dismissExternal(): void {
+        const list = NotificationState.items || [];
+        for (let i = list.length - 1; i >= 0; i--) {
+            const item = list[i];
+            const app = String(item.appName || "");
+            const summary = String(item.summary || "");
+            if (app === "Shell"
+                    && (summary === "Alarma" || summary === "Temporizador"))
+                item.dismiss();
+        }
+    }
+
     // Silencia y retira el aviso: al pulsar el reloj o al abrir el calendario.
     function stop(): void {
         root.stopSound();
         root.dismissNotification();
+        root.dismissExternal();
+        root.stopExternal();
     }
 
     function checkDismissed(): void {
@@ -141,6 +167,14 @@ Singleton {
     }
 
     Component.onCompleted: playerCheck.running = true
+
+    // Detiene el aviso del demonio shell-alarms (ver stopExternal).
+    Process {
+        id: externalStop
+
+        command: ["python3", (Quickshell.shellDir || "")
+            + "/scripts/shell-alarms", "--stop"]
+    }
 
     Process {
         id: notifyProc

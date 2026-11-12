@@ -165,6 +165,16 @@ ShellRoot {
         }
     }
 
+    // Alarmas y temporizador:
+    //   qs ipc -c shell call alarm stop
+    IpcHandler {
+        target: "alarm"
+
+        function stop(): void {
+            AlarmState.stop();
+        }
+    }
+
     // Cambios de apariencia desde la terminal o desde un atajo:
     //   qs ipc -c shell call appearance toggle
     //   qs ipc -c shell call appearance mode light

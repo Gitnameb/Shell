@@ -583,6 +583,15 @@ y nieve.
   calendario. Hay un límite de seguridad de 10 minutos.
 - Con el shell cerrado, `scripts/shell-alarms` usa `notify-send -w` (o un
   diálogo de KDialog/Zenity) y mantiene el sonido hasta que se cierra el aviso.
+- Si una alarma vence justo al encender el equipo, el demonio espera hasta
+  25 s a que `qs` arranque antes de avisar por su cuenta. Así no se solapan el
+  aviso del panel y el del demonio, y el reloj puede atenderlo como siempre.
+- Mientras el demonio avisa, anota el pid del sonido y el del diálogo en
+  `$XDG_RUNTIME_DIR/shell-alarm-<uid>.state`. Al pulsar el reloj,
+  `AlarmState` ejecuta `shell-alarms --stop`, que termina ambos procesos y
+  retira el aviso en vez de esperar al límite de seguridad. Antes, si la
+  alarma había vencido antes de que arrancara el shell, el reloj solo detenía
+  la copia de `AlarmState` y el sonido del demonio seguía hasta 15 minutos.
 
 ## 15. Bloqueo de pantalla
 

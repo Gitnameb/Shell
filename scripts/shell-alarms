@@ -12,6 +12,7 @@ diálogo visible (KDialog o Zenity).
 Opciones (para pruebas):
   --once    evalúa una sola vez y termina
   --force   avisa aunque el shell esté abierto
+  --stop    detiene el aviso que esté sonando fuera del shell
 """
 
 from __future__ import annotations
@@ -26,6 +27,10 @@ import time
 from pathlib import Path
 
 POLL_SECONDS = 20
+# Al entrar en la sesión, qs puede tardar unos segundos en arrancar. Si una
+# alarma vence justo en ese momento, esperamos a que el shell aparezca para no
+# avisar dos veces: el panel del reloj ya se encarga cuando está abierto.
+SHELL_GRACE_SECONDS = 25
 SOUND = "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"
 TIMER_SOUND = "/usr/share/sounds/freedesktop/stereo/complete.oga"
 
@@ -85,6 +90,107 @@ def shell_running() -> bool:
     return bool(result.stdout.strip())
 
 
+def grace_seconds() -> int:
+    """Segundos de espera al arrancar. La variable existe para las pruebas."""
+    value = os.environ.get("SHELL_ALARM_SHELL_GRACE", "")
+    try:
+        return max(0, int(value))
+    except ValueError:
+        return SHELL_GRACE_SECONDS
+
+
+def wait_for_shell() -> bool:
+    """Espera a que qs arranque antes de avisar por nuestra cuenta.
+
+    En un inicio de sesión, el servicio y el shell compiten. Si la alarma
+    vence en ese hueco, el demonio avisaba con kdialog/zenity y su sonido no
+    podía pararse desde el reloj del shell, que todavía no estaba abierto.
+    """
+    deadline = time.monotonic() + grace_seconds()
+    while True:
+        if shell_running():
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.5)
+
+
+def state_path() -> Path:
+    """Archivo con el grupo de procesos del aviso externo en curso."""
+    base = os.environ.get("XDG_RUNTIME_DIR", "") or "/tmp"
+    return Path(base) / f"shell-alarm-{os.getuid()}.state"
+
+
+def mark_state(sound: int = 0, dialog: int = 0) -> None:
+    """Anota los procesos del aviso en curso.
+
+    El sonido y el aviso son procesos distintos: el diálogo o `notify-send`
+    lo lanza el propio demonio, así que matar solo el bucle de sonido dejaría
+    una ventana abierta. Se guardan ambos para que `--stop` cierre todo.
+    """
+    lines = []
+    if sound > 0:
+        lines.append(f"sound={sound}")
+    if dialog > 0:
+        lines.append(f"dialog={dialog}")
+    # Se escribe de forma atómica para que el shell nunca lea un pid a medias.
+    try:
+        path = state_path()
+        temp = path.with_name(path.name + ".tmp")
+        temp.write_text("\n".join(lines) + "\n", encoding="ascii")
+        os.replace(temp, path)
+    except OSError:
+        pass
+
+
+def clear_active() -> None:
+    try:
+        state_path().unlink()
+    except OSError:
+        pass
+
+
+def stop_active() -> None:
+    """Detiene el aviso que esté sonando fuera del shell.
+
+    El reloj de la barra ejecuta `shell-alarms --stop`. Se comprueba que el
+    pid siga siendo un reproductor o un diálogo de alarma para no matar un
+    proceso reciclado.
+    """
+    try:
+        lines = state_path().read_text(encoding="ascii").splitlines()
+    except OSError:
+        return
+    markers = (
+        b"shell-alarm", b"pw-play", b"paplay", b"canberra-gtk-play",
+        b"notify-send", b"kdialog", b"zenity",
+    )
+    for line in lines:
+        _, _, value = line.partition("=")
+        try:
+            pid = int(value.strip())
+        except ValueError:
+            continue
+        if pid <= 0:
+            continue
+        try:
+            command = Path(f"/proc/{pid}/cmdline").read_bytes()
+            command = command.replace(b"\x00", b" ")
+        except OSError:
+            continue
+        # Si el pid ya no es un proceso de alarma, se ignora: podría haberse
+        # reciclado para otro programa.
+        if not any(marker in command for marker in markers):
+            continue
+        try:
+            os.killpg(pid, signal.SIGTERM)
+        except OSError:
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except OSError:
+                pass
+
+
 def play_loop(sound: str = SOUND, event: str = "alarm-clock-elapsed") -> subprocess.Popen | None:
     """Repite el sonido hasta que se pare el proceso."""
     # pw-play viene con PipeWire, que el shell ya necesita. paplay solo queda
@@ -99,8 +205,11 @@ def play_loop(sound: str = SOUND, event: str = "alarm-clock-elapsed") -> subproc
         "|| sleep 1; done"
     )
     try:
+        # $0 lleva un nombre reconocible: `--stop` lo usa para comprobar que
+        # el grupo de procesos sigue siendo el de la alarma y no un pid
+        # reutilizado por otro programa.
         return subprocess.Popen(
-            ["sh", "-c", script, "shell", sound, event],
+            ["sh", "-c", script, "shell-alarm", sound, event],
             start_new_session=True,
         )
     except OSError:
@@ -135,16 +244,25 @@ def run_with_sound(
     event: str = "alarm-clock-elapsed",
 ) -> bool:
     process = play_loop(sound, event)
+    if process is not None:
+        mark_state(sound=process.pid)
+    dialog = None
     try:
-        subprocess.run(command, timeout=timeout)
-        return True
-    except subprocess.TimeoutExpired:
-        # Quince minutos de aviso son suficientes aunque nadie lo cierre.
+        dialog = subprocess.Popen(command, start_new_session=True)
+        mark_state(sound=process.pid if process is not None else 0,
+                   dialog=dialog.pid)
+        try:
+            dialog.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            # Quince minutos de aviso son suficientes aunque nadie lo cierre.
+            pass
         return True
     except OSError:
         return False
     finally:
         stop_loop(process)
+        stop_loop(dialog)
+        clear_active()
 
 
 def notify(
@@ -186,9 +304,16 @@ def play_sound(sound: str = SOUND, event: str = "alarm-clock-elapsed") -> None:
     ):
         if shutil.which(command[0]):
             try:
-                subprocess.Popen(command)
+                process = subprocess.Popen(command, start_new_session=True)
             except OSError:
                 continue
+            mark_state(sound=process.pid)
+            try:
+                process.wait(timeout=30)
+            except (OSError, subprocess.TimeoutExpired):
+                stop_loop(process)
+            finally:
+                clear_active()
             return
 
 
@@ -233,16 +358,26 @@ def run(once: bool, force: bool) -> int:
         stamp = now.strftime("%H:%M")
         today = now.strftime("%Y-%m-%d")
 
-        if force or not shell_running():
-            for at, label in due(load_alarms(alarms_path()), stamp):
+        pending = due(load_alarms(alarms_path()), stamp)
+        deadline = timer_deadline(timer_path())
+        timer_due = deadline > 0 and deadline <= int(time.time())
+
+        # Con el shell en marcha, el panel del reloj es quien avisa y suena.
+        # Si estamos arrancando la sesión, damos un margen para que qs
+        # aparezca antes de reclamar la alarma para nosotros.
+        shell_alive = False if force else shell_running()
+        if not force and not shell_alive and (pending or timer_due):
+            shell_alive = wait_for_shell()
+
+        if not shell_alive:
+            for at, label in pending:
                 key = (today, at, label)
                 if key in fired:
                     continue
                 fired.add(key)
                 notify("Alarma", f"{label} · {at}")
 
-            deadline = timer_deadline(timer_path())
-            if deadline > 0 and deadline <= int(time.time()):
+            if timer_due:
                 fire_timer(timer_path())
 
         # Solo hace falta recordar lo disparado durante el día actual.
@@ -254,6 +389,9 @@ def run(once: bool, force: bool) -> int:
 
 
 def main() -> int:
+    if "--stop" in sys.argv[1:]:
+        stop_active()
+        return 0
     once = "--once" in sys.argv[1:]
     force = "--force" in sys.argv[1:]
     try:
