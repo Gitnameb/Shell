@@ -27,6 +27,18 @@ Orden acordado:
    commits antiguos aunque se borren del árbol actual; en ese caso conviene
    squashear o recrear el repositorio.
 
+Progreso (2026-11-12):
+
+- Hecho: dependencias que faltaban (`grim`, `slurp`, `fonts-noto-cjk`,
+  `brightnessctl`, `python3`, `curl`), capturas sin depender de `~/Shell`,
+  detección del conector de salida, clave aleatoria del hotspot, `Format.qml`
+  para el padding, parche del edit regenerado, rutas `/home/username` fuera de
+  QML, iconos y unidad de servicio duplicados eliminados, y pruebas de scripts.
+- Pendiente: decidir si los documentos internos (`CONTEXTO.md`, `PENDIENTES.md`,
+  `PLAN*.md`) se sanitizan o se sacan del repositorio público. `--with-firmware`
+  sigue siendo una lista de referencia Intel/AMD; no se detecta el hardware.
+- Pendiente: historial de Git (squash o repositorio nuevo).
+
 ## Estado al cerrar esta sesión
 
 - **Iconos y tamaño uniforme de la barra (2026-11-09).** `cpu`, `dns` y
