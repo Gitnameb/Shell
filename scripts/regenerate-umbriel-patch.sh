@@ -41,8 +41,8 @@ Opciones:
   --output FILE       Parche de salida (por defecto umbriel-edit.patch)
   -h, --help          Muestra esta ayuda
 
-El parche incluye los cambios del árbol actual del edit, no solo los commits:
-si hay cambios sin confirmar, también entran.
+El parche se genera desde los commits del edit. Confirma cualquier cambio
+pendiente antes de ejecutarlo.
 EOF
 }
 
@@ -75,26 +75,15 @@ git -C "$tmp" init -q
 git -C "$tmp" add -A
 git -C "$tmp" -c user.email=patch@local -c user.name=patch commit -qm base
 
-# 2. El árbol actual del edit encima. `git archive` incluye solo lo rastreado;
-# el estado sin confirmar se añade después con rsync/diff, si existe.
+# 2. El árbol actual del edit encima. `git archive` solo incluye lo
+# confirmado; un árbol sucio produciría un parche que no coincide con lo que
+# se probó, así que se rechaza.
+if [[ -n "$(git -C "$SOURCE_DIR" status --porcelain)" ]]; then
+    die "Hay cambios sin confirmar en $SOURCE_DIR; confírmalos antes de regenerar."
+fi
 find "$tmp" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
 git -C "$SOURCE_DIR" archive HEAD | tar -x -C "$tmp"
 git -C "$tmp" add -A
-
-# 3. Los cambios sin confirmar también forman parte del árbol reproducible.
-if [[ -n "$(git -C "$SOURCE_DIR" status --porcelain)" ]]; then
-    while IFS= read -r -d '' file; do
-        rel=${file#"$SOURCE_DIR"/}
-        if [[ -e "$SOURCE_DIR/$rel" ]]; then
-            mkdir -p "$(dirname "$tmp/$rel")"
-            cp -a "$SOURCE_DIR/$rel" "$tmp/$rel"
-        else
-            rm -f "$tmp/$rel"
-        fi
-    done < <(git -C "$SOURCE_DIR" status --porcelain -z \
-        | tr '\0' '\n' | cut -c4- | tr '\n' '\0')
-    git -C "$tmp" add -A
-fi
 
 git -C "$tmp" diff --cached --binary >"$tmp/patch"
 
