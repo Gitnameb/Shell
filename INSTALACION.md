@@ -196,12 +196,22 @@ sudo apt install \
   iputils-ping wl-clipboard cliphist udiskie udisks2 ntfs-3g exfatprogs \
   qml6-module-qtquick-effects \
   qml6-module-qt-labs-folderlistmodel \
+  xdg-utils desktop-file-utils \
   xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-kde \
   xwayland
 ```
 
 `--no-install-recommends` en el greeter evita que `fonts-noctalia-tabler`
 arrastre el paquete `noctalia` completo; este escritorio usa Umbriel.
+
+`xdg-desktop-menu` (de `xdg-utils`) es el que registra el lanzador de muchos
+`.deb` desde su postinst, y exige que existan `/etc/xdg/menus` y
+`/usr/share/desktop-directories`. Un Debian mínimo no los trae y el postinst
+falla con «No writable system menu directory found»: la app queda instalada
+pero no aparece en el lanzador (le pasa a Spotify, por ejemplo).
+`install-packages.sh` crea ambos directorios antes de instalar paquetes y
+registra después los `.desktop` que hayan quedado sueltos en
+`/usr/share/<app>/`.
 
 La lista completa, separada por capas y con notas sobre lo que no hace falta,
 está en `install/packages.txt`.

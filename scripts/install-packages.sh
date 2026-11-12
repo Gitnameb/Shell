@@ -137,6 +137,7 @@ RUNTIME_PKGS=(
     iputils-ping wl-clipboard cliphist udiskie udisks2 ntfs-3g exfatprogs usbutils python3 curl
     qml6-module-qtquick-effects
     qml6-module-qt-labs-folderlistmodel
+    xdg-utils desktop-file-utils
     xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-kde
     xwayland
 )
@@ -163,8 +164,77 @@ FIRMWARE_PKGS=(
 )
 
 # ---------------------------------------------------------------------------
+# Registro de lanzadores
+# ---------------------------------------------------------------------------
+# Muchos .deb publican su .desktop desde el postinst con `xdg-desktop-menu`.
+# Ese script exige un directorio de menús (/etc/xdg/menus) y otro de
+# directorios de escritorio (/usr/share/desktop-directories) escribibles. Un
+# Debian 13 mínimo no trae ninguno de los dos y el postinst falla con
+# «No writable system menu directory found»: el binario y los iconos quedan
+# instalados, pero la app no aparece en el lanzador. Le pasa a Spotify y a
+# cualquier otro paquete que use xdg-desktop-menu. Los directorios se crean
+# antes de instalar nada para que los postinst de esta misma ejecución
+# funcionen.
+ensure_desktop_menu_dirs() {
+    local dir
+    for dir in /etc/xdg/menus /usr/share/desktop-directories; do
+        if [[ -d "$dir" ]]; then
+            continue
+        fi
+        log "Creando $dir para registrar los lanzadores de las apps."
+        run_sudo install -d -m755 "$dir"
+    done
+}
+
+# Si el postinst de una app ya falló (o se instaló antes de que existieran esos
+# directorios), su .desktop sigue en /usr/share/<app>/ y no en
+# /usr/share/applications. Se registran los que falten mirando solo los
+# paquetes cuyo postinst usa xdg-desktop-menu: así no se cuelan .desktop de
+# autostart, sesiones de escritorio ni atajos de KDE, que también declaran
+# Type=Application pero no son lanzadores.
+register_orphan_desktop_entries() {
+    local postinst pkg file base
+    local registered=0
+    for postinst in /var/lib/dpkg/info/*.postinst; do
+        [[ -f "$postinst" ]] || continue
+        grep -q 'xdg-desktop-menu' "$postinst" 2>/dev/null || continue
+        pkg=${postinst##*/}
+        pkg=${pkg%.postinst}
+        while IFS= read -r file; do
+            if [[ "$file" != *.desktop || "$file" == /usr/share/applications/* ]]; then
+                continue
+            fi
+            if ! grep -q '^Type=Application' "$file" 2>/dev/null; then
+                continue
+            fi
+            base=${file##*/}
+            if [[ -e "/usr/share/applications/$base" ]]; then
+                continue
+            fi
+            log "Registrando el lanzador $base (paquete $pkg)."
+            # XDG_DATA_DIRS/XDG_CONFIG_DIRS explícitos: sudo puede heredar los
+            # del usuario (por ejemplo, los exports de Flatpak) y
+            # xdg-desktop-menu elegiría el primer directorio escribible, que
+            # como root es cualquiera.
+            if ! run_sudo env XDG_DATA_DIRS=/usr/local/share:/usr/share XDG_CONFIG_DIRS=/etc/xdg \
+                xdg-desktop-menu install --novendor "$file"; then
+                warn "No se pudo registrar $base."
+                continue
+            fi
+            registered=1
+        done < <(dpkg-query -L "$pkg" 2>/dev/null)
+    done
+    if (( registered )); then
+        run_sudo env XDG_DATA_DIRS=/usr/local/share:/usr/share \
+            update-desktop-database /usr/share/applications \
+            || warn "No se pudo actualizar la caché de lanzadores."
+    fi
+}
+
+# ---------------------------------------------------------------------------
 # Instalación
 # ---------------------------------------------------------------------------
+ensure_desktop_menu_dirs
 ensure_repos
 
 log "Actualizando los índices de apt."
@@ -244,6 +314,10 @@ if (( WITH_FIRMWARE )); then
     log "Instalando firmware y drivers de este equipo."
     run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "${FIRMWARE_PKGS[@]}"
 fi
+
+# Apps cuyo postinst no pudo registrar su lanzador antes de crear los
+# directorios de xdg-desktop-menu.
+register_orphan_desktop_entries
 
 log "Habilitando los servicios del sistema."
 # SDDM queda instalado y habilitado como respaldo. scripts/install-greeter.sh

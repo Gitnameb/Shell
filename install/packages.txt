@@ -63,8 +63,16 @@ sudo apt install \
   cliphist udiskie udisks2 ntfs-3g exfatprogs usbutils \
   qml6-module-qtquick-effects \
   qml6-module-qt-labs-folderlistmodel \
+  xdg-utils desktop-file-utils \
   xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-kde \
   xwayland
+
+# xdg-utils y desktop-file-utils son los que usan los postinst de los .deb para
+# publicar su lanzador. Además, xdg-desktop-menu exige que existan
+# /etc/xdg/menus y /usr/share/desktop-directories; install-packages.sh los crea
+# antes de instalar paquetes. Sin ellos, un .deb como Spotify deja el binario y
+# los iconos instalados pero no aparece en el lanzador («No writable system menu
+# directory found»).
 
 # wpasupplicant es imprescindible para que NetworkManager pueda escanear y
 # conectar Wi-Fi; network-manager solo lo recomienda. rfkill permite comprobar
