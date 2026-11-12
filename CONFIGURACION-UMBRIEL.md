@@ -1233,8 +1233,9 @@ causas medidas en este equipo, por orden de impacto:
 
 ### Biblioteca de Steam en ntfs-3g (FUSE)
 
-La biblioteca está en `/mnt/SSD1T`, montada con `ntfs-3g`. Es un sistema de
-archivos en espacio de usuario y cada acceso pasa por FUSE:
+La biblioteca puede estar en un disco NTFS montado en `/mnt/<etiqueta>` con
+`ntfs-3g`. Es un sistema de archivos en espacio de usuario y cada acceso pasa
+por FUSE:
 
 ```text
 ntfs-3g: 1500 stats en 393 ms (0,26 ms/archivo)

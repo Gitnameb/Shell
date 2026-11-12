@@ -293,7 +293,7 @@ hacen falta además las librerías propietarias de 32 bits
 Antes de desmontar los discos, systemd detiene la sesión del usuario y pide a
 las aplicaciones que se cierren. El plazo por defecto es de 90 s por unidad; si
 Steam o un juego de Proton no responden, el apagado se alarga y el desmontaje de
-NTFS puede fallar con «Failed unmounting mnt-SSD1T.mount».
+NTFS puede fallar con «Failed unmounting mnt-<etiqueta>.mount».
 
 `scripts/install-shutdown.sh` (que `install.sh` ejecuta salvo `--skip-shutdown`)
 escribe:

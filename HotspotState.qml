@@ -166,8 +166,10 @@ Singleton {
         clientsProc.running = true;
     }
 
+    // Sondeo lento: el panel refresca al instante después de encender o
+    // apagar el punto de acceso, así que 10 s bastan para cambios externos.
     Timer {
-        interval: 5000
+        interval: 10000
         repeat: true
         running: true
         onTriggered: root.refresh()
