@@ -175,9 +175,9 @@ layout = "es"
 
 # Nueve escritorios fijos, como los muestra el shell. En modo dinámico solo existían
 # dos o tres, así que `workspace-switch 9` y «Mover a escritorio 9» acababan en
-# el último disponible (2 o 3). Si cambia el monitor o se instala en un portátil,
-# hay que repetir esta sección con el conector correspondiente (`eDP-1`, etc.).
-[output."HDMI-A-1"]
+# el último disponible (2 o 3). @OUTPUT@ lo sustituye el instalador por el
+# conector conectado (por ejemplo `HDMI-A-1` o `eDP-1`).
+[output."@OUTPUT@"]
 workspaces = 9
 
 # El puente de captura X11 (Discord, Zoom y demás apps X11) no necesita una

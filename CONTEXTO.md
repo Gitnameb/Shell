@@ -752,9 +752,11 @@ dentro de la sesión actual y se lanza una copia de Shell con su propio socket:
 ```bash
 # Config de prueba sin autostart (el Shell real ya corre en la sesión padre)
 python3 - <<'EOF'
-src = open('/home/username/.config/umbriel/config.toml').read()
-open('/tmp/opencode/umbriel-test.toml','w').write(
-    src.replace('autostart = ["/home/username/.local/bin/shell-start"]', 'autostart = []'))
+from pathlib import Path
+home = Path.home()
+src = (home / '.config/umbriel/config.toml').read_text()
+src = src.replace(f'autostart = ["{home}/.local/bin/shell-start"]', 'autostart = []')
+Path('/tmp/opencode/umbriel-test.toml').write_text(src)
 EOF
 umbriel -c /tmp/opencode/umbriel-test.toml -s kitty &
 

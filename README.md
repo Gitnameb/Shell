@@ -4,10 +4,9 @@ Shell de escritorio personal para [Umbriel](https://noctalia.dev/umbriel/)
 (Wayland), escrito en QML con [Quickshell](https://quickshell.org/).
 
 > **Proyecto personal, en desarrollo.** No es un producto ni un escritorio
-> «listo para todos». Está probado en un equipo concreto (Debian 13, AMD RX 570,
-> monitor HDMI-A-1) y varias funciones siguen en pruebas o pendientes. Si lo
-> pruebas, hazlo en una máquina virtual o en una sesión aparte, y lee antes
-> `INSTALACION.md`.
+> «listo para todos». Está probado en Debian 13 con Wayland y varias funciones
+> siguen en pruebas o pendientes. Si lo pruebas, hazlo en una máquina virtual o
+> en una sesión aparte, y lee antes `INSTALACION.md`.
 >
 > El compositor es `umbriel-edit`, un **edit personal** de Umbriel para este
 > equipo. No es una versión oficial ni una versión mejorada del proyecto

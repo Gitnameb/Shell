@@ -55,12 +55,37 @@ fi
 HOME_SED=$(printf '%s' "$TARGET_HOME" | sed 's/[&|\\]/\\&/g')
 REPO_SED=$(printf '%s' "$REPO_DIR" | sed 's/[&|\\]/\\&/g')
 
+# Conector de la salida principal. En un portátil se prefiere el panel eDP;
+# en un sobremesa, el primer monitor conectado. Así la plantilla no fija
+# HDMI-A-1 y funciona en otros equipos.
+detect_primary_output() {
+    local status name fallback=""
+    while IFS= read -r status; do
+        [[ -f "$status" ]] || continue
+        [[ "$(cat "$status" 2>/dev/null)" == "connected" ]] || continue
+        name=${status%/status}
+        name=${name##*/}
+        name=${name#card*-}
+        case "$name" in
+            eDP* | LVDS*) printf '%s\n' "$name"; return 0 ;;
+        esac
+        [[ -n "$fallback" ]] || fallback=$name
+    done < <(printf '%s\n' /sys/class/drm/card*-*/status)
+    printf '%s\n' "$fallback"
+}
+
+PRIMARY_OUTPUT=$(detect_primary_output)
+[[ -n "$PRIMARY_OUTPUT" ]] || PRIMARY_OUTPUT="HDMI-A-1"
+OUTPUT_SED=$(printf '%s' "$PRIMARY_OUTPUT" | sed 's/[&|\\]/\\&/g')
+log "Conector de salida para los nueve escritorios: $PRIMARY_OUTPUT."
+
 render_template() {
-    # /home/USUARIO es el HOME de destino y @REPO@ la ruta real del clon. Los
-    # atajos que llaman a scripts del repositorio usan @REPO@ para no depender
-    # de que el proyecto esté en ~/Shell.
+    # /home/USUARIO es el HOME de destino, @REPO@ la ruta real del clon y
+    # @OUTPUT@ el conector detectado. Los atajos que llaman a scripts del
+    # repositorio usan @REPO@ para no depender de que esté en ~/Shell.
     sed -e "s|/home/USUARIO|$HOME_SED|g" \
-        -e "s|@REPO@|$REPO_SED|g" "$1"
+        -e "s|@REPO@|$REPO_SED|g" \
+        -e "s|@OUTPUT@|$OUTPUT_SED|g" "$1"
 }
 
 backup_file() {

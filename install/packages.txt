@@ -137,8 +137,10 @@ sudo apt install -t trixie-backports \
 # ---------------------------------------------------------------------------
 # 5. Firmware y gráficos de este equipo
 # ---------------------------------------------------------------------------
-# CPU Intel i3-10105F, GPU AMD RX 570 (amdgpu), Wi-Fi Intel AX210,
-# Ethernet Realtek RTL8111, audio Intel Comet Lake.
+# Paquetes de referencia para un equipo Intel + AMD. Ajustar la lista al
+# hardware real: en un portátil cambian el firmware Wi-Fi y el driver de audio,
+# y con NVIDIA hacen falta los paquetes de esa GPU. El instalador solo ejecuta
+# esta sección con --with-firmware.
 sudo apt install \
   intel-microcode \
   firmware-amd-graphics firmware-iwlwifi firmware-realtek \

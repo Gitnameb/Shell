@@ -85,26 +85,21 @@ Opciones: `--dry-run`, `--skip-packages`, `--skip-steam`, `--skip-shutdown`,
 
 ## 1. Equipo y sistema actual
 
-| Elemento | Valor actual |
+La guía está escrita para Debian 13 «trixie» amd64 con sesión Umbriel
+(Wayland). No hace falta reproducir un hardware concreto: el instalador
+separa los paquetes comunes de los opcionales y el brillo, el firmware y los
+discos se detectan o se eligen con sus propias opciones.
+
+| Elemento | Valor |
 | --- | --- |
-| Debian | 13.7 «trixie», amd64 |
-| Kernel | 6.12.115+deb13.1-amd64 |
-| CPU | Intel Core i3-10105F (4 núcleos / 8 hilos) |
-| GPU | AMD Radeon RX 570 (amdgpu, 4 GB) |
-| RAM | 23 GiB |
-| Wi-Fi | Intel Wi-Fi 6E AX210 (iwlwifi) |
-| Bluetooth | Intel AX210 (bluez) |
-| Ethernet | Realtek RTL8111 |
-| Monitor | LG FULL HD por HDMI-A-1, 1920×1080 |
-| Batería | No hay; el icono del shell muestra corriente y no porcentaje |
+| Debian | 13 «trixie», amd64 |
 | Sesión | Umbriel (Wayland), Noctalia Greeter (greetd); SDDM como respaldo |
 | Escritorios | 9 fijos, configurados en Umbriel |
 | Repos extra | `trixie-backports` y Noctalia (`pkg.noctalia.dev`) |
 
-Discos actuales, solo como referencia: raíz en `/dev/sdb6`, EFI en
-`/dev/sdb5`, Windows en `/dev/sdb3` y `/dev/sdb4`, y discos de datos NTFS en
-`/dev/sda1` y `/dev/sdc1`. **Comprobar con `lsblk` antes de particionar**: no
-dar por hecho que los nombres serán los mismos tras una instalación limpia.
+Los discos se montan con `scripts/mount-disks.sh` y `udiskie`. **Comprobar con
+`lsblk` antes de particionar**: los nombres (`/dev/sda`, `/dev/nvme0n1`, etc.)
+cambian según el equipo y la instalación.
 
 ### Versiones de referencia (2026-11-05)
 
@@ -131,10 +126,10 @@ dar por hecho que los nombres serán los mismos tras una instalación limpia.
 | wvkbd | 0.15 |
 | fonts-inter-variable | 4.1 |
 
-El binario del edit instalado en `/usr/bin/umbriel` es
-`d3f5effaad771b37`; `umbriel --version` puede imprimir una cadena de versión
-anterior por cómo se compila. El binario original del paquete está en
-`/usr/bin/umbriel.stock-0.1.0`.
+`umbriel --version` puede imprimir una cadena de versión anterior por cómo se
+compila; lo importante es que el proceso haya arrancado después de instalar el
+binario. El binario original del paquete se conserva como
+`/usr/bin/umbriel.stock-*`.
 
 ---
 
@@ -634,7 +629,8 @@ Copiar `install/config/umbriel-config.toml` a
   antes de mover, tanto en la barra nativa como en el menú del clic derecho; el
   subtítulo «app · escritorio» ya no se dibuja.
 - `[input.keyboard] layout = "es"`.
-- `[output."HDMI-A-1"] workspaces = 9`.
+- `[output."<conector>"] workspaces = 9`, con el conector que detecta el
+  instalador.
 - `[layout] mode = "stacking"` y `[layout.stacking]` con el tamaño/cascada
   elegidos.
 - `[display]` con brillo, atenuación y luz nocturna.
@@ -699,10 +695,10 @@ Si el escritorio vuelve a quedar negro, la recuperación paso a paso está en
 `CONFIGURACION-UMBRIEL.md`. El resumen es: `Ctrl+Alt+F3`,
 `~/.local/bin/umbriel-config-guard ensure`, validar y volver a lanzar el shell.
 
-Si el monitor no es `HDMI-A-1`, cambiar el conector. En un portátil será
-`eDP-1` o el que corresponda. **Pendiente de automatizar**: hoy hay que repetir
-esa sección por conector; más adelante conviene un `shell-workspaces` que lea
-`umbriel outputs --json` y escriba el inventario correcto.
+El instalador elige el conector conectado (en un portátil prefiere el panel
+`eDP-*`) y escribe la sección. Si hay varios monitores o se cambia de conector,
+ajustar el nombre; sigue pendiente un `shell-workspaces` dinámico que lea
+`umbriel outputs --json`.
 
 ---
 
@@ -953,7 +949,7 @@ Revisar que el archivo de red no se comparte sin protección.
 
 1. **Probar B3** si se va a usar compartir pantalla o captura desde Firefox.
    Es lo único funcional que sigue sin verificar.
-2. **Probar B5** si se va a usar Wi-Fi/Bluetooth: este equipo tiene AX210 y ahora
+2. **Probar B5** si se va a usar Wi-Fi/Bluetooth: el equipo de referencia tiene adaptador Intel y ahora
    mismo está conectado por Wi-Fi. Los flujos de escaneo, olvido, hotspot y
    emparejamiento se pueden validar antes de borrar.
 3. **Decidir A4**: el volumen por ventana sigue en primera versión.
@@ -1017,7 +1013,8 @@ Comprobar a mano:
 ## 11. Pendientes que no bloquean el uso diario
 
 - **B3:** portal de captura/uso compartido desde Firefox y X11.
-- **B5:** Wi-Fi/Bluetooth/hotspot en hardware real; el AX210 está disponible.
+- **B5:** Wi-Fi/Bluetooth/hotspot en hardware real; el equipo de referencia
+  tiene un adaptador Intel compatible.
 - **A4:** decidir si se mantiene el volumen por ventana.
 - **VPN:** opciones extra pendientes de que el usuario las concrete.
 - **Reloj:** rediseño de pestañas pendiente de diseño del usuario.

@@ -11,7 +11,7 @@ Umbriel por sí solo: lo lanza la clave `autostart` de la sección `[general]`.
 
 ```toml
 [general]
-autostart = ["/home/username/.local/bin/shell-start"]
+autostart = ["/home/USUARIO/.local/bin/shell-start"]
 ```
 
 Si el archivo pierde esa clave, Umbriel arranca correctamente pero **nunca
@@ -62,7 +62,7 @@ sustituye el archivo; los demás solo calculan valores y le pasan un parche.
    líneas con solo `[display]`, `[appearance.title_bar]`, `[input.keyboard]`,
    `[layout.stacking]` e `[input]`.
 4. Desaparecieron `[general]`, `[keybinds]`, `[layout]`, `[colors]`,
-   `[output."HDMI-A-1"]` y, sobre todo, `autostart`.
+   `[output."<conector>"]` y, sobre todo, `autostart`.
 5. Umbriel arrancó; Quickshell no.
 6. El escritorio quedó negro.
 
@@ -254,7 +254,7 @@ systemctl --user show umbriel.service -p ExecStartPre
    ```
 
 8. Si hiciste la restauración desde la plantilla, revisa atajos, colores,
-   reglas de ventana y `[output."HDMI-A-1"]`.
+   reglas de ventana y `[output."<conector>"]`.
 
 ## 8. Comprobaciones
 
@@ -313,7 +313,7 @@ systemd-analyze --user verify umbriel.service
 systemctl --user show umbriel.service -p ExecStartPre
 ```
 
-Debe aparecer la ruta expandida a `/home/username/.local/bin/umbriel-config-guard`
+Debe aparecer la ruta expandida a `~/.local/bin/umbriel-config-guard`
 y `ignore_errors=yes`.
 
 ## 9. El escritor único
@@ -1305,13 +1305,13 @@ completa o al abrir el panel.
 
 ### 75 Hz sin VRR
 
-La salida `HDMI-A-1` está a 1920x1080@74,973 Hz y el monitor no anuncia VRR
-(`vrr_capable` no existe). Un juego limitado a 60 fps sobre una pantalla de
-75 Hz reparte los fotogramas de forma irregular (cada cierto tiempo uno se
-duplica), y se percibe como microtirones. Dos salidas:
+Si la salida funciona a 75 Hz y el monitor no anuncia VRR (`vrr_capable` no
+existe), un juego limitado a 60 fps reparte los fotogramas de forma irregular
+(cada cierto tiempo uno se duplica) y se percibe como microtirones. Dos
+salidas:
 
 - Bajar la salida a 60 Hz en `~/.config/umbriel/config.toml`:
-  `[output."HDMI-A-1"] mode = "1920x1080@60"`, y validar con `umbriel config
+  `[output."<conector>"] mode = "1920x1080@60"`, y validar con `umbriel config
   validate`.
 - O dejar el juego sin límite a 75 fps (o a 37,5) con `mangohud`/`gamemode`,
   que además fijan el gobernador de CPU en `performance`.
@@ -1328,7 +1328,7 @@ diario; si faltan, se pueden instalar con `sudo apt install grim slurp`.
 
 ### Otros
 
-- La RX 570 tiene 4 GB de VRAM. A 1080p con texturas altas se llena y aparecen
+- Una GPU con 4 GB de VRAM se llena a 1080p con texturas altas y aparecen
   bajones; en ventana el juego renderiza menos píxeles y va más estable. Bajar
   texturas o sombras en los juegos más pesados es la diferencia más directa.
 - `gamemode` (`sudo apt install gamemode`, luego `gamemoderun %command%`)
@@ -1458,7 +1458,7 @@ Para evitarlo, `shell-autostart-refresh` crea un drop-in para cada entrada de
 
 ```ini
 [Service]
-ExecStartPre=/home/username/Shell/scripts/shell-autostart-wait
+ExecStartPre=%h/Shell/scripts/shell-autostart-wait
 ```
 
 `shell-autostart-wait` espera hasta 10 s a que exista el watcher de la bandeja
