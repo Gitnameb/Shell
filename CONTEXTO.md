@@ -2580,7 +2580,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 - **Instalador general.** `install.sh` añade repositorios, instala paquetes,
   copia configuración sin sobrescribir, crea la regla de sudoers, activa las
   alarmas y llama al script del edit. Tiene `--dry-run`, `--skip-packages`,
-  `--skip-edit`, `--skip-config`, `--force-config` y
+  `--skip-edit`, `--skip-config`, `--force-config`, `--with-firmware` y
   `--with-firmware-author`.
 - **Módulos sin duplicar paquetes.** `install-packages.sh` instala la base del
   shell, KDE/Qt, audio, portales, compilación y firmware. `network.sh` es el

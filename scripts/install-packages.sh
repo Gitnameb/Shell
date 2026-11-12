@@ -16,6 +16,7 @@ REPO_DIR=$(cd -- "$SCRIPT_DIR/.." && pwd)
 source "$SCRIPT_DIR/lib/common.sh"
 
 DRY_RUN=0
+WITH_FIRMWARE=0
 WITH_FIRMWARE_AUTHOR=0
 SKIP_GREETER=0
 
@@ -28,9 +29,10 @@ Uso:
 
 Opciones:
   --dry-run         Muestra los comandos sin ejecutar nada
+  --with-firmware   Detecta CPU, GPU, red y audio e instala su firmware
   --with-firmware-author
-                    Instala el firmware del equipo del autor (Intel/AMD);
-                    cada usuario debe buscar el de su propio hardware
+                    Instala la lista exacta del equipo del autor (Intel/AMD),
+                    útil para reproducir esa máquina
   --skip-greeter    No instala greetd ni Noctalia Greeter
   -h, --help        Muestra esta ayuda
 EOF
@@ -39,9 +41,8 @@ EOF
 while (( $# > 0 )); do
     case "$1" in
         --dry-run) DRY_RUN=1; shift ;;
-        --with-firmware-author) WITH_FIRMWARE_AUTHOR=1; shift ;;
-        --with-firmware)
-            warn "--with-firmware está obsoleto; usa --with-firmware-author."
+        --with-firmware) WITH_FIRMWARE=1; shift ;;
+        --with-firmware-author)
             WITH_FIRMWARE_AUTHOR=1
             shift
             ;;
@@ -171,12 +172,94 @@ BUILD_BACKPORTS_PKGS=(
     libegl-dev libgles-dev libgbm-dev
 )
 
-# Firmware del equipo del autor. No es una detección automática: cada usuario
-# debe revisar su hardware y sustituir esta lista si no coincide.
+# Firmware exacto del equipo del autor. Solo se usa con
+# --with-firmware-author; para otros equipos está la detección automática.
 AUTHOR_FIRMWARE_PKGS=(
     intel-microcode firmware-amd-graphics firmware-iwlwifi firmware-realtek
     firmware-sof-signed mesa-utils intel-media-va-driver
 )
+
+# Lista que rellena detect_firmware_pkgs().
+FIRMWARE_PKGS_DETECTED=()
+
+add_firmware_pkg() {
+    local pkg=$1 existing
+    for existing in "${FIRMWARE_PKGS_DETECTED[@]}"; do
+        [[ "$existing" == "$pkg" ]] && return 0
+    done
+    FIRMWARE_PKGS_DETECTED+=("$pkg")
+}
+
+# Elige los paquetes de firmware según la CPU y el driver que el kernel ya
+# cargó. Así no se instala el firmware de una Wi-Fi Intel en un equipo Realtek
+# ni el de una GPU AMD en uno NVIDIA. Si un dispositivo no aparece, no se
+# adivina: se deja fuera y el usuario puede instalar su paquete a mano.
+detect_firmware_pkgs() {
+    FIRMWARE_PKGS_DETECTED=()
+
+    local cpu
+    cpu=$(awk -F: '/^vendor_id/ {
+        gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2; exit
+    }' /proc/cpuinfo 2>/dev/null)
+    case "$cpu" in
+        GenuineIntel) add_firmware_pkg intel-microcode ;;
+        AuthenticAMD) add_firmware_pkg amd64-microcode ;;
+    esac
+
+    local uevent driver
+    while IFS= read -r uevent; do
+        [[ -f "$uevent" ]] || continue
+        driver=$(sed -n 's/^DRIVER=//p' "$uevent" 2>/dev/null | head -n1)
+        [[ -n "$driver" ]] || continue
+        case "$driver" in
+            amdgpu | radeon)
+                add_firmware_pkg firmware-amd-graphics ;;
+            i915 | xe)
+                add_firmware_pkg firmware-intel-graphics
+                add_firmware_pkg intel-media-va-driver ;;
+            nouveau)
+                add_firmware_pkg firmware-nvidia-graphics ;;
+            nvidia | nvidia-drm)
+                add_firmware_pkg firmware-nvidia-gsp ;;
+            iwlwifi | iwlmvm)
+                add_firmware_pkg firmware-iwlwifi ;;
+            r8* | rtsx_pci | rtl* | rtw*)
+                add_firmware_pkg firmware-realtek ;;
+            ath9k_htc)
+                add_firmware_pkg firmware-ath9k-htc ;;
+            carl9170)
+                add_firmware_pkg firmware-carl9170 ;;
+            ath*)
+                add_firmware_pkg firmware-atheros ;;
+            brcmfmac | brcmsmac)
+                add_firmware_pkg firmware-brcm80211 ;;
+            bnx2)
+                add_firmware_pkg firmware-bnx2 ;;
+            bnx2x)
+                add_firmware_pkg firmware-bnx2x ;;
+            mt76* | mt79* | rt2400* | rt2500* | rt2800* | rt61* | rt73*)
+                add_firmware_pkg firmware-mediatek ;;
+            mwl8k)
+                add_firmware_pkg firmware-misc-nonfree ;;
+            wcn36xx)
+                add_firmware_pkg firmware-qcom-soc ;;
+            libertas*)
+                add_firmware_pkg firmware-libertas ;;
+            ipw2x00)
+                add_firmware_pkg firmware-ipw2x00 ;;
+            zd1211rw)
+                add_firmware_pkg firmware-zd1211 ;;
+            snd_sof*)
+                add_firmware_pkg firmware-sof-signed ;;
+        esac
+    done < <(printf '%s\n' \
+        /sys/class/drm/card*/device/uevent \
+        /sys/class/net/*/device/uevent \
+        /sys/class/sound/card*/device/uevent)
+
+    # Utilidad genérica para comprobar que la GPU funciona.
+    add_firmware_pkg mesa-utils
+}
 
 # ---------------------------------------------------------------------------
 # Registro de lanzadores
@@ -326,9 +409,20 @@ log "Instalando las dependencias de compilación."
 run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "${BUILD_PKGS[@]}"
 
 if (( WITH_FIRMWARE_AUTHOR )); then
-    log "Instalando el firmware del equipo del autor (Intel/AMD)."
+    log "Instalando la lista de firmware del equipo del autor (Intel/AMD)."
     run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
         "${AUTHOR_FIRMWARE_PKGS[@]}"
+elif (( WITH_FIRMWARE )); then
+    detect_firmware_pkgs
+    log "Firmware detectado para este equipo: ${FIRMWARE_PKGS_DETECTED[*]}"
+    case " ${FIRMWARE_PKGS_DETECTED[*]} " in
+        *" firmware-nvidia-graphics "*)
+            warn "GPU NVIDIA con nouveau: este firmware no instala el driver"
+            warn "propietario. Para usarlo hace falta nvidia-driver."
+            ;;
+    esac
+    run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        "${FIRMWARE_PKGS_DETECTED[@]}"
 fi
 
 # Apps cuyo postinst no pudo registrar su lanzador antes de crear los

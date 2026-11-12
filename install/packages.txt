@@ -135,13 +135,12 @@ sudo apt install -t trixie-backports \
   libeis-dev libseat-dev nlohmann-json3-dev
 
 # ---------------------------------------------------------------------------
-# 5. Firmware y gráficos de este equipo
+# 5. Firmware y gráficos de referencia
 # ---------------------------------------------------------------------------
-# Paquetes de referencia para un equipo Intel + AMD. Ajustar la lista al
-# hardware real: en un portátil cambian el firmware Wi-Fi y el driver de audio,
-# y con NVIDIA hacen falta los paquetes de esa GPU. El instalador solo ejecuta
-# esta sección con --with-firmware-author; es una lista del equipo del autor,
-# no una detección automática.
+# Paquetes de referencia para el equipo del autor (Intel + AMD). El instalador
+# detecta el hardware real con --with-firmware; esta lista exacta solo se usa
+# con --with-firmware-author. En otro equipo cambian el firmware Wi-Fi, el
+# audio y, con NVIDIA, el driver de la GPU.
 sudo apt install \
   intel-microcode \
   firmware-amd-graphics firmware-iwlwifi firmware-realtek \

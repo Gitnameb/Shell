@@ -35,8 +35,8 @@ Progreso (2026-11-12):
   QML, iconos y unidad de servicio duplicados eliminados, y pruebas de scripts.
 - Pendiente: decidir si los documentos internos (`CONTEXTO.md`, `PENDIENTES.md`,
   `PLAN*.md`) se sanitizan o se sacan del repositorio público.
-  `--with-firmware-author` sigue siendo una lista de referencia Intel/AMD; no
-  se detecta el hardware.
+  `--with-firmware` detecta CPU, GPU, red y audio; `--with-firmware-author`
+  conserva la lista exacta Intel/AMD del equipo del autor.
 - Pendiente: historial de Git (squash o repositorio nuevo).
 
 ## Estado al cerrar esta sesión

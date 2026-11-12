@@ -30,9 +30,9 @@
 #   --skip-greeter    No cambia el iniciador de sesión (deja SDDM)
 #   --skip-disks      No añade los discos internos NTFS a /etc/fstab
 #   --force-config    Reemplaza configuraciones existentes (hace copia .bak)
+#   --with-firmware   Detecta CPU, GPU, red y audio e instala su firmware
 #   --with-firmware-author
-#                     Instala el firmware del equipo del autor (Intel/AMD);
-#                     cada usuario debe buscar el de su propio hardware
+#                     Instala la lista exacta del equipo del autor (Intel/AMD)
 #   -h, --help        Muestra esta ayuda
 
 set -Eeuo pipefail
@@ -52,6 +52,7 @@ SKIP_NETWORK=0
 SKIP_GREETER=0
 SKIP_DISKS=0
 FORCE_CONFIG=0
+WITH_FIRMWARE=0
 WITH_FIRMWARE_AUTHOR=0
 
 usage() {
@@ -73,9 +74,9 @@ Opciones:
   --skip-greeter    No cambia el iniciador de sesión (deja SDDM)
   --skip-disks      No añade los discos internos NTFS a /etc/fstab
   --force-config    Reemplaza configuraciones existentes (hace copia .bak)
+  --with-firmware   Detecta CPU, GPU, red y audio e instala su firmware
   --with-firmware-author
-                    Instala el firmware del equipo del autor (referencia
-                    Intel/AMD). Cada usuario debe buscar el de su hardware.
+                    Instala la lista exacta del equipo del autor (Intel/AMD)
   -h, --help        Muestra esta ayuda
 EOF
 }
@@ -93,12 +94,8 @@ while (( $# > 0 )); do
         --skip-greeter) SKIP_GREETER=1; shift ;;
         --skip-disks) SKIP_DISKS=1; shift ;;
         --force-config) FORCE_CONFIG=1; shift ;;
+        --with-firmware) WITH_FIRMWARE=1; shift ;;
         --with-firmware-author) WITH_FIRMWARE_AUTHOR=1; shift ;;
-        --with-firmware)
-            warn "--with-firmware está obsoleto; usa --with-firmware-author."
-            WITH_FIRMWARE_AUTHOR=1
-            shift
-            ;;
         -h | --help) usage; exit 0 ;;
         *) die "Opción desconocida: $1 (usa --help)" ;;
     esac
@@ -144,6 +141,7 @@ if (( ! SKIP_PACKAGES )); then
     log "Instalando paquetes, repositorios y servicios."
     PKG_ARGS=()
     (( DRY_RUN )) && PKG_ARGS+=(--dry-run)
+    (( WITH_FIRMWARE )) && PKG_ARGS+=(--with-firmware)
     (( WITH_FIRMWARE_AUTHOR )) && PKG_ARGS+=(--with-firmware-author)
     (( SKIP_GREETER )) && PKG_ARGS+=(--skip-greeter)
     "$REPO_DIR/scripts/install-packages.sh" "${PKG_ARGS[@]}"
