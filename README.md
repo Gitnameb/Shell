@@ -145,9 +145,10 @@ El shell se distribuye bajo **GNU GPL v3.0** (ver [`LICENSE`](LICENSE)). Si
 distribuyes una versión modificada, tiene que seguir siendo GPL-3.0 y con el
 código disponible.
 
-Umbriel es MIT; el parche de `umbriel-edit.patch` conserva esa licencia y su
-aviso de copyright. El shell no incluye binarios de `wl-clipboard`: el
-instalador usa el paquete del sistema.
+Umbriel es MIT; el edit y el parche de `umbriel-edit.patch` se distribuyen bajo
+GPL-3.0 y conservan el aviso MIT y la atribución del proyecto original. El
+shell no incluye binarios de `wl-clipboard`: el instalador usa el paquete del
+sistema.
 
 ## Créditos
 

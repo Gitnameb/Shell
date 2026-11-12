@@ -21,7 +21,8 @@ propia y sin relación de pull request con `noctalia-dev/umbriel`.
 - No hay soporte ni garantías.
 - Si alguien quiere usarlo, puede hacerlo, pero debe revisar los cambios y
   asumir el riesgo. El proyecto original sigue siendo la referencia.
-- Se conserva la licencia MIT y la atribución original.
+- El edit se distribuye bajo GPL-3.0 y conserva el aviso MIT y la atribución
+  original de Umbriel.
 
 ## Estado
 
