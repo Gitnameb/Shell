@@ -87,8 +87,9 @@ Opciones: `--dry-run`, `--skip-packages`, `--skip-steam`, `--skip-shutdown`,
 
 La guía está escrita para Debian 13 «trixie» amd64 con sesión Umbriel
 (Wayland). No hace falta reproducir un hardware concreto: el instalador
-separa los paquetes comunes de los opcionales y el brillo, el firmware y los
-discos se detectan o se eligen con sus propias opciones.
+separa los paquetes comunes de los opcionales, detecta el conector de salida y
+deja el firmware como una lista de referencia que solo se instala con
+`--with-firmware`.
 
 | Elemento | Valor |
 | --- | --- |
