@@ -881,18 +881,19 @@ restaura.
 
 Con una ventana a pantalla completa, el menú contextual y el centro de control
 ocultan «Flotar» y «Maximizar»: la única acción de tamaño que queda es salir de
-pantalla completa. Además, los juegos de Steam (`steam_app_*`) abren flotantes
-por regla. Así la ventana usa el tamaño que pide el juego —su resolución— y el
-mosaico no le impone un hueco; si el juego pide pantalla completa, se respeta.
-Es el equivalente a Windows: en modo ventana el área cliente la fija el juego,
-en fullscreen exclusivo cambia el modo de vídeo y el sistema solo respeta los
-estilos y límites que declara la aplicación.
+pantalla completa. Los juegos de Steam ya no abren flotantes por regla: entran
+en el mosaico como cualquier ventana, y el piloto de render fijo conserva la
+resolución que pide el juego y escala la celda. Si el juego pide pantalla
+completa, se respeta; al salir vuelve a su celda. Es el equivalente a Windows:
+en modo ventana el área cliente la fija el juego, en fullscreen exclusivo cambia
+el modo de vídeo y el sistema solo respeta los estilos y límites que declara la
+aplicación.
 
 Algunos juegos antiguos esperan arrancar directamente a pantalla completa y no
 toleran abrir en ventana. Para ellos se añade una regla `default_fullscreen =
-true` después de la general; es el caso de Alice: Madness Returns
-(`steam_app_19680`). Sin esa excepción, el juego se queda esperando y al volver
-a fullscreen puede centrar su buffer pequeño con bordes negros.
+true`; es el caso de Alice: Madness Returns (`steam_app_19680`). Sin esa
+excepción, el juego se queda esperando y al volver a fullscreen puede centrar su
+buffer pequeño con bordes negros.
 
 ## 20. Limpieza de dependencias
 
