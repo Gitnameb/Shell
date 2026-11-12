@@ -4,6 +4,29 @@ Documento corto para continuar sin reexplicar el proyecto. El detalle largo est�
 en `PLAN.md` (plan y aceptación) y `CONTEXTO.md` (historial). **No leas
 `CONTEXTO.md` entero**: busca solo la sección que necesites.
 
+## Tarea prioritaria pendiente: auditoría antes de publicar
+
+> Guardada el 2026-11-12. **No empezar todavía**: el usuario quiere modificar
+> algunas cosas primero. Cuando lo pida, empezar por un inventario sin cambiar
+> nada y enseñar qué hay en cada categoría.
+
+Orden acordado:
+
+1. **Funcionamiento**: revisar logs de Quickshell y del compositor, probar los
+   scripts con `--dry-run`, comprobar el instalador y las dependencias.
+2. **Duplicados**: buscar funciones y bloques QML repetidos que puedan
+   unificarse.
+3. **Código y archivos muertos**: componentes QML sin usar, scripts huérfanos,
+   plantillas viejas y el `umbriel-edit.patch` desactualizado.
+4. **Optimización**: procesos que sondean de más, timers, arranque y consumo.
+5. **Información personal**: rutas con `/home/username`, nombres de equipo,
+   hardware concreto (`HDMI-A-1`), correos, claves, logs y archivos de
+   configuración con datos reales.
+6. **Historial de Git**: dejarlo para el final. Si el objetivo también es
+   privacidad, hay que tener en cuenta que los datos personales siguen en los
+   commits antiguos aunque se borren del árbol actual; en ese caso conviene
+   squashear o recrear el repositorio.
+
 ## Estado al cerrar esta sesión
 
 - **Iconos y tamaño uniforme de la barra (2026-11-09).** `cpu`, `dns` y
