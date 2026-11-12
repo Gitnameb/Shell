@@ -140,7 +140,8 @@ sudo apt install -t trixie-backports \
 # Paquetes de referencia para un equipo Intel + AMD. Ajustar la lista al
 # hardware real: en un portátil cambian el firmware Wi-Fi y el driver de audio,
 # y con NVIDIA hacen falta los paquetes de esa GPU. El instalador solo ejecuta
-# esta sección con --with-firmware.
+# esta sección con --with-firmware-author; es una lista del equipo del autor,
+# no una detección automática.
 sudo apt install \
   intel-microcode \
   firmware-amd-graphics firmware-iwlwifi firmware-realtek \

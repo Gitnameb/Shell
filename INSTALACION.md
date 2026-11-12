@@ -74,7 +74,7 @@ sudo ./scripts/mount-disks.sh --exclude "New Volume" --apply
 
 Opciones: `--dry-run`, `--skip-packages`, `--skip-steam`, `--skip-shutdown`,
 `--skip-edit`, `--skip-config`, `--skip-network`, `--skip-disks`,
-`--force-config`, `--with-firmware` y `--help`.
+`--force-config`, `--with-firmware-author` y `--help`.
 
 > Probado con `--dry-run` y con una compilación completa desde un clon limpio
 > de Umbriel. **Falta la prueba definitiva en un Debian recién instalado.**
@@ -89,7 +89,7 @@ La guía está escrita para Debian 13 «trixie» amd64 con sesión Umbriel
 (Wayland). No hace falta reproducir un hardware concreto: el instalador
 separa los paquetes comunes de los opcionales, detecta el conector de salida y
 deja el firmware como una lista de referencia que solo se instala con
-`--with-firmware`.
+`--with-firmware-author`.
 
 | Elemento | Valor |
 | --- | --- |

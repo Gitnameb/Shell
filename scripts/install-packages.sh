@@ -16,7 +16,7 @@ REPO_DIR=$(cd -- "$SCRIPT_DIR/.." && pwd)
 source "$SCRIPT_DIR/lib/common.sh"
 
 DRY_RUN=0
-WITH_FIRMWARE=0
+WITH_FIRMWARE_AUTHOR=0
 SKIP_GREETER=0
 
 usage() {
@@ -28,7 +28,9 @@ Uso:
 
 Opciones:
   --dry-run         Muestra los comandos sin ejecutar nada
-  --with-firmware   Instala firmware y drivers de este equipo
+  --with-firmware-author
+                    Instala el firmware del equipo del autor (Intel/AMD);
+                    cada usuario debe buscar el de su propio hardware
   --skip-greeter    No instala greetd ni Noctalia Greeter
   -h, --help        Muestra esta ayuda
 EOF
@@ -37,7 +39,12 @@ EOF
 while (( $# > 0 )); do
     case "$1" in
         --dry-run) DRY_RUN=1; shift ;;
-        --with-firmware) WITH_FIRMWARE=1; shift ;;
+        --with-firmware-author) WITH_FIRMWARE_AUTHOR=1; shift ;;
+        --with-firmware)
+            warn "--with-firmware está obsoleto; usa --with-firmware-author."
+            WITH_FIRMWARE_AUTHOR=1
+            shift
+            ;;
         --skip-greeter) SKIP_GREETER=1; shift ;;
         -h | --help) usage; exit 0 ;;
         *) die "Opción desconocida: $1 (usa --help)" ;;
@@ -164,7 +171,9 @@ BUILD_BACKPORTS_PKGS=(
     libegl-dev libgles-dev libgbm-dev
 )
 
-FIRMWARE_PKGS=(
+# Firmware del equipo del autor. No es una detección automática: cada usuario
+# debe revisar su hardware y sustituir esta lista si no coincide.
+AUTHOR_FIRMWARE_PKGS=(
     intel-microcode firmware-amd-graphics firmware-iwlwifi firmware-realtek
     firmware-sof-signed mesa-utils intel-media-va-driver
 )
@@ -316,9 +325,10 @@ run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "${RUNTIME_PKGS[@
 log "Instalando las dependencias de compilación."
 run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "${BUILD_PKGS[@]}"
 
-if (( WITH_FIRMWARE )); then
-    log "Instalando firmware y drivers de este equipo."
-    run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "${FIRMWARE_PKGS[@]}"
+if (( WITH_FIRMWARE_AUTHOR )); then
+    log "Instalando el firmware del equipo del autor (Intel/AMD)."
+    run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        "${AUTHOR_FIRMWARE_PKGS[@]}"
 fi
 
 # Apps cuyo postinst no pudo registrar su lanzador antes de crear los

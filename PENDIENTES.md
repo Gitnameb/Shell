@@ -34,8 +34,9 @@ Progreso (2026-11-12):
   para el padding, parche del edit regenerado, rutas `/home/<usuario>` fuera de
   QML, iconos y unidad de servicio duplicados eliminados, y pruebas de scripts.
 - Pendiente: decidir si los documentos internos (`CONTEXTO.md`, `PENDIENTES.md`,
-  `PLAN*.md`) se sanitizan o se sacan del repositorio público. `--with-firmware`
-  sigue siendo una lista de referencia Intel/AMD; no se detecta el hardware.
+  `PLAN*.md`) se sanitizan o se sacan del repositorio público.
+  `--with-firmware-author` sigue siendo una lista de referencia Intel/AMD; no
+  se detecta el hardware.
 - Pendiente: historial de Git (squash o repositorio nuevo).
 
 ## Estado al cerrar esta sesión

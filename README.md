@@ -62,7 +62,10 @@ Opciones útiles:
 - `--skip-network`: no configura la red ni instala NetworkManager, Wi-Fi,
   hotspot, VPN ni Bluetooth.
 - `--skip-greeter`: no cambia el iniciador de sesión; deja SDDM.
-- `--with-firmware`: instala también firmware y drivers de este equipo.
+- `--with-firmware-author`: instala el firmware del equipo del autor
+  (referencia Intel/AMD). No detecta el hardware: cada usuario debe buscar el
+  firmware de su propio equipo. `--with-firmware` sigue funcionando como alias
+  obsoleto.
 - `--help`: lista todas las opciones.
 
 La guía manual, con el detalle de cada paso, sigue estando en
