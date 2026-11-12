@@ -955,6 +955,11 @@ buffer pequeño con bordes negros.
 - Al pausar se conserva el último reproductor que sonaba. Antes, si todos los
   reproductores estaban en pausa, el widget podía saltar al primero de la lista
   de MPRIS (por ejemplo, una pestaña del navegador) y mostrar otra canción.
+- Las letras japonesas, chinas y coreanas necesitan una fuente con glifos CJK.
+  Inter no los incluye, así que sin `fonts-noto-cjk` los caracteres se ven como
+  cuadros vacíos aunque el tag se lea bien. El instalador ya añade esa fuente;
+  la alternativa sin privilegios es copiar `NotoSansCJK-Regular.ttc` y
+  `NotoSansCJK-Bold.ttc` a `~/.local/share/fonts/` y ejecutar `fc-cache -f`.
 
 ## 20. Limpieza de dependencias
 

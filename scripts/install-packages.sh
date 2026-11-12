@@ -133,6 +133,9 @@ GTK_GIR_BACKPORTS_PKGS=(
 
 RUNTIME_PKGS=(
     ddcutil brightnessctl libnotify-bin fonts-inter-variable wvkbd swayidle foot
+    # Inter no incluye glifos CJK. Sin esta fuente las letras japonesas,
+    # chinas y coreanas del widget de música se dibujan como cuadros.
+    fonts-noto-cjk
     power-profiles-daemon
     iputils-ping wl-clipboard cliphist udiskie udisks2 ntfs-3g exfatprogs usbutils python3 curl
     qml6-module-qtquick-effects
