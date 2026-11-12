@@ -1023,8 +1023,9 @@ L=$(ls -t /run/user/1000/quickshell/by-id/*/log.qslog | head -1); tail -50 "$L"
 - `~/Shell/CalendarPanel.qml` — clima, alarmas y temporizador
   persistente.
 - `~/Shell/scripts/shell-alarms` — demonio de alarmas y temporizador.
-- `~/Shell/shell-alarms.service` — copia de la unidad de usuario; la
-  activa está en `~/.config/systemd/user/`.
+- `~/Shell/install/systemd/shell-alarms.service` — plantilla de la unidad de
+  usuario; la activa la genera `install-user-config.sh` en
+  `~/.config/systemd/user/`.
 - `~/.config/xdg-desktop-portal/portals.conf` — mapea el diálogo Access a GTK;
   copia en `~/Shell/portals.conf`. Sin él, captura y uso compartido
   se quedan esperando.

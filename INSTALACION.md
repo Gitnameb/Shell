@@ -191,7 +191,8 @@ sudo apt install --no-install-recommends -t trixie-backports \
   greetd noctalia-greeter
 
 sudo apt install \
-  ddcutil qrencode libnotify-bin fonts-inter-variable wvkbd swayidle foot \
+  ddcutil brightnessctl qrencode libnotify-bin fonts-inter-variable \
+  wvkbd swayidle foot grim slurp fonts-noto-cjk python3 curl \
   network-manager-openvpn power-profiles-daemon \
   iputils-ping wl-clipboard cliphist udiskie udisks2 ntfs-3g exfatprogs \
   qml6-module-qtquick-effects \
@@ -242,7 +243,12 @@ está en `install/packages.txt`.
 - **Red:** `network-manager`, `network-manager-openvpn`, `nmcli`, `qrencode`
   (QR del hotspot).
 - **Energía:** `upower`, `power-profiles-daemon`, `powerprofilesctl`.
-- **Brillo:** `ddcutil` y una regla de sudoers (ver abajo).
+- **Brillo:** `ddcutil` para monitores externos y `brightnessctl` para el panel
+  interno, con una regla de sudoers (ver abajo).
+- **Capturas:** `grim` (pantalla completa) y `slurp` (selección de región);
+  los usan los atajos Impr Pant y Mayús+Impr Pant.
+- **Letras CJK:** `fonts-noto-cjk`. Inter no trae glifos japoneses, chinos ni
+  coreanos; sin esta fuente las letras se ven como cuadros.
 - **Bloqueo:** `swayidle` y `shell-lock` (que usa `hyprlock` para dibujar la pantalla). `shell-lock` es el único punto de entrada y crea su configuración si falta.
 - **Iniciador de sesión:** `greetd` y `noctalia-greeter`. El instalador
   configura la sesión «Umbriel», el usuario y el teclado `es`.
@@ -371,8 +377,10 @@ sudo apt install -t trixie-backports wayland-protocols libwayland-dev
 - `xdg-desktop-portal-hyprland`: ya no se usa.
 - `wl-clipboard`: aporta `wl-copy` y `wl-paste` para el historial del
   portapapeles. El shell ya no empaqueta copias locales de esos binarios.
-- `grim`, `slurp`, `obs-studio`, `btop`, `wlrctl`, `wtype`, `ydotool`, `wev`,
-  `weston`: herramientas de prueba/diagnóstico, no dependencias de uso diario.
+- `obs-studio`, `btop`, `wlrctl`, `wtype`, `ydotool`, `wev`, `weston`:
+  herramientas de prueba/diagnóstico, no dependencias de uso diario.
+- `grim` y `slurp` **sí** son dependencias de uso diario: los atajos de captura
+  de pantalla fallan sin ellos.
 
 ---
 

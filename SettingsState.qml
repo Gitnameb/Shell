@@ -211,7 +211,7 @@ Singleton {
     property bool animationsEnabledApplyPending: false
     property bool glassApplyPending: false
 
-    readonly property string path: (Quickshell.env("HOME") || "/home/username")
+    readonly property string path: Quickshell.env("HOME")
         + "/.config/shell/settings.conf"
     readonly property string systemThemeScript: (Quickshell.shellDir || "")
         + "/scripts/shell-system-theme"

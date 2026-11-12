@@ -53,9 +53,14 @@ if (( ! DRY_RUN )); then
 fi
 
 HOME_SED=$(printf '%s' "$TARGET_HOME" | sed 's/[&|\\]/\\&/g')
+REPO_SED=$(printf '%s' "$REPO_DIR" | sed 's/[&|\\]/\\&/g')
 
 render_template() {
-    sed "s|/home/USUARIO|$HOME_SED|g" "$1"
+    # /home/USUARIO es el HOME de destino y @REPO@ la ruta real del clon. Los
+    # atajos que llaman a scripts del repositorio usan @REPO@ para no depender
+    # de que el proyecto esté en ~/Shell.
+    sed -e "s|/home/USUARIO|$HOME_SED|g" \
+        -e "s|@REPO@|$REPO_SED|g" "$1"
 }
 
 backup_file() {

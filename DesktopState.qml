@@ -12,7 +12,7 @@ Singleton {
     id: root
 
     readonly property string desktopDir:
-        (Quickshell.env("HOME") || "/home/username") + "/Desktop"
+        Quickshell.env("HOME") + "/Desktop"
     property int selectedIndex: -1
 
     readonly property FolderListModel model: folderModel

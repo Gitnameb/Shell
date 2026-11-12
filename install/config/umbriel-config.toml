@@ -116,8 +116,10 @@ minimize_glyph_hover = "#141519FF"
 "Mod+F1" = "cheatsheet-toggle"
 "Mod+Escape" = "session-quit"
 "Mod+Shift+L" = { action = "spawn ~/.local/bin/shell-lock", repeat = false }
-"Print" = { action = "spawn ~/Shell/scripts/captura.sh", repeat = false }
-"Shift+Print" = { action = "spawn ~/Shell/scripts/captura-region.sh", repeat = false }
+# @REPO@ lo sustituye el instalador por la ruta real del repositorio; así los
+# atajos funcionan aunque el clon no esté en ~/Shell.
+"Print" = { action = "spawn @REPO@/scripts/captura.sh", repeat = false }
+"Shift+Print" = { action = "spawn @REPO@/scripts/captura-region.sh", repeat = false }
 
 # Aplicaciones y ventanas
 "Mod+Return" = { action = "spawn foot", repeat = false }

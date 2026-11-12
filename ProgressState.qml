@@ -17,7 +17,7 @@ Singleton {
     property var workspaceValues: ({})
     property string lastText: ""
 
-    readonly property string path: (Quickshell.env("HOME") || "/home/username")
+    readonly property string path: Quickshell.env("HOME")
         + "/.local/state/shell/progress"
 
     function normalize(value) {

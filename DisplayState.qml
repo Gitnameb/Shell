@@ -24,7 +24,7 @@ Singleton {
     // Preferencias propias del filtro. Se guardan aparte para que al reiniciar
     // el shell no vuelvan a 0 % ni a los valores iniciales.
     property bool displayReady: false
-    readonly property string statePath: (Quickshell.env("HOME") || "/home/username")
+    readonly property string statePath: Quickshell.env("HOME")
         + "/.config/shell/display.conf"
 
     // Brillo real del monitor por DDC/CI. `hardwareAvailable` solo se pone a

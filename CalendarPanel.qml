@@ -86,8 +86,8 @@ PanelWindow {
     property date selectedDate: new Date()
     property bool alarmsReady: false
 
-    readonly property string alarmsPath: (Quickshell.env("HOME")
-        || "/home/username") + "/.config/shell/alarms.conf"
+    readonly property string alarmsPath: Quickshell.env("HOME")
+        + "/.config/shell/alarms.conf"
 
     // --------------------------------------------------------- temporizador
     property int timerTotal: 25 * 60
@@ -107,8 +107,8 @@ PanelWindow {
     // Vencimiento en segundos desde la época. Se guarda en timer.conf para
     // que el demonio de alarmas pueda terminarlo con el shell cerrado.
     property int timerDeadline: 0
-    readonly property string timerPath: (Quickshell.env("HOME")
-        || "/home/username") + "/.config/shell/timer.conf"
+    readonly property string timerPath: Quickshell.env("HOME")
+        + "/.config/shell/timer.conf"
 
     function pad(value): string {
         return value < 10 ? "0" + value : "" + value;

@@ -9,11 +9,24 @@
 
 set -u
 
-NET_FIX="cd ~/Shell && sudo ./scripts/network.sh"
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+REPO_DIR=$(cd -- "$SCRIPT_DIR/.." && pwd)
+REPO_Q=$(printf '%q' "$REPO_DIR")
+NET_FIX="cd $REPO_Q && sudo ./scripts/network.sh"
+GREETER_FIX="cd $REPO_Q && ./scripts/install-greeter.sh"
 
 check_package() {
     local key="$1" label="$2" package="$3" fix="$4"
     if ! dpkg -s "$package" >/dev/null 2>&1; then
+        printf '%s|%s|%s|%s\n' "$key" "$label" "$package" "$fix"
+    fi
+}
+
+# Algunas dependencias pueden estar fuera de dpkg (por ejemplo, en
+# ~/.local/bin). Basta con que el comando exista.
+check_command() {
+    local key="$1" label="$2" package="$3" command="$4" fix="$5"
+    if ! command -v "$command" >/dev/null 2>&1; then
         printf '%s|%s|%s|%s\n' "$key" "$label" "$package" "$fix"
     fi
 }
@@ -53,9 +66,9 @@ check_package qrencode "QR del punto de acceso" \
 
 # Iniciador de sesión y bloqueo de pantalla.
 check_package greetd "Iniciador de sesión (greetd)" \
-    greetd "cd ~/Shell && ./scripts/install-greeter.sh"
+    greetd "$GREETER_FIX"
 check_package noctalia-greeter "Iniciador Noctalia" \
-    noctalia-greeter "cd ~/Shell && ./scripts/install-greeter.sh"
+    noctalia-greeter "$GREETER_FIX"
 check_package hyprlock "Bloqueo de pantalla (hyprlock)" \
     hyprlock "sudo apt install -t trixie-backports hyprlock"
 check_package swayidle "Bloqueo automático (swayidle)" \
@@ -78,4 +91,21 @@ check_package exfatprogs "Discos exFAT (exfatprogs)" \
 # python3 ejecuta los ayudantes de DNS y proxy; no lo instala network.sh.
 if ! command -v python3 >/dev/null 2>&1; then
     printf 'python3|DNS y proxy (python3)|python3|sudo apt install python3\n'
+fi
+
+# Extras que usan funciones concretas del shell. Sin ellos la función falla o
+# degrada sin explicar por qué.
+check_command grim "Capturas (grim)" grim grim \
+    "sudo apt install grim slurp"
+check_command slurp "Capturas por región (slurp)" slurp slurp \
+    "sudo apt install grim slurp"
+check_command brightnessctl "Brillo interno (brightnessctl)" brightnessctl \
+    brightnessctl "sudo apt install brightnessctl"
+check_command kdialog "Diálogos del sistema (kdialog)" kdialog kdialog \
+    "sudo apt install kdialog"
+
+# El paquete fonts-noto-cjk puede faltar aunque haya una fuente copiada a
+# ~/.local/share/fonts. Se comprueba el resultado real de fontconfig.
+if ! fc-list :lang=ja 2>/dev/null | grep -q .; then
+    printf 'fonts-cjk|Letras japonesas/chinas/coreanas|fonts-noto-cjk|sudo apt install fonts-noto-cjk\n'
 fi
