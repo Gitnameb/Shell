@@ -104,11 +104,13 @@ Singleton {
         root.cpuFreq = detailed ? Number(data.freq) || 0 : 0;
         root.cpuMaxFreq = detailed ? Number(data.maxfreq) || 0 : 0;
         root.cpuCores = detailed ? (data.cores || []) : [];
-        if (detailed) {
+        // El pico se acumula siempre: la temperatura se lee con el panel
+        // cerrado y el máximo debe cubrir desde que arranca el shell, no solo
+        // el rato que la vista de rendimiento estuvo abierta.
+        if (root.cpuTemp >= 0)
+            root.cpuPeakTemp = Math.max(root.cpuPeakTemp, root.cpuTemp);
+        if (detailed)
             root.cpuHistory = root.pushHistory(root.cpuHistory, cpu);
-            if (root.cpuTemp >= 0)
-                root.cpuPeakTemp = Math.max(root.cpuPeakTemp, root.cpuTemp);
-        }
 
         root.gpuLoad = detailed ? gpu : 0;
         root.gpuTemp = data.gtemp === null ? -1 : Number(data.gtemp);
@@ -118,11 +120,10 @@ Singleton {
             ? Number(data.gpower) : -1;
         root.vramUsed = detailed ? Number(data.vram) || 0 : 0;
         root.vramTotal = detailed ? Number(data.vramtotal) || 0 : 0;
-        if (detailed) {
+        if (root.gpuTemp >= 0)
+            root.gpuPeakTemp = Math.max(root.gpuPeakTemp, root.gpuTemp);
+        if (detailed)
             root.gpuHistory = root.pushHistory(root.gpuHistory, gpu);
-            if (root.gpuTemp >= 0)
-                root.gpuPeakTemp = Math.max(root.gpuPeakTemp, root.gpuTemp);
-        }
 
         root.netDown = down;
         root.netUp = up;

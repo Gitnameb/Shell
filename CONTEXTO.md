@@ -2765,3 +2765,19 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   Effects registra `Id=easyeffects` en la bandeja
   (`:1.1043/StatusNotifierItem`) y sigue procesando audio. Documentado en
   `CONFIGURACION-UMBRIEL.md` §33.
+
+### 2026-11-12 · Picos de temperatura con los paneles cerrados
+
+- **Síntoma.** El pico de CPU y GPU solo avanzaba mientras estaba abierta su
+  vista de rendimiento. Al cerrar el panel se seguía leyendo la temperatura
+  para el icono y los grados de la barra, pero el máximo se quedaba congelado
+  y al volver a abrirlo no reflejaba lo ocurrido entre medias.
+- **Causa.** `SystemStats.applySample` metía la actualización de
+  `cpuPeakTemp`/`gpuPeakTemp` dentro del bloque `if (detailed)`, el mismo que
+  pospone carga, frecuencias e historial. La temperatura, en cambio, se recibe
+  siempre en cada muestra.
+- **Solución.** El pico se acumula ahora con todas las muestras, también con
+  el panel cerrado; solo el historial y las lecturas pesadas siguen esperando a
+  que se abra una vista. En red no hacía falta cambiar nada: `netPeakDown` y
+  `netPeakUp` ya se actualizan fuera de `detailed`, igual que los totales de
+  sesión, porque `stats.py` mide el tráfico siempre.
