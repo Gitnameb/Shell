@@ -18,7 +18,7 @@ Orden acordado:
 3. **Código y archivos muertos**: componentes QML sin usar, scripts huérfanos,
    plantillas viejas y el `umbriel-edit.patch` desactualizado.
 4. **Optimización**: procesos que sondean de más, timers, arranque y consumo.
-5. **Información personal**: rutas con `/home/username`, nombres de equipo,
+5. **Información personal**: rutas con `/home/<usuario>`, nombres de equipo,
    hardware concreto (`HDMI-A-1`), correos, claves, logs y archivos de
    configuración con datos reales.
 6. **Historial de Git**: dejarlo para el final. Si el objetivo también es
@@ -31,7 +31,7 @@ Progreso (2026-11-12):
 - Hecho: dependencias que faltaban (`grim`, `slurp`, `fonts-noto-cjk`,
   `brightnessctl`, `python3`, `curl`), capturas sin depender de `~/Shell`,
   detección del conector de salida, clave aleatoria del hotspot, `Format.qml`
-  para el padding, parche del edit regenerado, rutas `/home/username` fuera de
+  para el padding, parche del edit regenerado, rutas `/home/<usuario>` fuera de
   QML, iconos y unidad de servicio duplicados eliminados, y pruebas de scripts.
 - Pendiente: decidir si los documentos internos (`CONTEXTO.md`, `PENDIENTES.md`,
   `PLAN*.md`) se sanitizan o se sacan del repositorio público. `--with-firmware`
