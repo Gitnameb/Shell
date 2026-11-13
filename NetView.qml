@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 
 // Vista de tráfico de red de la interfaz activa. Los totales y picos se
-// acumulan desde que arranca el shell; «Reiniciar» los pone a cero.
+// conservan entre recargas y reinicios; «Reiniciar» los pone a cero.
 ColumnLayout {
     id: root
 
@@ -104,7 +104,7 @@ ColumnLayout {
             Layout.fillWidth: true
             title: "Sesión"
             value: SystemStats.formatBytes(SystemStats.netSessionDown)
-            detail: "descargado desde el inicio"
+            detail: "descargado desde el último reinicio"
         }
 
         StatCell {

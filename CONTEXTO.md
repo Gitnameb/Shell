@@ -564,8 +564,10 @@ compositor; si es el contenido de una app → la app.**
     anterior/siguiente solo funcionan si el reproductor los soporta. La posición y el
     volumen dependen de que el reproductor los publique.
 38. **CPU, GPU y Red**: los datos son reales y se muestrean cada segundo con
-    `stats.py`. El historial y los totales de sesión viven en memoria y empiezan de cero
-    al recargar Quickshell. La GPU se lee de las rutas de `amdgpu` (`card0`); en otra
+    `stats.py`. El historial de 32 s vive en memoria, pero los picos y los totales de
+    sesión se guardan en `~/.local/state/shell/system-stats.json` y sobreviven a una
+    recarga de Quickshell o a reiniciarlo. Solo se ponen a cero con «Reiniciar picos»
+    o «Reiniciar». La GPU se lee de las rutas de `amdgpu` (`card0`); en otra
     GPU o en un portátil híbrido puede faltar algún dato y se muestra «—». El desglose
     de tráfico por aplicación no está implementado; requeriría `nethogs` o privilegios.
 39. **VPN**: solo muestra perfiles que ya existan en NetworkManager. Conectar puede
@@ -2860,6 +2862,16 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 - **Resumen.** `DnsState.qml` calcula automático/mixto y los valores actuales
   solo con las conexiones activas; el resumen muestra «Sin conexión» cuando no
   hay ninguna.
+
+### 2026-11-12 · Picos persistentes y bandeja
+
+- **Picos y sesión.** `SystemStats.qml` guarda los picos de temperatura y los
+  totales y picos de red en `~/.local/state/shell/system-stats.json`, con una
+  escritura cada 10 s. Al arrancar los recupera y toma el máximo entre el
+  archivo y las lecturas nuevas. Así una recarga de QML o reiniciar el shell
+  ya no borra lo acumulado; los botones de reinicio siguen poniéndolo a cero.
+- **Bandeja.** Se quita el texto «Clic derecho para el menú» cuando no hay
+  ningún icono bajo el puntero. El título del icono activo sigue apareciendo.
 
 ### 2026-11-12 · Clave a la vista y VPN del punto de acceso
 

@@ -47,6 +47,13 @@ Singleton {
     property bool hasSample: false
     property int sampleCount: 0
 
+    // Los picos y los totales de sesión sobreviven a una recarga de QML y a
+    // reiniciar el shell. Solo se ponen a cero con los botones «Reiniciar».
+    property bool stateLoaded: false
+    property string lastSavedState: ""
+    readonly property string statePath: Quickshell.env("HOME")
+        + "/.local/state/shell/system-stats.json"
+
     // El panel de rendimiento escribe 1 mientras está abierto. Fuera de él
     // basta con la temperatura de la barra y el tráfico; el resto de lecturas
     // (frecuencias, potencia, VRAM e historial) se posponen.
@@ -181,6 +188,7 @@ Singleton {
             root.cpuPeakTemp = Math.max(0, root.cpuTemp);
             root.cpuHistory = [];
         }
+        root.saveState();
     }
 
     function resetNet(): void {
@@ -190,6 +198,55 @@ Singleton {
         root.netPeakUp = root.netUp;
         root.netHistoryDown = [];
         root.netHistoryUp = [];
+        root.saveState();
+    }
+
+    function stateSnapshot(): string {
+        return JSON.stringify({
+            cpuPeakTemp: root.cpuPeakTemp,
+            gpuPeakTemp: root.gpuPeakTemp,
+            netSessionDown: root.netSessionDown,
+            netSessionUp: root.netSessionUp,
+            netPeakDown: root.netPeakDown,
+            netPeakUp: root.netPeakUp
+        });
+    }
+
+    function saveState(): void {
+        if (!root.stateLoaded)
+            return;
+        const text = root.stateSnapshot();
+        if (text === root.lastSavedState)
+            return;
+        root.lastSavedState = text;
+        Quickshell.execDetached(["sh", "-c",
+            "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\".tmp && mv \"$1\".tmp \"$1\"",
+            "shell", root.statePath, text]);
+    }
+
+    function loadState(text): void {
+        const raw = String(text || "").trim();
+        if (raw.length > 0) {
+            try {
+                const data = JSON.parse(raw);
+                root.cpuPeakTemp = Math.max(root.cpuPeakTemp,
+                    Number(data.cpuPeakTemp) || 0);
+                root.gpuPeakTemp = Math.max(root.gpuPeakTemp,
+                    Number(data.gpuPeakTemp) || 0);
+                root.netSessionDown = Math.max(root.netSessionDown,
+                    Number(data.netSessionDown) || 0);
+                root.netSessionUp = Math.max(root.netSessionUp,
+                    Number(data.netSessionUp) || 0);
+                root.netPeakDown = Math.max(root.netPeakDown,
+                    Number(data.netPeakDown) || 0);
+                root.netPeakUp = Math.max(root.netPeakUp,
+                    Number(data.netPeakUp) || 0);
+                root.lastSavedState = root.stateSnapshot();
+            } catch (error) {
+                // Un archivo dañado solo pierde los picos anteriores.
+            }
+        }
+        root.stateLoaded = true;
     }
 
     function thermalLevel(temp: real): string {
@@ -322,6 +379,24 @@ Singleton {
                 // Se conserva la última latencia válida.
             }
         }
+    }
+
+    Component.onCompleted: root.stateLoaded = true
+
+    FileView {
+        id: stateFile
+
+        path: root.statePath
+        watchChanges: false
+        printErrors: false
+        onLoaded: root.loadState(stateFile.text())
+    }
+
+    Timer {
+        interval: 10000
+        repeat: true
+        running: root.stateLoaded
+        onTriggered: root.saveState()
     }
 
     Timer {

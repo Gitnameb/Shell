@@ -242,8 +242,8 @@ PanelWindow {
 
             Text {
                 Layout.fillWidth: true
-                text: root.hoveredTitle.length > 0
-                    ? root.hoveredTitle : "Clic derecho para el menú"
+                visible: root.hoveredTitle.length > 0
+                text: root.hoveredTitle
                 color: Theme.faint
                 font.family: Theme.fontFamily
                 font.pixelSize: 9
