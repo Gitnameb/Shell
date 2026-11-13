@@ -845,6 +845,12 @@ recuerda la última sesión elegida.
   contraseña se abre dentro de la fila. El botón **+** de la fila Wi-Fi se usa
   solo para añadir una red oculta manualmente. El engranaje avanzado de cada
   red solo se muestra en la red conectada.
+- **Privacidad de la red Wi-Fi:** en el engranaje de la red conectada se puede
+  desactivar el envío del nombre del dispositivo por DHCP y elegir la MAC:
+  la del dispositivo (`permanent`), una aleatoria derivada del SSID
+  (`stable-ssid`) o una nueva en cada conexión (`random`). Se guarda en el
+  perfil de NetworkManager y se aplica al reconectar; el firmware debe
+  permitir el cambio de MAC.
 - **DNS global:** el centro de control tiene una ficha **DNS** propia. La vista
   permite usar el DNS automático del router o servidores IPv4/IPv6 propios y lo
   aplica a todas las conexiones Wi-Fi y Ethernet guardadas, porque

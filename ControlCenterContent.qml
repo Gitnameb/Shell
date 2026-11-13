@@ -2740,6 +2740,137 @@ ColumnLayout {
                     }
                 }
 
+                Rectangle {
+                    Layout.fillWidth: true
+                    visible: WifiState.profileFound
+                    Layout.preferredHeight: 1
+                    color: Theme.border
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    visible: WifiState.profileFound
+                    text: "PRIVACIDAD"
+                    color: Theme.faint
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+                    font.weight: Font.DemiBold
+                    font.letterSpacing: 0.8
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    visible: WifiState.profileFound
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Enviar nombre del dispositivo"
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                    }
+
+                    ShellSwitch {
+                        enabled: !WifiState.profilePrivacyBusy
+                        checked: WifiState.profileDhcpHostname
+                        onToggled: WifiState.setDhcpHostname(
+                            root.wifiNetworkSsid,
+                            !WifiState.profileDhcpHostname)
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    visible: WifiState.profileFound
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Dirección MAC"
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                    }
+
+                    Row {
+                        spacing: 4
+
+                        Repeater {
+                            model: [
+                                { key: "permanent", label: "Dispositivo" },
+                                { key: "stable", label: "Aleatoria" },
+                                { key: "random", label: "Nueva" }
+                            ]
+
+                            delegate: Rectangle {
+                                required property var modelData
+
+                                readonly property bool selected:
+                                    WifiState.profileMacMode === modelData.key
+
+                                implicitWidth: modelData.key === "permanent"
+                                    ? 62 : (modelData.key === "stable"
+                                        ? 55 : 42)
+                                implicitHeight: 22
+                                radius: 6
+                                color: selected
+                                    ? Theme.accentSoft
+                                    : (macMouse.containsMouse
+                                        ? Theme.hover : Theme.surfaceAlt)
+                                border.width: 1
+                                border.color: selected
+                                    ? Theme.accentLine : Theme.border
+                                opacity: WifiState.profilePrivacyBusy
+                                    ? 0.5 : 1
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: modelData.label
+                                    color: selected
+                                        ? Theme.accent : Theme.faint
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 7
+                                    font.weight: selected
+                                        ? Font.DemiBold : Font.Normal
+                                }
+
+                                MouseArea {
+                                    id: macMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    enabled: !WifiState.profilePrivacyBusy
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: WifiState.setMacMode(
+                                        root.wifiNetworkSsid, modelData.key)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    visible: WifiState.profileFound
+                    text: "Aleatoria mantiene una MAC distinta por red; "
+                        + "Nueva cambia en cada conexión. Se aplica al "
+                        + "reconectar."
+                    color: Theme.faint
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+                    wrapMode: Text.Wrap
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    visible: WifiState.profilePrivacyError.length > 0
+                    text: WifiState.profilePrivacyError
+                    color: Theme.danger
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 8
+                    wrapMode: Text.Wrap
+                }
+
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8

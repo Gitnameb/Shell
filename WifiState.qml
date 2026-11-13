@@ -34,6 +34,11 @@ Singleton {
     property string profileUuid: ""
     property bool profileFound: false
     property bool profileAutoconnect: true
+    // Privacidad del perfil: nombre enviado por DHCP y modo de MAC.
+    property bool profileDhcpHostname: true
+    property string profileMacMode: "permanent"
+    property bool profilePrivacyBusy: false
+    property string profilePrivacyError: ""
     property bool profileQrReady: false
     property string profileQrVersion: ""
     property string profileError: ""
@@ -89,6 +94,10 @@ Singleton {
         root.profileUuid = "";
         root.profileFound = false;
         root.profileAutoconnect = true;
+        root.profileDhcpHostname = true;
+        root.profileMacMode = "permanent";
+        root.profilePrivacyBusy = false;
+        root.profilePrivacyError = "";
         root.profileQrReady = false;
         root.profileError = "";
         if (!ssid || ssid.length === 0)
@@ -102,6 +111,10 @@ Singleton {
         root.profileSsid = "";
         root.profileUuid = "";
         root.profileFound = false;
+        root.profileDhcpHostname = true;
+        root.profileMacMode = "permanent";
+        root.profilePrivacyBusy = false;
+        root.profilePrivacyError = "";
         root.profileQrReady = false;
         root.profileError = "";
     }
@@ -112,6 +125,27 @@ Singleton {
         autoconnectProc.command = ["python3", root.helperPath,
             "autoconnect", ssid, value ? "yes" : "no"];
         autoconnectProc.running = true;
+    }
+
+    function setDhcpHostname(ssid, value): void {
+        if (!ssid || ssid.length === 0 || root.profilePrivacyBusy)
+            return;
+        root.profilePrivacyBusy = true;
+        root.profilePrivacyError = "";
+        hostnameProc.command = ["python3", root.helperPath,
+            "hostname", ssid, value ? "yes" : "no"];
+        hostnameProc.running = true;
+    }
+
+    function setMacMode(ssid, mode): void {
+        if (!ssid || ssid.length === 0 || root.profilePrivacyBusy)
+            return;
+        if (mode !== "permanent" && mode !== "stable" && mode !== "random")
+            return;
+        root.profilePrivacyBusy = true;
+        root.profilePrivacyError = "";
+        macProc.command = ["python3", root.helperPath, "mac", ssid, mode];
+        macProc.running = true;
     }
 
     function forget(ssid): void {
@@ -446,6 +480,10 @@ Singleton {
                 root.profileUuid = info.found === true
                     ? String(info.uuid || "") : "";
                 root.profileAutoconnect = info.autoconnect === true;
+                root.profileDhcpHostname = info.dhcpHostname !== false;
+                root.profileMacMode = String(info.macMode || "permanent");
+                root.profilePrivacyBusy = false;
+                root.profilePrivacyError = "";
                 root.profileQrReady = info.qr === true;
                 root.profileError = root.profileFound
                     ? "" : "Sin perfil guardado.";
@@ -474,6 +512,56 @@ Singleton {
             }
             if (code !== 0)
                 root.lastError = "No se pudo cambiar la reconexión.";
+        }
+    }
+
+    Process {
+        id: hostnameProc
+
+        stdout: StdioCollector {
+            id: hostnameOut
+        }
+
+        onExited: (code) => {
+            root.profilePrivacyBusy = false;
+            try {
+                const info = JSON.parse(hostnameOut.text.trim() || "{}");
+                if (code !== 0 || info.ok !== true) {
+                    root.profilePrivacyError =
+                        "No se pudo cambiar el nombre por DHCP.";
+                    return;
+                }
+                root.profileDhcpHostname = info.dhcpHostname !== false;
+                root.profilePrivacyError = "";
+            } catch (e) {
+                root.profilePrivacyError =
+                    "No se pudo cambiar el nombre por DHCP.";
+            }
+        }
+    }
+
+    Process {
+        id: macProc
+
+        stdout: StdioCollector {
+            id: macOut
+        }
+
+        onExited: (code) => {
+            root.profilePrivacyBusy = false;
+            try {
+                const info = JSON.parse(macOut.text.trim() || "{}");
+                if (code !== 0 || info.ok !== true) {
+                    root.profilePrivacyError =
+                        "No se pudo cambiar la dirección MAC.";
+                    return;
+                }
+                root.profileMacMode = String(info.macMode || "permanent");
+                root.profilePrivacyError = "";
+            } catch (e) {
+                root.profilePrivacyError =
+                    "No se pudo cambiar la dirección MAC.";
+            }
         }
     }
 

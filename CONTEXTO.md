@@ -2811,3 +2811,19 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   red conectada aparece un candado (`lock.svg`) en las redes Wi-Fi protegidas
   que todavía no están conectadas. Las redes abiertas no muestran candado para
   no dar una información falsa.
+
+### 2026-11-12 · Privacidad por red Wi-Fi
+
+- **Nombre por DHCP.** El engranaje de la red conectada añade «Enviar nombre
+  del dispositivo». Apaga o enciende a la vez
+  `ipv4.dhcp-send-hostname` e `ipv6.dhcp-send-hostname` del perfil de
+  NetworkManager; al desactivarlo, el router deja de recibir el hostname del
+  equipo en la petición DHCP.
+- **MAC por red.** Se puede elegir entre `permanent` («Dispositivo»),
+  `stable-ssid` («Aleatoria», derivada del SSID y mantenida entre conexiones)
+  y `random` («Nueva», cambia en cada conexión). Se escribe en
+  `802-11-wireless.cloned-mac-address` y NetworkManager la aplica al
+  reconectar. El firmware y el driver deben permitir el cambio de MAC.
+- **Implementación.** `scripts/wifi-profile.py` lee y escribe ambas
+  propiedades; `WifiState.qml` las expone y `ControlCenterContent.qml` pinta la
+  sección «Privacidad» dentro de los ajustes de la red.
