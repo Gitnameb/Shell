@@ -4,9 +4,10 @@ import Quickshell
 import Quickshell.Io
 import QtQuick
 
-// DNS global del escritorio. NetworkManager no tiene un DNS único para todo
-// el sistema, así que se aplica la misma elección a todos los perfiles Wi-Fi
-// y Ethernet guardados. La vista DNS del centro de control usa este singleton.
+// DNS de las conexiones activas. NetworkManager no tiene un DNS único para
+// todo el sistema, así que se aplica la misma elección a las conexiones Wi-Fi
+// y Ethernet conectadas en ese momento. La vista DNS del centro de control usa
+// este singleton.
 Singleton {
     id: root
 
@@ -19,24 +20,32 @@ Singleton {
     readonly property string helperPath: (Quickshell.shellDir || "")
         + "/scripts/network-settings.py"
 
-    // Todas las conexiones usan el DNS que entrega el router.
+    // Solo las conexiones activas reciben el ajuste de DNS.
+    readonly property var activeConnections: {
+        if (!Array.isArray(root.connections))
+            return [];
+        return root.connections.filter(item => item.active === true);
+    }
+
+    // Todas las conexiones activas usan el DNS que entrega el router.
     readonly property bool allAuto: {
-        if (root.connections.length === 0)
+        if (root.activeConnections.length === 0)
             return true;
-        for (let i = 0; i < root.connections.length; i++) {
-            if (root.connections[i].auto !== true)
+        for (let i = 0; i < root.activeConnections.length; i++) {
+            if (root.activeConnections[i].auto !== true)
                 return false;
         }
         return true;
     }
 
-    // Hay redes con ajustes distintos: el widget avisa antes de unificarlas.
+    // Hay redes conectadas con ajustes distintos: el widget avisa antes de
+    // unificarlas.
     readonly property bool mixed: {
-        if (root.connections.length === 0)
+        if (root.activeConnections.length === 0)
             return false;
         let signature = "";
-        for (let i = 0; i < root.connections.length; i++) {
-            const item = root.connections[i];
+        for (let i = 0; i < root.activeConnections.length; i++) {
+            const item = root.activeConnections[i];
             const current = item.auto
                 ? "auto"
                 : "manual:" + (item.dns4 || []).join(",")
@@ -52,9 +61,9 @@ Singleton {
     // Valores de referencia para rellenar el formulario cuando hay una
     // configuración manual (aunque no sea igual en todas las redes).
     readonly property var manualSample: {
-        for (let i = 0; i < root.connections.length; i++) {
-            if (root.connections[i].auto !== true)
-                return root.connections[i];
+        for (let i = 0; i < root.activeConnections.length; i++) {
+            if (root.activeConnections[i].auto !== true)
+                return root.activeConnections[i];
         }
         return null;
     }
@@ -67,8 +76,8 @@ Singleton {
     readonly property string summary: {
         if (root.loading)
             return "Leyendo…";
-        if (root.connections.length === 0)
-            return "Sin datos";
+        if (root.activeConnections.length === 0)
+            return "Sin conexión";
         if (root.allAuto)
             return "Automático";
         if (root.mixed)
@@ -89,7 +98,7 @@ Singleton {
         listProc.running = true;
     }
 
-    // Aplica la misma elección a todas las conexiones guardadas.
+    // Aplica la misma elección a todas las conexiones activas.
     function saveAll(automatic, dns4, dns6): void {
         if (root.busy)
             return;
@@ -125,7 +134,8 @@ Singleton {
             if (warning.length > 0)
                 root.notice = warning;
             else if (data.count > 0)
-                root.notice = "DNS aplicado a " + data.count + " redes.";
+                root.notice = "DNS aplicado a " + data.count
+                    + (data.count === 1 ? " conexión." : " conexiones.");
             else
                 root.notice = "DNS guardado.";
         } catch (e) {

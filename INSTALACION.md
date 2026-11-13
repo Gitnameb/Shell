@@ -859,11 +859,11 @@ recuerda la última sesión elegida.
   (`stable-ssid`) o una nueva en cada conexión (`random`). Se guarda en el
   perfil de NetworkManager y se aplica al reconectar; el firmware debe
   permitir el cambio de MAC.
-- **DNS global:** el centro de control tiene una ficha **DNS** propia. La vista
+- **DNS:** el centro de control tiene una ficha **DNS** propia. La vista
   permite usar el DNS automático del router o servidores IPv4/IPv6 propios y lo
-  aplica a todas las conexiones Wi-Fi y Ethernet guardadas, porque
-  NetworkManager no tiene un DNS único para todo el sistema. Los cambios se
-  aplican con `nmcli device reapply` sin cortar la conexión.
+  aplica solo a las conexiones Wi-Fi y Ethernet que están activas en ese
+  momento, sin tocar los perfiles guardados que están desconectados. Los
+  cambios se aplican con `nmcli device reapply` sin cortar la conexión.
 - **Proxy por red:** el engranaje general de la vista Red permite elegir por
   conexión entre sin proxy, automático (PAC) o manual. NetworkManager solo
   admite `none`/`auto`, así que el modo manual se guarda como un PAC generado.

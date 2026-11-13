@@ -895,7 +895,8 @@ Tras cerrar sesión y volver a entrar:
 - B4: hecho en anidado; falta probar con una app real (KeePassXC/Telegram).
 - B5: Wi-Fi (escanear solo con el panel abierto, reconectar, olvidar, QR,
   bandas) y Bluetooth (emparejar, batería); autoapagado a 15 min y hotspot.
-  DNS global implementado (ficha propia, automático/manual IPv4/IPv6) y proxy
+  DNS de las conexiones activas implementado (ficha propia,
+  automático/manual IPv4/IPv6) y proxy
   por red (PAC generado + environment.d); falta probarlo con apps reales y
   tras reiniciar sesión.
 - Aviso de dependencias bajo demanda en el panel de notificaciones (icono

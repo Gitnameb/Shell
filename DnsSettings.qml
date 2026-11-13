@@ -2,9 +2,9 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Ajuste global de DNS. NetworkManager guarda el DNS por conexión, así que
-// esta vista aplica la misma elección a todas las redes Wi-Fi y Ethernet
-// guardadas. Muestra debajo qué conexiones se verán afectadas.
+// Ajuste de DNS de las conexiones activas. NetworkManager guarda el DNS por
+// conexión, así que esta vista aplica la misma elección a las conexiones Wi-Fi
+// y Ethernet conectadas en ese momento.
 ColumnLayout {
     id: root
 
@@ -36,7 +36,7 @@ ColumnLayout {
     }
 
     function loadFields(): void {
-        if (DnsState.connections.length === 0) {
+        if (DnsState.activeConnections.length === 0) {
             root.autoMode = true;
             dnsV4.text = "";
             dnsV6.text = "";
@@ -53,18 +53,10 @@ ColumnLayout {
 
     Text {
         Layout.fillWidth: true
-        text: "DNS GLOBAL"
-        color: Theme.faint
-        font.family: Theme.fontFamily
-        font.pixelSize: 8
-        font.weight: Font.DemiBold
-        font.letterSpacing: 0.8
-    }
-
-    Text {
-        Layout.fillWidth: true
-        text: "Se aplica a todas las redes Wi-Fi y Ethernet guardadas. "
-            + "Los cambios no cortan la conexión."
+        visible: DnsState.loading || DnsState.activeConnections.length === 0
+        text: DnsState.loading
+            ? "Leyendo conexiones…"
+            : "Conecta una red Wi-Fi o Ethernet para cambiar su DNS."
         color: Theme.faint
         font.family: Theme.fontFamily
         font.pixelSize: 8
@@ -185,7 +177,7 @@ ColumnLayout {
         spacing: 6
 
         Rectangle {
-            implicitWidth: 96
+            implicitWidth: 112
             implicitHeight: 26
             radius: 7
             color: DnsState.busy
@@ -197,7 +189,7 @@ ColumnLayout {
 
             Text {
                 anchors.centerIn: parent
-                text: DnsState.busy ? "Guardando…" : "Aplicar a todas"
+                text: DnsState.busy ? "Guardando…" : "Aplicar a conectadas"
                 color: DnsState.busy ? Theme.faint : Theme.accent
                 font.family: Theme.fontFamily
                 font.pixelSize: 8
@@ -220,7 +212,8 @@ ColumnLayout {
     Text {
         Layout.fillWidth: true
         visible: DnsState.mixed && !DnsState.allAuto
-        text: "Hay redes con DNS distinto. Al aplicar se unificarán todas."
+        text: "Hay conexiones con DNS distinto. Al aplicar se unificarán "
+            + "las que están activas."
         color: Theme.warning
         font.family: Theme.fontFamily
         font.pixelSize: 8
@@ -242,94 +235,6 @@ ColumnLayout {
         visible: DnsState.notice.length > 0
             && DnsState.error.length === 0
         text: DnsState.notice
-        color: Theme.faint
-        font.family: Theme.fontFamily
-        font.pixelSize: 8
-        wrapMode: Text.Wrap
-    }
-
-    Rectangle {
-        Layout.fillWidth: true
-        Layout.preferredHeight: 1
-        Layout.topMargin: 2
-        color: Theme.border
-    }
-
-    Text {
-        Layout.fillWidth: true
-        text: "AFECTA A"
-        color: Theme.faint
-        font.family: Theme.fontFamily
-        font.pixelSize: 8
-        font.weight: Font.DemiBold
-        font.letterSpacing: 0.8
-    }
-
-    Repeater {
-        model: DnsState.connections
-
-        delegate: RowLayout {
-            id: dnsRow
-
-            required property var modelData
-
-            readonly property bool usb: {
-                const name = String(dnsRow.modelData.device || "").toLowerCase();
-                return name.indexOf("usb") === 0
-                    || name.indexOf("enx") === 0
-                    || name.indexOf("rndis") === 0;
-            }
-            readonly property string current: {
-                if (dnsRow.modelData.auto)
-                    return "Automático";
-                const list = [];
-                const v4 = dnsRow.modelData.dns4 || [];
-                const v6 = dnsRow.modelData.dns6 || [];
-                for (let i = 0; i < v4.length; i++)
-                    list.push(v4[i]);
-                for (let i = 0; i < v6.length; i++)
-                    list.push(v6[i]);
-                return list.length > 0 ? list.join(", ") : "Sin DNS";
-            }
-
-            Layout.fillWidth: true
-            spacing: 7
-
-            ShellIcon {
-                source: ShellIcons.src(dnsRow.modelData.kind === "wifi"
-                    ? "wifi" : (dnsRow.usb ? "usb" : "wired"))
-                color: dnsRow.modelData.active
-                    ? Theme.accent : Theme.muted
-                size: 14
-                fallback: "◌"
-            }
-
-            Text {
-                Layout.fillWidth: true
-                text: dnsRow.modelData.label
-                color: dnsRow.modelData.active
-                    ? Theme.accent : Theme.text
-                font.family: Theme.fontFamily
-                font.pixelSize: 9
-                elide: Text.ElideRight
-            }
-
-            Text {
-                Layout.preferredWidth: 110
-                text: dnsRow.current
-                color: Theme.faint
-                font.family: Theme.fontFamily
-                font.pixelSize: 8
-                horizontalAlignment: Text.AlignRight
-                elide: Text.ElideRight
-            }
-        }
-    }
-
-    Text {
-        Layout.fillWidth: true
-        visible: !DnsState.loading && DnsState.connections.length === 0
-        text: "No hay conexiones Wi-Fi o Ethernet guardadas."
         color: Theme.faint
         font.family: Theme.fontFamily
         font.pixelSize: 8

@@ -101,12 +101,11 @@ Prioridad acordada:
 - El icono de papelera para **olvidar una red** está en la cabecera de sus
   ajustes, a la derecha del nombre, sin texto. El primer clic lo arma y el
   segundo confirma; el tooltip indica ambos pasos.
-- El centro de control tiene una ficha **DNS** propia. Abre una vista con un
-  ajuste **global**: automático o servidores IPv4/IPv6 propios, aplicado a todas
-  las conexiones Wi-Fi y Ethernet guardadas (NetworkManager no ofrece un DNS
-  único para todo el sistema). La vista muestra qué redes se verán afectadas y
-  los cambios se aplican con `nmcli device reapply`, sin cortar el enlace. Lo
-  implementan `DnsSettings.qml`, `DnsState.qml` y
+- El centro de control tiene una ficha **DNS** propia. Abre una vista para
+  elegir automático o servidores IPv4/IPv6 propios; se aplica solo a las
+  conexiones Wi-Fi y Ethernet activas, no a los perfiles guardados que están
+  desconectados. Los cambios se aplican con `nmcli device reapply`, sin cortar
+  el enlace. Lo implementan `DnsSettings.qml`, `DnsState.qml` y
   `scripts/network-settings.py`.
 - El **proxy por red** vive dentro de las opciones de cada conexión: el
   engranaje de una red Wi-Fi conectada o el de una Ethernet conectada abre su
@@ -2838,6 +2837,20 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   la cabecera de los ajustes de la red, a la derecha de su nombre. El primer
   clic arma la confirmación (icono rojo) y el segundo borra el perfil; el
   tooltip explica ambos pasos.
+
+### 2026-11-12 · DNS solo en las conexiones activas
+
+- **Alcance.** `scripts/network-settings.py set-all` filtra ahora con
+  `nmcli connection show --active` y solo modifica las conexiones Wi-Fi y
+  Ethernet conectadas. Los perfiles guardados que están desconectados ya no
+  reciben el ajuste.
+- **Vista.** Se eliminan la cabecera «DNS GLOBAL», su descripción y la lista
+  «AFECTA A». El formulario empieza directamente por Automático/Manual; el
+  botón pasa a «Aplicar a conectadas» y los avisos cuentan conexiones, no
+  redes. Si no hay ninguna activa, se muestra una indicación para conectar una.
+- **Resumen.** `DnsState.qml` calcula automático/mixto y los valores actuales
+  solo con las conexiones activas; el resumen muestra «Sin conexión» cuando no
+  hay ninguna.
 
 ### 2026-11-12 · Privacidad por red Wi-Fi
 

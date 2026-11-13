@@ -12,11 +12,11 @@ Uso:
     network-settings.py set-proxy <uuid> manual <http> <https> <socks> <no-proxy>
 
 Las direcciones DNS se aceptan separadas por espacios o comas. `set` cambia un
-perfil y `set-all` aplica lo mismo a todas las conexiones Wi-Fi y Ethernet.
-Si la conexión está activa, el DNS se aplica con `nmcli device reapply` sin
-cortar el enlace. El proxy manual de la conexión activa también se escribe en
-`~/.config/environment.d/90-shell-proxy.conf` para la próxima sesión. La salida
-siempre es JSON.
+perfil y `set-all` aplica lo mismo a las conexiones Wi-Fi y Ethernet que están
+activas en ese momento. Si la conexión está activa, el DNS se aplica con
+`nmcli device reapply` sin cortar el enlace. El proxy manual de la conexión
+activa también se escribe en `~/.config/environment.d/90-shell-proxy.conf` para
+la próxima sesión. La salida siempre es JSON.
 """
 
 import ipaddress
@@ -451,22 +451,23 @@ def set_one(uuid, automatic, dns4, dns6):
 
 
 def set_all(automatic, dns4, dns6):
-    connections = snapshot()
+    connections = [item for item in snapshot() if item["active"]]
     if not connections:
-        return payload(False, "No hay conexiones Wi-Fi o Ethernet guardadas.")
+        return payload(False, "No hay conexiones activas para cambiar el DNS.")
     warnings = []
+    applied = 0
     for connection in connections:
         error = apply_dns(connection["uuid"], automatic, dns4, dns6)
         if error:
             warnings.append("%s: %s" % (connection["label"], error))
             continue
+        applied += 1
         warning = reapply(connection)
         if warning:
             warnings.append(warning)
-    if len(warnings) == len(connections):
+    if applied == 0:
         return payload(False, warnings[0])
-    return payload(True, warning=". ".join(warnings),
-                   count=len(connections))
+    return payload(True, warning=". ".join(warnings), count=applied)
 
 
 def main():
