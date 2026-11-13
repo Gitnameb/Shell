@@ -3,6 +3,7 @@
 
 Uso:
     wifi-profile.py profile <ssid> <ruta-qr>
+    wifi-profile.py saved
     wifi-profile.py autoconnect <ssid> <yes|no>
     wifi-profile.py hostname <ssid> <yes|no>
     wifi-profile.py mac <ssid> <permanent|stable|random>
@@ -10,7 +11,8 @@ Uso:
 
 `profile` imprime un JSON con el nombre del perfil, la reconexión automática,
 la privacidad (nombre por DHCP y modo de MAC) y si se pudo generar el QR para
-compartir la red.
+compartir la red. `saved` imprime el historial de redes guardadas, ordenado por
+la última vez que se usaron.
 """
 
 import json
@@ -131,6 +133,54 @@ def profile(ssid, qr_path):
     return 0
 
 
+def unescape(value):
+    """Quita el escapado de los campos en modo terse de nmcli."""
+    result = []
+    i = 0
+    while i < len(value):
+        if value[i] == "\\" and i + 1 < len(value):
+            result.append(value[i + 1])
+            i += 2
+        else:
+            result.append(value[i])
+            i += 1
+    return "".join(result)
+
+
+def saved():
+    """Lista los perfiles Wi-Fi guardados, del más reciente al más antiguo."""
+    active = {
+        unescape(line)
+        for line in run([
+            "nmcli", "-t", "-f", "NAME", "connection", "show", "--active",
+        ]).stdout.splitlines()
+        if line
+    }
+    out = run(["nmcli", "-t", "-f", "NAME,TYPE", "connection", "show"]).stdout
+    networks = []
+    for line in out.splitlines():
+        name, sep, kind = line.rpartition(":")
+        if not sep or kind != "802-11-wireless":
+            continue
+        name = unescape(name)
+        ssid = nm_get(name, "802-11-wireless.ssid") or name
+        try:
+            timestamp = int(float(nm_get(name, "connection.timestamp") or 0))
+        except ValueError:
+            timestamp = 0
+        networks.append({
+            "ssid": ssid,
+            "name": name,
+            "uuid": nm_get(name, "connection.uuid"),
+            "timestamp": timestamp,
+            "autoconnect": nm_get(name, "connection.autoconnect") == "yes",
+            "active": name in active,
+        })
+    networks.sort(key=lambda item: item["timestamp"], reverse=True)
+    print(json.dumps({"networks": networks}))
+    return 0
+
+
 def autoconnect(ssid, value):
     name = profile_for(ssid)
     if not name:
@@ -205,9 +255,13 @@ def forget(ssid):
 
 
 def main():
-    if len(sys.argv) < 3:
+    if len(sys.argv) < 2:
         return 2
     action = sys.argv[1]
+    if action == "saved":
+        return saved()
+    if len(sys.argv) < 3:
+        return 2
     if action == "profile" and len(sys.argv) >= 4:
         return profile(sys.argv[2], sys.argv[3])
     if action == "autoconnect" and len(sys.argv) >= 4:

@@ -845,6 +845,12 @@ recuerda la última sesión elegida.
   contraseña se abre dentro de la fila. El botón **+** de la fila Wi-Fi se usa
   solo para añadir una red oculta manualmente. El engranaje avanzado de cada
   red solo se muestra en la red conectada.
+- **Redes guardadas:** el engranaje general de la vista Red tiene el
+  interruptor «Mostrar redes guardadas». Al activarlo aparece, al final de la
+  lista, el historial de perfiles Wi-Fi de NetworkManager ordenado por la
+  última conexión, con la fecha y la hora de uso. Tocar una red guardada
+  conecta si está en el alcance o abre sus ajustes si es la red conectada; los
+  perfiles fuera de alcance se marcan como tal.
 - **Privacidad de la red Wi-Fi:** en el engranaje de la red conectada se puede
   desactivar el envío del nombre del dispositivo por DHCP y elegir la MAC:
   la del dispositivo (`permanent`), una aleatoria derivada del SSID

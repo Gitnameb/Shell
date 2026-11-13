@@ -91,6 +91,11 @@ Prioridad acordada:
   formulario de SSID y contraseña se abre dentro de la propia fila, como una red
   normal. El botón **+** de la fila Wi-Fi queda solo para añadir una red oculta
   a mano.
+- El engranaje general también puede mostrar el **historial de redes
+  guardadas** al final de la lista: los perfiles de NetworkManager ordenados
+  por la última conexión, con fecha y hora. Tocar uno conecta si está en el
+  alcance; si es la red activa, abre sus ajustes. Los perfiles que no están
+  cerca se marcan como «Fuera de alcance».
 - El centro de control tiene una ficha **DNS** propia. Abre una vista con un
   ajuste **global**: automático o servidores IPv4/IPv6 propios, aplicado a todas
   las conexiones Wi-Fi y Ethernet guardadas (NetworkManager no ofrece un DNS
@@ -1003,7 +1008,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 | `AppContextMenu.qml` | Menú contextual de una ventana: enfocar, maximizar/restaurar, minimizar/restaurar, flotante/mosaico, mover al escritorio y cerrar esa ventana. Las acciones pasan por `CompositorState`. |
 | `AppMenuItem.qml` | Fila reutilizable del menú contextual, con icono del tema o glifo de respaldo. |
 | `ShellIcon.qml` | Icono de widget del tema Breeze con color de estado mediante `ColorOverlay`; sustituye a los emojis. |
-| `SettingsState.qml` | Preferencias persistentes: modo claro/oscuro, color de acento, tema en las apps, distribución del teclado, máximo de escritorios, filas visibles y tamaños de iconos del centro y de la barra, porcentajes por panel (volumen, brillo, atenuación, batería y Bluetooth), temperatura en la barra, atajo del micrófono, ocultación automática de la barra, apagados automáticos, modo avión, redes ocultas, modo por defecto y por escritorio, y barra de título (`auto`/`always`/`never`). |
+| `SettingsState.qml` | Preferencias persistentes: modo claro/oscuro, color de acento, tema en las apps, distribución del teclado, máximo de escritorios, filas visibles y tamaños de iconos del centro y de la barra, porcentajes por panel (volumen, brillo, atenuación, batería y Bluetooth), temperatura en la barra, atajo del micrófono, ocultación automática de la barra, apagados automáticos, modo avión, redes ocultas, historial de redes guardadas, modo por defecto y por escritorio, y barra de título (`auto`/`always`/`never`). |
 | `HostInfo.qml` | Nombre de la máquina, usado por el hotspot y el Bluetooth. |
 | `WeatherState.qml` | Clima actual y previsión desde `wttr.in`, sin clave de API. |
 | `ClockTab.qml` | Pestaña reutilizable del panel del reloj. |
@@ -1050,9 +1055,9 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 | `HotspotState.qml` | Punto de acceso Wi-Fi con NetworkManager (`nmcli`), perfil manual con banda, red oculta y QR WPA; clientes vía `ip neigh`. |
 | `AutoOffState.qml` | Apagado por inactividad del hotspot, del Wi-Fi y del Bluetooth según los minutos configurados. |
 | `AirplaneState.qml` | Modo avión explícito: apaga Wi-Fi, Bluetooth y hotspot, permite reactivar radios a mano y restaura las que estaban encendidas al salir. |
-| `WifiState.qml` | Bandas, seguridad y señal de las redes vía `nmcli`; perfil, QR compartible y reconexión automática de cada red; preferencias de banda por SSID y conexión manual a redes ocultas (`hidden yes`). |
+| `WifiState.qml` | Bandas, seguridad y señal de las redes vía `nmcli`; perfil, QR compartible y reconexión automática de cada red; historial de perfiles guardados; preferencias de banda por SSID y conexión manual a redes ocultas (`hidden yes`). |
 | `EthernetState.qml` | Diagnóstico por interfaz cableada: muestra si la controla NetworkManager, ifupdown o dhcpcd. Mantiene una etiqueta por nombre para las listas con varias Ethernet. |
-| `scripts/wifi-profile.py` | Lee el perfil de una red, genera el QR WPA, cambia `connection.autoconnect` y olvida la red desde NetworkManager. |
+| `scripts/wifi-profile.py` | Lee el perfil de una red y el historial de perfiles guardados, genera el QR WPA, cambia `connection.autoconnect`, la privacidad (DHCP/MAC) y olvida la red desde NetworkManager. |
 | `ShellSlider.qml` | Deslizador compacto de las vistas avanzadas, con pasos del 2%. |
 | `CalendarPanel.qml` | Panel del reloj pegado a la barra: calendario, clima, alarmas y temporizador. |
 | `PowerMenu.qml` | Menú de energía en su propia capa. |
@@ -2811,6 +2816,21 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   red conectada aparece un candado (`lock.svg`) en las redes Wi-Fi protegidas
   que todavía no están conectadas. Las redes abiertas no muestran candado para
   no dar una información falsa.
+
+### 2026-11-12 · Historial de redes guardadas
+
+- **Interruptor en el engranaje.** La vista Red añade «Mostrar redes
+  guardadas» junto a «Mostrar redes ocultas». La preferencia se guarda en
+  `settings.conf` como `showSavedWifi`.
+- **Historial.** `scripts/wifi-profile.py saved` lista los perfiles Wi-Fi de
+  NetworkManager con su SSID, reconexión automática y
+  `connection.timestamp`, ordenados de la conexión más reciente a la más
+  antigua. `WifiState.qml` los expone y `ControlCenterContent.qml` pinta la
+  sección «Redes guardadas» al final de la lista, con «Hoy», «Ayer» o la fecha
+  y la hora de la última conexión.
+- **Acciones.** Tocar una red guardada conecta si está en el alcance; si es la
+  red activa, abre sus ajustes. Los perfiles fuera de alcance se marcan y no
+  intentan conectarse.
 
 ### 2026-11-12 · Privacidad por red Wi-Fi
 

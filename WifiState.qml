@@ -42,6 +42,10 @@ Singleton {
     property bool profileQrReady: false
     property string profileQrVersion: ""
     property string profileError: ""
+    // Historial de perfiles Wi-Fi guardados, del más reciente al más antiguo.
+    property var savedNetworks: []
+    property bool savedBusy: false
+    property string savedError: ""
     // Conexión manual a una red oculta. NetworkManager no puede revelar el
     // SSID de una red oculta, así que se escribe a mano.
     property bool hiddenBusy: false
@@ -153,6 +157,16 @@ Singleton {
             return;
         forgetProc.command = ["python3", root.helperPath, "forget", ssid];
         forgetProc.running = true;
+    }
+
+    // Lee los perfiles Wi-Fi guardados para el historial de la vista Red.
+    function loadSaved(): void {
+        if (root.savedBusy || root.helperPath.length === 0)
+            return;
+        root.savedBusy = true;
+        root.savedError = "";
+        savedProc.command = ["python3", root.helperPath, "saved"];
+        savedProc.running = true;
     }
 
     function connectHidden(ssid, psk): void {
@@ -579,11 +593,38 @@ Singleton {
                     root.clearProfile();
                     root.lastError = "";
                     root.refresh();
+                    root.loadSaved();
                 } else {
                     root.lastError = "No se pudo olvidar la red.";
                 }
             } catch (e) {
                 root.lastError = "No se pudo olvidar la red.";
+            }
+        }
+    }
+
+    Process {
+        id: savedProc
+
+        stdout: StdioCollector {
+            id: savedOut
+        }
+
+        onExited: (code) => {
+            root.savedBusy = false;
+            if (code !== 0) {
+                root.savedNetworks = [];
+                root.savedError = "No se pudieron leer las redes guardadas.";
+                return;
+            }
+            try {
+                const data = JSON.parse(savedOut.text.trim() || "{}");
+                root.savedNetworks = Array.isArray(data.networks)
+                    ? data.networks : [];
+                root.savedError = "";
+            } catch (e) {
+                root.savedNetworks = [];
+                root.savedError = "No se pudieron leer las redes guardadas.";
             }
         }
     }
@@ -615,6 +656,7 @@ Singleton {
             root.hiddenConnected();
             root.refresh();
             root.requestScan();
+            root.loadSaved();
         }
     }
 

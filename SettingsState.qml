@@ -178,6 +178,8 @@ Singleton {
     property int wifiMinutes: 15
     // Mostrar la entrada para conectarse a una red Wi-Fi oculta.
     property bool showHiddenWifi: false
+    // Mostrar el historial de redes Wi-Fi guardadas en la vista Red.
+    property bool showSavedWifi: false
     property bool btAutoOff: true
     property int btMinutes: 15
 
@@ -870,7 +872,8 @@ Singleton {
             + "airplaneRestoreWifi=%s\\n"
             + "airplaneRestoreBt=%s\\n"
             + "btEnabled=%s\\n"
-            + "showHiddenWifi=%s\\n' \"$@\" > \"$out\"";
+            + "showHiddenWifi=%s\\n"
+            + "showSavedWifi=%s\\n' \"$@\" > \"$out\"";
         const values = [
             root.maxWorkspaces,
             root.workspaceIcons,
@@ -928,7 +931,8 @@ Singleton {
             root.airplaneRestoreWifi ? "1" : "0",
             root.airplaneRestoreBt ? "1" : "0",
             root.btEnabled ? "1" : "0",
-            root.showHiddenWifi ? "1" : "0"
+            root.showHiddenWifi ? "1" : "0",
+            root.showSavedWifi ? "1" : "0"
         ];
         saveProc.command = ["sh", "-c", format, "shell", root.path].concat(values);
         saveProc.running = true;
@@ -1080,6 +1084,7 @@ Singleton {
     onAirplaneRestoreWifiChanged: saveTimer.restart()
     onAirplaneRestoreBtChanged: saveTimer.restart()
     onShowHiddenWifiChanged: saveTimer.restart()
+    onShowSavedWifiChanged: saveTimer.restart()
     onLockMinutesChanged: {
         saveTimer.restart();
         root.applyIdle();
@@ -1204,6 +1209,7 @@ Singleton {
             let airplaneBt = root.airplaneRestoreBt;
             let btOn = root.btEnabled;
             let hiddenWifi = root.showHiddenWifi;
+            let savedWifi = root.showSavedWifi;
             let controlsOrder = "";
             let centerOrderText = "";
             for (let i = 0; i < lines.length; i++) {
@@ -1372,6 +1378,8 @@ Singleton {
                     btOn = value === "1" || value === "true";
                 } else if (key === "showHiddenWifi") {
                     hiddenWifi = value === "1" || value === "true";
+                } else if (key === "showSavedWifi") {
+                    savedWifi = value === "1" || value === "true";
                 } else if (key === "barControls") {
                     controlsOrder = value;
                 } else if (key === "centerOrder") {
@@ -1441,6 +1449,7 @@ Singleton {
             root.airplaneRestoreBt = airplaneBt;
             root.btEnabled = btOn;
             root.showHiddenWifi = hiddenWifi;
+            root.showSavedWifi = savedWifi;
             BarState.restore(controlsOrder, centerOrderText);
             root.ready = true;
             if (root.hotspotPassword.length === 0)
