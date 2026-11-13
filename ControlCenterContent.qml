@@ -7040,7 +7040,9 @@ ColumnLayout {
                         anchors.fill: parent
                         source: SettingsState.wallpaperPath.length > 0
                             ? Qt.resolvedUrl("file://"
-                                + SettingsState.wallpaperPath) : ""
+                                + SettingsState.wallpaperPath)
+                                + "?v=" + SettingsState.wallpaperRevision
+                            : ""
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
                         cache: true

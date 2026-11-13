@@ -104,6 +104,10 @@ Singleton {
     // coordinan la importación asíncrona.
     property string pendingWallpaperPath: ""
     property string importingWallpaperPath: ""
+    // La copia conserva siempre el nombre «current.<ext>». Si se elige otra
+    // imagen con la misma extensión, la ruta no cambia y QML reutilizaría la
+    // imagen anterior; esta revisión fuerza a recargarla.
+    property int wallpaperRevision: 0
     // Color de fondo alternativo a la imagen (#RRGGBB). La imagen manda si
     // existe; al quitarla se vuelve a este color.
     property string wallpaperColor: ""
@@ -1637,6 +1641,9 @@ Singleton {
                     requested);
                 root.wallpaperPath = requested;
             }
+            // La copia puede tener la misma ruta que la anterior
+            // (current.png); esto obliga a QML a recargar la imagen.
+            root.wallpaperRevision += 1;
             root.importingWallpaperPath = "";
             const next = root.pendingWallpaperPath;
             root.pendingWallpaperPath = "";

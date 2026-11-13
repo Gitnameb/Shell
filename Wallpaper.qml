@@ -37,6 +37,12 @@ Variants {
             function onWallpaperPathChanged(): void {
                 wallpaper.imageBroken = false;
             }
+
+            // Elegir otra imagen con la misma extensión reescribe
+            // «current.png», así que la ruta no cambia y hay que recargar.
+            function onWallpaperRevisionChanged(): void {
+                wallpaper.imageBroken = false;
+            }
         }
 
         // Color de fondo cuando no hay imagen. También sirve de respaldo si
@@ -54,6 +60,7 @@ Variants {
             anchors.fill: parent
             source: SettingsState.wallpaperPath.length > 0
                 ? Qt.resolvedUrl("file://" + SettingsState.wallpaperPath)
+                    + "?v=" + SettingsState.wallpaperRevision
                 : ""
             fillMode: Image.PreserveAspectCrop
             asynchronous: true

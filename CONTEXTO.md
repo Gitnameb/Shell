@@ -2941,3 +2941,16 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 - **Implementación.** `scripts/wifi-profile.py` lee y escribe ambas
   propiedades; `WifiState.qml` las expone y `ControlCenterContent.qml` pinta la
   sección «Privacidad» dentro de los ajustes de la red.
+
+### 2026-11-12 · Cambiar el fondo sin quitarlo antes
+
+- **Síntoma.** Al elegir una imagen nueva para el fondo no se aplicaba hasta
+  pulsar «Quitar». El archivo sí se copiaba, pero la pantalla seguía mostrando
+  el fondo anterior.
+- **Causa.** La importación guarda siempre la copia como `current.<ext>`. Si la
+  imagen nueva tiene la misma extensión que la anterior, `wallpaperPath` no
+  cambia; `Image.source` tampoco, y QML reutilizaba la imagen ya cargada.
+- **Solución.** `SettingsState.wallpaperRevision` se incrementa al terminar cada
+  importación. `Wallpaper.qml` y la miniatura de Ajustes añaden `?v=<revisión>`
+  a la URL, de modo que Qt carga la copia nueva aunque la ruta sea idéntica.
+  Verificado con dos PNG del mismo formato: rojo → azul sin pasar por «Quitar».
