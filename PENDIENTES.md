@@ -898,8 +898,9 @@ Tras cerrar sesión y volver a entrar:
   DNS privado con DoT implementado (interruptor en la ficha DNS, proveedores
   Cloudflare/AdGuard/OpenDNS/CleanBrowsing/Quad9, hostname propio, servidores
   manuales y «Desactivado para VPN») y proxy
-  por red (PAC generado + environment.d); falta probarlo con apps reales,
-  instalar systemd-resolved y reiniciar sesión.
+  por red (PAC generado + environment.d); falta probarlo con apps reales e
+  instalar el ayudante de VPN del punto de acceso (`nftables` + reglas de
+  rutas) y probarlo con un cliente real conectado.
 - Aviso de dependencias bajo demanda en el panel de notificaciones (icono
   junto a «No molestar»), con botón para copiar la solución; falta comprobarlo
   visualmente.

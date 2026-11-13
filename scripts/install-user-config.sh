@@ -577,4 +577,20 @@ else
     warn "systemd-resolved no está instalado; el DNS privado no estará disponible."
 fi
 
+log "Instalando el ayudante de VPN del punto de acceso."
+run_sudo install -d -m755 /usr/local/lib/shell
+run_sudo install -m755 "$REPO_DIR/install/lib/shell-hotspot-vpn" \
+    /usr/local/lib/shell/shell-hotspot-vpn
+if (( DRY_RUN )); then
+    printf '\033[2m[dry-run]\033[0m instalar /etc/sudoers.d/shell-hotspot-vpn para %s\n' "$USER_NAME"
+else
+    tmp=$(mktemp)
+    printf '%s ALL=(ALL) NOPASSWD: /usr/local/lib/shell/shell-hotspot-vpn\n' \
+        "$USER_NAME" >"$tmp"
+    run_sudo visudo -cf "$tmp"
+    run_sudo install -m440 -o root -g root "$tmp" \
+        /etc/sudoers.d/shell-hotspot-vpn
+    rm -f "$tmp"
+fi
+
 log "Configuración de usuario instalada."

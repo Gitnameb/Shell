@@ -171,6 +171,9 @@ Singleton {
     // sin conexión durante estos minutos, se apaga para no gastar radio.
     property bool hotspotAutoOff: true
     property int hotspotMinutes: 15
+    // Enviar por la VPN activa el tráfico de los dispositivos del punto de
+    // acceso. HotspotState lo aplica con un ayudante con privilegios.
+    property bool hotspotVpn: false
     // Clave del punto de acceso. Se genera una al azar en el primer arranque
     // y se guarda aquí; nunca se publica una clave fija en el repositorio.
     property string hotspotPassword: ""
@@ -762,6 +765,10 @@ Singleton {
         root.hotspotMinutes = Math.max(1, Math.min(120, value));
     }
 
+    function setHotspotVpn(value: bool): void {
+        root.hotspotVpn = value;
+    }
+
     // Clave aleatoria para el punto de acceso. Sin caracteres ambiguos
     // (0/O, 1/l/I) para que se pueda leer del QR o dictar sin errores.
     function randomHotspotPassword(): string {
@@ -826,6 +833,7 @@ Singleton {
             + "notificationSound=%s\\n"
             + "hotspotAutoOff=%s\\n"
             + "hotspotMinutes=%s\\n"
+            + "hotspotVpn=%s\\n"
             + "hotspotPassword=%s\\n"
             + "wifiAutoOff=%s\\n"
             + "wifiMinutes=%s\\n"
@@ -884,6 +892,7 @@ Singleton {
             root.notificationSound ? "1" : "0",
             root.hotspotAutoOff ? "1" : "0",
             root.hotspotMinutes,
+            root.hotspotVpn ? "1" : "0",
             root.hotspotPassword,
             root.wifiAutoOff ? "1" : "0",
             root.wifiMinutes,
@@ -1071,6 +1080,7 @@ Singleton {
     }
     onHotspotAutoOffChanged: saveTimer.restart()
     onHotspotMinutesChanged: saveTimer.restart()
+    onHotspotVpnChanged: saveTimer.restart()
     onHotspotPasswordChanged: saveTimer.restart()
     onWifiAutoOffChanged: saveTimer.restart()
     onWifiMinutesChanged: saveTimer.restart()
@@ -1186,6 +1196,7 @@ Singleton {
             let shortcut = root.micShortcut;
             let hotspotOff = root.hotspotAutoOff;
             let hotspotMin = root.hotspotMinutes;
+            let hotspotVpnOn = root.hotspotVpn;
             let hotspotPass = root.hotspotPassword;
             let wifiOff = root.wifiAutoOff;
             let wifiMin = root.wifiMinutes;
@@ -1338,6 +1349,8 @@ Singleton {
                     const parsed = parseInt(value, 10);
                     if (!isNaN(parsed))
                         btMin = Math.max(1, Math.min(120, parsed));
+                } else if (key === "hotspotVpn") {
+                    hotspotVpnOn = value === "1" || value === "true";
                 } else if (key === "hotspotPassword") {
                     hotspotPass = value.slice(0, 63);
                 } else if (key === "workspaceModeDefault") {
@@ -1419,6 +1432,7 @@ Singleton {
             root.keyboardLayout = layout;
             root.hotspotAutoOff = hotspotOff;
             root.hotspotMinutes = hotspotMin;
+            root.hotspotVpn = hotspotVpnOn;
             root.hotspotPassword = hotspotPass;
             root.wifiAutoOff = wifiOff;
             root.wifiMinutes = wifiMin;

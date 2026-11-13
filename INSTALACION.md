@@ -836,6 +836,12 @@ recuerda la última sesión elegida.
 - `network-manager-openvpn` es obligatorio para importar `.ovpn`.
 - `upower` y `power-profiles-daemon` para batería y perfiles.
 - El hotspot usa `nmcli`, `dnsmasq-base` para el DHCP y `qrencode` para el QR.
+  El QR y la ficha muestran también la clave en texto para poder dictarla. La
+  opción «VPN para los dispositivos» envía el tráfico IPv4 de los clientes por
+  la VPN activa con reglas de `nftables` y una tabla de rutas propia; la aplica
+  `/usr/local/lib/shell/shell-hotspot-vpn`, autorizado por sudoers e instalado
+  por `install-user-config.sh`. Si la VPN se desconecta, se quitan las reglas
+  para no dejar a los clientes sin salida.
 - **Conexión por USB del móvil:** al activar «Compartir conexión por USB» en
   Android, el kernel expone una interfaz `usb0`/`enx…` que NetworkManager trata
   como Ethernet y configura por DHCP. No hace falta instalar nada más; si
@@ -852,7 +858,7 @@ recuerda la última sesión elegida.
 - **Redes guardadas:** el engranaje general de la vista Red tiene la fila
   desplegable «Redes guardadas» con un chevron. Al abrirla aparecen todos los
   perfiles Wi-Fi de NetworkManager, sin fechas ni última conexión, cada uno con
-  su propio engranaje de ajustes para editar esa red (QR, reconexión,
+  su propio engranaje de ajustes para editar esa red (QR con la clave visible, reconexión,
   privacidad, bandas, proxy u olvidar). La red activa se resalta.
 - **Olvidar red:** el icono de papelera está en la cabecera de los ajustes de
   la red, a la derecha de su nombre, sin texto. El primer clic arma la

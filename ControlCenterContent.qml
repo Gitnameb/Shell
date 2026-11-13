@@ -2762,6 +2762,16 @@ ColumnLayout {
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 8
                             }
+
+                            Text {
+                                Layout.fillWidth: true
+                                visible: WifiState.profilePsk.length > 0
+                                text: "Clave: " + WifiState.profilePsk
+                                color: Theme.text
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 9
+                                elide: Text.ElideRight
+                            }
                         }
                     }
                 }
@@ -4860,6 +4870,16 @@ ColumnLayout {
                                 font.pixelSize: 8
                                 elide: Text.ElideRight
                             }
+
+                            Text {
+                                Layout.fillWidth: true
+                                visible: HotspotState.password.length > 0
+                                text: "Clave: " + HotspotState.password
+                                color: Theme.text
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 9
+                                elide: Text.ElideRight
+                            }
                         }
                     }
                 }
@@ -5041,6 +5061,10 @@ ColumnLayout {
                 }
 
                 RowLayout {
+                    id: hotspotKeyRow
+
+                    property bool reveal: false
+
                     Layout.fillWidth: true
                     spacing: 8
 
@@ -5052,22 +5076,64 @@ ColumnLayout {
                         width: 54
                     }
 
-                    TextField {
+                    RowLayout {
                         Layout.fillWidth: true
-                        text: HotspotState.password
-                        enabled: !HotspotState.active && !HotspotState.busy
-                        opacity: enabled ? 1 : 0.55
-                        echoMode: TextInput.Password
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 10
-                        selectByMouse: true
-                        onTextEdited: SettingsState.setHotspotPassword(text)
-                        background: Rectangle {
-                            radius: 7
-                            color: Theme.surface
-                            border.width: 1
-                            border.color: Theme.border
+                        spacing: 4
+
+                        TextField {
+                            id: hotspotKeyField
+
+                            Layout.fillWidth: true
+                            text: HotspotState.password
+                            enabled: !HotspotState.active && !HotspotState.busy
+                            opacity: enabled ? 1 : 0.55
+                            echoMode: hotspotKeyRow.reveal
+                                ? TextInput.Normal : TextInput.Password
+                            color: Theme.text
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                            selectByMouse: true
+                            onTextEdited: SettingsState.setHotspotPassword(text)
+                            background: Rectangle {
+                                radius: 7
+                                color: Theme.surface
+                                border.width: 1
+                                border.color: Theme.border
+                            }
+                        }
+
+                        Rectangle {
+                            implicitWidth: 24
+                            implicitHeight: 24
+                            radius: 6
+                            opacity: (HotspotState.active
+                                || HotspotState.busy) ? 0.55 : 1
+                            color: hotspotEye.containsMouse
+                                ? Theme.hover : "transparent"
+
+                            ShellIcon {
+                                anchors.centerIn: parent
+                                source: ShellIcons.src(hotspotKeyRow.reveal
+                                    ? "eye-off" : "eye")
+                                color: hotspotKeyRow.reveal
+                                    ? Theme.accent : Theme.muted
+                                size: 14
+                                fallback: "◉"
+                            }
+
+                            MouseArea {
+                                id: hotspotEye
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                enabled: !HotspotState.active
+                                    && !HotspotState.busy
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    hotspotKeyRow.reveal =
+                                        !hotspotKeyRow.reveal;
+                                    hotspotKeyField.forceActiveFocus();
+                                }
+                            }
                         }
                     }
                 }
@@ -5153,6 +5219,58 @@ ColumnLayout {
                         checked: HotspotState.hidden
                         enabled: !HotspotState.active && !HotspotState.busy
                         onToggled: HotspotState.hidden = !HotspotState.hidden
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 2
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: "VPN para los dispositivos"
+                            color: Theme.text
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                        }
+
+                        ShellSwitch {
+                            checked: SettingsState.hotspotVpn
+                            onToggled: SettingsState.setHotspotVpn(
+                                !SettingsState.hotspotVpn)
+                        }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: SettingsState.hotspotVpn
+                        text: !VpnState.configured
+                            ? "Configura una VPN en la vista VPN."
+                            : (!HotspotState.active
+                                ? "Enciende el punto de acceso para aplicarla."
+                                : (!VpnState.active
+                                    ? "Conecta una VPN para que los "
+                                        + "dispositivos la usen."
+                                    : "Los dispositivos conectados saldrán "
+                                        + "por " + VpnState.activeLabel + "."))
+                        color: Theme.faint
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 8
+                        wrapMode: Text.Wrap
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: HotspotState.vpnError.length > 0
+                        text: HotspotState.vpnError
+                        color: Theme.danger
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 8
+                        wrapMode: Text.Wrap
                     }
                 }
 

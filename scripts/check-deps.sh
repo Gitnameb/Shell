@@ -69,6 +69,12 @@ if [[ ! -x /usr/local/lib/shell/shell-private-dns ]]; then
     printf 'private-dns|Ayudante de DNS privado|shell-private-dns|cd %s && ./install.sh\n' \
         "$REPO_Q"
 fi
+check_package nftables "VPN del punto de acceso (nftables)" \
+    nftables "cd $REPO_Q && ./install.sh"
+if [[ ! -x /usr/local/lib/shell/shell-hotspot-vpn ]]; then
+    printf 'hotspot-vpn|Ayudante de VPN del punto de acceso|shell-hotspot-vpn|cd %s && ./install.sh\n' \
+        "$REPO_Q"
+fi
 
 # Iniciador de sesión y bloqueo de pantalla.
 check_package greetd "Iniciador de sesión (greetd)" \

@@ -108,6 +108,7 @@ dentro de un HOME privado.
 | `icons/` | Iconos SVG propios. |
 | `install/` | Plantillas para una instalación limpia. |
 | `install/lib/shell-private-dns` | Ayudante con privilegios para configurar DNS over TLS en systemd-resolved. |
+| `install/lib/shell-hotspot-vpn` | Ayudante con privilegios que envía el tráfico de los clientes del punto de acceso por la VPN. |
 | `install.sh` | Instalador principal para Debian 13 + Umbriel. |
 | `scripts/install-packages.sh` | Módulo de repositorios, paquetes y servicios. |
 | `scripts/install-steam-libs.sh` | Habilita i386 e instala las librerías de 32 bits de Steam. |

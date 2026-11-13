@@ -1,0 +1,138 @@
+#!/bin/sh
+# Ayudante del punto de acceso para enviar a la VPN el tráfico de los
+# dispositivos conectados. Se instala como root y se ejecuta con sudo -n desde
+# HotspotState.qml.
+#
+# Uso:
+#   shell-hotspot-vpn on       Aplica las reglas (requiere hotspot y VPN)
+#   shell-hotspot-vpn off      Quita las reglas
+#   shell-hotspot-vpn status   Muestra el estado como clave=valor
+#
+# Solo enruta el tráfico IPv4 de la subred del punto de acceso por la interfaz
+# de la VPN activa. Si la VPN se cae, el tráfico de los clientes se queda sin
+# salida en vez de filtrarse por la conexión normal del equipo.
+
+set -eu
+
+NFT=$(command -v nft 2>/dev/null || echo /usr/sbin/nft)
+IP=$(command -v ip 2>/dev/null || echo /usr/sbin/ip)
+TABLE=shell_hotspot_vpn
+TABLE_ID=51820
+RULE_PREF=51820
+
+fail() {
+    printf '%s\n' "$*" >&2
+    exit 1
+}
+
+hotspot_iface() {
+    nmcli -t -f NAME,DEVICE connection show --active 2>/dev/null \
+        | while IFS=: read -r name device; do
+            if [ "$name" = "shell-hotspot" ] && [ -n "$device" ]; then
+                printf '%s\n' "$device"
+                break
+            fi
+        done
+}
+
+vpn_iface() {
+    nmcli -t -f TYPE,DEVICE connection show --active 2>/dev/null \
+        | while IFS=: read -r kind device; do
+            case "$kind" in
+                vpn | wireguard)
+                    if [ -n "$device" ]; then
+                        printf '%s\n' "$device"
+                        break
+                    fi
+                    ;;
+            esac
+        done
+}
+
+link_subnet() {
+    cidr=$(nmcli -g IP4.ADDRESS device show "$1" 2>/dev/null \
+        | head -n 1 | cut -d, -f1)
+    [ -n "$cidr" ] || return 1
+    python3 - "$cidr" <<'PY'
+import ipaddress
+import sys
+try:
+    print(ipaddress.ip_interface(sys.argv[1]).network)
+except ValueError:
+    raise SystemExit(1)
+PY
+}
+
+cleanup() {
+    if "$NFT" list table ip "$TABLE" >/dev/null 2>&1; then
+        "$NFT" delete table ip "$TABLE"
+    fi
+    # Como mucho puede haber una regla; el límite evita un bucle si `ip`
+    # devolviera éxito sin borrar nada.
+    for _ in 1 2 3; do
+        "$IP" rule del pref "$RULE_PREF" 2>/dev/null || break
+    done
+    "$IP" route flush table "$TABLE_ID" 2>/dev/null || true
+}
+
+print_status() {
+    hotspot=$(hotspot_iface)
+    vpn=$(vpn_iface)
+    printf 'hotspot=%s\n' "$hotspot"
+    printf 'vpn=%s\n' "$vpn"
+    if [ -n "$hotspot" ]; then
+        subnet=$(link_subnet "$hotspot" || true)
+        printf 'subnet=%s\n' "$subnet"
+    else
+        printf 'subnet=\n'
+    fi
+    if "$NFT" list table ip "$TABLE" >/dev/null 2>&1; then
+        printf 'active=1\n'
+    else
+        printf 'active=0\n'
+    fi
+}
+
+case "${1:-}" in
+    on)
+        hotspot=$(hotspot_iface)
+        [ -n "$hotspot" ] || fail "El punto de acceso no está activo."
+        vpn=$(vpn_iface)
+        [ -n "$vpn" ] || fail "No hay ninguna VPN activa."
+        subnet=$(link_subnet "$hotspot") \
+            || fail "No se pudo leer la red del punto de acceso."
+
+        if [ -w /proc/sys/net/ipv4/ip_forward ]; then
+            printf '1\n' >/proc/sys/net/ipv4/ip_forward
+        fi
+
+        cleanup
+        "$NFT" -f - <<EOF
+table ip $TABLE {
+    chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
+        oifname "$vpn" ip saddr $subnet masquerade
+        oifname "$vpn" ip saddr $subnet tcp flags syn tcp option maxseg size set rt mtu
+    }
+}
+EOF
+
+        "$IP" rule add from "$subnet" lookup "$TABLE_ID" pref "$RULE_PREF"
+        "$IP" route add "$subnet" dev "$hotspot" scope link table "$TABLE_ID"
+        "$IP" route add default dev "$vpn" metric 0 table "$TABLE_ID"
+        # Si la VPN desaparece, esta ruta negra evita que los clientes salgan
+        # por la conexión normal del equipo.
+        "$IP" route add blackhole default metric 100 table "$TABLE_ID"
+        printf 'ok\n'
+        ;;
+    off)
+        cleanup
+        printf 'ok\n'
+        ;;
+    status)
+        print_status
+        ;;
+    *)
+        fail "Uso no válido."
+        ;;
+esac

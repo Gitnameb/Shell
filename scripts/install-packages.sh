@@ -151,6 +151,9 @@ RUNTIME_PKGS=(
     # systemd-resolved es el único backend que permite DNS over TLS con
     # verificación de certificado. La vista DNS del centro de control lo usa.
     systemd-resolved
+    # nftables aplica el NAT y el enrutado de los clientes del punto de acceso
+    # por la VPN. NetworkManager ya lo usa, pero el ayudante necesita «nft».
+    nftables
     iputils-ping wl-clipboard cliphist udiskie udisks2 ntfs-3g exfatprogs usbutils python3 curl
     qml6-module-qtquick-effects
     qml6-module-qt-labs-folderlistmodel

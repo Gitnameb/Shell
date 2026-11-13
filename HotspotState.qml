@@ -22,6 +22,14 @@ Singleton {
     property bool active: false
     property bool busy: false
     property string lastError: ""
+    // VPN para los dispositivos: si el interruptor está activo, los clientes
+    // del punto de acceso salen por la VPN que tenga conectada el equipo.
+    readonly property bool vpnEnabled: SettingsState.hotspotVpn
+    property bool vpnApplied: false
+    property string vpnError: ""
+    readonly property string vpnHelper: "/usr/local/lib/shell/shell-hotspot-vpn"
+    property bool vpnPending: false
+    property string vpnAction: "off"
     // Clientes conectados, leídos de la tabla de vecinos del kernel.
     property var clients: []
     // Para el apagado automático solo cuentan los clientes que siguen activos;
@@ -97,6 +105,25 @@ Singleton {
             root.refreshClients();
         else
             root.clients = [];
+        root.syncVpnRoute();
+    }
+
+    // Solo se enruta cuando hay punto de acceso y VPN; en el resto de casos se
+    // quitan las reglas para no dejar a los dispositivos sin salida.
+    function syncVpnRoute(): void {
+        if (root.vpnProc.running) {
+            root.vpnPending = true;
+            return;
+        }
+        const want = root.vpnEnabled && root.active && VpnState.active;
+        // Al encender el punto de acceso se limpian reglas de una sesión
+        // anterior aunque el interruptor esté apagado.
+        if (!want && !root.vpnApplied && !root.active)
+            return;
+        root.vpnAction = want ? "on" : "off";
+        root.vpnPending = false;
+        root.vpnProc.command = ["sudo", "-n", root.vpnHelper, root.vpnAction];
+        root.vpnProc.running = true;
     }
 
     function refresh(): void {
@@ -301,6 +328,55 @@ Singleton {
             if (code !== 0)
                 root.lastError = stopErr.text.trim() || "No se pudo desactivar el punto de acceso.";
             root.refresh();
+        }
+    }
+
+    Connections {
+        target: VpnState
+
+        function onActiveChanged(): void {
+            root.syncVpnRoute();
+        }
+
+        function onActiveNameChanged(): void {
+            root.syncVpnRoute();
+        }
+    }
+
+    Connections {
+        target: SettingsState
+
+        function onHotspotVpnChanged(): void {
+            root.syncVpnRoute();
+        }
+    }
+
+    Process {
+        id: vpnProc
+
+        stderr: StdioCollector {
+            id: vpnErr
+        }
+
+        onExited: (code) => {
+            const text = vpnErr.text.trim();
+            if (code === 0) {
+                root.vpnApplied = root.vpnAction === "on";
+                root.vpnError = "";
+            } else {
+                root.vpnApplied = false;
+                if (root.vpnEnabled) {
+                    if (text.toLowerCase().indexOf("password") !== -1)
+                        root.vpnError = "Ejecuta el instalador para "
+                            + "autorizar la VPN del punto de acceso.";
+                    else
+                        root.vpnError = text.length > 0
+                            ? text : "No se pudo aplicar la VPN al punto "
+                                + "de acceso.";
+                }
+            }
+            if (root.vpnPending)
+                root.syncVpnRoute();
         }
     }
 

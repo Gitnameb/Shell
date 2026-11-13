@@ -40,6 +40,8 @@ Singleton {
     property bool profilePrivacyBusy: false
     property string profilePrivacyError: ""
     property bool profileQrReady: false
+    // Clave del perfil, para mostrarla junto al QR.
+    property string profilePsk: ""
     property string profileQrVersion: ""
     property string profileError: ""
     // Historial de perfiles Wi-Fi guardados, del más reciente al más antiguo.
@@ -103,6 +105,7 @@ Singleton {
         root.profilePrivacyBusy = false;
         root.profilePrivacyError = "";
         root.profileQrReady = false;
+        root.profilePsk = "";
         root.profileError = "";
         if (!ssid || ssid.length === 0)
             return;
@@ -120,6 +123,7 @@ Singleton {
         root.profilePrivacyBusy = false;
         root.profilePrivacyError = "";
         root.profileQrReady = false;
+        root.profilePsk = "";
         root.profileError = "";
     }
 
@@ -499,6 +503,7 @@ Singleton {
                 root.profilePrivacyBusy = false;
                 root.profilePrivacyError = "";
                 root.profileQrReady = info.qr === true;
+                root.profilePsk = String(info.psk || "");
                 root.profileError = root.profileFound
                     ? "" : "Sin perfil guardado.";
                 if (root.profileQrReady)

@@ -61,7 +61,10 @@ Prioridad acordada:
 - El punto de acceso Wi-Fi se gestiona con NetworkManager (`nmcli`), con perfil
   propio `shell-hotspot` y SSID/clave editables. Por defecto el SSID visible es el
   nombre de la máquina (`hostname`), no un nombre genérico del shell. La vista
-  incluye banda (2.4/5 GHz) y un QR WPA generado con `qrencode`.
+  incluye banda (2.4/5 GHz) y un QR WPA generado con `qrencode`; debajo se
+  escribe la clave para poder dictarla. El campo de la clave tiene un ojo para
+  mostrarla mientras se edita. Las opciones incluyen «VPN para los dispositivos»,
+  que envía el tráfico de los clientes por la VPN activa.
 - El adaptador Bluetooth también usa el nombre de la máquina por defecto. Su nombre
   se puede cambiar desde el engranaje de su vista (`bluetoothctl system-alias`).
   La vista normal enseña solo los dispositivos vinculados y un botón «+»; las
@@ -213,9 +216,10 @@ Prioridad acordada:
   barra (si se añade) o `qs ipc -c shell call notifications keyboard`.
 - Mostrar la temperatura de CPU/GPU junto al icono es opcional (`showTemps`), se
   controla desde la vista de rendimiento y se guarda en `settings.conf`.
-- El punto de acceso tiene una vista principal limpia con el **QR y los dispositivos
-  conectados**, y un **engranaje** con SSID, clave, banda, red oculta y apagado
-  automático. Los clientes se leen de `ip neigh` (IP y MAC) y se refrescan cada 4 s.
+- El punto de acceso tiene una vista principal limpia con el **QR, la clave y los
+  dispositivos conectados**, y un **engranaje** con SSID, clave, banda, red oculta,
+  VPN para los dispositivos y apagado automático. Los clientes se leen de
+  `ip neigh` (IP y MAC) y se refrescan cada 4 s.
 - `AutoOffState.qml` apaga el hotspot si nadie se conecta, el Wi-Fi si se queda sin
   conexión y el Bluetooth si no tiene ningún dispositivo conectado durante el tiempo
   configurado (5/10/15/30 min; 15 por defecto en los tres). Esos ajustes se guardan en
@@ -2856,6 +2860,22 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 - **Resumen.** `DnsState.qml` calcula automático/mixto y los valores actuales
   solo con las conexiones activas; el resumen muestra «Sin conexión» cuando no
   hay ninguna.
+
+### 2026-11-12 · Clave a la vista y VPN del punto de acceso
+
+- **Clave junto al QR.** La tarjeta del punto de acceso y la de una red Wi-Fi
+  guardada escriben la contraseña debajo del SSID. `wifi-profile.py` devuelve
+  el PSK del perfil para que la vista guardada pueda mostrarlo.
+- **Ojo en la clave.** El campo de contraseña del punto de acceso usa el mismo
+  patrón que `WifiPasswordRow.qml`: un botón con `eye`/`eye-off` alterna entre
+  `TextInput.Password` y `TextInput.Normal`.
+- **VPN para los dispositivos.** Nuevo interruptor en las opciones del punto de
+  acceso. `install/lib/shell-hotspot-vpn` crea una tabla `nftables` que hace
+  NAT con la interfaz de la VPN activa, una regla de política para la subred
+  del hotspot y una tabla de rutas propia con salida por la VPN. Si la VPN no
+  está conectada, la opción queda marcada y se aplica al conectarla; al
+  desconectarla se retiran las reglas. El instalador añade `nftables`, el
+  ayudante en `/usr/local/lib/shell/` y su regla de sudoers.
 
 ### 2026-11-12 · DNS privado con DoT y suspensión por VPN
 

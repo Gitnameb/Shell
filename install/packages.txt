@@ -61,7 +61,7 @@ sudo apt install \
   wvkbd swayidle foot grim slurp \
   fonts-noto-cjk python3 curl \
   network-manager-openvpn wpasupplicant rfkill dnsmasq-base \
-  power-profiles-daemon systemd-resolved iputils-ping wl-clipboard \
+  power-profiles-daemon systemd-resolved nftables iputils-ping wl-clipboard \
   cliphist udiskie udisks2 ntfs-3g exfatprogs usbutils \
   qml6-module-qtquick-effects \
   qml6-module-qt-labs-folderlistmodel \
@@ -75,6 +75,8 @@ sudo apt install \
 # el brillo del panel interno cuando ddcutil no sirve (portátiles).
 # systemd-resolved aporta el DNS over TLS que usa la ficha DNS del centro de
 # control; el instalador lo configura como backend de NetworkManager.
+# nftables aplica el NAT y el enrutado por la VPN de los clientes del punto de
+# acceso.
 
 # xdg-utils y desktop-file-utils son los que usan los postinst de los .deb para
 # publicar su lanzador. Además, xdg-desktop-menu exige que existan

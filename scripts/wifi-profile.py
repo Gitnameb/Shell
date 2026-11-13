@@ -128,6 +128,8 @@ def profile(ssid, qr_path):
         "clonedMac": cloned_mac,
         "secure": secure,
         "hasPsk": bool(psk),
+        # La clave se muestra junto al QR para poder dictarla o copiarla.
+        "psk": psk if secure and psk else "",
         "qr": qr_ready,
     }))
     return 0
