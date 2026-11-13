@@ -47,12 +47,14 @@ Singleton {
     property bool hasSample: false
     property int sampleCount: 0
 
-    // Los picos y los totales de sesión sobreviven a una recarga de QML y a
-    // reiniciar el shell. Solo se ponen a cero con los botones «Reiniciar».
+    // Los picos y los totales sobreviven a una recarga de QML, pero viven en
+    // el directorio de la sesión: al cerrar sesión o reiniciar el equipo se
+    // borran. Los botones «Reiniciar» también los ponen a cero.
     property bool stateLoaded: false
     property string lastSavedState: ""
-    readonly property string statePath: Quickshell.env("HOME")
-        + "/.local/state/shell/system-stats.json"
+    readonly property string statePath:
+        (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp")
+            + "/shell/system-stats.json"
 
     // El panel de rendimiento escribe 1 mientras está abierto. Fuera de él
     // basta con la temperatura de la barra y el tráfico; el resto de lecturas

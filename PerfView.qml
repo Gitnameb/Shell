@@ -73,7 +73,7 @@ ColumnLayout {
                 id: tempChipText
 
                 anchors.centerIn: parent
-                // Actual / pico hasta reiniciar los picos a mano.
+                // Actual / pico de esta sesión.
                 text: root.temp >= 0
                     ? Math.round(root.temp) + "° / "
                         + Math.round(root.peakTemp) + "°"
@@ -103,7 +103,7 @@ ColumnLayout {
         StatCell {
             Layout.fillWidth: true
             title: "Temperatura"
-            // Actual / pico máximo hasta reiniciar los picos a mano.
+            // Actual / pico máximo de esta sesión.
             value: root.temp >= 0
                 ? Math.round(root.temp) + " / " + Math.round(root.peakTemp)
                     + " °C"
