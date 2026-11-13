@@ -2800,3 +2800,14 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   gestionada por NetworkManager pasa a un icono de X con tooltip; las
   interfaces desconectadas conservan «Conectar» y las no gestionadas,
   «Gestionar».
+
+### 2026-11-12 · Iconos de ajustes y candados en las redes
+
+- **Un solo dibujo de engranaje.** Los botones de opciones de la vista Red
+  (engranaje general, Ethernet, Wi-Fi y red conectada) usan ahora
+  `ShellIcons.src("settings")`, el mismo SVG que la ficha **Ajustes** del
+  centro de control, en vez del icono del tema del sistema.
+- **Redes protegidas sin conectar.** En el hueco que ocupa el engranaje de una
+  red conectada aparece un candado (`lock.svg`) en las redes Wi-Fi protegidas
+  que todavía no están conectadas. Las redes abiertas no muestran candado para
+  no dar una información falsa.

@@ -1796,11 +1796,9 @@ ColumnLayout {
 
                 ShellIcon {
                     anchors.centerIn: parent
-                    name: "applications-system-symbolic"
-                    fallbackName: "preferences-system-symbolic"
+                    source: ShellIcons.src("settings")
                     color: optionsGear.open ? Theme.accent : Theme.muted
                     size: 14
-                    fallback: "⚙"
                 }
 
                 MouseArea {
@@ -1963,11 +1961,9 @@ ColumnLayout {
 
                             ShellIcon {
                                 anchors.centerIn: parent
-                                name: "applications-system-symbolic"
-                                fallbackName: "preferences-system-symbolic"
+                                source: ShellIcons.src("settings")
                                 color: Theme.muted
                                 size: 13
-                                fallback: "⚙"
                             }
 
                             MouseArea {
@@ -2108,11 +2104,9 @@ ColumnLayout {
 
                     ShellIcon {
                         anchors.centerIn: parent
-                        name: "applications-system-symbolic"
-                        fallbackName: "preferences-system-symbolic"
+                        source: ShellIcons.src("settings")
                         color: wifiGear.open ? Theme.accent : Theme.muted
                         size: 14
-                        fallback: "⚙"
                     }
 
                     MouseArea {
@@ -2335,6 +2329,23 @@ ColumnLayout {
                                 return "abierta";
                             return wifiRow.net ? "protegida" : "no disponible";
                         }
+                        // Candado para las redes protegidas que aún no están
+                        // conectadas. Una red abierta no lo lleva.
+                        readonly property bool secured: {
+                            if (wifiRow.hidden) {
+                                const sec = String(wifiRow.hiddenInfo
+                                    && wifiRow.hiddenInfo.security || "").trim();
+                                return sec.length > 0 && sec !== "--";
+                            }
+                            if (wifiRow.point) {
+                                const sec = String(wifiRow.point.security
+                                    || "").trim();
+                                if (sec.length > 0 && sec !== "--")
+                                    return true;
+                            }
+                            return wifiRow.net !== null
+                                && wifiRow.net.security !== WifiSecurityType.Open;
+                        }
                         readonly property bool connected: wifiRow.hidden
                             ? (wifiRow.hiddenInfo
                                 && wifiRow.hiddenInfo.active === true)
@@ -2495,6 +2506,24 @@ ColumnLayout {
                                 }
                             }
 
+                            // En las redes protegidas sin conectar ocupa el
+                            // mismo hueco que el engranaje de opciones.
+                            Rectangle {
+                                id: netLock
+
+                                visible: !wifiRow.connected && wifiRow.secured
+                                implicitWidth: 22
+                                implicitHeight: 22
+                                color: "transparent"
+
+                                ShellIcon {
+                                    anchors.centerIn: parent
+                                    source: ShellIcons.src("lock")
+                                    color: Theme.muted
+                                    size: 13
+                                }
+                            }
+
                             Rectangle {
                                 id: netGear
 
@@ -2509,11 +2538,9 @@ ColumnLayout {
 
                                 ShellIcon {
                                     anchors.centerIn: parent
-                                    name: "applications-system-symbolic"
-                                    fallbackName: "preferences-system-symbolic"
+                                    source: ShellIcons.src("settings")
                                     color: Theme.muted
                                     size: 13
-                                    fallback: "⚙"
                                 }
 
                                 MouseArea {
