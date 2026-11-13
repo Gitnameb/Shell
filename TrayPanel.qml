@@ -25,6 +25,9 @@ PanelWindow {
     readonly property int gridHeight: root.rows * root.cell
         + Math.max(0, root.rows - 1) * root.gap
 
+    // Nombre del icono bajo el puntero. Se dibuja en una etiqueta flotante
+    // sobre la cabecera para que aparecer y desaparecer no cambie el tamaño
+    // del panel ni haga que los iconos salten.
     property string hoveredTitle: ""
 
     visible: TrayState.open && root.count > 0
@@ -90,6 +93,8 @@ PanelWindow {
     }
 
     Rectangle {
+        id: panel
+
         anchors.fill: parent
         radius: 12
         color: Theme.glassCard
@@ -106,7 +111,12 @@ PanelWindow {
             spacing: 8
 
             Text {
+                id: panelTitle
+
                 Layout.fillWidth: true
+                // Se oculta con opacidad, no con «visible»: así sigue ocupando
+                // su sitio y el panel no cambia de tamaño al pasar el puntero.
+                opacity: root.hoveredTitle.length > 0 ? 0 : 1
                 text: "Bandeja del sistema"
                 color: Theme.muted
                 font.family: Theme.fontFamily
@@ -240,13 +250,41 @@ PanelWindow {
                 }
             }
 
+        }
+
+        // Etiqueta flotante sobre el diseño: no ocupa espacio, así que no
+        // provoca el parpadeo que hacía el texto dentro del ColumnLayout.
+        Rectangle {
+            id: titleTip
+
+            visible: root.hoveredTitle.length > 0
+            z: 10
+            implicitWidth: Math.min(panel.width - 16,
+                titleTipText.implicitWidth + 14)
+            implicitHeight: 20
+            radius: 6
+            color: Theme.surfaceAlt
+            border.width: 1
+            border.color: Theme.borderStrong
+
+            // Ocupa el lugar de «Bandeja del sistema»: es flotante, pero no
+            // depende de la celda ni cambia el diseño.
+            x: 10
+            y: 6
+
             Text {
-                Layout.fillWidth: true
-                visible: root.hoveredTitle.length > 0
+                id: titleTipText
+
+                anchors {
+                    fill: parent
+                    leftMargin: 7
+                    rightMargin: 7
+                }
                 text: root.hoveredTitle
-                color: Theme.faint
+                color: Theme.text
                 font.family: Theme.fontFamily
                 font.pixelSize: 9
+                verticalAlignment: Text.AlignVCenter
                 elide: Text.ElideRight
             }
         }

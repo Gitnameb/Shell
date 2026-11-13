@@ -2864,6 +2864,13 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   solo con las conexiones activas; el resumen muestra «Sin conexión» cuando no
   hay ninguna.
 
+### 2026-11-12 · Nombre flotante en la bandeja
+
+- El nombre del icono bajo el puntero ya no vive dentro del `ColumnLayout`:
+  aparece como una etiqueta flotante sobre la cabecera, con el título
+  «Bandeja del sistema» oculto por opacidad. Así no cambia el tamaño del panel
+  ni provoca el parpadeo que parecía un fallo al tocar el borde.
+
 ### 2026-11-12 · Picos persistentes y bandeja
 
 - **Picos y sesión.** `SystemStats.qml` guarda los picos de temperatura y los
