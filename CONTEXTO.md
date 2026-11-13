@@ -2781,3 +2781,19 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   que se abra una vista. En red no hacía falta cambiar nada: `netPeakDown` y
   `netPeakUp` ya se actualizan fuera de `detailed`, igual que los totales de
   sesión, porque `stats.py` mide el tráfico siempre.
+
+### 2026-11-12 · Interruptor de Wi-Fi dentro de la vista Red
+
+- **El interruptor parecía de toda la red.** La cabecera de la vista «Red»
+  mostraba un `ShellSwitch` que en realidad encendía y apagaba solo la radio
+  Wi-Fi. Al estar junto al título «Red» daba a entender que cortaba también la
+  Ethernet.
+- **Nueva fila.** El interruptor vive ahora dentro del contenido, debajo de las
+  conexiones cableadas y encima de la lista de redes Wi-Fi, con la etiqueta
+  «Wi-Fi», el engranaje de opciones a su izquierda y el interruptor a la
+  derecha. La cabecera conserva «+» para la red oculta y el botón de recargar.
+  El engranaje sigue visible con las opciones abiertas para poder cerrarlas.
+- **Ethernet.** El botón «Desconectar» de una conexión cableada conectada y
+  gestionada por NetworkManager pasa a un icono de X con tooltip; las
+  interfaces desconectadas conservan «Conectar» y las no gestionadas,
+  «Gestionar».

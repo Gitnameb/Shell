@@ -1869,14 +1869,9 @@ ColumnLayout {
                 id: optionsGear
 
                 readonly property bool open: root.view === "bluetooth"
-                    ? root.btAdvanced
-                    : (root.view === "hotspot"
-                        ? root.hotspotAdvanced
-                        : root.wifiAdvanced)
+                    ? root.btAdvanced : root.hotspotAdvanced
 
-                visible: (root.view === "bluetooth"
-                    || root.view === "hotspot"
-                    || root.view === "wifi")
+                visible: (root.view === "bluetooth" || root.view === "hotspot")
                     && !root.wifiNetworkOptions && !root.wiredOptionsOpen
                 implicitWidth: 26
                 implicitHeight: 26
@@ -1909,39 +1904,31 @@ ColumnLayout {
                             root.btAdvanced = !root.btAdvanced;
                         } else if (root.view === "hotspot") {
                             root.hotspotAdvanced = !root.hotspotAdvanced;
-                        } else if (root.view === "wifi") {
-                            root.wifiAdvanced = !root.wifiAdvanced;
                         }
                     }
                 }
             }
 
             ShellSwitch {
-                visible: (root.view === "wifi"
-                    || root.view === "bluetooth"
+                visible: (root.view === "bluetooth"
                     || root.view === "night"
                     || root.view === "extraDim"
                     || root.view === "hotspot"
                     || root.view === "vpn")
-                    && !(root.view === "wifi" && root.wifiNetworkOptions)
                     && !root.wiredOptionsOpen
                 enabled: !(root.view === "hotspot" && HotspotState.busy)
                     && !(root.view === "vpn" && !VpnState.configured)
-                checked: root.view === "wifi"
-                    ? Networking.wifiEnabled
-                    : (root.view === "bluetooth"
-                        ? (root.btAdapter !== null && root.btAdapter.enabled)
-                        : (root.view === "night"
-                            ? DisplayState.nightLight
-                            : (root.view === "extraDim"
-                                ? DisplayState.extraDim > 0.01
-                                : (root.view === "hotspot"
-                                    ? HotspotState.active
-                                    : VpnState.active))))
+                checked: root.view === "bluetooth"
+                    ? (root.btAdapter !== null && root.btAdapter.enabled)
+                    : (root.view === "night"
+                        ? DisplayState.nightLight
+                        : (root.view === "extraDim"
+                            ? DisplayState.extraDim > 0.01
+                            : (root.view === "hotspot"
+                                ? HotspotState.active
+                                : VpnState.active)))
                 onToggled: {
-                    if (root.view === "wifi")
-                        Networking.wifiEnabled = !Networking.wifiEnabled;
-                    else if (root.view === "bluetooth")
+                    if (root.view === "bluetooth")
                         root.setBluetoothEnabled(
                             !(root.btAdapter !== null
                                 && root.btAdapter.enabled));
@@ -2081,35 +2068,121 @@ ColumnLayout {
                         }
 
                         Rectangle {
-                            implicitWidth: 78
+                            id: wiredAction
+
+                            readonly property bool disconnect: wiredRow.dev.connected
+                                && wiredRow.dev.nmManaged
+
+                            implicitWidth: wiredAction.disconnect ? 24 : 78
                             implicitHeight: 24
                             radius: 7
-                            color: wiredRow.dev.connected
-                                && wiredRow.dev.nmManaged
-                                ? Theme.surface : Theme.accentSoft
+                            color: wiredAction.disconnect
+                                ? (wiredActionMouse.containsMouse
+                                    ? Qt.rgba(Theme.danger.r, Theme.danger.g,
+                                        Theme.danger.b, 0.16)
+                                    : Theme.surface)
+                                : Theme.accentSoft
                             border.width: 1
-                            border.color: wiredRow.dev.connected
-                                && wiredRow.dev.nmManaged
-                                ? Theme.border : Theme.accentLine
+                            border.color: wiredAction.disconnect
+                                ? (wiredActionMouse.containsMouse
+                                    ? Theme.danger : Theme.border)
+                                : Theme.accentLine
+
+                            ShellIcon {
+                                anchors.centerIn: parent
+                                visible: wiredAction.disconnect
+                                source: ShellIcons.src("window-close")
+                                color: wiredActionMouse.containsMouse
+                                    ? Theme.danger : Theme.muted
+                                size: 13
+                                fallback: "×"
+                            }
 
                             Text {
                                 anchors.centerIn: parent
+                                visible: !wiredAction.disconnect
                                 text: root.wiredActionLabelFor(wiredRow.dev)
-                                color: wiredRow.dev.connected
-                                    && wiredRow.dev.nmManaged
-                                    ? Theme.muted : Theme.accent
+                                color: Theme.accent
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 8
                                 font.weight: Font.DemiBold
                             }
 
                             MouseArea {
+                                id: wiredActionMouse
                                 anchors.fill: parent
+                                hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: root.wiredActionFor(wiredRow.dev)
+
+                                ToolTip.visible: wiredActionMouse.containsMouse
+                                    && wiredAction.disconnect
+                                ToolTip.text: "Desconectar"
+                                ToolTip.delay: 400
                             }
                         }
                     }
+                }
+            }
+
+            // Interruptor de la radio Wi-Fi: debajo de las conexiones
+            // cableadas y encima de la lista de redes inalámbricas. Así deja
+            // de parecer el interruptor de toda la vista «Red».
+            RowLayout {
+                Layout.fillWidth: true
+                visible: !root.wifiNetworkOptions && !root.wiredOptionsOpen
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Wi-Fi"
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                    font.weight: Font.DemiBold
+                }
+
+                Rectangle {
+                    id: wifiGear
+
+                    readonly property bool open: root.wifiAdvanced
+
+                    implicitWidth: 26
+                    implicitHeight: 26
+                    radius: 7
+                    color: wifiGear.open
+                        ? Theme.accentSoft
+                        : (wifiGearMouse.containsMouse
+                            ? Theme.hover : "transparent")
+                    border.width: wifiGear.open ? 1 : 0
+                    border.color: Theme.accentLine
+
+                    ShellIcon {
+                        anchors.centerIn: parent
+                        name: "applications-system-symbolic"
+                        fallbackName: "preferences-system-symbolic"
+                        color: wifiGear.open ? Theme.accent : Theme.muted
+                        size: 14
+                        fallback: "⚙"
+                    }
+
+                    MouseArea {
+                        id: wifiGearMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.wifiAdvanced = !root.wifiAdvanced
+
+                        ToolTip.visible: wifiGearMouse.containsMouse
+                        ToolTip.text: "Opciones de Wi-Fi"
+                        ToolTip.delay: 400
+                    }
+                }
+
+                ShellSwitch {
+                    enabled: root.wifiDevice !== null
+                    checked: Networking.wifiEnabled
+                    onToggled: Networking.wifiEnabled = !Networking.wifiEnabled
                 }
             }
 
