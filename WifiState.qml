@@ -61,10 +61,10 @@ Singleton {
         scanProc.running = true;
     }
 
-    // Pide a NetworkManager una pasada de búsqueda nueva. Se usa al abrir el
-    // panel y al pulsar el icono de recargar. Solo se permite mientras la
-    // vista de Red está visible: al cerrar el panel no debe quedar la radio
-    // escaneando en segundo plano.
+    // Pide a NetworkManager una pasada de búsqueda nueva. Se usa al abrir la
+    // vista de Red y después de conectar o desconectar una red. Solo se
+    // permite mientras la vista está visible: al cerrar el panel no debe
+    // quedar la radio escaneando en segundo plano.
     function requestScan(): void {
         if (!root.watching)
             return;

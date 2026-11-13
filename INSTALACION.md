@@ -842,7 +842,7 @@ recuerda la última sesión elegida.
   SSID se mezclan con las visibles, ordenadas por conexión y señal, y se
   identifican por su BSSID/MAC. Si ya están conectadas, se muestran con su SSID
   real, que el perfil guardado ya conoce. Al pulsarlas, el formulario de SSID y
-  contraseña se abre dentro de la fila. El botón **+** de la cabecera se usa
+  contraseña se abre dentro de la fila. El botón **+** de la fila Wi-Fi se usa
   solo para añadir una red oculta manualmente. El engranaje avanzado de cada
   red solo se muestra en la red conectada.
 - **DNS global:** el centro de control tiene una ficha **DNS** propia. La vista

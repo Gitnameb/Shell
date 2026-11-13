@@ -89,8 +89,8 @@ Prioridad acordada:
   identifican por su BSSID/MAC. Si una de ellas ya está conectada, se muestra
   con su SSID real, porque el perfil guardado ya lo conoce. Al pulsar una, su
   formulario de SSID y contraseña se abre dentro de la propia fila, como una red
-  normal. El botón **+** de la cabecera queda solo para añadir una red oculta a
-  mano.
+  normal. El botón **+** de la fila Wi-Fi queda solo para añadir una red oculta
+  a mano.
 - El centro de control tiene una ficha **DNS** propia. Abre una vista con un
   ajuste **global**: automático o servidores IPv4/IPv6 propios, aplicado a todas
   las conexiones Wi-Fi y Ethernet guardadas (NetworkManager no ofrece un DNS
@@ -114,9 +114,10 @@ Prioridad acordada:
   tarjeta incluye un botón para copiar la solución. No se comprueba al
   arrancar ni cada vez que se abre un panel. Lo implementan
   `DependencyState.qml`, `scripts/check-deps.sh` y `SidePanel.qml`.
-- El icono de recargar de la cabecera fuerza una búsqueda real de redes
-  (`nmcli device wifi rescan`); no es decorativo y muestra información al pasar
-  el puntero.
+- La lista de redes se actualiza cada 5 s mientras la vista está abierta y, al
+  abrirla, se pide una búsqueda real con `nmcli device wifi rescan`. No hay
+  botón de recargar manual: se quitó porque solo duplicaba ese refresco y el
+  escaneo automático.
 - Si hay varias interfaces cableadas (Ethernet y un móvil compartiendo por USB),
   la vista Red muestra una ficha por cada una, con su propio estado y botón de
   conectar/desconectar. Las interfaces cuyo nombre empieza por `usb`, `enx` o
@@ -581,18 +582,18 @@ compositor; si es el contenido de una app → la app.**
     «trusted» se reconecta al pulsarlo.
 45. **Wi-Fi y Bluetooth bajo demanda**: la búsqueda de redes Wi-Fi solo se activa
     mientras la vista de Wi-Fi está abierta; al cerrarla se detiene. Se busca también
-    si ya hay una red conectada, para poder ver otras redes, y el icono de recargar
-    pide una pasada nueva. El apagado automático del Bluetooth no distingue tipos de
-    dispositivo: si no hay ninguno conectado, el adaptador se apaga tras el tiempo
-    configurado.
+    si ya hay una red conectada, para poder ver otras redes. La lista se refresca
+    cada 5 s y al abrir la vista se pide una búsqueda real. El apagado automático del
+    Bluetooth no distingue tipos de dispositivo: si no hay ninguno conectado, el
+    adaptador se apaga tras el tiempo configurado.
 46. **Ajustes por red Wi-Fi**: el QR, la reconexión automática y «Olvidar red» necesitan
     que la red tenga un perfil guardado en NetworkManager. Para redes nuevas el
     engranaje solo muestra el nombre, la seguridad y las bandas disponibles. El QR se
     regenera al abrir la vista y guarda la clave en el archivo temporal de caché.
 47. **Búsqueda Wi-Fi**: mientras la vista de Wi-Fi está abierta la radio sigue
-    escaneando; al cerrarla o entrar en los ajustes de una red se detiene. El icono de
-    recargar pide una pasada nueva, pero la lista puede tardar unos segundos en
-    actualizarse. El desplazamiento con rueda se probó con eventos inyectados.
+    escaneando; al cerrarla o entrar en los ajustes de una red se detiene. La lista
+    se refresca cada 5 s y puede tardar unos segundos en actualizarse. El
+    desplazamiento con rueda se probó con eventos inyectados.
 48. **Atajo del micrófono**: se guarda en `settings.conf` y se registra en Hyprland con
     `hyprctl keyword bind` al arrancar el shell. Antes de registrar se quita una bind
     del mismo atajo para no ejecutar el silencio dos veces. El atajo solo existe
@@ -1368,7 +1369,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 - **Wi-Fi bajo demanda**: `wifiDevice.scannerEnabled` se activa al abrir la vista de
   Wi-Fi, aunque ya haya una red conectada, y se apaga al cerrarla o al entrar en los
   ajustes de una red. `WifiState.requestScan()` pide además una pasada nueva con
-  `nmcli`; el icono de recargar de la cabecera hace lo mismo. Se mantiene el icono
+  `nmcli` al abrir la vista; la lista se refresca cada 5 s. Se mantiene el icono
   giratorio y el texto «Buscando redes…» / «Buscando otras redes…».
 - **Ajustes por red Wi-Fi**: cada red tiene un engranaje. La vista muestra el QR para
   compartirla, la reconexión automática (`connection.autoconnect`), las bandas y
@@ -2790,9 +2791,11 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   Ethernet.
 - **Nueva fila.** El interruptor vive ahora dentro del contenido, debajo de las
   conexiones cableadas y encima de la lista de redes Wi-Fi, con la etiqueta
-  «Wi-Fi», el engranaje de opciones a su izquierda y el interruptor a la
-  derecha. La cabecera conserva «+» para la red oculta y el botón de recargar.
-  El engranaje sigue visible con las opciones abiertas para poder cerrarlas.
+  «Wi-Fi», el botón «+» para la red oculta, el engranaje de opciones y el
+  interruptor. La cabecera queda solo con el título. El engranaje sigue visible
+  con las opciones abiertas para poder cerrarlas. El botón de buscar redes se
+  eliminó: solo lanzaba un `nmcli device wifi rescan` y la lista ya se refresca
+  cada 5 s.
 - **Ethernet.** El botón «Desconectar» de una conexión cableada conectada y
   gestionada por NetworkManager pasa a un icono de X con tooltip; las
   interfaces desconectadas conservan «Conectar» y las no gestionadas,

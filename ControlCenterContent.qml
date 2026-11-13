@@ -1749,94 +1749,6 @@ ColumnLayout {
                 elide: Text.ElideRight
             }
 
-            // Añadir red oculta: abre el formulario manual con SSID y clave.
-            Rectangle {
-                visible: root.view === "wifi" && !root.wifiAdvanced
-                    && !root.wifiNetworkOptions && !root.wiredOptionsOpen
-                    && Networking.wifiEnabled
-                implicitWidth: 26
-                implicitHeight: 26
-                radius: 7
-                color: addWifiMouse.containsMouse ? Theme.hover : "transparent"
-
-                ShellIcon {
-                    anchors.centerIn: parent
-                    source: ShellIcons.src("plus")
-                    color: root.hiddenNetworkOpen
-                        ? Theme.accent : Theme.muted
-                    size: 14
-                    fallback: "+"
-                }
-
-                MouseArea {
-                    id: addWifiMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (root.hiddenNetworkOpen)
-                            root.closeHiddenNetwork();
-                        else
-                            root.openHiddenNetwork();
-                    }
-
-                    ToolTip.visible: addWifiMouse.containsMouse
-                    ToolTip.text: "Añadir red oculta"
-                    ToolTip.delay: 400
-                }
-            }
-
-            // Recargar: pide otra búsqueda de redes Wi-Fi.
-            Rectangle {
-                visible: root.view === "wifi" && !root.wifiAdvanced
-                    && !root.wifiNetworkOptions && !root.wiredOptionsOpen
-
-                implicitWidth: 26
-                implicitHeight: 26
-                radius: 7
-                color: refreshMouse.containsMouse
-                    ? Theme.hover : "transparent"
-
-                Item {
-                    id: refreshSpin
-
-                    anchors.centerIn: parent
-                    width: 15
-                    height: 15
-
-                    ShellIcon {
-                        anchors.fill: parent
-                        name: "view-refresh-symbolic"
-                        fallbackName: "view-refresh"
-                        color: WifiState.scanning
-                            ? Theme.accent : Theme.muted
-                        size: 15
-                        fallback: "⟳"
-                    }
-
-                    RotationAnimator {
-                        target: refreshSpin
-                        from: 0
-                        to: 360
-                        duration: 1100
-                        loops: Animation.Infinite
-                        running: WifiState.scanning
-                    }
-                }
-
-                MouseArea {
-                    id: refreshMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.startWifiScan()
-
-                    ToolTip.visible: refreshMouse.containsMouse
-                    ToolTip.text: "Buscar redes ahora"
-                    ToolTip.delay: 400
-                }
-            }
-
             // Borra todo el historial del portapapeles.
             Rectangle {
                 visible: root.view === "clipboard" && ClipboardState.count > 0
@@ -2140,6 +2052,43 @@ ColumnLayout {
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
                     font.weight: Font.DemiBold
+                }
+
+                // Añadir red oculta: abre el formulario manual con SSID y
+                // clave. Solo tiene sentido con la lista normal visible.
+                Rectangle {
+                    visible: !root.wifiAdvanced && Networking.wifiEnabled
+                    implicitWidth: 26
+                    implicitHeight: 26
+                    radius: 7
+                    color: addWifiMouse.containsMouse
+                        ? Theme.hover : "transparent"
+
+                    ShellIcon {
+                        anchors.centerIn: parent
+                        source: ShellIcons.src("plus")
+                        color: root.hiddenNetworkOpen
+                            ? Theme.accent : Theme.muted
+                        size: 14
+                        fallback: "+"
+                    }
+
+                    MouseArea {
+                        id: addWifiMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (root.hiddenNetworkOpen)
+                                root.closeHiddenNetwork();
+                            else
+                                root.openHiddenNetwork();
+                        }
+
+                        ToolTip.visible: addWifiMouse.containsMouse
+                        ToolTip.text: "Añadir red oculta"
+                        ToolTip.delay: 400
+                    }
                 }
 
                 Rectangle {
