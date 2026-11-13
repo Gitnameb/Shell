@@ -13,7 +13,7 @@ Singleton {
     readonly property var defaultCenterOrder: [
         "wifi", "bluetooth", "volume", "mic", "night",
         "airplane", "brightness", "extraDim", "clipboard", "music",
-        "keyboard", "hotspot", "vpn", "cpu", "gpu", "net", "dns", "settings"
+        "keyboard", "hotspot", "steamlink", "vpn", "cpu", "gpu", "net", "dns", "settings"
     ]
 
     property var controls: root.defaultControls.slice()
@@ -25,7 +25,7 @@ Singleton {
     // Todos los controles disponibles, en el orden en que se muestran.
     readonly property var allKeys: [
         "music", "wifi", "bluetooth", "volume", "mic", "night",
-        "airplane", "brightness", "extraDim", "hotspot", "vpn",
+        "airplane", "brightness", "extraDim", "hotspot", "steamlink", "vpn",
         "keyboard", "clipboard", "cpu", "gpu", "net", "dns", "settings"
     ]
 
@@ -169,6 +169,8 @@ Singleton {
             return "Atenuación extra";
         if (key === "hotspot")
             return "Punto de acceso";
+        if (key === "steamlink")
+            return "Steam Link";
         if (key === "vpn")
             return "VPN";
         if (key === "keyboard")

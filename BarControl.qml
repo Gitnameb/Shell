@@ -158,6 +158,8 @@ Pill {
             return "applications-system-symbolic";
         if (root.key === "dns")
             return "";
+        if (root.key === "steamlink")
+            return "applications-games-symbolic";
         return "";
     }
 
@@ -217,6 +219,8 @@ Pill {
                 ? Theme.accent : Theme.accentFaded;
         if (root.key === "dns")
             return DnsState.enabled ? Theme.accent : Theme.accentFaded;
+        if (root.key === "steamlink")
+            return SteamLinkState.active ? Theme.accent : Theme.accentFaded;
         return Theme.accentFaded;
     }
 
@@ -263,6 +267,8 @@ Pill {
             return ShellIcons.src("settings");
         if (root.key === "dns")
             return ShellIcons.src("dns");
+        if (root.key === "steamlink")
+            return ShellIcons.src("steamlink");
         if (root.key === "gpu")
             return ShellIcons.src("gpu");
         return "";
@@ -303,6 +309,8 @@ Pill {
             return "⚙";
         if (root.key === "dns")
             return "D";
+        if (root.key === "steamlink")
+            return "▷";
         return "•";
     }
 
@@ -339,6 +347,8 @@ Pill {
             return KeyboardState.visible;
         if (root.key === "dns")
             return DnsState.enabled;
+        if (root.key === "steamlink")
+            return SteamLinkState.active;
         return false;
     }
 
@@ -347,6 +357,11 @@ Pill {
         // El modo avión es solo un interruptor: no tiene vista propia.
         if (root.key === "airplane") {
             AirplaneState.toggle();
+            return;
+        }
+        // Steam Link es un interruptor: crea o retira la salida virtual.
+        if (root.key === "steamlink") {
+            SteamLinkState.toggle();
             return;
         }
         // Cada control abre su propio panel rápido, sin la sección de

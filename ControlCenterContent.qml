@@ -87,6 +87,7 @@ ColumnLayout {
     Component.onCompleted: {
         root.syncWifiNetworks();
         DnsState.refresh();
+        SteamLinkState.refresh();
         if (root.active && root.view === "wifi")
             root.refreshWired();
         root.updateStatsMode();
@@ -586,6 +587,8 @@ ColumnLayout {
         if (!root.active && root.micShortcutCapture)
             root.endMicShortcut();
         root.updateStatsMode();
+        if (root.active)
+            SteamLinkState.refresh();
         ClipboardState.monitoring = root.active && root.view === "clipboard";
         if (ClipboardState.monitoring)
             ClipboardState.refresh();
@@ -1546,6 +1549,23 @@ ColumnLayout {
             active: HotspotState.active
             onToggled: HotspotState.toggle()
             onOpened: root.setView("hotspot")
+        }
+
+        CcItem {
+            Layout.fillWidth: true
+            visible: !BarState.has("steamlink") && centerIndex >= 0
+            icon: "▷"
+            iconName: "applications-games-symbolic"
+            iconSource: ShellIcons.src("steamlink")
+            iconColor: SteamLinkState.busy
+                ? Theme.warning
+                : (SteamLinkState.active ? Theme.accent : Theme.muted)
+            label: "Steam Link"
+            dragKey: "steamlink"
+            meta: SteamLinkState.summary
+            active: SteamLinkState.active
+            wholeToggle: true
+            onToggled: SteamLinkState.toggle()
         }
 
         CcItem {

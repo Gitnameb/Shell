@@ -38,6 +38,10 @@ Progreso (2026-11-12):
   `--with-firmware` detecta CPU, GPU, red y audio; `--with-firmware-author`
   conserva la lista exacta Intel/AMD del equipo del autor.
 - Pendiente: historial de Git (squash o repositorio nuevo).
+- Pendiente (2026-11-13): integrar la salida virtual de Steam Link 1920x864 y
+  `~/.local/bin/steamlink-mode` en el instalador, para que el botón del centro
+  de control funcione en una instalación limpia. El botón y el singleton ya
+  están; el script todavía no se distribuye con el repositorio.
 
 ## Estado al cerrar esta sesión
 
