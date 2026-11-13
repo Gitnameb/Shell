@@ -101,12 +101,17 @@ Prioridad acordada:
 - El icono de papelera para **olvidar una red** está en la cabecera de sus
   ajustes, a la derecha del nombre, sin texto. El primer clic lo arma y el
   segundo confirma; el tooltip indica ambos pasos.
-- El centro de control tiene una ficha **DNS** propia. Abre una vista para
-  elegir automático o servidores IPv4/IPv6 propios; se aplica solo a las
-  conexiones Wi-Fi y Ethernet activas, no a los perfiles guardados que están
-  desconectados. Los cambios se aplican con `nmcli device reapply`, sin cortar
-  el enlace. Lo implementan `DnsSettings.qml`, `DnsState.qml` y
-  `scripts/network-settings.py`.
+- La ficha **DNS** del centro de control es un interruptor: apagada usa el
+  DNS automático del router y encendida el proveedor privado elegido
+  (Cloudflare, AdGuard, OpenDNS, CleanBrowsing, Quad9, un nombre personalizado
+  o servidores IPv4/IPv6 manuales). El DNS privado usa DNS over TLS con
+  `systemd-resolved` y se aplica solo a las conexiones Wi-Fi y Ethernet
+  activas. El interruptor «Desactivado para VPN» lo apaga mientras hay una VPN
+  y lo restaura al desconectarla. La configuración vive en
+  `~/.config/shell/dns.json`; los cambios con privilegios los hace
+  `install/lib/shell-private-dns`, instalado en
+  `/usr/local/lib/shell/`, y la lógica está en `DnsSettings.qml`,
+  `DnsState.qml` y `scripts/network-settings.py`.
 - El **proxy por red** vive dentro de las opciones de cada conexión: el
   engranaje de una red Wi-Fi conectada o el de una Ethernet conectada abre su
   formulario. Cada conexión guardada puede usar sin proxy, automático (PAC) o
@@ -2851,6 +2856,32 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 - **Resumen.** `DnsState.qml` calcula automático/mixto y los valores actuales
   solo con las conexiones activas; el resumen muestra «Sin conexión» cuando no
   hay ninguna.
+
+### 2026-11-12 · DNS privado con DoT y suspensión por VPN
+
+- **Interruptor.** La ficha DNS del centro de control ya no abre la vista al
+  pulsar el icono: el icono alterna entre apagado (DNS automático) y encendido
+  (proveedor privado). El nombre de la ficha sigue abriendo las opciones.
+- **Proveedores.** La vista ofrece Cloudflare, AdGuard, OpenDNS,
+  CleanBrowsing, Quad9, un nombre de proveedor personalizado y servidores
+  IPv4/IPv6 manuales. Los proveedores fijos usan DoT estricto con
+  `IP#nombre`; el nombre personalizado resuelve el host y también usa DoT
+  estricto; los servidores manuales usan DoT oportunista. Se eliminaron
+  «DNS GLOBAL», su descripción y el selector Automático/Manual.
+- **systemd-resolved.** El instalador añade `systemd-resolved`, escribe
+  `/etc/NetworkManager/conf.d/90-shell-dns.conf`, instala
+  `install/lib/shell-private-dns` como
+  `/usr/local/lib/shell/shell-private-dns` y autoriza solo ese ayudante por
+  sudoers. El ayudante escribe
+  `/etc/systemd/resolved.conf.d/90-shell-dns.conf` y reinicia el servicio.
+- **Conexiones.** Al encender el DNS privado, las conexiones activas dejan de
+  usar el DNS del router (`ignore-auto-dns yes`) para que resolved use solo el
+  proveedor global. Al apagarlo se restaura el DNS automático. La selección se
+  guarda en `~/.config/shell/dns.json`.
+- **VPN.** El interruptor «Desactivado para VPN» guarda la preferencia y
+  suspende el DNS privado cuando `VpnState.active` pasa a verdadero; al
+  desconectar la VPN se vuelve a aplicar el proveedor. El interruptor principal
+  sigue encendido y el resumen muestra «Desactivado por VPN».
 
 ### 2026-11-12 · Privacidad por red Wi-Fi
 

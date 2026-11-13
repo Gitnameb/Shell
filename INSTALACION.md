@@ -810,9 +810,13 @@ recuerda la última sesión elegida.
 - `bluez` y `bluez-obexd` aportan Bluetooth y la transferencia de archivos.
 - `network-manager-openvpn` es obligatorio para importar `.ovpn`.
 - `qrencode` genera el QR del punto de acceso.
-- **Todos los paquetes de red, punto de acceso, VPN y Bluetooth los instala
-  `scripts/network.sh`.** `install-packages.sh` ya no los duplica; la
-  instalación limpia los pide una sola vez desde el módulo de red.
+- `systemd-resolved` es el backend que permite el DNS over TLS de la ficha
+  **DNS**. El instalador lo configura como plugin de NetworkManager; sin él, la
+  vista avisa y el interruptor no puede activarse.
+- **Los paquetes de red, punto de acceso, VPN y Bluetooth los instala
+  `scripts/network.sh`**, salvo `systemd-resolved`, que va en la lista base de
+  `install-packages.sh` porque lo usa la ficha DNS. La instalación limpia no
+  duplica paquetes.
 - Si Debian instaló la Ethernet con ifupdown (`/etc/network/interfaces`),
   NetworkManager la marca como `unmanaged`. Ejecuta una vez:
   `sudo ./scripts/network.sh`. El instalador ya lo hace salvo que uses
@@ -859,11 +863,19 @@ recuerda la última sesión elegida.
   (`stable-ssid`) o una nueva en cada conexión (`random`). Se guarda en el
   perfil de NetworkManager y se aplica al reconectar; el firmware debe
   permitir el cambio de MAC.
-- **DNS:** el centro de control tiene una ficha **DNS** propia. La vista
-  permite usar el DNS automático del router o servidores IPv4/IPv6 propios y lo
-  aplica solo a las conexiones Wi-Fi y Ethernet que están activas en ese
-  momento, sin tocar los perfiles guardados que están desconectados. Los
-  cambios se aplican con `nmcli device reapply` sin cortar la conexión.
+- **DNS privado:** la ficha **DNS** del centro de control funciona como
+  interruptor. Apagada usa el DNS automático del router; encendida aplica el
+  proveedor elegido a las conexiones Wi-Fi y Ethernet activas. La lista incluye
+  Cloudflare, AdGuard, OpenDNS, CleanBrowsing y Quad9, un nombre de proveedor
+  personalizado con DoT estricto y servidores IPv4/IPv6 manuales con DoT
+  oportunista. Usa `systemd-resolved`, que el instalador añade y configura como
+  backend de NetworkManager, y `connection.dns-over-tls`. El interruptor
+  «Desactivado para VPN» apaga el DNS privado mientras hay una VPN y lo
+  restaura al desconectarla. La selección se guarda en
+  `~/.config/shell/dns.json`; el trabajo con privilegios lo hace
+  `/usr/local/lib/shell/shell-private-dns`. Cuando aparece una conexión nueva,
+  el shell le retira el DNS del router para que use el proveedor mientras el
+  interruptor siga encendido.
 - **Proxy por red:** el engranaje general de la vista Red permite elegir por
   conexión entre sin proxy, automático (PAC) o manual. NetworkManager solo
   admite `none`/`auto`, así que el modo manual se guarda como un PAC generado.

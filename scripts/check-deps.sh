@@ -63,6 +63,12 @@ check_package network-manager-openvpn "VPN OpenVPN" \
     network-manager-openvpn "$NET_FIX"
 check_package qrencode "QR del punto de acceso" \
     qrencode "$NET_FIX"
+check_package systemd-resolved "DNS privado (systemd-resolved)" \
+    systemd-resolved "cd $REPO_Q && ./install.sh"
+if [[ ! -x /usr/local/lib/shell/shell-private-dns ]]; then
+    printf 'private-dns|Ayudante de DNS privado|shell-private-dns|cd %s && ./install.sh\n' \
+        "$REPO_Q"
+fi
 
 # Iniciador de sesión y bloqueo de pantalla.
 check_package greetd "Iniciador de sesión (greetd)" \

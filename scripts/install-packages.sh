@@ -148,6 +148,9 @@ RUNTIME_PKGS=(
     # chinas y coreanas del widget de música se dibujan como cuadros.
     fonts-noto-cjk
     power-profiles-daemon
+    # systemd-resolved es el único backend que permite DNS over TLS con
+    # verificación de certificado. La vista DNS del centro de control lo usa.
+    systemd-resolved
     iputils-ping wl-clipboard cliphist udiskie udisks2 ntfs-3g exfatprogs usbutils python3 curl
     qml6-module-qtquick-effects
     qml6-module-qt-labs-folderlistmodel

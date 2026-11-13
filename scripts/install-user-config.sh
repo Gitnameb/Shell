@@ -554,4 +554,27 @@ else
     rm -f "$tmp"
 fi
 
+log "Instalando el ayudante de DNS privado."
+run_sudo install -d -m755 /usr/local/lib/shell
+run_sudo install -m755 "$REPO_DIR/install/lib/shell-private-dns" \
+    /usr/local/lib/shell/shell-private-dns
+if (( DRY_RUN )); then
+    printf '\033[2m[dry-run]\033[0m instalar /etc/sudoers.d/shell-private-dns para %s\n' "$USER_NAME"
+else
+    tmp=$(mktemp)
+    printf '%s ALL=(ALL) NOPASSWD: /usr/local/lib/shell/shell-private-dns\n' \
+        "$USER_NAME" >"$tmp"
+    run_sudo visudo -cf "$tmp"
+    run_sudo install -m440 -o root -g root "$tmp" \
+        /etc/sudoers.d/shell-private-dns
+    rm -f "$tmp"
+fi
+
+if command -v resolvectl >/dev/null 2>&1; then
+    run_sudo /usr/local/lib/shell/shell-private-dns setup \
+        || warn "No se pudo configurar systemd-resolved; el DNS privado quedará desactivado."
+else
+    warn "systemd-resolved no está instalado; el DNS privado no estará disponible."
+fi
+
 log "Configuración de usuario instalada."

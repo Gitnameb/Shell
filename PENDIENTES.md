@@ -895,10 +895,11 @@ Tras cerrar sesión y volver a entrar:
 - B4: hecho en anidado; falta probar con una app real (KeePassXC/Telegram).
 - B5: Wi-Fi (escanear solo con el panel abierto, reconectar, olvidar, QR,
   bandas) y Bluetooth (emparejar, batería); autoapagado a 15 min y hotspot.
-  DNS de las conexiones activas implementado (ficha propia,
-  automático/manual IPv4/IPv6) y proxy
-  por red (PAC generado + environment.d); falta probarlo con apps reales y
-  tras reiniciar sesión.
+  DNS privado con DoT implementado (interruptor en la ficha DNS, proveedores
+  Cloudflare/AdGuard/OpenDNS/CleanBrowsing/Quad9, hostname propio, servidores
+  manuales y «Desactivado para VPN») y proxy
+  por red (PAC generado + environment.d); falta probarlo con apps reales,
+  instalar systemd-resolved y reiniciar sesión.
 - Aviso de dependencias bajo demanda en el panel de notificaciones (icono
   junto a «No molestar»), con botón para copiar la solución; falta comprobarlo
   visualmente.

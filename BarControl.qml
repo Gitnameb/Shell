@@ -216,7 +216,7 @@ Pill {
             return QuickPanelState.isOpen("settings")
                 ? Theme.accent : Theme.accentFaded;
         if (root.key === "dns")
-            return DnsState.allAuto ? Theme.accentFaded : Theme.accent;
+            return DnsState.enabled ? Theme.accent : Theme.accentFaded;
         return Theme.accentFaded;
     }
 
@@ -338,7 +338,7 @@ Pill {
         if (root.key === "keyboard")
             return KeyboardState.visible;
         if (root.key === "dns")
-            return !DnsState.allAuto;
+            return DnsState.enabled;
         return false;
     }
 

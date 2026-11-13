@@ -1676,12 +1676,13 @@ ColumnLayout {
             visible: !BarState.has("dns") && centerIndex >= 0
             icon: "D"
             iconSource: ShellIcons.src("dns")
-            iconColor: DnsState.allAuto ? Theme.muted : Theme.accent
+            iconColor: DnsState.enabled ? Theme.accent : Theme.muted
             label: "DNS"
             dragKey: "dns"
-            toggleEnabled: false
-            active: !DnsState.allAuto
+            toggleEnabled: true
+            active: DnsState.enabled
             meta: DnsState.summary
+            onToggled: DnsState.setEnabled(!DnsState.enabled)
             onOpened: root.setView("dns")
         }
 
