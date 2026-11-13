@@ -81,21 +81,26 @@ Prioridad acordada:
   tiempo de autenticación agotado o red perdida), la vista Red muestra el motivo
   en lugar de no hacer nada. El campo de contraseña es el mismo componente
   (`WifiPasswordRow.qml`) que usa el formulario de red oculta.
-- Solo la red Wi-Fi **conectada** muestra el engranaje de opciones avanzadas
-  (QR, reconexión automática, bandas y olvidar). El resto de redes no lo lleva.
-- El engranaje general de la vista Red reúne el apagado por inactividad y el
-  interruptor **Mostrar redes ocultas**. Al activarlo, las redes que no emiten
+- Solo la red Wi-Fi **conectada** muestra el engranaje de opciones en la lista
+  de redes (QR, reconexión automática, bandas, privacidad y olvidar). El resto
+  de redes no lo lleva. El desplegable de redes guardadas sí ofrece un
+  engranaje por cada perfil.
+- El engranaje general de la vista Red reúne el apagado por inactividad, el
+  interruptor **Mostrar redes ocultas** y el desplegable **Redes guardadas**.
+  Al activar el interruptor, las redes que no emiten
   su SSID se mezclan con las visibles y se ordenan por conexión y señal; se
   identifican por su BSSID/MAC. Si una de ellas ya está conectada, se muestra
   con su SSID real, porque el perfil guardado ya lo conoce. Al pulsar una, su
   formulario de SSID y contraseña se abre dentro de la propia fila, como una red
   normal. El botón **+** de la fila Wi-Fi queda solo para añadir una red oculta
   a mano.
-- El engranaje general también puede mostrar el **historial de redes
-  guardadas** al final de la lista: los perfiles de NetworkManager ordenados
-  por la última conexión, con fecha y hora. Tocar uno conecta si está en el
-  alcance; si es la red activa, abre sus ajustes. Los perfiles que no están
-  cerca se marcan como «Fuera de alcance».
+- El engranaje general también despliega el **historial de redes
+  guardadas**: todos los perfiles de NetworkManager con un engranaje de
+  ajustes por fila para editar esa red. No muestra fechas y la red activa se
+  resalta. El estado del desplegable vive solo en memoria.
+- El icono de papelera para **olvidar una red** está en la cabecera de sus
+  ajustes, a la derecha del nombre, sin texto. El primer clic lo arma y el
+  segundo confirma; el tooltip indica ambos pasos.
 - El centro de control tiene una ficha **DNS** propia. Abre una vista con un
   ajuste **global**: automático o servidores IPv4/IPv6 propios, aplicado a todas
   las conexiones Wi-Fi y Ethernet guardadas (NetworkManager no ofrece un DNS
@@ -1008,7 +1013,7 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 | `AppContextMenu.qml` | Menú contextual de una ventana: enfocar, maximizar/restaurar, minimizar/restaurar, flotante/mosaico, mover al escritorio y cerrar esa ventana. Las acciones pasan por `CompositorState`. |
 | `AppMenuItem.qml` | Fila reutilizable del menú contextual, con icono del tema o glifo de respaldo. |
 | `ShellIcon.qml` | Icono de widget del tema Breeze con color de estado mediante `ColorOverlay`; sustituye a los emojis. |
-| `SettingsState.qml` | Preferencias persistentes: modo claro/oscuro, color de acento, tema en las apps, distribución del teclado, máximo de escritorios, filas visibles y tamaños de iconos del centro y de la barra, porcentajes por panel (volumen, brillo, atenuación, batería y Bluetooth), temperatura en la barra, atajo del micrófono, ocultación automática de la barra, apagados automáticos, modo avión, redes ocultas, historial de redes guardadas, modo por defecto y por escritorio, y barra de título (`auto`/`always`/`never`). |
+| `SettingsState.qml` | Preferencias persistentes: modo claro/oscuro, color de acento, tema en las apps, distribución del teclado, máximo de escritorios, filas visibles y tamaños de iconos del centro y de la barra, porcentajes por panel (volumen, brillo, atenuación, batería y Bluetooth), temperatura en la barra, atajo del micrófono, ocultación automática de la barra, apagados automáticos, modo avión, redes ocultas, modo por defecto y por escritorio, y barra de título (`auto`/`always`/`never`). |
 | `HostInfo.qml` | Nombre de la máquina, usado por el hotspot y el Bluetooth. |
 | `WeatherState.qml` | Clima actual y previsión desde `wttr.in`, sin clave de API. |
 | `ClockTab.qml` | Pestaña reutilizable del panel del reloj. |
@@ -1378,7 +1383,8 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   giratorio y el texto «Buscando redes…» / «Buscando otras redes…».
 - **Ajustes por red Wi-Fi**: cada red tiene un engranaje. La vista muestra el QR para
   compartirla, la reconexión automática (`connection.autoconnect`), las bandas y
-  «Olvidar red» (con confirmación en el mismo botón). El QR y el perfil se leen de
+  el icono de olvidar en la cabecera (con confirmación en dos clics). El QR y el
+  perfil se leen de
   NetworkManager con `scripts/wifi-profile.py`; si la red no tiene perfil guardado,
   solo se muestran los datos disponibles.
 - **Panel de tamaño fijo**: el centro de control ocupa siempre dos columnas y las
@@ -2698,7 +2704,8 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
 ### 2026-11-11 · Proxy en cada conexión, picos de temperatura y ping estable
 
 - **Proxy dentro de las redes conectadas.** El engranaje de una red Wi-Fi
-  conectada abre su QR, reconexión, banda, «Olvidar red» y, al final, el proxy
+  conectada abre su QR, reconexión, banda, el icono de olvidar en la cabecera
+  y, al final, el proxy
   de ese perfil. Cada Ethernet conectada tiene ahora su propio engranaje, que
   abre una vista «Ethernet · interfaz» con el proxy de su perfil cableado.
   `ProxySettings.qml` acepta `connectionUuid` y, en ese modo, pinta solo el
@@ -2817,20 +2824,20 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   que todavía no están conectadas. Las redes abiertas no muestran candado para
   no dar una información falsa.
 
-### 2026-11-12 · Historial de redes guardadas
+### 2026-11-12 · Redes guardadas plegables y olvidar compacto
 
-- **Interruptor en el engranaje.** La vista Red añade «Mostrar redes
-  guardadas» junto a «Mostrar redes ocultas». La preferencia se guarda en
-  `settings.conf` como `showSavedWifi`.
-- **Historial.** `scripts/wifi-profile.py saved` lista los perfiles Wi-Fi de
-  NetworkManager con su SSID, reconexión automática y
-  `connection.timestamp`, ordenados de la conexión más reciente a la más
-  antigua. `WifiState.qml` los expone y `ControlCenterContent.qml` pinta la
-  sección «Redes guardadas» al final de la lista, con «Hoy», «Ayer» o la fecha
-  y la hora de la última conexión.
-- **Acciones.** Tocar una red guardada conecta si está en el alcance; si es la
-  red activa, abre sus ajustes. Los perfiles fuera de alcance se marcan y no
-  intentan conectarse.
+- **Desplegable en el engranaje.** La vista Red sustituye el interruptor por
+  una fila «Redes guardadas» con un chevron. Al pulsarla se despliega la lista
+  y el estado se guarda en memoria (`savedExpanded`), sin clave en
+  `settings.conf`.
+- **Lista.** `scripts/wifi-profile.py saved` lista los perfiles Wi-Fi de
+  NetworkManager, del más reciente al más antiguo. Cada fila muestra el SSID y
+  un engranaje que abre los ajustes completos de esa red; no se muestran
+  fechas ni la última conexión. La red activa se resalta.
+- **Olvidar red.** El botón de texto se sustituye por un icono de papelera en
+  la cabecera de los ajustes de la red, a la derecha de su nombre. El primer
+  clic arma la confirmación (icono rojo) y el segundo borra el perfil; el
+  tooltip explica ambos pasos.
 
 ### 2026-11-12 · Privacidad por red Wi-Fi
 

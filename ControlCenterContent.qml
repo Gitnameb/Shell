@@ -64,6 +64,8 @@ ColumnLayout {
     // Punto de acceso y Wi-Fi: opciones avanzadas detrás de sus engranajes.
     property bool hotspotAdvanced: false
     property bool wifiAdvanced: false
+    // Desplegable del historial de redes guardadas dentro del engranaje.
+    property bool savedExpanded: false
     // Seguridad de la red cuyos ajustes se están editando. Se guarda el valor
     // y no el objeto AccessPoint, que puede desaparecer al escanear.
     property int wifiNetworkSecurity: -1
@@ -184,50 +186,6 @@ ColumnLayout {
                 return list[i];
         }
         return null;
-    }
-
-    // Texto del historial: cuándo se usó por última vez un perfil guardado.
-    function savedWhen(timestamp): string {
-        const seconds = Number(timestamp || 0);
-        if (!isFinite(seconds) || seconds <= 0)
-            return "Nunca conectada";
-        const date = new Date(seconds * 1000);
-        const now = new Date();
-        const sameDay = (a, b) => a.getFullYear() === b.getFullYear()
-            && a.getMonth() === b.getMonth()
-            && a.getDate() === b.getDate();
-        let day = Qt.formatDate(date, "dd/MM/yyyy");
-        if (sameDay(date, now)) {
-            day = "Hoy";
-        } else {
-            const yesterday = new Date(now.getFullYear(), now.getMonth(),
-                now.getDate() - 1);
-            if (sameDay(date, yesterday))
-                day = "Ayer";
-        }
-        return "Última conexión: " + day + " · "
-            + Qt.formatTime(date, "HH:mm");
-    }
-
-    // Tocar una red guardada conecta si está en el alcance o abre sus
-    // ajustes si ya es la red conectada.
-    function selectSavedNetwork(item): void {
-        if (item === null || item === undefined)
-            return;
-        const ssid = String(item.ssid || "");
-        if (ssid.length === 0)
-            return;
-        const net = root.networkByName(ssid);
-        if (!net) {
-            root.wifiNotice = "«" + ssid + "» no está en el alcance.";
-            return;
-        }
-        root.wifiNotice = "";
-        if (net.connected) {
-            root.openWifiNetwork(ssid);
-            return;
-        }
-        root.selectNetwork(ssid);
     }
 
     // Se actualiza con retardo para agrupar las ráfagas de altas y bajas de
@@ -1008,8 +966,6 @@ ColumnLayout {
         root.refreshScan();
         WifiState.hasScanned = false;
         WifiState.requestScan();
-        if (SettingsState.showSavedWifi)
-            WifiState.loadSaved();
     }
 
     function openWifiNetwork(name): void {
@@ -1083,6 +1039,12 @@ ColumnLayout {
         refreshScan();
     }
 
+    // Al abrir el engranaje se refresca el historial de perfiles guardados.
+    onWifiAdvancedChanged: {
+        if (root.wifiAdvanced)
+            WifiState.loadSaved();
+    }
+
     onWiredDevicesChanged: {
         if (root.active && root.view === "wifi")
             root.refreshWired();
@@ -1129,11 +1091,6 @@ ColumnLayout {
             if (!SettingsState.showHiddenWifi)
                 root.closeHiddenInline();
             wifiNetworksTimer.restart();
-        }
-
-        function onShowSavedWifiChanged(): void {
-            if (SettingsState.showSavedWifi)
-                WifiState.loadSaved();
         }
     }
 
@@ -1289,8 +1246,6 @@ ColumnLayout {
             if (root.connectingNetwork && root.connectingNetwork.connected) {
                 root.wifiNotice = "";
                 root.connectingNetwork = null;
-                if (SettingsState.showSavedWifi)
-                    WifiState.loadSaved();
             }
         }
     }
@@ -1800,6 +1755,44 @@ ColumnLayout {
                 font.pixelSize: 12
                 font.weight: Font.DemiBold
                 elide: Text.ElideRight
+            }
+
+            // Olvidar la red desde el título de sus ajustes. Sin texto: el
+            // primer clic arma la confirmación y el segundo borra el perfil.
+            Rectangle {
+                visible: root.view === "wifi" && root.wifiNetworkOptions
+                    && WifiState.profileFound
+                implicitWidth: 26
+                implicitHeight: 26
+                radius: 7
+                color: root.wifiForgetArmed
+                    ? Qt.rgba(255 / 255, 122 / 255, 122 / 255, 0.16)
+                    : (forgetNetworkMouse.containsMouse
+                        ? Theme.hover : "transparent")
+
+                ShellIcon {
+                    anchors.centerIn: parent
+                    name: "edit-delete"
+                    fallbackName: "user-trash"
+                    color: root.wifiForgetArmed
+                        ? Theme.danger : Theme.muted
+                    size: 14
+                    fallback: "⌫"
+                }
+
+                MouseArea {
+                    id: forgetNetworkMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.forgetWifiNetwork()
+
+                    ToolTip.visible: forgetNetworkMouse.containsMouse
+                    ToolTip.text: root.wifiForgetArmed
+                        ? "Pulsa otra vez para olvidar la red"
+                        : "Olvidar red"
+                    ToolTip.delay: 400
+                }
             }
 
             // Borra todo el historial del portapapeles.
@@ -2699,161 +2692,6 @@ ColumnLayout {
                 }
             }
 
-            // Historial de perfiles guardados. Se activa en el engranaje de
-            // Wi-Fi y se ordena por la última vez que se usó cada red.
-            ColumnLayout {
-                Layout.fillWidth: true
-                visible: !root.wifiAdvanced && !root.wifiNetworkOptions
-                    && !root.wiredOptionsOpen && Networking.wifiEnabled
-                    && SettingsState.showSavedWifi
-                spacing: 4
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 1
-                    Layout.topMargin: 4
-                    color: Theme.border
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "REDES GUARDADAS"
-                    color: Theme.faint
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 8
-                    font.weight: Font.DemiBold
-                    font.letterSpacing: 0.8
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    visible: WifiState.savedNetworks.length === 0
-                    text: WifiState.savedBusy ? "Cargando redes guardadas…"
-                        : (WifiState.savedError.length > 0
-                            ? WifiState.savedError : "No hay redes guardadas.")
-                    color: WifiState.savedError.length > 0
-                        ? Theme.danger : Theme.faint
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 9
-                    wrapMode: Text.Wrap
-                }
-
-                Repeater {
-                    model: WifiState.savedNetworks
-
-                    delegate: Rectangle {
-                        id: savedRow
-
-                        required property var modelData
-
-                        readonly property string ssid:
-                            String(savedRow.modelData.ssid || "")
-                        readonly property var net:
-                            root.networkByName(savedRow.ssid)
-                        readonly property bool connected: savedRow.net !== null
-                            && savedRow.net.connected
-
-                        Layout.fillWidth: true
-                        implicitHeight: 40
-                        radius: 8
-                        color: savedRow.connected
-                            ? Theme.accentSoft
-                            : (savedMouse.containsMouse
-                                ? Theme.hover : "transparent")
-
-                        MouseArea {
-                            id: savedMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.selectSavedNetwork(
-                                savedRow.modelData)
-                        }
-
-                        RowLayout {
-                            anchors {
-                                left: parent.left
-                                right: parent.right
-                                top: parent.top
-                                leftMargin: 8
-                                rightMargin: 8
-                            }
-                            height: 40
-                            spacing: 6
-
-                            ShellIcon {
-                                Layout.preferredWidth: 16
-                                Layout.preferredHeight: 16
-                                name: "document-open-recent"
-                                fallbackName: "view-history"
-                                color: savedRow.connected
-                                    ? Theme.accent : Theme.muted
-                                size: 16
-                                fallback: "◷"
-                            }
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 0
-
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: savedRow.ssid.length > 0
-                                        ? savedRow.ssid
-                                        : String(savedRow.modelData.name || "")
-                                    color: savedRow.connected
-                                        ? Theme.accent : Theme.text
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 10
-                                    font.weight: savedRow.connected
-                                        ? Font.DemiBold : Font.Normal
-                                    elide: Text.ElideRight
-                                }
-
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: root.savedWhen(
-                                            savedRow.modelData.timestamp)
-                                        + (savedRow.connected
-                                            ? " · Conectada"
-                                            : (savedRow.net === null
-                                                ? " · Fuera de alcance" : ""))
-                                    color: Theme.faint
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 8
-                                    elide: Text.ElideRight
-                                }
-                            }
-
-                            Rectangle {
-                                visible: savedRow.connected
-                                implicitWidth: 22
-                                implicitHeight: 22
-                                radius: 6
-                                color: savedGearMouse.containsMouse
-                                    ? Theme.hover : "transparent"
-
-                                ShellIcon {
-                                    anchors.centerIn: parent
-                                    source: ShellIcons.src("settings")
-                                    color: Theme.muted
-                                    size: 13
-                                }
-
-                                MouseArea {
-                                    id: savedGearMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.openWifiNetwork(
-                                        savedRow.ssid)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             // ------------------------------------------ ajustes de una red
             ColumnLayout {
                 Layout.fillWidth: true
@@ -3161,51 +2999,6 @@ ColumnLayout {
                 Rectangle {
                     Layout.fillWidth: true
                     visible: WifiState.profileFound
-                    implicitHeight: 30
-                    radius: 8
-                    color: root.wifiForgetArmed
-                        ? Qt.rgba(255 / 255, 122 / 255, 122 / 255, 0.16)
-                        : Theme.surfaceAlt
-                    border.width: 1
-                    border.color: root.wifiForgetArmed
-                        ? Theme.danger : Theme.border
-
-                    Row {
-                        anchors.centerIn: parent
-                        spacing: 6
-
-                        ShellIcon {
-                            anchors.verticalCenter: parent.verticalCenter
-                            name: "edit-delete"
-                            fallbackName: "user-trash"
-                            color: root.wifiForgetArmed
-                                ? Theme.danger : Theme.muted
-                            size: 14
-                            fallback: "⌫"
-                        }
-
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: root.wifiForgetArmed
-                                ? "Confirmar" : "Olvidar red"
-                            color: root.wifiForgetArmed
-                                ? Theme.danger : Theme.muted
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 9
-                            font.weight: Font.DemiBold
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.forgetWifiNetwork()
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    visible: WifiState.profileFound
                     Layout.preferredHeight: 1
                     color: Theme.border
                 }
@@ -3424,34 +3217,154 @@ ColumnLayout {
                     color: Theme.border
                 }
 
-                RowLayout {
+                Rectangle {
                     Layout.fillWidth: true
-                    spacing: 8
+                    implicitHeight: 30
+                    radius: 7
+                    color: savedHeaderMouse.containsMouse
+                        ? Theme.hover : "transparent"
 
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Mostrar redes guardadas"
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 10
+                    RowLayout {
+                        anchors {
+                            fill: parent
+                            leftMargin: 4
+                            rightMargin: 2
+                        }
+                        spacing: 6
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: "Redes guardadas"
+                            color: Theme.text
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                        }
+
+                        ShellIcon {
+                            Layout.preferredWidth: 14
+                            Layout.preferredHeight: 14
+                            source: ShellIcons.src("chevron-up")
+                            color: Theme.muted
+                            size: 14
+                            rotation: root.savedExpanded ? 0 : 180
+
+                            Behavior on rotation {
+                                NumberAnimation {
+                                    duration: 120
+                                    easing.type: Easing.OutQuad
+                                }
+                            }
+                        }
                     }
 
-                    ShellSwitch {
-                        checked: SettingsState.showSavedWifi
-                        onToggled: SettingsState.showSavedWifi
-                            = !SettingsState.showSavedWifi
+                    MouseArea {
+                        id: savedHeaderMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            root.savedExpanded = !root.savedExpanded;
+                            if (root.savedExpanded)
+                                WifiState.loadSaved();
+                        }
                     }
                 }
 
-                Text {
+                ColumnLayout {
                     Layout.fillWidth: true
-                    visible: SettingsState.showSavedWifi
-                    text: "Añade al final de la lista el historial de perfiles "
-                        + "guardados, ordenado por la última conexión."
-                    color: Theme.faint
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 8
-                    wrapMode: Text.Wrap
+                    visible: root.savedExpanded
+                    spacing: 2
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: WifiState.savedNetworks.length === 0
+                        text: WifiState.savedBusy
+                            ? "Cargando redes guardadas…"
+                            : (WifiState.savedError.length > 0
+                                ? WifiState.savedError
+                                : "No hay redes guardadas.")
+                        color: WifiState.savedError.length > 0
+                            ? Theme.danger : Theme.faint
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 8
+                        wrapMode: Text.Wrap
+                    }
+
+                    Repeater {
+                        model: WifiState.savedNetworks
+
+                        delegate: Rectangle {
+                            id: savedRow
+
+                            required property var modelData
+
+                            readonly property string ssid:
+                                String(savedRow.modelData.ssid || "")
+                            readonly property bool connected:
+                                savedRow.modelData.active === true
+
+                            Layout.fillWidth: true
+                            implicitHeight: 32
+                            radius: 7
+                            color: savedRow.connected
+                                ? Theme.accentSoft : "transparent"
+
+                            RowLayout {
+                                anchors {
+                                    left: parent.left
+                                    right: parent.right
+                                    top: parent.top
+                                    leftMargin: 8
+                                    rightMargin: 6
+                                }
+                                height: 32
+                                spacing: 6
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: savedRow.ssid.length > 0
+                                        ? savedRow.ssid
+                                        : String(savedRow.modelData.name || "")
+                                    color: savedRow.connected
+                                        ? Theme.accent : Theme.text
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    font.weight: savedRow.connected
+                                        ? Font.DemiBold : Font.Normal
+                                    elide: Text.ElideRight
+                                }
+
+                                Rectangle {
+                                    implicitWidth: 22
+                                    implicitHeight: 22
+                                    radius: 6
+                                    color: savedGearMouse.containsMouse
+                                        ? Theme.hover : "transparent"
+
+                                    ShellIcon {
+                                        anchors.centerIn: parent
+                                        source: ShellIcons.src("settings")
+                                        color: Theme.muted
+                                        size: 13
+                                    }
+
+                                    MouseArea {
+                                        id: savedGearMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.openWifiNetwork(
+                                            savedRow.ssid)
+
+                                        ToolTip.visible:
+                                            savedGearMouse.containsMouse
+                                        ToolTip.text: "Ajustes de la red"
+                                        ToolTip.delay: 400
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

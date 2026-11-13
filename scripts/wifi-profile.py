@@ -168,16 +168,18 @@ def saved():
             timestamp = int(float(nm_get(name, "connection.timestamp") or 0))
         except ValueError:
             timestamp = 0
-        networks.append({
-            "ssid": ssid,
-            "name": name,
-            "uuid": nm_get(name, "connection.uuid"),
-            "timestamp": timestamp,
-            "autoconnect": nm_get(name, "connection.autoconnect") == "yes",
-            "active": name in active,
-        })
-    networks.sort(key=lambda item: item["timestamp"], reverse=True)
-    print(json.dumps({"networks": networks}))
+        networks.append((
+            timestamp,
+            {
+                "ssid": ssid,
+                "name": name,
+                "active": name in active,
+            },
+        ))
+    networks.sort(key=lambda item: item[0], reverse=True)
+    print(json.dumps({
+        "networks": [item[1] for item in networks],
+    }))
     return 0
 
 
