@@ -2236,9 +2236,11 @@ qs ipc -c shell call windows moveWindow 0xDIRECCION 400 300
   `wtype -M alt -s 1200 -m alt`: captura a 150 ms con brillo 0,914 (sin velo) y
   a 600 ms con 0,659 (28 % negro); al soltar vuelve a 0,914. Un toque de 100 ms
   se queda en 0,914 en todas las capturas.
-- **Barra en los cuatro bordes.** `SettingsState.barPosition` (`abajo` por
-  defecto) se guarda en `settings.conf` y se elige en Ajustes → «Posición de
-  la barra»: abajo, arriba, izquierda o derecha. En los laterales la barra se
+- **Barra arriba o abajo.** `SettingsState.barPosition` (`abajo` por defecto)
+  se guarda en `settings.conf` y se elige en Ajustes → «Posición de la barra».
+  Los laterales están desactivados por ahora en la interfaz y un valor antiguo
+  de «izquierda»/«derecha» se convierte en «abajo» al cargar. El código de la
+  barra vertical se conserva para cuando se revise. En los laterales la barra se
   dibuja en vertical con el mismo árbol de widgets apilado: logo y
   escritorios arriba, reloj compacto en el centro y controles/estado abajo. Los
   escritorios pasan a mostrar solo su número y la música solo la portada para

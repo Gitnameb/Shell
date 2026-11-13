@@ -5787,11 +5787,11 @@ ColumnLayout {
                     spacing: 2
 
                     Repeater {
+                        // Los laterales están desactivados por ahora: la
+                        // barra vertical todavía no se ve bien.
                         model: [
                             { key: "abajo", label: "Abajo" },
-                            { key: "arriba", label: "Arriba" },
-                            { key: "izquierda", label: "Izquierda" },
-                            { key: "derecha", label: "Derecha" }
+                            { key: "arriba", label: "Arriba" }
                         ]
 
                         delegate: Rectangle {

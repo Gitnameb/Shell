@@ -339,8 +339,9 @@ Progreso (2026-11-12):
   el centro de control queda primero y las notificaciones debajo, y con la barra
   abajo se invierte. IPC: `notifications status`, `notifications unified
   true|false` y `notifications control`.
-- **Barra lateral izquierda/derecha (2026-11-06).** «Posición de la barra»
-  admite los cuatro bordes. En los laterales la barra se dibuja en vertical:
+- **Barra lateral izquierda/derecha (2026-11-06).** Desactivada por ahora en
+  «Posición de la barra» porque el resultado no se ve bien; solo quedan abajo y
+  arriba. El código de la barra vertical se conserva. En los laterales la barra se dibuja en vertical:
   logo y escritorios arriba, reloj compacto en el centro y controles abajo.
   Los escritorios muestran solo su número y la música solo la portada para
   caber en 44 px. Paneles, OSD, bandeja, batería, calendario, energía, menú de

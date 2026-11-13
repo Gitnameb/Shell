@@ -23,8 +23,8 @@ Singleton {
     // Si está activo, la barra se oculta al dejar de usarla y vuelve a
     // aparecer al acercar el puntero al borde donde vive.
     property bool autoHideBar: false
-    // Dónde vive la barra: «abajo» (por defecto), «arriba», «izquierda» o
-    // «derecha». En los lados, la barra se dibuja en vertical.
+    // Dónde vive la barra: «abajo» (por defecto) o «arriba». Los laterales
+    // están desactivados por ahora porque la barra vertical no se ve bien.
     property string barPosition: "abajo"
     readonly property bool barAtTop: root.barPosition === "arriba"
     readonly property bool barAtBottom: root.barPosition === "abajo"
@@ -274,8 +274,8 @@ Singleton {
     }
 
     function setBarPosition(value: string): void {
-        root.barPosition = value === "arriba" || value === "izquierda"
-            || value === "derecha" ? value : "abajo";
+        // Los laterales se ignoran mientras su diseño esté desactivado.
+        root.barPosition = value === "arriba" ? "arriba" : "abajo";
     }
 
     function setMusicWidth(value: int): void {
@@ -1257,8 +1257,9 @@ Singleton {
                 } else if (key === "autoHideBar") {
                     autoHide = value === "1" || value === "true";
                 } else if (key === "barPosition") {
-                    barPos = value === "arriba" || value === "izquierda"
-                        || value === "derecha" ? value : "abajo";
+                    // Un archivo antiguo con «izquierda» o «derecha» vuelve
+                    // a abajo mientras los laterales estén desactivados.
+                    barPos = value === "arriba" ? "arriba" : "abajo";
                 } else if (key === "musicWidth") {
                     const parsed = parseInt(value, 10);
                     if (!isNaN(parsed))
