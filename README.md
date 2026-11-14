@@ -74,6 +74,21 @@ La guía manual, con el detalle de cada paso, sigue estando en
 > En los archivos de `install/` la ruta `/home/USUARIO` es un marcador: el
 > instalador la sustituye por tu HOME real.
 
+### AIMP para Linux
+
+AIMP tiene una versión nativa para Linux, pero se niega a arrancar si el
+escritorio no es GNOME, KDE, Cinnamon, Mate, Fly o XFCE. El repo incluye un
+extra opcional que le presenta GNOME **solo a AIMP**, copia las entradas de
+menú y lo excluye del piloto de render fijo:
+
+```sh
+./scripts/aimp-umbriel.sh --dry-run
+./scripts/aimp-umbriel.sh
+```
+
+No instala AIMP ni usa `sudo`, y no cambia la sesión. Los detalles, el audio por
+ALSA y cómo deshacerlo están en **[`AIMP.md`](AIMP.md)**.
+
 ### Configuración inicial y fondo de pantalla
 
 Una instalación nueva parte de la configuración de este equipo: barra, orden
@@ -112,6 +127,7 @@ dentro de un HOME privado.
 | `install.sh` | Instalador principal para Debian 13 + Umbriel. |
 | `scripts/install-packages.sh` | Módulo de repositorios, paquetes y servicios. |
 | `scripts/install-steam-libs.sh` | Habilita i386 e instala las librerías de 32 bits de Steam. |
+| `scripts/aimp-umbriel.sh` | Prepara AIMP para Linux en Umbriel (lanzadores, menú y exclusión del render fijo). |
 | `scripts/install-shutdown.sh` | Reduce el plazo para cerrar las aplicaciones antes de apagar. |
 | `scripts/network.sh` | Módulo de NetworkManager, Ethernet y Wi-Fi. |
 | `scripts/install-user-config.sh` | Módulo de enlaces, configuración del HOME y terminal de Thunar. |
@@ -123,6 +139,7 @@ dentro de un HOME privado.
 | `EDIT-PERSONAL.md` | Qué es este proyecto personal y cuáles son sus límites. |
 | `UMBRIEL-EDIT.md` | Qué es el edit de Umbriel, cómo publicarlo y protegerlo de `apt`. |
 | `INSTALACION.md` | Guía de instalación. |
+| `AIMP.md` | AIMP para Linux en Umbriel: causa, lanzadores y exclusión del render fijo. |
 | `PLAN.md`, `PENDIENTES.md`, `CONTEXTO.md` | Plan, tareas e historial. |
 
 ## Edit personal de Umbriel
