@@ -118,6 +118,8 @@ minimize_glyph_hover = "#141519FF"
 "Mod+Shift+L" = { action = "spawn ~/.local/bin/shell-lock", repeat = false }
 # @REPO@ lo sustituye el instalador por la ruta real del repositorio; así los
 # atajos funcionan aunque el clon no esté en ~/Shell.
+# Crea o retira la salida virtual de 1920x864 para jugar por Steam Link.
+"Mod+Shift+F11" = { action = "spawn ~/.local/bin/steamlink-mode toggle", repeat = false }
 "Print" = { action = "spawn @REPO@/scripts/captura.sh", repeat = false }
 "Shift+Print" = { action = "spawn @REPO@/scripts/captura-region.sh", repeat = false }
 
@@ -180,6 +182,13 @@ layout = "es"
 [output."@OUTPUT@"]
 workspaces = 9
 
+# Salida virtual para Steam Link desde el móvil. 1920x864 es 20:9 exacto
+# (la misma proporción que un móvil de 2400x1080). Solo existe mientras la
+# activa `steamlink-mode`; si no existe, Umbriel ignora esta sección.
+[output.steamlink]
+mode = "1920x864@60"
+workspaces = 1
+
 # El puente de captura X11 (Discord, Zoom y demás apps X11) no necesita una
 # ventana visible. Se guarda en el scratchpad y sigue funcionando en segundo
 # plano; se puede sacar con Mod+` si alguna vez hace falta.
@@ -192,19 +201,20 @@ enabled = true
 match.app_id = "^xwaylandvideobridge$"
 default_scratchpad = "default"
 
-# Los juegos de Steam abren flotantes: su ventana la manda el juego, con su
-# resolución y sus límites, en vez de que el mosaico le imponga un tamaño.
-# Si el juego pide pantalla completa, se respeta y pasa al modo de siempre.
-[[window_rule]]
-match.app_id = "^steam_app_[0-9]+$"
-default_floating = true
-
 # Alice: Madness Returns espera arrancar a pantalla completa; si abre en
 # ventana se queda esperando y luego centra su buffer pequeño con bordes
-# negros. La excepción va después de la regla general.
+# negros.
 [[window_rule]]
 match.app_id = "^steam_app_19680$"
 default_fullscreen = true
+
+# El selector de fuentes del portal (Steam Link, OBS, Discord) debe aparecer
+# en el monitor físico, no en la salida virtual donde corre el juego.
+[[window_rule]]
+match.app_id = ["^dev[.]noctalia[.]UmbrielSharePicker$", "^umbriel-share-picker$"]
+default_output = "@OUTPUT@"
+default_floating = true
+default_focused = true
 
 [display]
 brightness = 1.000
@@ -213,6 +223,13 @@ warm = 0.000
 
 [input]
 mod_hold_delay_ms = 150
+
+# Reglas temporales de la sesión de Steam Link. `steamlink-mode` escribe aquí
+# la primaria de X11 y las reglas que mandan los juegos a la salida virtual;
+# al terminar, deja el archivo vacío. Así, fuera de una partida, los juegos
+# siguen abriéndose con normalidad aunque la salida virtual no exista.
+[include.optional]
+files = ["steamlink.toml"]
 
 # shell-workspace-modes: inicio
 # Generado desde «Configuración de ventanas»; no editar a mano.

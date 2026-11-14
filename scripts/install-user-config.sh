@@ -197,6 +197,8 @@ run mkdir -p "$TARGET_HOME/.local/bin"
 run install -m755 "$REPO_DIR"/install/bin/shell-* "$TARGET_HOME/.local/bin/"
 run install -m755 "$REPO_DIR/install/bin/umbriel-config-guard" \
     "$TARGET_HOME/.local/bin/umbriel-config-guard"
+run install -m755 "$REPO_DIR/install/bin/steamlink-mode" \
+    "$TARGET_HOME/.local/bin/steamlink-mode"
 
 log "Copiando la configuración del shell."
 copy_template "$REPO_DIR/install/config/shell-settings.conf" \

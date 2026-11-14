@@ -894,6 +894,41 @@ index 1146a02..ef2b559 100644
  
  Rounded windows keep a straight join between the title bar and transparent content, including the content's blur and overview preview. The outer frame retains its rounded corners; hiding the title bar restores rounding to the top of the content.
  
+diff --git a/docs/user/configuration.md b/docs/user/configuration.md
+index b5c1e67..866973a 100644
+--- a/docs/user/configuration.md
++++ b/docs/user/configuration.md
+@@ -93,6 +93,8 @@ show_cheatsheet = true
+ focus_on_activate = false
+ attach_modal_dialogs = true
+ honor_restored_maximize = false
++fixed_render_exclude = []
++fixed_render_include = []
+ ```
+ 
+ | Key                          | Type         | Default                   | Description                                                                                                                                                                          |
+@@ -108,6 +110,8 @@ honor_restored_maximize = false
+ | `focus_on_activate`          | bool         | `false`                   | Let application activation requests focus and reveal their target.                                                                                                                   |
+ | `attach_modal_dialogs`       | bool         | `true`                    | Attach a modal dialog to its parent, so it follows the parent and holds its input. See [Dialogs](layout.md#dialogs).                                                                 |
+ | `honor_restored_maximize`    | bool         | `false`                   | Honor maximize requests an application makes while its window opens, until it acknowledges its opening layout.                                                                       |
++| `fixed_render_exclude`       | string array | `[]`                      | App ids that never keep their own resolution; they resize normally instead. Exact match or a trailing `*` prefix, case-insensitive. Wins over the inclusion list. See [Fixed-resolution games](#fixed-resolution-games).                             |
++| `fixed_render_include`       | string array | `[]`                      | App ids that always keep their own resolution and scale instead, without waiting for the behavior check. Same matching rules as the exclusion list.                                    |
+ 
+ `Xwayland` must be installed and available on `PATH` when X11 support is enabled. It starts when the first X11 application connects.
+ 
+@@ -117,6 +121,12 @@ X11 applications have no per-output scale. By default they see every output at i
+ 
+ With `xwayland_xsettings = true`, Umbriel tells X11 applications that read XSETTINGS, such as GTK, Chromium, Electron, and Steam, the scale to draw their interface at: the largest output scale with `xwayland_native_resolution = true`, and `1` without it. It also announces `[input.cursor]` `theme` and `size`, the size scaled the same way. At native resolution X11 has one scale for every output, so on outputs with a smaller scale these applications look larger than native ones.
+ 
++### Fixed-resolution games
++
++Some X11 games and Wine titles only render at their own resolution and ignore the size the compositor gives them. Umbriel can keep that render size and scale the window to its tile instead of leaving it at a size it never adopts. It decides from behavior: a declared fixed size of at least 640x400, a Steam app id, a Wine executable that also asks for fullscreen, a client that keeps asking for its own size for most of a second while tiled, or a client whose buffer stays at another size after the compositor asked for the tile. Dialogs, splash screens, toolbars, utility windows, and windows with a parent never qualify, and a window that adopts a compositor size is never treated as fixed.
++
++`fixed_render_include` forces the fallback for an app id, and `fixed_render_exclude` disables it, for example for a video player that resizes its own window while starting playback. Both accept an exact app id or a prefix followed by `*`, ignore case, and exclusions win. Changes apply on reload. The fallback is entered once per window: after excluding an application, reopen it to leave the fallback.
++
+ ### X11 primary monitor
+ 
+ Some X11 games and Wine applications enumerate resolutions from the X11 primary monitor, independently of where Umbriel places their windows. Select that monitor explicitly:
 diff --git a/docs/user/input.md b/docs/user/input.md
 index 47c4faa..67a9d1e 100644
 --- a/docs/user/input.md
@@ -1289,7 +1324,7 @@ index 6e01dda..f9f704b 100644
            scratchpadTable(),
            hotCornersTable(),
 diff --git a/src/config/config.h b/src/config/config.h
-index 86a6825..efe3eff 100644
+index 86a6825..176e947 100644
 --- a/src/config/config.h
 +++ b/src/config/config.h
 @@ -119,6 +119,9 @@ namespace umbriel {
@@ -1416,7 +1451,18 @@ index 86a6825..efe3eff 100644
          bool operator==(const Stacking&) const = default;
        } stacking;
        struct Tabs {
-@@ -1116,6 +1154,10 @@ namespace umbriel {
+@@ -1090,6 +1128,10 @@ namespace umbriel {
+       bool attachModalDialogs = true;
+       // Honor maximized state restored by a client while its window opens.
+       bool honorRestoredMaximize = false;
++      // App ids that never get the fixed-render pilot, and app ids that always get it. A trailing `*` matches a
++      // prefix; matching ignores case. Exclusion wins over inclusion.
++      std::vector<std::string> fixedRenderExclude;
++      std::vector<std::string> fixedRenderInclude;
+       bool operator==(const General&) const = default;
+     } general;
+ 
+@@ -1116,6 +1158,10 @@ namespace umbriel {
      } events;
  
      struct Input {
@@ -1483,7 +1529,7 @@ index d5f7dd9..cd5f74f 100644
            registry::step<A>([](Section& s, A& animation, registry::ReadContext&) {
              if (!registry::configuredInteger(s, "duration_ms")
 diff --git a/src/config/fields_general.cpp b/src/config/fields_general.cpp
-index 3e1a991..a0eab96 100644
+index 3e1a991..6458e4b 100644
 --- a/src/config/fields_general.cpp
 +++ b/src/config/fields_general.cpp
 @@ -94,6 +94,7 @@ namespace umbriel {
@@ -1512,7 +1558,16 @@ index 3e1a991..a0eab96 100644
      // Overview badge keys: printable ASCII, unique ignoring case.
      std::optional<std::string> parseShortcutKeys(const toml::node& node, const std::string& path) {
        auto value = node.value<std::string>();
-@@ -390,6 +402,11 @@ namespace umbriel {
+@@ -344,6 +356,8 @@ namespace umbriel {
+           boolean("attach_modal_dialogs", &G::attachModalDialogs),
+           boolean("honor_restored_maximize", &G::honorRestoredMaximize),
+           registry::strings("autostart", &G::autostart),
++          registry::strings("fixed_render_exclude", &G::fixedRenderExclude),
++          registry::strings("fixed_render_include", &G::fixedRenderInclude),
+       };
+       return fields;
+     }
+@@ -390,6 +404,11 @@ namespace umbriel {
          {"minimize", TitleBarButton::Minimize},
          {"maximize", TitleBarButton::Maximize},
          {"close", TitleBarButton::Close},
@@ -1524,7 +1579,7 @@ index 3e1a991..a0eab96 100644
      }};
    } // namespace
  
-@@ -437,6 +454,10 @@ namespace umbriel {
+@@ -437,6 +456,10 @@ namespace umbriel {
      return registry::table("appearance", &Config::appearance, appearanceFields());
    }
  
@@ -6476,7 +6531,7 @@ index 2a3b3bc..4ac789e 100644
      m_workspace = workspace;
      if (m_workspace != nullptr) {
 diff --git a/src/view/view.h b/src/view/view.h
-index 52a43f6..39034c8 100644
+index 52a43f6..1d16673 100644
 --- a/src/view/view.h
 +++ b/src/view/view.h
 @@ -1,6 +1,7 @@
@@ -6592,7 +6647,7 @@ index 52a43f6..39034c8 100644
      void updateBlur();
      void updateBlur(int contentWidth, int contentHeight);
      SurfaceBlurOptions blurOptions() const;
-@@ -765,6 +816,36 @@ namespace umbriel {
+@@ -765,6 +816,40 @@ namespace umbriel {
      void syncFloatingSurfaceClip();
      void beginFloatingResize(uint32_t edges);
      void resizeFloating(int width, int height);
@@ -6623,13 +6678,17 @@ index 52a43f6..39034c8 100644
 +    void probeClientResize();
 +    // Tolerancia por eje: el cliente puede redondear a sus incrementos.
 +    int fixedProbeTolerance(bool horizontal) const;
++    // El tamaño que un cliente puede adoptar de verdad: el pedido, ajustado a los mínimos y máximos que declara.
++    std::array<int, 2> clientTargetSize(int width, int height) const;
++    // Ventana principal (no diálogo, splash, utilidad, modal ni con padre): solo esas pueden ser un juego.
++    bool fixedRenderCandidateWindow() const;
 +    // Registra que el cliente pidió un tamaño distinto al del mosaico.
 +    void noteResizeRefusal(int width, int height);
 +    static int onFixedProbeTimeout(void* data);
      void finishFloatingResize();
      void syncFloatingResizePosition();
      void adoptFloatingClientSize();
-@@ -775,9 +856,22 @@ namespace umbriel {
+@@ -775,9 +860,22 @@ namespace umbriel {
          const wlr_box usable, const std::optional<WindowPosition>& position = std::nullopt,
          const std::optional<std::array<int, 2>> size = std::nullopt
      );
@@ -6653,7 +6712,7 @@ index 52a43f6..39034c8 100644
      );
      // The output box a fullscreen window covers: its workspace's output, else the one under it.
      wlr_box fullscreenArea() const;
-@@ -804,6 +898,7 @@ namespace umbriel {
+@@ -804,6 +902,7 @@ namespace umbriel {
      // Fade the shade in while a dialog is attached and out once none is; animation.dialogs times it.
      void retargetModalShade();
      void syncModalShade();
@@ -6661,7 +6720,7 @@ index 52a43f6..39034c8 100644
      void releaseDialog();
      [[nodiscard]] bool inheritScratchpadFromParent(bool restoreTiled);
      void syncTransientSceneParent();
-@@ -935,12 +1030,18 @@ namespace umbriel {
+@@ -935,12 +1034,18 @@ namespace umbriel {
      wlr_scene_rect* m_modalShade = nullptr;
      // 0 to 1 of animation.dialogs.dim.
      AnimatedValue m_modalShadeAlpha{0.0};
@@ -6680,7 +6739,7 @@ index 52a43f6..39034c8 100644
      std::optional<bool> m_xdgDecorationPreference;
      std::optional<bool> m_legacyDecorationPreference;
      std::optional<TitleBarMode> m_titleBarMode;
-@@ -1051,6 +1152,14 @@ namespace umbriel {
+@@ -1051,6 +1156,14 @@ namespace umbriel {
      // An X11 window entered through the compositor toggle stays fullscreen until another compositor action releases
      // it. This prevents Wine from immediately undoing the explicit user action with a contradictory EWMH request.
      bool m_xCompositorFullscreen = false;
@@ -6695,7 +6754,7 @@ index 52a43f6..39034c8 100644
      bool m_onActiveWorkspace = false;
      bool m_inScratchpad = false;
      bool m_urgent = false;
-@@ -1078,12 +1187,48 @@ namespace umbriel {
+@@ -1078,12 +1191,52 @@ namespace umbriel {
      bool m_allowShortcutsInhibit = true;
      float m_dragOpacity = 1.0F;
      float m_overviewOpacity = 1.0F;
@@ -6740,7 +6799,11 @@ index 52a43f6..39034c8 100644
 +    int m_fixedProbeHeight = 0;
 +    // Negativas del cliente a aceptar el tamaño del mosaico.
 +    int m_fixedRefusals = 0;
++    // El cliente adoptó al menos una vez un tamaño distinto del suyo: se puede redimensionar de forma nativa.
++    bool m_resizeAdopted = false;
 +    std::uint64_t m_fixedRefusalAt = 0;
++    // Primera negativa de la racha actual: una ráfaga corta no basta, una que se mantiene sí.
++    std::uint64_t m_fixedRefusalSince = 0;
      // Unapplied floating defaults stay in their configured units until the first float transition.
      std::optional<int> m_pendingFloatingWidthPx;
      std::optional<int> m_pendingFloatingHeightPx;
@@ -7306,7 +7369,7 @@ index 3d39675..781d7f9 100644
      applyDynamicRules();
      if (notifyAloneStateChanged() && m_workspace != nullptr) {
 diff --git a/src/view/view_floating.cpp b/src/view/view_floating.cpp
-index a28244f..775dc5a 100644
+index a28244f..78e03d5 100644
 --- a/src/view/view_floating.cpp
 +++ b/src/view/view_floating.cpp
 @@ -1,4 +1,5 @@
@@ -7315,10 +7378,11 @@ index a28244f..775dc5a 100644
  #include "input/cursor.h"
  #include "input/seat.h"
  #include "layer/layer_surface.h"
-@@ -16,7 +17,10 @@ extern "C" {
+@@ -16,7 +17,11 @@ extern "C" {
  #include "view/view_internal.h"
  // clang-format off
  #include <algorithm>
++#include <cctype>
 +#include <cmath>
  #include <ranges>
 +#include <string_view>
@@ -7326,7 +7390,7 @@ index a28244f..775dc5a 100644
  #include "wlr.h"
  // clang-format on
  #include "workspace/scratchpad.h"
-@@ -24,6 +28,28 @@ extern "C" {
+@@ -24,6 +29,58 @@ extern "C" {
  #include "xwayland/xwayland.h"
  
  namespace umbriel {
@@ -7343,6 +7407,36 @@ index a28244f..775dc5a 100644
 +    // como negativa (una puede ser el tamaño de arranque).
 +    constexpr int kFixedRefusalCount = 3;
 +    constexpr std::uint64_t kFixedRefusalWindowMs = 1000;
++    // Una app normal puede pedir varios tamaños seguidos mientras procesa el configure del mosaico (VLC al empezar un
++    // vídeo). Una negativa de verdad se mantiene: el cliente sigue pidiendo su resolución durante la mayor parte de un
++    // segundo.
++    constexpr std::uint64_t kFixedRefusalSustainMs = 800;
++
++    // Coincidencia de app id para fixed_render_exclude / fixed_render_include: exacta o por prefijo con `*` final,
++    // sin distinguir mayúsculas.
++    bool appIdMatches(const std::vector<std::string>& patterns, std::string_view id) {
++      if (id.empty()) {
++        return false;
++      }
++      const auto same = [](char a, char b) {
++        return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
++      };
++      return std::ranges::any_of(patterns, [&](const std::string& pattern) {
++        if (pattern.empty()) {
++          return false;
++        }
++        if (pattern.back() == '*') {
++          const std::string_view prefix(pattern.data(), pattern.size() - 1);
++          return id.size() >= prefix.size() && std::ranges::equal(id.substr(0, prefix.size()), prefix, same);
++        }
++        return id.size() == pattern.size() && std::ranges::equal(id, pattern, same);
++      });
++    }
++
++    // Un juego de resolución fija declara un tamaño fijo del orden de una pantalla. Los diálogos y utilidades de
++    // tamaño fijo (ajustes, instaladores, calculadoras) son más pequeños.
++    constexpr int kFixedGameMinWidth = 640;
++    constexpr int kFixedGameMinHeight = 400;
 +
 +    // appId() es null en un cliente X11 que todavía no publicó WM_CLASS.
 +    // std::format no admite un const char* nulo.
@@ -7355,7 +7449,7 @@ index a28244f..775dc5a 100644
    wlr_box View::floatingUsableArea() const {
      if (m_workspace != nullptr && m_workspace->group() != nullptr && m_workspace->group()->output() != nullptr) {
        return m_workspace->group()->output()->usableArea();
-@@ -87,7 +113,10 @@ namespace umbriel {
+@@ -87,7 +144,10 @@ namespace umbriel {
    }
  
    FloatingPoint View::grabbableOrigin(FloatingPoint origin, const wlr_box& usable) const {
@@ -7367,7 +7461,7 @@ index a28244f..775dc5a 100644
    }
  
    FloatingPoint View::settleFloatingDrop(int x, int y) {
-@@ -129,12 +158,12 @@ namespace umbriel {
+@@ -129,12 +189,12 @@ namespace umbriel {
      // Mid-tween the clamp applies to where the tween is headed and retargets it. Skipping instead would spend the
      // usable-change check on a target that settles out of the margin, and the change is never re-checked.
      const bool animating = m_posX.animating() || m_posY.animating();
@@ -7382,7 +7476,7 @@ index a28244f..775dc5a 100644
        if (animating) {
          animateTo(clamped->x, clamped->y);
        } else {
-@@ -182,11 +211,11 @@ namespace umbriel {
+@@ -182,11 +242,11 @@ namespace umbriel {
        return false;
      }
      const wlr_box usable = floatingUsableArea();
@@ -7397,7 +7491,7 @@ index a28244f..775dc5a 100644
      origin.y += titleBarHeight();
      clearRegionState();
      animateTo(origin.x, origin.y);
-@@ -215,13 +244,13 @@ namespace umbriel {
+@@ -215,13 +275,13 @@ namespace umbriel {
      if (!m_mapped || m_tiled || scheduledFullscreen() || currentFullscreen()) {
        return false;
      }
@@ -7414,7 +7508,7 @@ index a28244f..775dc5a 100644
      clearRegionState();
      animateTo(origin.x, origin.y);
      m_floating.rememberPositionFraction(origin, usable);
-@@ -232,9 +261,9 @@ namespace umbriel {
+@@ -232,9 +292,9 @@ namespace umbriel {
      if (!m_mapped || m_tiled || scheduledFullscreen() || currentFullscreen()) {
        return false;
      }
@@ -7426,7 +7520,7 @@ index a28244f..775dc5a 100644
        return false;
      }
      const wlr_box area = floatingMarginArea(usable);
-@@ -245,13 +274,13 @@ namespace umbriel {
+@@ -245,13 +305,13 @@ namespace umbriel {
        origin.x = area.x;
        break;
      case WLR_EDGE_RIGHT:
@@ -7442,7 +7536,7 @@ index a28244f..775dc5a 100644
        break;
      case WLR_EDGE_NONE:
        return false;
-@@ -279,9 +308,9 @@ namespace umbriel {
+@@ -279,9 +339,9 @@ namespace umbriel {
        w = (*size)[0];
        h = (*size)[1];
      } else {
@@ -7455,7 +7549,7 @@ index a28244f..775dc5a 100644
      }
      // Floats keep their own size; only center within the usable area.
      const int width = w;
-@@ -327,26 +356,58 @@ namespace umbriel {
+@@ -327,26 +387,58 @@ namespace umbriel {
      return keepTitleBarReachable(origin, titleBarHeight(), usable);
    }
  
@@ -7520,7 +7614,7 @@ index a28244f..775dc5a 100644
        const auto [width, height] = floatingSize();
        const wlr_box area = floatingMarginArea(usable);
        const int availableHeight = std::max(1, area.height - titleBarHeight());
-@@ -374,47 +435,67 @@ namespace umbriel {
+@@ -374,47 +466,67 @@ namespace umbriel {
        // Where the parent is headed, not where its node is mid-animation right after it mapped. A fullscreen parent
        // shows over any panel, so the whole output counts as visible for it.
        const wlr_box shownIn = parent->scheduledFullscreen() ? parent->fullscreenArea() : usable;
@@ -7619,7 +7713,7 @@ index a28244f..775dc5a 100644
    void View::requestFloatingSize(int width, int height) {
      if (m_xsurface != nullptr) {
        m_xFloatingRequestBase = currentSize();
-@@ -422,7 +503,452 @@ namespace umbriel {
+@@ -422,7 +534,554 @@ namespace umbriel {
      m_floating.recordSizeRequest(width, height, configureSize(width, height));
    }
  
@@ -7636,24 +7730,78 @@ index a28244f..775dc5a 100644
 +    if (m_fixedRender || !m_mapped || m_xsurface == nullptr || m_contentTree == nullptr) {
 +      return;
 +    }
++    const std::string_view id = safeAppId(*this);
++    const Config::General& general = config().general;
++    // Salidas explícitas del usuario: la exclusión gana a todo; la inclusión no pasa por ninguna heurística.
++    if (appIdMatches(general.fixedRenderExclude, id)) {
++      return;
++    }
++    if (appIdMatches(general.fixedRenderInclude, id)) {
++      kLog.info("fixed-render '{}': activado por fixed_render_include", id);
++      engageFixedRenderPilot();
++      return;
++    }
++    // Un diálogo, un splash o una ventana con padre nunca es la ventana del juego.
++    if (!fixedRenderCandidateWindow()) {
++      return;
++    }
 +    const SizeHints hints = sizeHints();
++    // Un tamaño fijo es una promesa explícita, pero solo cuenta si es del orden de una pantalla.
 +    const bool fixedSize = hints.maxWidth > 0
 +        && hints.maxHeight > 0
 +        && hints.minWidth == hints.maxWidth
-+        && hints.minHeight == hints.maxHeight;
-+    const std::string_view id = safeAppId(*this);
-+    // Patrones genéricos, no una lista de juegos: Steam publica
-+    // steam_app_<id>; Wine usa el ejecutable (juego.exe) o wine/wine64.
-+    const bool gameLike =
-+        id.starts_with("steam_app_") || id.starts_with("wine") || id.ends_with(".exe") || id.ends_with(".EXE");
-+    if (!fixedSize && !gameLike) {
++        && hints.minHeight == hints.maxHeight
++        && hints.maxWidth >= kFixedGameMinWidth
++        && hints.maxHeight >= kFixedGameMinHeight;
++    // Steam publica steam_app_<id>: es un juego. Un ejecutable de Wine (*.exe, wine, wine64) también puede ser
++    // winecfg, regedit o el bloc de notas, que se redimensionan con normalidad: solo cuenta si además pide pantalla
++    // completa. Lo demás lo decide el comportamiento (scheduleFixedProbe y noteResizeRefusal).
++    const bool steamGame = id.starts_with("steam_app_");
++    const bool wineLike = id == "wine" || id == "wine64" || id == "wine-preloader" || id == "wine64-preloader"
++        || id.ends_with(".exe") || id.ends_with(".EXE");
++    if (!fixedSize && !steamGame && !(wineLike && requestedFullscreen())) {
 +      return;
 +    }
 +    engageFixedRenderPilot();
 +  }
 +
++  bool View::fixedRenderCandidateWindow() const {
++    if (m_xsurface == nullptr || openingParented() || m_xsurface->modal) {
++      return false;
++    }
++    for (const wlr_xwayland_net_wm_window_type type :
++         {WLR_XWAYLAND_NET_WM_WINDOW_TYPE_DIALOG, WLR_XWAYLAND_NET_WM_WINDOW_TYPE_SPLASH,
++          WLR_XWAYLAND_NET_WM_WINDOW_TYPE_TOOLBAR, WLR_XWAYLAND_NET_WM_WINDOW_TYPE_UTILITY}) {
++      if (wlr_xwayland_surface_has_window_type(m_xsurface, type)) {
++        return false;
++      }
++    }
++    return true;
++  }
++
++  std::array<int, 2> View::clientTargetSize(int width, int height) const {
++    const SizeHints hints = sizeHints();
++    if (hints.minWidth > 0) {
++      width = std::max(width, hints.minWidth);
++    }
++    if (hints.maxWidth > 0) {
++      width = std::min(width, hints.maxWidth);
++    }
++    if (hints.minHeight > 0) {
++      height = std::max(height, hints.minHeight);
++    }
++    if (hints.maxHeight > 0) {
++      height = std::min(height, hints.maxHeight);
++    }
++    return {width, height};
++  }
++
 +  void View::engageFixedRenderPilot() {
 +    if (m_fixedRender || m_xsurface == nullptr || m_contentTree == nullptr) {
++      return;
++    }
++    // La exclusión gana a cualquier ruta, también al sondeo y a las negativas.
++    if (appIdMatches(config().general.fixedRenderExclude, safeAppId(*this))) {
 +      return;
 +    }
 +    auto size = currentSize();
@@ -7729,13 +7877,15 @@ index a28244f..775dc5a 100644
 +    // aplica, así que el sondeo solo tiene sentido a escala 1.
 +    const int clientWidth = surface != nullptr ? surface->current.width : 0;
 +    const int clientHeight = surface != nullptr ? surface->current.height : 0;
-+    if (m_fixedRender || !m_mapped || m_xsurface == nullptr || m_xScale != 1.0 || attached() || sizeGrabActive()
-+        || currentFullscreen() || scheduledFullscreen() || width <= 0 || height <= 0) {
++    if (m_fixedRender || m_resizeAdopted || !m_mapped || m_xsurface == nullptr || m_xScale != 1.0 || attached()
++        || sizeGrabActive() || currentFullscreen() || scheduledFullscreen() || width <= 0 || height <= 0) {
 +      return;
 +    }
-+    // Ya está en ese tamaño (o lo bastante cerca): no hay nada que comprobar.
-+    if (std::abs(width - clientWidth) <= fixedProbeTolerance(true)
-+        && std::abs(height - clientHeight) <= fixedProbeTolerance(false)) {
++    // Ya está en ese tamaño (o lo bastante cerca): no hay nada que comprobar. Un cliente con mínimos o máximos no
++    // puede adoptar un tamaño fuera de ellos, y eso no es negarse.
++    const auto [targetWidth, targetHeight] = clientTargetSize(width, height);
++    if (std::abs(targetWidth - clientWidth) <= fixedProbeTolerance(true)
++        && std::abs(targetHeight - clientHeight) <= fixedProbeTolerance(false)) {
 +      return;
 +    }
 +    if (m_fixedProbeTimer != nullptr && m_fixedProbeWidth == width && m_fixedProbeHeight == height) {
@@ -7776,6 +7926,10 @@ index a28244f..775dc5a 100644
 +    if (m_fixedRender || !m_mapped || m_xsurface == nullptr || width <= 0 || height <= 0) {
 +      return;
 +    }
++    // La exclusión gana: no se registra ni se anuncia el piloto.
++    if (appIdMatches(config().general.fixedRenderExclude, safeAppId(*this))) {
++      return;
++    }
 +    if (currentFullscreen() || scheduledFullscreen() || sizeGrabActive()) {
 +      return;
 +    }
@@ -7786,10 +7940,23 @@ index a28244f..775dc5a 100644
 +    const wlr_surface* surface = rootSurface();
 +    const int clientWidth = surface != nullptr ? surface->current.width : 0;
 +    const int clientHeight = surface != nullptr ? surface->current.height : 0;
-+    const int dx = std::abs(clientWidth - width);
-+    const int dy = std::abs(clientHeight - height);
++    const auto [targetWidth, targetHeight] = clientTargetSize(width, height);
++    const int dx = std::abs(clientWidth - targetWidth);
++    const int dy = std::abs(clientHeight - targetHeight);
 +    if (dx <= fixedProbeTolerance(true) && dy <= fixedProbeTolerance(false)) {
-+      return; // el cliente adoptó el tamaño pedido
++      // El cliente adoptó un tamaño distinto del suyo: sabe redimensionarse. Desde aquí ni el sondeo ni las
++      // peticiones de tamaño pueden volver a tomarlo por un render fijo.
++      if (!m_resizeAdopted) {
++        kLog.debug(
++            "fixed-render '{}': adopta tamaños ({}x{}); no se tratará como render fijo", safeAppId(*this), width,
++            height
++        );
++      }
++      m_resizeAdopted = true;
++      return;
++    }
++    if (m_resizeAdopted) {
++      return; // ya demostró que se redimensiona; un desajuste puntual es suyo
 +    }
 +    kLog.info(
 +        "fixed-render '{}': pidió {}x{} y el cliente sigue en {}x{}; conserva su resolución y se escala", safeAppId(*this),
@@ -7800,11 +7967,21 @@ index a28244f..775dc5a 100644
 +
 +  // La ventana está en el mosaico y el cliente pide un tamaño distinto del que
 +  // se le impuso: no acepta el del compositor. Una petición puede ser el
-+  // tamaño con el que arranca; tres seguidas son una negativa.
++  // tamaño con el que arranca; una ráfaga corta tampoco basta, pero una racha
++  // que se mantiene delata a un cliente que no se deja redimensionar.
 +  void View::noteResizeRefusal(int width, int height) {
-+    if (m_fixedRender || !m_mapped || !m_tiled || m_xsurface == nullptr || attached() || sizeGrabActive()
-+        || scheduledFullscreen() || scheduledMaximized() || m_maximizedToEdges) {
++    if (m_fixedRender || m_resizeAdopted || !m_mapped || !m_tiled || m_xsurface == nullptr || attached()
++        || sizeGrabActive() || scheduledFullscreen() || scheduledMaximized() || m_maximizedToEdges) {
 +      m_fixedRefusals = 0;
++      m_fixedRefusalAt = 0;
++      m_fixedRefusalSince = 0;
++      return;
++    }
++    // La exclusión gana: ni se cuenta la racha ni se anuncia el piloto.
++    if (appIdMatches(config().general.fixedRenderExclude, safeAppId(*this))) {
++      m_fixedRefusals = 0;
++      m_fixedRefusalAt = 0;
++      m_fixedRefusalSince = 0;
 +      return;
 +    }
 +    if (m_xConfigured.width <= 0 || m_xConfigured.height <= 0) {
@@ -7813,20 +7990,39 @@ index a28244f..775dc5a 100644
 +    if (std::abs(width - m_xConfigured.width) <= fixedProbeTolerance(true)
 +        && std::abs(height - m_xConfigured.height) <= fixedProbeTolerance(false)) {
 +      m_fixedRefusals = 0;
++      m_fixedRefusalAt = 0;
++      m_fixedRefusalSince = 0;
 +      return; // coincide con el tamaño impuesto: no es una negativa
 +    }
 +    const std::uint64_t now = m_server->uptimeMs();
 +    if (m_fixedRefusalAt == 0 || now - m_fixedRefusalAt > kFixedRefusalWindowMs) {
 +      m_fixedRefusals = 0;
++      m_fixedRefusalSince = now;
 +    }
 +    m_fixedRefusalAt = now;
 +    if (++m_fixedRefusals < kFixedRefusalCount) {
 +      return;
 +    }
++    // Tres peticiones en una ráfaga corta no prueban nada: una app normal (VLC al empezar un vídeo) reajusta su
++    // interfaz mientras procesa el configure del mosaico y luego adopta el tamaño. Una negativa de verdad se mantiene,
++    // así que la racha tiene que durar. El sondeo por búfer queda como segunda vía para clientes que no piden nada.
++    if (m_fixedRefusals == kFixedRefusalCount) {
++      kLog.debug(
++          "fixed-render '{}': pide {}x{} en el mosaico; se espera a que la racha se mantenga", safeAppId(*this), width,
++          height
++      );
++    }
++    if (now - m_fixedRefusalSince < kFixedRefusalSustainMs) {
++      return;
++    }
 +    m_fixedRefusals = 0;
++    m_fixedRefusalAt = 0;
++    const std::uint64_t sustained = now - m_fixedRefusalSince;
++    m_fixedRefusalSince = 0;
 +    kLog.info(
-+        "fixed-render '{}': no acepta el tamaño del mosaico (pide {}x{}); conserva su resolución y se escala",
-+        safeAppId(*this), width, height
++        "fixed-render '{}': no acepta el tamaño del mosaico (pide {}x{} durante {} ms); conserva su resolución y se "
++        "escala",
++        safeAppId(*this), width, height, sustained
 +    );
 +    engageFixedRenderPilot();
 +  }
@@ -8072,7 +8268,7 @@ index a28244f..775dc5a 100644
      if (const auto& pending = m_floating.pendingSize()) {
        return *pending;
      }
-@@ -462,17 +988,33 @@ namespace umbriel {
+@@ -462,17 +1121,33 @@ namespace umbriel {
      if (usable.width <= 0 || usable.height <= 0) {
        return false;
      }
@@ -8110,7 +8306,7 @@ index a28244f..775dc5a 100644
      requestFloatingSize(width, height);
      beginResizeAnimation(width, height);
      clampFloatingPositionForSize(width, height);
-@@ -480,9 +1022,28 @@ namespace umbriel {
+@@ -480,9 +1155,28 @@ namespace umbriel {
    }
  
    std::array<int, 2> View::floatingRestoreSize() const {
@@ -8139,7 +8335,7 @@ index a28244f..775dc5a 100644
      // First-time floats prefer the last acked or scheduled configure size,
      // then fall back to the layout target and committed geometry.
      int width = currentSize().width;
-@@ -509,6 +1070,14 @@ namespace umbriel {
+@@ -509,6 +1203,14 @@ namespace umbriel {
  
    void View::beginFloatingResize(uint32_t edges) {
      clearRegionState();
@@ -8154,7 +8350,7 @@ index a28244f..775dc5a 100644
      const wlr_box& geo = geometryBox();
      m_floating.beginResize(
          {.x = layoutX() + geo.x, .y = layoutY() + geo.y, .width = geo.width, .height = geo.height}, edges
-@@ -518,6 +1087,10 @@ namespace umbriel {
+@@ -518,6 +1220,10 @@ namespace umbriel {
  
    void View::resizeFloating(int width, int height) {
      syncFloatingResizePosition();
@@ -8165,7 +8361,7 @@ index a28244f..775dc5a 100644
      requestFloatingSize(width, height);
    }
  
-@@ -532,6 +1105,9 @@ namespace umbriel {
+@@ -532,6 +1238,9 @@ namespace umbriel {
      if (usable.width <= 0 || usable.height <= 0) {
        return;
      }
@@ -8175,7 +8371,7 @@ index a28244f..775dc5a 100644
      const bool widthAxis = (edges & (WLR_EDGE_LEFT | WLR_EDGE_RIGHT)) != 0;
      const auto current = floatingFraction(widthAxis);
      if (!current) {
-@@ -552,8 +1128,14 @@ namespace umbriel {
+@@ -552,8 +1261,14 @@ namespace umbriel {
          .width = basisWidth,
          .height = basisHeight,
      };
@@ -8192,7 +8388,7 @@ index a28244f..775dc5a 100644
      if (width <= 0 || height <= 0) {
        return;
      }
-@@ -564,6 +1146,12 @@ namespace umbriel {
+@@ -564,6 +1279,12 @@ namespace umbriel {
      // The anchor session stays open until the client answers the configure, so a commit at a different size still
      // recomputes the origin from the actual geometry. finishFloatingResize ends the session but keeps the anchor until
      // the request settles; that commit re-pins the edge and retires the anchor.
@@ -8205,7 +8401,7 @@ index a28244f..775dc5a 100644
      const FloatingPoint anchoredOrigin =
          anchoredContentOrigin(anchor, edges, {.x = 0, .y = 0, .width = width, .height = height});
      m_floating.beginResize(anchor, edges);
-@@ -576,11 +1164,18 @@ namespace umbriel {
+@@ -576,11 +1297,18 @@ namespace umbriel {
      finishFloatingResize();
    }
  
@@ -8226,7 +8422,7 @@ index a28244f..775dc5a 100644
        return;
      }
      const wlr_box& geo = geometryBox();
-@@ -602,6 +1197,11 @@ namespace umbriel {
+@@ -602,6 +1330,11 @@ namespace umbriel {
      if (m_tiled || !m_mapped || scheduledFullscreen() || scheduledMaximized() || m_region) {
        return;
      }
@@ -8238,7 +8434,7 @@ index a28244f..775dc5a 100644
      if (!retireFloatingSizeRequest()) {
        return;
      }
-@@ -629,6 +1229,14 @@ namespace umbriel {
+@@ -629,6 +1362,14 @@ namespace umbriel {
      if (m_tiled || scheduledFullscreen()) {
        return;
      }

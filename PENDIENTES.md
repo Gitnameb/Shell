@@ -38,10 +38,11 @@ Progreso (2026-11-12):
   `--with-firmware` detecta CPU, GPU, red y audio; `--with-firmware-author`
   conserva la lista exacta Intel/AMD del equipo del autor.
 - Pendiente: historial de Git (squash o repositorio nuevo).
-- Pendiente (2026-11-13): integrar la salida virtual de Steam Link 1920x864 y
-  `~/.local/bin/steamlink-mode` en el instalador, para que el botón del centro
-  de control funcione en una instalación limpia. El botón y el singleton ya
-  están; el script todavía no se distribuye con el repositorio.
+- Hecho (2026-11-14): la salida virtual de Steam Link 1920x864 y
+  `steamlink-mode` ya se distribuyen con el instalador. También se añadieron a
+  la plantilla el atajo `Mod+Shift+F11`, la sección `[output.steamlink]`, el
+  `include.optional` de `steamlink.toml`, la regla del selector de fuentes del
+  portal y la ficha `steamlink` del centro de control.
 
 ## Estado al cerrar esta sesión
 
