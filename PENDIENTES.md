@@ -43,6 +43,15 @@ Progreso (2026-11-12):
   la plantilla el atajo `Mod+Shift+F11`, la sección `[output.steamlink]`, el
   `include.optional` de `steamlink.toml`, la regla del selector de fuentes del
   portal y la ficha `steamlink` del centro de control.
+- Hecho (2026-11-15): la salida virtual se generalizó en `virtual-output`
+  (nombre, resolución y preset configurables) y Steam Link quedó como preset.
+  El selector de fuentes del portal (`virtual-output-chooser`) captura solo la
+  salida virtual mientras está activa y `virtual-output-restore` repara los
+  datos de restauración que apuntaban al monitor físico. Ver
+  `VIRTUAL-OUTPUT.md`.
+- Pendiente: probar en el móvil el ciclo completo con una sesión nueva de
+  Steam Link (debe capturar 1920x864 y no `HDMI-A-1`) y el cambio de resolución
+  con `virtual-output mode`.
 
 ## Estado al cerrar esta sesión
 

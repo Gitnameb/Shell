@@ -1,0 +1,186 @@
+#!/usr/bin/env python3
+"""Repara los datos de restauración del portal para que una app no vuelva a
+capturar el monitor físico.
+
+El portal guarda en org.freedesktop.impl.portal.PermissionStore la última
+fuente elegida por cada aplicación. Si esa fuente es un monitor físico, la
+próxima captura se restaura sin pasar por el selector y ignora la salida
+virtual. Este programa reescribe solo las selecciones de tipo «monitor» de las
+apps indicadas, conserva el token y marca la captura como dinámica para que
+Umbriel pueda cambiarla en caliente.
+
+Uso:
+    virtual-output-restore SALIDA --apps steam[,otra] [--title TEXTO] [--dry-run]
+
+Hace copia de seguridad del PermissionStore antes de escribir.
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import shutil
+import sys
+from pathlib import Path
+
+try:
+    import gi
+
+    gi.require_version("Gio", "2.0")
+    from gi.repository import Gio, GLib
+except (ImportError, ValueError) as error:  # pragma: no cover - dependencia del sistema
+    print(f"virtual-output-restore: falta PyGObject ({error})", file=sys.stderr)
+    sys.exit(1)
+
+BUS_NAME = "org.freedesktop.impl.portal.PermissionStore"
+OBJECT_PATH = "/org/freedesktop/impl/portal/PermissionStore"
+INTERFACE = "org.freedesktop.impl.portal.PermissionStore"
+TABLE = "screencast"
+
+
+def bus() -> Gio.DBusConnection:
+    return Gio.bus_get_sync(Gio.BusType.SESSION, None)
+
+
+def call(connection: Gio.DBusConnection, method: str, args: GLib.Variant, reply: str) -> GLib.Variant:
+    return connection.call_sync(
+        BUS_NAME,
+        OBJECT_PATH,
+        INTERFACE,
+        method,
+        args,
+        GLib.VariantType.new(reply),
+        Gio.DBusCallFlags.NONE,
+        -1,
+        None,
+    )
+
+
+def entry_from_variant(value: GLib.Variant) -> tuple[str, int, list[dict[str, GLib.Variant]]]:
+    provider = value.get_child_value(0).get_string()
+    version = value.get_child_value(1).get_uint32()
+    entries_variant = value.get_child_value(2).get_variant()
+    entries: list[dict[str, GLib.Variant]] = []
+    for index in range(entries_variant.n_children()):
+        entry_variant = entries_variant.get_child_value(index)
+        entry: dict[str, GLib.Variant] = {}
+        for item_index in range(entry_variant.n_children()):
+            item = entry_variant.get_child_value(item_index)
+            key = item.get_child_value(0).get_string()
+            entry[key] = item.get_child_value(1).get_variant()
+        entries.append(entry)
+    return provider, version, entries
+
+
+def state_home() -> Path:
+    value = os.environ.get("XDG_STATE_HOME")
+    if value:
+        return Path(value)
+    return Path.home() / ".local" / "state"
+
+
+def permission_store_path() -> Path | None:
+    data_home = os.environ.get("XDG_DATA_HOME")
+    base = Path(data_home) if data_home else Path.home() / ".local" / "share"
+    path = base / "flatpak" / "db" / "screencast"
+    return path if path.is_file() else None
+
+
+def backup_store() -> None:
+    source = permission_store_path()
+    if source is None:
+        return
+    target = state_home() / "umbriel" / "screencast-restore.bak"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, target)
+
+
+def selection_kind(entry: dict[str, GLib.Variant]) -> str:
+    kind = entry.get("kind")
+    return kind.get_string() if kind is not None else ""
+
+
+def already_targets(entries: list[dict[str, GLib.Variant]], output: str, title: str) -> bool:
+    """True when every monitor selection already points at output and is dynamic."""
+    for entry in entries:
+        if selection_kind(entry) != "monitor":
+            continue
+        current = entry.get("output")
+        dynamic = entry.get("dynamic")
+        if current is None or current.get_string() != output:
+            return False
+        if dynamic is None or not dynamic.get_boolean():
+            return False
+        if title:
+            current_title = entry.get("title")
+            if current_title is None or current_title.get_string() != title:
+                return False
+    return True
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Repara la fuente guardada de una app")
+    parser.add_argument("output", help="nombre de la salida virtual")
+    parser.add_argument("--apps", required=True, help="app ids separados por comas")
+    parser.add_argument("--title", default="", help="título visible de la fuente")
+    parser.add_argument("--dry-run", action="store_true", help="no escribe nada")
+    args = parser.parse_args()
+
+    wanted = {item.strip() for item in args.apps.split(",") if item.strip()}
+    if not wanted:
+        return 0
+
+    connection = bus()
+    ids = call(connection, "List", GLib.Variant("(s)", (TABLE,)), "(as)").unpack()[0]
+
+    changed = 0
+    for entry_id in ids:
+        reply = call(connection, "Lookup", GLib.Variant("(ss)", (TABLE, entry_id)), "(a{sas}v)")
+        permissions = reply.get_child_value(0).unpack()
+        if not wanted.intersection(permissions.keys()):
+            continue
+
+        value = reply.get_child_value(1).get_variant()
+        if value.get_type_string() != "(suv)":
+            continue
+        provider, version, entries = entry_from_variant(value)
+        if provider != "umbriel":
+            continue
+
+        monitors = [entry for entry in entries if selection_kind(entry) == "monitor"]
+        if not monitors:
+            continue
+        if already_targets(entries, args.output, args.title):
+            continue
+
+        for entry in monitors:
+            entry["output"] = GLib.Variant("s", args.output)
+            entry["dynamic"] = GLib.Variant("b", True)
+            if args.title:
+                entry["title"] = GLib.Variant("s", args.title)
+
+        apps = ",".join(sorted(wanted.intersection(permissions.keys())))
+        print(f"{entry_id} [{apps}]: monitor -> {args.output} (dinámico)")
+        changed += 1
+        if args.dry_run:
+            continue
+
+        if changed == 1:
+            backup_store()
+        new_value = GLib.Variant("(suv)", (provider, version, GLib.Variant("aa{sv}", entries)))
+        call(
+            connection,
+            "SetValue",
+            GLib.Variant("(sbsv)", (TABLE, True, entry_id, new_value)),
+            "()",
+        )
+
+    if args.dry_run:
+        print(f"{changed} entrada(s) se cambiarían.", file=sys.stderr)
+    elif changed:
+        print(f"{changed} entrada(s) reparadas.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

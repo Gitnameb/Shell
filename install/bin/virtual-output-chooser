@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+"""Selector de fuentes del portal para las capturas de Umbriel.
+
+El portal ejecuta este programa en lugar del selector normal
+(/usr/libexec/umbriel-share-picker) cuando una aplicación pide compartir
+pantalla. Mientras hay una salida virtual activa (virtual-output), devuelve
+siempre esa salida y marca la captura como dinámica, para que Umbriel pueda
+cambiarla en caliente. Si no hay salida virtual, delega en el selector normal.
+
+La salida del programa es una sola línea JSON, tal como la espera el portal:
+
+    {"selections":[{"kind":"monitor","output":"steamlink"}],"dynamic":true}
+
+Si la salida virtual está activa pero ya no existe, se cancela la captura en
+lugar de exponer el monitor físico por accidente.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+PICKER = os.environ.get("VOUT_PICKER", "/usr/libexec/umbriel-share-picker")
+
+
+def config_home() -> Path:
+    value = os.environ.get("XDG_CONFIG_HOME")
+    if value:
+        return Path(value)
+    return Path.home() / ".config"
+
+
+def read_state() -> dict[str, str]:
+    explicit = os.environ.get("VOUT_STATE")
+    path = Path(explicit) if explicit else config_home() / "umbriel" / "virtual-output.state"
+    state: dict[str, str] = {}
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if "=" in line:
+                key, value = line.split("=", 1)
+                state[key.strip()] = value.strip()
+    except OSError:
+        return {}
+    return state
+
+
+def delegate(request: str) -> int:
+    """Run the real picker, forwarding stdin, stdout and stderr."""
+    try:
+        result = subprocess.run(
+            [PICKER],
+            input=request,
+            text=True,
+            capture_output=False,
+            check=False,
+        )
+    except OSError as error:
+        print(f"virtual-output-chooser: no se pudo ejecutar {PICKER}: {error}", file=sys.stderr)
+        return 1
+    return result.returncode
+
+
+def main() -> int:
+    request_text = sys.stdin.read()
+
+    state = read_state()
+    if state.get("active") != "1":
+        return delegate(request_text)
+
+    name = state.get("name", "").strip()
+    if not name:
+        return delegate(request_text)
+
+    try:
+        request = json.loads(request_text)
+    except json.JSONDecodeError:
+        request = {}
+
+    types = request.get("types") or []
+    if "monitor" not in types:
+        # La aplicación solo pidió ventanas: no hay riesgo de compartir el
+        # escritorio entero y el selector normal sigue teniendo sentido.
+        return delegate(request_text)
+
+    outputs = {item.get("name") for item in request.get("outputs") or []}
+    if name not in outputs:
+        print(
+            f"virtual-output-chooser: la salida virtual «{name}» no está disponible; "
+            "se cancela la captura para no compartir el monitor físico",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(
+        json.dumps(
+            {"selections": [{"kind": "monitor", "output": name}], "dynamic": True},
+            separators=(",", ":"),
+        ),
+        flush=True,
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

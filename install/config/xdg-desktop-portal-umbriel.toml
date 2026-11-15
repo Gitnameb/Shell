@@ -1,0 +1,11 @@
+# Selector de fuentes del portal de Umbriel.
+#
+# Mientras hay una salida virtual activa (virtual-output), este selector
+# devuelve esa pantalla y marca la captura como dinámica. Steam Link, OBS y
+# cualquier otra app que comparta pantalla capturan la salida virtual y nunca
+# el monitor físico. Sin salida virtual delega en el selector normal.
+#
+# La ruta la reescribe el instalador con el HOME de destino.
+[screencast]
+chooser_cmd = "/home/USUARIO/.local/bin/virtual-output-chooser"
+max_fps = 0

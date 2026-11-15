@@ -1,113 +1,39 @@
 #!/bin/sh
-# Salida virtual 1920x864 (20:9) para jugar por Steam Link desde el móvil.
+# Preset de Steam Link sobre la salida virtual genérica.
 #
-#   steamlink-mode on      crea la salida, la hace primaria de X11 y activa
-#                          las reglas que mandan los juegos de Steam allí
-#   steamlink-mode off     retira las reglas, destruye la salida y devuelve
-#                          la primaria al monitor físico
+#   steamlink-mode on      salida 1920x864@60 (20:9), juegos de Steam/Proton y
+#                          Big Picture a la salida virtual
+#   steamlink-mode off     retira la salida y devuelve la primaria al monitor
 #   steamlink-mode toggle  alterna
-#   steamlink-mode status  dice si está activa
+#   steamlink-mode status  «activa» o «inactiva»
+#   steamlink-mode info    detalle (name, mode, preset, physical…)
+#   steamlink-mode mode WxH[@R]   cambia la resolución sin salir del modo
+#
+# El trabajo real lo hace virtual-output; este archivo solo fija el preset.
+# Resolución personalizada: STEAMLINK_MODE=2560x1080@60 steamlink-mode on,
+# o la clave mode en ~/.config/umbriel/virtual-output.conf.
 #
 # Atajo: Mod+Shift+F11.
-#
-# El monitor físico se detecta con xrandr; se puede forzar con
-# STEAMLINK_PHYSICAL=eDP-1 (útil si hay varios monitores conectados).
-
 set -eu
 
-name=steamlink
-config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/umbriel"
-include="$config_dir/steamlink.toml"
+self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+tool=${VIRTUAL_OUTPUT:-$self_dir/virtual-output}
 
-detect_physical() {
-    if command -v xrandr >/dev/null 2>&1; then
-        xrandr --query 2>/dev/null |
-            awk -v skip="$name" '/ connected/ && $1 != skip { print $1; exit }'
-    fi
-}
+if [ ! -x "$tool" ]; then
+    printf 'steamlink-mode: falta %s (instala el shell con install-user-config.sh)\n' "$tool" >&2
+    exit 1
+fi
 
-physical=${STEAMLINK_PHYSICAL:-$(detect_physical)}
-physical=${physical:-HDMI-A-1}
-
-exists() {
-    umbriel outputs 2>/dev/null | grep -q "^$name "
-}
-
-write_include() {
-    cat >"$include" <<'EOF'
-# Generado por steamlink-mode. No editar a mano.
-[general]
-xwayland_primary_output = "steamlink"
-
-# Juegos de Steam (Proton incluido): a la salida virtual y a pantalla completa.
-# Se incluyen los nombres que usan Wine/Proton para juegos que no son de Steam
-# (por ejemplo, un acceso directo añadido a Steam o un .exe de HoYoPlay).
-[[window_rule]]
-match.app_id = ["^steam_app_", "^wine", "[.]exe$"]
-default_output = "steamlink"
-default_fullscreen = true
-
-# Big Picture del equipo, por si se usa desde el móvil o en el monitor.
-[[window_rule]]
-match.app_id = "^steam$"
-match.title = "[Bb]ig [Pp]icture"
-default_output = "steamlink"
-default_fullscreen = true
-EOF
-}
-
-clear_include() {
-    : >"$include"
-}
-
-reload() {
-    umbriel msg config-reload >/dev/null 2>&1 || true
-}
+if [ -n "${STEAMLINK_PHYSICAL:-}" ]; then
+    set -- "$@" --physical "$STEAMLINK_PHYSICAL"
+fi
 
 case "${1:-toggle}" in
-    on)
-        if ! exists; then
-            umbriel output-create "$name" 1920x864@60 >/dev/null
-            i=0
-            while ! exists && [ "$i" -lt 20 ]; do
-                sleep 0.1
-                i=$((i + 1))
-            done
+    on | toggle)
+        if [ -n "${STEAMLINK_MODE:-}" ]; then
+            set -- "$@" --mode "$STEAMLINK_MODE"
         fi
-        write_include
-        reload
-        # Si Steam ya tiene una sesión de captura (con «Allow changing the
-        # source with Umbriel actions»), la redirige a la salida virtual.
-        umbriel msg screencast-set-output "$name" >/dev/null 2>&1 || true
-        echo "steamlink lista: 1920x864@60 (20:9)."
-        echo "En Steam Link, lanza el juego. Si Steam pide qué compartir, elige steamlink."
-        ;;
-    off)
-        clear_include
-        reload
-        umbriel msg screencast-set-output "$physical" >/dev/null 2>&1 || true
-        if exists; then
-            umbriel output-destroy "$name" >/dev/null 2>&1 || true
-        fi
-        xrandr --output "$physical" --primary >/dev/null 2>&1 || true
-        echo "steamlink retirada; $physical vuelve a ser la primaria."
-        ;;
-    toggle)
-        if exists; then
-            "$0" off
-        else
-            "$0" on
-        fi
-        ;;
-    status)
-        if exists; then
-            echo "activa"
-        else
-            echo "inactiva"
-        fi
-        ;;
-    *)
-        echo "uso: $0 [on|off|toggle|status]" >&2
-        exit 2
         ;;
 esac
+
+exec "$tool" "$@" --preset steamlink

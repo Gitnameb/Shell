@@ -199,6 +199,94 @@ run install -m755 "$REPO_DIR/install/bin/umbriel-config-guard" \
     "$TARGET_HOME/.local/bin/umbriel-config-guard"
 run install -m755 "$REPO_DIR/install/bin/steamlink-mode" \
     "$TARGET_HOME/.local/bin/steamlink-mode"
+for tool in virtual-output virtual-output-chooser virtual-output-restore; do
+    run install -m755 "$REPO_DIR/install/bin/$tool" "$TARGET_HOME/.local/bin/$tool"
+done
+
+# ---------------------------------------------------------------------------
+# Salida virtual y selector de fuentes del portal
+# ---------------------------------------------------------------------------
+# Mientras hay una salida virtual activa, el portal debe capturarla a ella y no
+# al monitor físico. El selector de fuentes es la pieza que decide eso.
+
+ensure_portal_chooser() {
+    local conf="$TARGET_HOME/.config/xdg-desktop-portal-umbriel/config.toml"
+    local chooser="$TARGET_HOME/.local/bin/virtual-output-chooser"
+
+    run mkdir -p "$(dirname "$conf")"
+
+    if [[ ! -e "$conf" ]]; then
+        backup_file "$conf"
+        if (( DRY_RUN )); then
+            printf '\033[2m[dry-run]\033[0m escribir %s\n' "$conf"
+            return 0
+        fi
+        render_template "$REPO_DIR/install/config/xdg-desktop-portal-umbriel.toml" >"$conf"
+        chmod 644 "$conf"
+        log "Selector de fuentes del portal configurado."
+        return 0
+    fi
+
+    if grep -qF 'virtual-output-chooser' "$conf"; then
+        log "El selector de fuentes del portal ya está configurado."
+        return 0
+    fi
+
+    if grep -qE '^[[:space:]]*chooser_cmd[[:space:]]*=' "$conf"; then
+        warn "$conf ya define otro chooser_cmd; se conserva. Usa --force-config para cambiarlo."
+        return 0
+    fi
+
+    backup_file "$conf"
+    if (( DRY_RUN )); then
+        printf '\033[2m[dry-run]\033[0m añadir chooser_cmd a %s\n' "$conf"
+        return 0
+    fi
+
+    if grep -q '^\[screencast\]' "$conf"; then
+        python3 - "$conf" "$chooser" <<'PY'
+import sys
+from pathlib import Path
+
+conf = Path(sys.argv[1])
+chooser = sys.argv[2]
+lines = conf.read_text(encoding="utf-8").splitlines()
+out = []
+inserted = False
+for line in lines:
+    out.append(line)
+    if not inserted and line.strip() == "[screencast]":
+        out.append(f'chooser_cmd = "{chooser}"')
+        inserted = True
+conf.write_text("\n".join(out) + "\n", encoding="utf-8")
+PY
+    else
+        printf '\n[screencast]\nchooser_cmd = "%s"\nmax_fps = 0\n' "$chooser" >>"$conf"
+    fi
+    log "chooser_cmd añadido a $conf."
+}
+
+migrate_virtual_output_include() {
+    local cfg="$TARGET_HOME/.config/umbriel/config.toml"
+
+    [[ -f "$cfg" ]] || return 0
+    grep -q 'virtual-output\.toml' "$cfg" && return 0
+    if ! grep -q 'steamlink\.toml' "$cfg"; then
+        warn "$cfg no incluye virtual-output.toml; la salida virtual no aplicará sus reglas."
+        return 0
+    fi
+
+    backup_file "$cfg"
+    if (( DRY_RUN )); then
+        printf '\033[2m[dry-run]\033[0m migrar steamlink.toml -> virtual-output.toml en %s\n' "$cfg"
+        return 0
+    fi
+    sed -i 's/steamlink\.toml/virtual-output.toml/g' "$cfg"
+    log "Include de la salida virtual migrado a virtual-output.toml."
+}
+
+ensure_portal_chooser
+migrate_virtual_output_include
 
 log "Copiando la configuración del shell."
 copy_template "$REPO_DIR/install/config/shell-settings.conf" \

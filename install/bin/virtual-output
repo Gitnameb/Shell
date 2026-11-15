@@ -1,0 +1,512 @@
+#!/bin/sh
+# Salida virtual genérica de Umbriel.
+#
+# Crea una pantalla headless, la marca como primaria de X11, aplica reglas de
+# ventana opcionales y, mientras está activa, hace que las capturas del portal
+# (Steam Link, OBS, grabadores…) salgan de esa pantalla y nunca del monitor
+# físico. Steam Link es solo un preset de esta herramienta.
+#
+#   virtual-output on [--preset P] [--name N] [--mode WxH[@R]]
+#   virtual-output off
+#   virtual-output toggle [--preset P]
+#   virtual-output mode WxH[@R]      cambia la resolución sin salir del modo
+#   virtual-output status [--preset P]   imprime «activa» o «inactiva»
+#   virtual-output info              detalle en líneas clave=valor
+#   virtual-output presets           lista los presets disponibles
+#
+# Presets:
+#   none       pantalla genérica 1920x1080@60, sin reglas de ventana
+#   steamlink  1920x864@60 (20:9), juegos de Steam/Proton y Big Picture
+#
+# Ajustes personales en ~/.config/umbriel/virtual-output.conf (opcional):
+#   name=mi-salida
+#   mode=2560x1080@60
+#   capture_apps=steam,obs
+#   physical=HDMI-A-1
+#
+# Atajo: Mod+Shift+F11 abre el preset steamlink (steamlink-mode).
+set -eu
+
+self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+config_root="${XDG_CONFIG_HOME:-$HOME/.config}"
+state_dir="$config_root/umbriel"
+state="$state_dir/virtual-output.state"
+user_conf="$state_dir/virtual-output.conf"
+
+action=${1:-toggle}
+[ "$#" -gt 0 ] && shift
+
+name=virtual
+mode=1920x1080@60
+preset=none
+capture_apps=""
+
+die() {
+    printf 'virtual-output: %s\n' "$*" >&2
+    exit 1
+}
+
+usage() {
+    cat <<'EOF'
+Uso:
+  virtual-output on [--preset P] [--name N] [--mode WxH[@R]]
+  virtual-output off
+  virtual-output toggle [--preset P]
+  virtual-output mode WxH[@R]
+  virtual-output status [--preset P]
+  virtual-output info
+  virtual-output presets
+
+Presets: steamlink (1920x864@60, juegos de Steam/Proton) y none (genérica).
+EOF
+}
+
+# --- Ajustes ---------------------------------------------------------------
+
+state_get() {
+    [ -r "$state" ] || return 1
+    sed -n "s/^$1=//p" "$state" | head -n 1
+}
+
+write_state() {
+    mkdir -p "$state_dir"
+    cat >"$state" <<EOF
+active=$1
+name=$2
+mode=$3
+preset=$4
+capture_apps=$5
+physical=$6
+EOF
+}
+
+apply_preset_defaults() {
+    case "$1" in
+        steamlink)
+            name=steamlink
+            mode=1920x864@60
+            capture_apps=steam
+            ;;
+        none | generic)
+            name=virtual
+            mode=1920x1080@60
+            capture_apps=""
+            ;;
+        *)
+            die "preset desconocido: $1 (usa: steamlink, none)"
+            ;;
+    esac
+}
+
+validate_mode() {
+    case "$1" in
+        '' | *[!0-9xX@.]*)
+            die "modo inválido: $1 (formato: 1920x864@60)"
+            ;;
+    esac
+    case "$1" in
+        *x* | *X*) ;;
+        *) die "modo inválido: $1 (formato: 1920x864@60)" ;;
+    esac
+}
+
+# --- Salidas ---------------------------------------------------------------
+
+output_exists() {
+    umbriel outputs 2>/dev/null | awk -v n="$1" '$1 == n { found = 1 } END { exit !found }'
+}
+
+wait_exists() {
+    i=0
+    while ! output_exists "$1"; do
+        [ "$i" -ge 30 ] && return 1
+        sleep 0.1
+        i=$((i + 1))
+    done
+}
+
+wait_gone() {
+    i=0
+    while output_exists "$1"; do
+        [ "$i" -ge 30 ] && return 1
+        sleep 0.1
+        i=$((i + 1))
+    done
+}
+
+detect_physical() {
+    if command -v xrandr >/dev/null 2>&1; then
+        out=$(xrandr --query 2>/dev/null | awk -v skip="${1:-}" '
+            / connected/ && $1 != skip { print $1; exit }')
+        [ -n "$out" ] && {
+            printf '%s\n' "$out"
+            return 0
+        }
+    fi
+    umbriel outputs 2>/dev/null | awk -v skip="${1:-}" '
+        /^[A-Za-z0-9._-]+ "/ {
+            name = $1
+            if (first == "" && name != skip) first = name
+            enabled = 0
+        }
+        /Enabled: yes/ { enabled = 1 }
+        /Focused: yes/ && name != skip { focused = name }
+        END {
+            if (focused != "") print focused
+            else if (first != "") print first
+        }'
+}
+
+output_description() {
+    umbriel outputs 2>/dev/null | awk -v n="$1" '
+        $1 == n {
+            line = $0
+            sub(/^[^"]*"/, "", line)
+            sub(/"$/, "", line)
+            print line
+            exit
+        }'
+}
+
+include_file() {
+    cfg="$state_dir/config.toml"
+    if [ -f "$cfg" ] && grep -q 'virtual-output\.toml' "$cfg"; then
+        printf '%s\n' "$state_dir/virtual-output.toml"
+    elif [ -f "$cfg" ] && grep -q 'steamlink\.toml' "$cfg"; then
+        # Instalaciones anteriores a la versión genérica. Se sigue escribiendo
+        # aquí para que el modo funcione sin reinstalar; el instalador migra.
+        printf '%s\n' "$state_dir/steamlink.toml"
+    else
+        printf '%s\n' "$state_dir/virtual-output.toml"
+    fi
+}
+
+write_include() {
+    include=$(include_file)
+    mkdir -p "$state_dir"
+    {
+        printf '# Generado por virtual-output (preset %s). No editar a mano.\n' "$preset"
+        printf '\n[general]\n'
+        printf 'xwayland_primary_output = "%s"\n' "$name"
+        printf '\n[output."%s"]\n' "$name"
+        printf 'mode = "%s"\n' "$mode"
+        printf 'workspaces = 1\n'
+        if [ "$preset" = steamlink ]; then
+            cat <<'EOF'
+
+# Juegos de Steam (Proton incluido): a la salida virtual y a pantalla completa.
+# Se incluyen los nombres que usan Wine/Proton para juegos que no son de Steam
+# (por ejemplo, un acceso directo añadido a Steam o un .exe de HoYoPlay).
+[[window_rule]]
+match.app_id = ["^steam_app_", "^wine", "[.]exe$"]
+default_output = "REPLACE_NAME"
+default_fullscreen = true
+
+# Big Picture del equipo, por si se usa desde el móvil o en el monitor.
+[[window_rule]]
+match.app_id = "^steam$"
+match.title = "[Bb]ig [Pp]icture"
+default_output = "REPLACE_NAME"
+default_fullscreen = true
+EOF
+        fi
+    } >"$include"
+    if [ "$preset" = steamlink ]; then
+        sed -i "s/REPLACE_NAME/$name/g" "$include"
+    fi
+    printf '%s\n' "$include"
+}
+
+clear_include() {
+    include=$(include_file)
+    : >"$include"
+}
+
+reload_config() {
+    umbriel msg config-reload >/dev/null 2>&1 || true
+}
+
+retarget() {
+    umbriel msg screencast-set-output "$1" >/dev/null 2>&1 || true
+}
+
+restore_entries() {
+    [ -n "$capture_apps" ] || return 0
+    helper="$self_dir/virtual-output-restore"
+    [ -x "$helper" ] || {
+        printf 'virtual-output: falta %s; no se reparan los datos del portal\n' "$helper" >&2
+        return 0
+    }
+    title=$(output_description "$name")
+    "$helper" "$name" --apps "$capture_apps" --title "${title:-$name}" ||
+        printf 'virtual-output: no se pudieron reparar los datos de restauración del portal\n' >&2
+}
+
+# --- Acciones --------------------------------------------------------------
+
+do_on() {
+    # CLI > preset > estado anterior. El preset manda sobre el estado para que
+    # `steamlink-mode on` no herede una resolución de otro preset.
+    if [ -n "$cli_preset" ]; then
+        preset=$cli_preset
+        apply_preset_defaults "$preset"
+    elif [ -n "${state_name:-}" ]; then
+        name=$state_name
+        mode=$state_mode
+        preset=$state_preset
+        capture_apps=$state_apps
+    else
+        preset=none
+        apply_preset_defaults "$preset"
+    fi
+
+    # Preferencias del usuario, sin pisar lo que ya se haya elegido.
+    if [ -r "$user_conf" ]; then
+        # shellcheck disable=SC1090
+        . "$user_conf"
+    fi
+
+    [ -n "$cli_name" ] && name=$cli_name
+    [ -n "$cli_mode" ] && mode=$cli_mode
+    [ "$cli_apps_set" = 1 ] && capture_apps=$cli_apps
+    validate_mode "$mode"
+
+    physical=${cli_physical:-${physical:-$(detect_physical "$name")}}
+    physical=${physical:-HDMI-A-1}
+
+    # Solo una salida virtual gestionada a la vez: si había otra, se retira.
+    if [ "${state_active:-0}" = 1 ] && [ -n "${state_name:-}" ] && [ "$state_name" != "$name" ] &&
+        output_exists "$state_name"; then
+        do_off
+    fi
+
+    write_include >/dev/null
+    reload_config
+
+    # Se recrea si quedó una salida con otro tamaño de una sesión anterior.
+    if output_exists "$name"; then
+        umbriel output-destroy "$name" >/dev/null 2>&1 || true
+        wait_gone "$name" || die "no se pudo retirar la salida anterior $name"
+    fi
+    umbriel output-create "$name" "$mode" >/dev/null ||
+        die "no se pudo crear la salida virtual $name ($mode)"
+    wait_exists "$name" || die "la salida $name no apareció"
+
+    reload_config
+    write_state 1 "$name" "$mode" "$preset" "$capture_apps" "$physical"
+    retarget "$name"
+    restore_entries
+
+    printf 'Salida virtual %s activa: %s.\n' "$name" "$mode"
+    printf 'Las capturas del portal usarán %s mientras el modo esté activo.\n' "$name"
+    if [ "$preset" = steamlink ]; then
+        printf 'Steam Link: abre el juego o Big Picture; no elijas el monitor físico.\n'
+    fi
+}
+
+do_off() {
+    old_name=${state_name:-$(state_get name || true)}
+    old_name=${old_name:-virtual}
+    physical=${cli_physical:-${physical:-$(state_get physical || true)}}
+    physical=${physical:-$(detect_physical "$old_name")}
+    physical=${physical:-HDMI-A-1}
+
+    if [ "$physical" != "$old_name" ]; then
+        retarget "$physical"
+    fi
+    clear_include
+    reload_config
+    if output_exists "$old_name"; then
+        umbriel output-destroy "$old_name" >/dev/null 2>&1 || true
+        wait_gone "$old_name" || true
+    fi
+    if command -v xrandr >/dev/null 2>&1; then
+        xrandr --output "$physical" --primary >/dev/null 2>&1 || true
+    fi
+    # Se conserva name/mode/preset para que el próximo `on` reutilice el ajuste.
+    write_state 0 "$old_name" "${state_mode:-$mode}" "${state_preset:-$preset}" \
+        "${state_apps:-$capture_apps}" "$physical"
+    printf 'Salida virtual %s retirada; %s vuelve a ser la principal.\n' "$old_name" "$physical"
+}
+
+do_mode() {
+    [ -n "${1:-}" ] || die "falta la resolución (por ejemplo: 2560x1080@60)"
+    new_mode=$1
+    validate_mode "$new_mode"
+    [ "${state_active:-0}" = 1 ] && output_exists "${state_name:-}" ||
+        die "no hay una salida virtual activa"
+    [ "$new_mode" = "$state_mode" ] && {
+        printf 'La salida %s ya está en %s.\n' "$state_name" "$state_mode"
+        return 0
+    }
+
+    old_name=$state_name
+    umbriel output-destroy "$old_name" >/dev/null 2>&1 || true
+    wait_gone "$old_name" || die "no se pudo retirar $old_name"
+    name=$old_name
+    mode=$new_mode
+    preset=$state_preset
+    capture_apps=$state_apps
+    write_include >/dev/null
+    reload_config
+    umbriel output-create "$name" "$mode" >/dev/null ||
+        die "no se pudo crear $name en $mode"
+    wait_exists "$name" || die "la salida $name no apareció"
+    reload_config
+    write_state 1 "$name" "$mode" "$preset" "$capture_apps" "$state_physical"
+    retarget "$name"
+    restore_entries
+    printf 'Salida %s ahora en %s. Vuelve a abrir el juego o Big Picture.\n' "$name" "$mode"
+}
+
+load_state() {
+    state_active=$(state_get active 2>/dev/null || printf '0')
+    state_name=$(state_get name 2>/dev/null || true)
+    state_mode=$(state_get mode 2>/dev/null || true)
+    state_preset=$(state_get preset 2>/dev/null || true)
+    state_apps=$(state_get capture_apps 2>/dev/null || true)
+    state_physical=$(state_get physical 2>/dev/null || true)
+    physical=${physical:-$state_physical}
+
+    # Migración desde steamlink-mode antiguo: la salida puede existir sin
+    # archivo de estado. Se deduce del include activo y de `umbriel outputs`.
+    if [ -z "$state_name" ]; then
+        include=$(include_file)
+        if [ -r "$include" ]; then
+            state_name=$(sed -n 's/^xwayland_primary_output = "\(.*\)"$/\1/p' "$include" | head -n 1)
+        fi
+        if [ -n "$state_name" ] && output_exists "$state_name"; then
+            state_active=1
+            case "$(cat "$include" 2>/dev/null)" in
+                *steam_app_*) state_preset=steamlink ;;
+                *) state_preset=none ;;
+            esac
+            state_mode=$(umbriel outputs 2>/dev/null | awk -v n="$state_name" '
+                $1 == n { inside = 1; next }
+                inside && /current/ {
+                    printf "%s@%d\n", $1, $3
+                    exit
+                }
+                inside && /^[A-Za-z0-9._-]+ "/ { exit }
+            ')
+            [ -n "$state_mode" ] || state_mode=$mode
+            if [ "$state_preset" = steamlink ]; then
+                state_apps=steam
+            else
+                state_apps=""
+            fi
+            if [ -z "$state_physical" ]; then
+                state_physical=$(detect_physical "$state_name")
+            fi
+        fi
+    fi
+}
+
+# --- Argumentos ------------------------------------------------------------
+
+cli_preset=""
+cli_name=""
+cli_mode=""
+cli_apps=""
+cli_apps_set=0
+cli_physical=""
+physical=""
+load_state
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --preset)
+            [ "$#" -ge 2 ] || die "--preset necesita un valor"
+            cli_preset=$2
+            shift 2
+            ;;
+        --name)
+            [ "$#" -ge 2 ] || die "--name necesita un valor"
+            cli_name=$2
+            shift 2
+            ;;
+        --mode)
+            [ "$#" -ge 2 ] || die "--mode necesita un valor"
+            cli_mode=$2
+            shift 2
+            ;;
+        --apps)
+            [ "$#" -ge 2 ] || die "--apps necesita un valor"
+            cli_apps=$2
+            cli_apps_set=1
+            shift 2
+            ;;
+        --physical)
+            [ "$#" -ge 2 ] || die "--physical necesita un valor"
+            cli_physical=$2
+            shift 2
+            ;;
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        *)
+            # `mode 1920x864@60`: la resolución es un argumento posicional.
+            if [ "$action" = mode ] && [ -z "$cli_mode" ]; then
+                cli_mode=$1
+                shift
+            else
+                die "opción desconocida: $1"
+            fi
+            ;;
+    esac
+done
+
+case "$action" in
+    on)
+        do_on
+        ;;
+    off)
+        do_off
+        ;;
+    toggle)
+        if [ "$state_active" = 1 ] && [ -n "$state_name" ] && output_exists "$state_name"; then
+            if [ -n "$cli_preset" ] && [ "$state_preset" != "$cli_preset" ]; then
+                do_on
+            else
+                do_off
+            fi
+        else
+            do_on
+        fi
+        ;;
+    mode)
+        do_mode "${cli_mode:-}"
+        ;;
+    status)
+        if [ "$state_active" = 1 ] && [ -n "$state_name" ] && output_exists "$state_name"; then
+            if [ -n "$cli_preset" ] && [ "$state_preset" != "$cli_preset" ]; then
+                printf 'inactiva\n'
+            else
+                printf 'activa\n'
+            fi
+        else
+            printf 'inactiva\n'
+        fi
+        ;;
+    info)
+        if [ "$state_active" = 1 ] && [ -n "$state_name" ] && output_exists "$state_name"; then
+            printf 'active=1\n'
+        else
+            printf 'active=0\n'
+        fi
+        printf 'name=%s\n' "${state_name:-}"
+        printf 'mode=%s\n' "${state_mode:-}"
+        printf 'preset=%s\n' "${state_preset:-}"
+        printf 'capture_apps=%s\n' "${state_apps:-}"
+        printf 'physical=%s\n' "${state_physical:-}"
+        ;;
+    presets)
+        printf 'steamlink\t1920x864@60\tjuegos de Steam/Proton y Big Picture\n'
+        printf 'none\t1920x1080@60\tpantalla virtual genérica\n'
+        ;;
+    *)
+        usage >&2
+        exit 2
+        ;;
+esac

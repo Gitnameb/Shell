@@ -131,6 +131,8 @@ dentro de un HOME privado.
 | `scripts/install-shutdown.sh` | Reduce el plazo para cerrar las aplicaciones antes de apagar. |
 | `scripts/network.sh` | Módulo de NetworkManager, Ethernet y Wi-Fi. |
 | `scripts/install-user-config.sh` | Módulo de enlaces, configuración del HOME y terminal de Thunar. |
+| `install/bin/virtual-output` | Salida virtual genérica y captura del portal sin el monitor físico. |
+| `install/bin/steamlink-mode` | Preset de Steam Link (1920x864) sobre la salida virtual. |
 | `scripts/install-greeter.sh` | Configura Noctalia Greeter y cambia de SDDM a greetd. |
 | `scripts/install-umbriel-edit.sh` | Compila e instala el edit personal de Umbriel. |
 | `scripts/regenerate-umbriel-patch.sh` | Regenera `umbriel-edit.patch` desde la base de Umbriel. |
@@ -140,6 +142,7 @@ dentro de un HOME privado.
 | `UMBRIEL-EDIT.md` | Qué es el edit de Umbriel, cómo publicarlo y protegerlo de `apt`. |
 | `INSTALACION.md` | Guía de instalación. |
 | `AIMP.md` | AIMP para Linux en Umbriel: causa, lanzadores y exclusión del render fijo. |
+| `VIRTUAL-OUTPUT.md` | Salida virtual genérica, resolución configurable y preset de Steam Link. |
 | `PLAN.md`, `PENDIENTES.md`, `CONTEXTO.md` | Plan, tareas e historial. |
 
 ## Edit personal de Umbriel

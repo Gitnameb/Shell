@@ -182,12 +182,9 @@ layout = "es"
 [output."@OUTPUT@"]
 workspaces = 9
 
-# Salida virtual para Steam Link desde el móvil. 1920x864 es 20:9 exacto
-# (la misma proporción que un móvil de 2400x1080). Solo existe mientras la
-# activa `steamlink-mode`; si no existe, Umbriel ignora esta sección.
-[output.steamlink]
-mode = "1920x864@60"
-workspaces = 1
+# Salida virtual para capturas y juegos. La crea `virtual-output` (o el preset
+# `steamlink-mode`) y define su tamaño en el include generado; si no existe,
+# Umbriel ignora la sección.
 
 # El puente de captura X11 (Discord, Zoom y demás apps X11) no necesita una
 # ventana visible. Se guarda en el scratchpad y sigue funcionando en segundo
@@ -224,12 +221,12 @@ warm = 0.000
 [input]
 mod_hold_delay_ms = 150
 
-# Reglas temporales de la sesión de Steam Link. `steamlink-mode` escribe aquí
-# la primaria de X11 y las reglas que mandan los juegos a la salida virtual;
-# al terminar, deja el archivo vacío. Así, fuera de una partida, los juegos
-# siguen abriéndose con normalidad aunque la salida virtual no exista.
+# Reglas temporales de la salida virtual. `virtual-output` escribe aquí la
+# primaria de X11, el tamaño y las reglas que mandan los juegos a la pantalla
+# virtual; al desactivarla, deja el archivo vacío. Así, fuera de una partida,
+# los juegos siguen abriéndose con normalidad aunque la salida no exista.
 [include.optional]
-files = ["steamlink.toml"]
+files = ["virtual-output.toml"]
 
 # shell-workspace-modes: inicio
 # Generado desde «Configuración de ventanas»; no editar a mano.
