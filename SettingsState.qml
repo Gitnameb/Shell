@@ -38,6 +38,10 @@ Singleton {
     // el botón «Letras» del panel; si la pista no trae letra, el widget vuelve
     // a mostrar título y artista.
     property bool lyricsEnabled: false
+    // Adelanto de las letras en milisegundos. 0 respeta la marca del LRC tal
+    // cual; un valor positivo adelanta la letra (útil si el DAC o los altavoces
+    // añaden latencia) y uno negativo la retrasa.
+    property int lyricsOffsetMs: 0
     // Cuántos milisegundos hay que mantener Super para entrar en el modo
     // ventanas. Un toque más corto sigue abriendo el lanzador. El valor se
     // escribe en la configuración de Umbriel para que el compositor y el
@@ -869,6 +873,7 @@ Singleton {
             + "barPosition=%s\\n"
             + "musicWidth=%s\\n"
             + "lyricsEnabled=%s\\n"
+            + "lyricsOffsetMs=%s\\n"
             + "superHoldMs=%s\\n"
             + "floatingSizePercent=%s\\n"
             + "floatingCascade=%s\\n"
@@ -928,6 +933,7 @@ Singleton {
             root.barPosition,
             root.musicWidth,
             root.lyricsEnabled ? "1" : "0",
+            root.lyricsOffsetMs,
             root.superHoldMs,
             root.floatingSizePercent,
             root.floatingCascade,
@@ -1170,6 +1176,7 @@ Singleton {
             let barPos = root.barPosition;
             let music = root.musicWidth;
             let lyrics = root.lyricsEnabled;
+            let lyricsOffset = root.lyricsOffsetMs;
             let superHold = root.superHoldMs;
             let floatingSize = root.floatingSizePercent;
             let floatingStep = root.floatingCascade;
@@ -1271,6 +1278,11 @@ Singleton {
                             ? 0 : Math.max(140, Math.min(420, parsed));
                 } else if (key === "lyricsEnabled") {
                     lyrics = value === "1" || value === "true";
+                } else if (key === "lyricsOffsetMs") {
+                    const parsed = parseInt(value, 10);
+                    if (!isNaN(parsed))
+                        lyricsOffset = Math.max(-1000,
+                            Math.min(1000, parsed));
                 } else if (key === "superHoldMs") {
                     const parsed = parseInt(value, 10);
                     if (!isNaN(parsed))
@@ -1411,6 +1423,7 @@ Singleton {
             root.barPosition = barPos;
             root.musicWidth = music;
             root.lyricsEnabled = lyrics;
+            root.lyricsOffsetMs = lyricsOffset;
             root.superHoldMs = superHold;
             root.floatingSizePercent = floatingSize;
             root.floatingCascade = floatingStep;

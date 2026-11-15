@@ -183,7 +183,7 @@ def parse_sylt(body):
             entries.append((stamp / 1000.0, text))
     if not entries:
         return ""
-    return "\n".join("[%02d:%05.2f]%s" % (int(t // 60), t % 60, text)
+    return "\n".join("[%02d:%06.3f]%s" % (int(t // 60), t % 60, text)
                      for t, text in entries)
 
 
@@ -243,7 +243,7 @@ def parse_lrc(text):
         for match in stamps:
             minutes = int(match.group(1))
             seconds = float(match.group(2).replace(":", "."))
-            key = (round(minutes * 60 + seconds, 2), lyric)
+            key = (round(minutes * 60 + seconds, 3), lyric)
             if key in seen:
                 continue
             seen.add(key)

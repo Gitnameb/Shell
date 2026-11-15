@@ -949,6 +949,13 @@ buffer pequeño con bordes negros.
   `MprisPlayer.metadata`, lee el tag del propio archivo con `lyrics.py` y lo
   interpreta como LRC (`[mm:ss.xx]texto`). No hacen falta archivos `.lrc`
   separados.
+- El tiempo se respeta tal como viene en la marca: `[00:28.12]` cambia la
+  línea a los 28,12 s. `MusicState.livePosition()` interpola la posición entre
+  los saltos de 500 ms del reloj de la barra, y `LyricsState` revisa cada
+  16 ms mientras suena. No se aplica ningún adelanto fijo. Si un DAC con
+  mucha latencia hace que la letra se vea antes que el sonido, se puede
+  ajustar `lyricsOffsetMs` en `~/.config/shell/settings.conf` (0 por defecto,
+  en milisegundos; positivo adelanta la letra).
 - `lyrics.py` usa solo la biblioteca estándar de Python: átomo `©lyr` en
   MP4/M4A, comentarios Vorbis `SYNCEDLYRICS`/`LYRICS` en FLAC, marcos `SYLT`
   (milisegundos) o `USLT` con LRC en MP3, y un `.lrc` junto al archivo como

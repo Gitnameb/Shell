@@ -133,15 +133,18 @@ Singleton {
     }
 
     // La línea activa es la última marca cuyo tiempo ya pasó. Se consulta con
-    // un temporizador corto en vez de con cada cambio de Position porque el
-    // reloj local de MusicState avanza cada 500 ms.
+    // un temporizador corto y con la posición interpolada de MusicState: el
+    // reloj de la barra solo avanza cada 500 ms, así que leer `position` haría
+    // que las marcas se cruzaran a saltos. `lyricsOffsetMs` es 0 por defecto
+    // para respetar el tiempo exacto del LRC.
     function updateIndex(): void {
         if (!root.synced || root.lines.length === 0) {
             if (root.activeIndex !== -1)
                 root.activeIndex = -1;
             return;
         }
-        const now = MusicState.position + 0.08;
+        const now = MusicState.livePosition()
+            + SettingsState.lyricsOffsetMs / 1000;
         let low = 0;
         let high = root.lines.length - 1;
         let found = -1;
@@ -189,7 +192,11 @@ Singleton {
     }
 
     Timer {
-        interval: 200
+        // 16 ms ≈ un fotograma a 60 Hz mientras suena; en pausa baja a 200 ms,
+        // suficiente para reflejar un salto manual sin gastar en vacío. La
+        // posición se interpola, así que la línea cambia en la primera pasada
+        // después de su marca, no en el siguiente salto de 500 ms del reloj.
+        interval: MusicState.playing ? 16 : 200
         repeat: true
         running: root.active
         onTriggered: root.updateIndex()

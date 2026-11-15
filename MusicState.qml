@@ -167,6 +167,20 @@ Singleton {
             root.adoptPosition(actual);
     }
 
+    // Posición interpolada para las letras. `displayPosition` solo cambia cada
+    // 500 ms (el reloj de la barra); entre medias se suma el tiempo real
+    // transcurrido desde `lastTickMs`. No se escribe en MPRIS: solo se usa
+    // para leer, de modo que una marca [00:28.12] se cruza en ese instante y
+    // no en el siguiente salto del reloj.
+    function livePosition(): real {
+        if (!root.playing || root.lastTickMs <= 0)
+            return root.displayPosition;
+        const elapsed = Math.max(0, Date.now() - root.lastTickMs) / 1000;
+        const rate = root.player && root.player.rate > 0 ? root.player.rate : 1;
+        const value = root.displayPosition + elapsed * rate;
+        return root.length > 0 ? Math.min(root.length, value) : value;
+    }
+
     function toggle(): void {
         if (!root.player)
             return;
