@@ -49,9 +49,12 @@ Progreso (2026-11-12):
   salida virtual mientras está activa y `virtual-output-restore` repara los
   datos de restauración que apuntaban al monitor físico. Ver
   `VIRTUAL-OUTPUT.md`.
-- Pendiente: probar en el móvil el ciclo completo con una sesión nueva de
-  Steam Link (debe capturar 1920x864 y no `HDMI-A-1`) y el cambio de resolución
-  con `virtual-output mode`.
+- Hecho (2026-11-15): probada una sesión nueva de Steam Link desde el móvil.
+  El cliente recibe `1920x864` de la salida `steamlink` (no `HDMI-A-1`) y lo
+  escala a su pantalla de 2400x1080. También se probaron `virtual-output mode`
+  (1280x720, 1600x900) y el preset genérico.
+- Pendiente: una UI de resolución en el centro de control y una prueba de
+  instalación limpia que confirme el include y el `chooser_cmd`.
 
 ## Estado al cerrar esta sesión
 
