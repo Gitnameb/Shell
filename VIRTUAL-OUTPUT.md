@@ -99,62 +99,11 @@ Hay tres capas, todas en espacio de usuario:
 Durante una emisión activa, `virtual-output` también llama a
 `screencast-set-output` para redirigir la captura en caliente.
 
-## Uso simultáneo con el monitor físico
-
-Hoy la salida virtual separa el **render**, pero no la **entrada**: Umbriel
-tiene un único *seat* (`seat0`) y el teclado, el ratón y la captura comparten
-foco global. Mientras el invitado juega, si el usuario hace clic en el monitor
-físico, el juego pierde el foco y deja de responder; si el invitado usa el
-ratón táctil, mueve el cursor del usuario. La transmisión no se corta: los
-fotogramas siguen llegando, pero la ventana pierde el control.
-
-**Un segundo *seat* no resuelve el caso de Steam/Proton.** Xwayland crea
-dispositivos esclavos por cada `wl_seat`, pero `EnableDevice` los engancha
-siempre al único *master* del servidor X (`inputInfo.keyboard` /
-`inputInfo.pointer`, véase `dix/devices.c`). El foco de teclado de X11 es
-global, así que un segundo seat aislaría clientes Wayland nativos, no los
-juegos de Proton.
-
-La vía que sí aísla es una **sesión de invitado propia**: un segundo Umbriel
-*headless* con su propio Xwayland y su propio seat, Steam dentro de esa sesión
-y el portal de esa sesión para capturarla. Así la entrada del móvil nunca toca
-la sesión del usuario. La herramienta `steamlink-guest` lo implementa:
-
-```sh
-steamlink-guest              # sesión 1920x864@60 y Big Picture
-steamlink-guest --take-over  # cierra el Steam del escritorio y arranca
-steamlink-guest status       # sesión, salida, display y modo
-steamlink-guest stop         # cierra Steam, el portal y el compositor
-```
-
-La sesión usa un bus D-Bus privado, su propio `xdg-desktop-portal` y un
-`XDG_CONFIG_HOME` temporal con `virtual-output-chooser` apuntando a la salida
-`HEADLESS-1`. La captura de Steam sale de esa salida; la entrada de Steam
-(XTest → Xwayland → libei) se queda en el seat del invitado. Validado: el
-compositor arranca con aceleración real (AMD RX 570, Mesa 26.1.6), su Xwayland
-funciona, `grim` captura 1920x864 y el portal entrega un nodo PipeWire de
-`HEADLESS-1` a 1920x864 con `mapping_id`, `position` y `size` correctos.
-
-Variables: `STEAMLINK_GUEST_MODE` (resolución), `STEAMLINK_GUEST_STEAM_ARGS`
-(por defecto `-pipewire -tenfoot`). Los registros quedan en
-`$XDG_RUNTIME_DIR/steamlink-guest/`; `steamlink-guest logs` los muestra.
-`--app "comando"` sustituye a Steam para probar la sesión.
-
-Límite del diseño: Steam solo admite una instancia por usuario, así que
-mientras el invitado juega, Steam no puede estar abierto en la sesión del
-usuario. El resto del escritorio (navegador, terminal, archivos) sigue
-disponible. Para tener Steam en los dos monitores a la vez haría falta una
-máquina virtual o un segundo equipo.
-
 ## Limitaciones
 
 - Las capturas de **ventana** no se fuerzan: el selector normal sigue
   ofreciendo ventanas, porque compartir una ventana concreta no expone el
   escritorio.
-- La entrada (teclado, ratón y mando) sigue siendo global: usar el monitor
-  físico quita el foco al juego del invitado y el ratón táctil mueve el cursor
-  del usuario. Para uso simultáneo, usa `steamlink-guest`, que arranca Steam en
-  una sesión aparte con su propio seat.
 - Cambiar la resolución no recoloca las ventanas que ya estaban abiertas; hay
   que reabrir el juego.
 - Solo se gestiona una salida virtual a la vez. Activar otro preset retira la
@@ -169,7 +118,6 @@ máquina virtual o un segundo equipo.
 | ------- | ------- |
 | `install/bin/virtual-output` | Crea, retira y redimensiona la salida virtual. |
 | `install/bin/steamlink-mode` | Preset de Steam Link sobre `virtual-output`. |
-| `install/bin/steamlink-guest` | Sesión aislada (compositor, Xwayland, portal y Steam) para jugar a la vez que se usa el monitor. |
 | `install/bin/virtual-output-chooser` | Selector del portal: fuerza la salida virtual. |
 | `install/bin/virtual-output-restore` | Repara los datos de restauración del portal. |
 | `install/config/xdg-desktop-portal-umbriel.toml` | Plantilla del `chooser_cmd`. |

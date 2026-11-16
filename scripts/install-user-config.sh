@@ -199,8 +199,6 @@ run install -m755 "$REPO_DIR/install/bin/umbriel-config-guard" \
     "$TARGET_HOME/.local/bin/umbriel-config-guard"
 run install -m755 "$REPO_DIR/install/bin/steamlink-mode" \
     "$TARGET_HOME/.local/bin/steamlink-mode"
-run install -m755 "$REPO_DIR/install/bin/steamlink-guest" \
-    "$TARGET_HOME/.local/bin/steamlink-guest"
 for tool in virtual-output virtual-output-chooser virtual-output-restore; do
     run install -m755 "$REPO_DIR/install/bin/$tool" "$TARGET_HOME/.local/bin/$tool"
 done
