@@ -1,0 +1,319 @@
+#!/bin/sh
+# Sesión de invitado aislada para Steam Link.
+#
+# Arranca un segundo Umbriel headless con su propio Xwayland, su propio seat y
+# su propio portal, y lanza Steam dentro. La entrada del móvil se queda en esa
+# sesión: no mueve el cursor ni roba el foco del monitor físico.
+#
+#   steamlink-guest                 inicia la sesión y espera a que salga Steam
+#   steamlink-guest --mode 1600x900 inicia con otra resolución
+#   steamlink-guest --take-over     cierra el Steam del escritorio antes
+#   steamlink-guest --app "cmd"     ejecuta otra orden (pruebas, sin Steam)
+#   steamlink-guest status          muestra si la sesión está activa
+#   steamlink-guest stop            cierra la sesión y sus procesos
+#
+# Steam solo admite una instancia por usuario. Mientras el invitado juega, el
+# Steam del escritorio debe estar cerrado; el resto del escritorio sigue
+# funcionando con normalidad.
+set -eu
+
+runtime="${XDG_RUNTIME_DIR:-/tmp}/steamlink-guest"
+pidfile="$runtime/session.pid"
+statefile="$runtime/state"
+mode="${STEAMLINK_GUEST_MODE:-1920x864@60}"
+steam_args="${STEAMLINK_GUEST_STEAM_ARGS:--pipewire -tenfoot}"
+app=""
+take_over=0
+chooser="${VIRTUAL_OUTPUT_CHOOSER:-$HOME/.local/bin/virtual-output-chooser}"
+
+usage() {
+    sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+running() {
+    [ -f "$pidfile" ] || return 1
+    pid=$(cat "$pidfile" 2>/dev/null || true)
+    [ -n "${pid:-}" ] && kill -0 "$pid" 2>/dev/null
+}
+
+stop_session() {
+    if ! running; then
+        printf 'steamlink-guest: no hay ninguna sesión activa\n'
+        rm -f "$pidfile"
+        return 0
+    fi
+    pid=$(cat "$pidfile")
+    printf 'steamlink-guest: cerrando la sesión %s…\n' "$pid"
+    kill -TERM "$pid" 2>/dev/null || true
+    i=0
+    while kill -0 "$pid" 2>/dev/null && [ "$i" -lt 100 ]; do
+        sleep 0.1
+        i=$((i + 1))
+    done
+    if kill -0 "$pid" 2>/dev/null; then
+        kill -KILL "$pid" 2>/dev/null || true
+    fi
+    rm -f "$pidfile"
+}
+
+case "${1:-}" in
+    -h | --help | help)
+        usage
+        exit 0
+        ;;
+    status)
+        if running; then
+            printf 'activa (pid %s)\n' "$(cat "$pidfile")"
+            if [ -f "$statefile" ]; then
+                # shellcheck disable=SC1090
+                . "$statefile"
+            fi
+            printf 'output=%s\ndisplay=%s\nmode=%s\n' \
+                "${guest_output:-?}" "${guest_display:-?}" "${mode:-?}"
+        else
+            printf 'inactiva\n'
+        fi
+        exit 0
+        ;;
+    stop)
+        stop_session
+        exit 0
+        ;;
+    logs)
+        tail -n 80 "$runtime/steam.log" "$runtime/portal.log" \
+            "$runtime/backend.log" "$runtime/guest.log" 2>/dev/null || true
+        exit 0
+        ;;
+    "" | run)
+        shift || true
+        ;;
+esac
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --mode)
+            mode=$2
+            shift 2
+            ;;
+        --mode=*)
+            mode=${1#*=}
+            shift
+            ;;
+        --app)
+            app=$2
+            shift 2
+            ;;
+        --app=*)
+            app=${1#*=}
+            shift
+            ;;
+        --take-over)
+            take_over=1
+            shift
+            ;;
+        *)
+            printf 'steamlink-guest: opción desconocida: %s\n' "$1" >&2
+            exit 2
+            ;;
+    esac
+done
+
+if running; then
+    printf 'steamlink-guest: ya hay una sesión activa (pid %s); usa «steamlink-guest stop»\n' \
+        "$(cat "$pidfile")" >&2
+    exit 1
+fi
+
+if [ ! -x "$chooser" ]; then
+    printf 'steamlink-guest: falta %s (instala el shell con install-user-config.sh)\n' \
+        "$chooser" >&2
+    exit 1
+fi
+
+if [ -z "$app" ] && pgrep -x steam >/dev/null 2>&1; then
+    if [ "$take_over" = 1 ]; then
+        printf 'steamlink-guest: cerrando el Steam del escritorio…\n'
+        timeout 15 steam -shutdown >/dev/null 2>&1 || true
+        i=0
+        while pgrep -x steam >/dev/null 2>&1 && [ "$i" -lt 150 ]; do
+            sleep 0.1
+            i=$((i + 1))
+        done
+        if pgrep -x steam >/dev/null 2>&1; then
+            printf 'steamlink-guest: Steam no se cerró; ciérralo a mano o usa --take-over tras guardar\n' >&2
+            exit 1
+        fi
+    else
+        printf 'steamlink-guest: Steam ya está abierto en el escritorio.\n' >&2
+        printf 'Ciérralo y vuelve a intentarlo, o usa «steamlink-guest --take-over».\n' >&2
+        printf 'Steam solo permite una instancia por usuario.\n' >&2
+        exit 1
+    fi
+fi
+
+mkdir -p "$runtime/config/xdg-desktop-portal-umbriel"
+rm -f "$runtime/guest.log" "$runtime/portal.log" "$runtime/backend.log" \
+    "$runtime/steam.log" "$runtime/bus" "$runtime/guest.state"
+
+cat >"$runtime/umbriel.toml" <<EOF
+# Generado por steamlink-guest; se borra al cerrar la sesión.
+[general]
+xwayland = true
+autostart = []
+
+[output.HEADLESS-1]
+mode = "$mode"
+scale = 1.0
+EOF
+
+cat >"$runtime/config/xdg-desktop-portal-umbriel/config.toml" <<EOF
+[screencast]
+chooser_cmd = "$chooser"
+max_fps = 0
+EOF
+
+cat >"$runtime/guest.state" <<EOF
+active=1
+name=HEADLESS-1
+mode=$mode
+EOF
+
+cleanup() {
+    set +e
+    if [ -n "${steam_pid:-}" ]; then
+        kill "$steam_pid" 2>/dev/null
+    fi
+    if [ -n "${guest_display:-}" ] && [ -z "${app:-}" ]; then
+        DISPLAY="$guest_display" timeout 10 steam -shutdown >/dev/null 2>&1
+    fi
+    [ -n "${portal_pid:-}" ] && kill "$portal_pid" 2>/dev/null
+    [ -n "${backend_pid:-}" ] && kill "$backend_pid" 2>/dev/null
+    [ -n "${compositor_pid:-}" ] && kill "$compositor_pid" 2>/dev/null
+    [ -n "${bus_pid:-}" ] && kill "$bus_pid" 2>/dev/null
+    wait 2>/dev/null
+    rm -f "$pidfile"
+    printf 'steamlink-guest: sesión cerrada\n'
+}
+trap cleanup EXIT INT TERM
+
+printf 'steamlink-guest: arrancando el bus privado y el compositor headless…\n'
+dbus-daemon --session --address="unix:path=$runtime/bus" --nofork \
+    --print-address=1 --nopidfile >"$runtime/bus.log" 2>&1 &
+bus_pid=$!
+export DBUS_SESSION_BUS_ADDRESS="unix:path=$runtime/bus"
+
+i=0
+while [ ! -S "$runtime/bus" ] && [ "$i" -lt 100 ]; do
+    sleep 0.1
+    i=$((i + 1))
+done
+
+env -u WAYLAND_DISPLAY -u DISPLAY -u UMBRIEL_SOCKET \
+    WLR_BACKENDS=headless WLR_HEADLESS_OUTPUTS=1 \
+    umbriel -c "$runtime/umbriel.toml" >"$runtime/guest.log" 2>&1 &
+compositor_pid=$!
+
+i=0
+while [ "$i" -lt 150 ]; do
+    grep -q 'IPC listening' "$runtime/guest.log" 2>/dev/null &&
+        grep -q 'Xwayland listening' "$runtime/guest.log" 2>/dev/null &&
+        break
+    sleep 0.1
+    i=$((i + 1))
+done
+
+guest_display=$(sed -n 's/.*Xwayland listening on DISPLAY=\(:.*\)/\1/p' \
+    "$runtime/guest.log" | tail -1)
+guest_wl=$(sed -n 's/.*running on WAYLAND_DISPLAY=\(.*\)/\1/p' \
+    "$runtime/guest.log" | tail -1)
+guest_ipc=$(sed -n 's/.*IPC listening on \(.*\)/\1/p' \
+    "$runtime/guest.log" | tail -1)
+
+if [ -z "$guest_display" ] || [ -z "$guest_wl" ] || [ -z "$guest_ipc" ]; then
+    printf 'steamlink-guest: el compositor no arrancó; revisa %s\n' \
+        "$runtime/guest.log" >&2
+    tail -n 20 "$runtime/guest.log" >&2 || true
+    kill "$compositor_pid" "$bus_pid" 2>/dev/null || true
+    exit 1
+fi
+
+export WAYLAND_DISPLAY="$guest_wl"
+export UMBRIEL_SOCKET="$guest_ipc"
+guest_output=$(umbriel outputs 2>/dev/null |
+    sed -n 's/^\([A-Za-z0-9._-]*\) ".*/\1/p' | head -1)
+guest_output=${guest_output:-HEADLESS-1}
+
+sed -i "s/^name=.*/name=$guest_output/" "$runtime/guest.state"
+
+cat >"$statefile" <<EOF
+guest_output=$guest_output
+guest_display=$guest_display
+guest_wl=$guest_wl
+guest_ipc=$guest_ipc
+mode=$mode
+bus=$DBUS_SESSION_BUS_ADDRESS
+EOF
+
+portal_bin=$(command -v xdg-desktop-portal 2>/dev/null ||
+    printf '/usr/libexec/xdg-desktop-portal')
+backend_bin=$(command -v xdg-desktop-portal-umbriel 2>/dev/null ||
+    printf '/usr/libexec/xdg-desktop-portal-umbriel')
+
+XDG_CURRENT_DESKTOP=umbriel \
+XDG_DESKTOP_PORTAL_DIR=/usr/share/xdg-desktop-portal/portals \
+XDG_CONFIG_HOME="$runtime/config" \
+VOUT_STATE="$runtime/guest.state" \
+    "$backend_bin" >"$runtime/backend.log" 2>&1 &
+backend_pid=$!
+
+XDG_CURRENT_DESKTOP=umbriel \
+XDG_CONFIG_HOME="$runtime/config" \
+    "$portal_bin" >"$runtime/portal.log" 2>&1 &
+portal_pid=$!
+
+i=0
+portal_ready=0
+while [ "$i" -lt 100 ]; do
+    if gdbus call --session --dest org.freedesktop.DBus \
+        --object-path /org/freedesktop/DBus \
+        --method org.freedesktop.DBus.NameHasOwner \
+        org.freedesktop.portal.Desktop 2>/dev/null | grep -q true &&
+        gdbus call --session --dest org.freedesktop.DBus \
+            --object-path /org/freedesktop/DBus \
+            --method org.freedesktop.DBus.NameHasOwner \
+            org.freedesktop.impl.portal.desktop.umbriel 2>/dev/null |
+            grep -q true; then
+        portal_ready=1
+        break
+    fi
+    sleep 0.1
+    i=$((i + 1))
+done
+
+if [ "$portal_ready" -ne 1 ]; then
+    printf 'steamlink-guest: el portal de la sesión no arrancó\n' >&2
+    tail -n 20 "$runtime/portal.log" >&2 || true
+    tail -n 20 "$runtime/backend.log" >&2 || true
+    exit 1
+fi
+
+printf '%s\n' "$$" >"$pidfile"
+
+if [ -n "$app" ]; then
+    printf 'steamlink-guest: lanzando la aplicación de prueba: %s\n' "$app"
+    # shellcheck disable=SC2086
+    env -u WAYLAND_DISPLAY DISPLAY="$guest_display" $app \
+        >"$runtime/steam.log" 2>&1 &
+else
+    printf 'steamlink-guest: lanzando Steam dentro de la sesión (%s)…\n' \
+        "$guest_output"
+    printf 'Conecta desde el móvil como siempre; la captura sale de %s.\n' \
+        "$guest_output"
+    # shellcheck disable=SC2086
+    env -u WAYLAND_DISPLAY DISPLAY="$guest_display" \
+        XDG_CURRENT_DESKTOP=umbriel \
+        steam $steam_args >"$runtime/steam.log" 2>&1 &
+fi
+steam_pid=$!
+
+wait "$steam_pid" || true

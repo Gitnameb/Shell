@@ -53,6 +53,14 @@ Progreso (2026-11-12):
   El cliente recibe `1920x864` de la salida `steamlink` (no `HDMI-A-1`) y lo
   escala a su pantalla de 2400x1080. También se probaron `virtual-output mode`
   (1280x720, 1600x900) y el preset genérico.
+- Diagnóstico (2026-11-16): la transmisión no se corta al usar el monitor
+  físico; lo que se pierde es el foco y con él el control. Un segundo *seat* no
+  aísla Proton porque Xwayland engancha todos los seats al único *master* de
+  X11. Validado un prototipo de sesión de invitado headless (Umbriel + Xwayland
+  + portal en un bus privado) que entrega `HEADLESS-1` a 1920x864 por PipeWire.
+- Pendiente: probar `steamlink-guest` con Steam real (requiere cerrar el Steam
+  del escritorio) y confirmar desde el móvil la captura y el control sin que se
+  mueva el cursor del monitor físico.
 - Pendiente: una UI de resolución en el centro de control y una prueba de
   instalación limpia que confirme el include y el `chooser_cmd`.
 
